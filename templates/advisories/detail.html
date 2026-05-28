@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load comment_filters advisory_display user_display %}
+{% block title %}{{ advisory.advisory_id }} — AdvisoryHub{% endblock %}
+{% block content %}
+<div class="advisory-detail advisory-detail--with-sidebar">
+<div class="advisory-detail__main">
+  <div class="advisory-detail__header">
+    <h1>{{ advisory.advisory_id }}</h1>
+  </div>
+
+  {% include "advisories/_status_header.html" %}
+
+  {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+
+  {% if is_ghsa_linked %}
+    {% include "advisories/_ghsa_panel.html" with advisory=advisory can_sync_ghsa=can_sync_ghsa %}
+  {% endif %}
+
+  {% if is_triage and intake and intake.needs_admin_routing %}
+    <div class="advisory-banner advisory-banner--warning" role="status">
+      <div class="advisory-banner__body">
+        <strong>Flagged for admin re-routing</strong>
+        {% if intake.flagged_for_routing_by %}
+          — flagged by {% user_chip intake.flagged_for_routing_by %}
+          on {{ intake.flagged_for_routing_at|date:"Y-m-d H:i" }}
+        {% endif %}
+        {% if intake.admin_routing_note %}
+          <blockquote>{{ intake.admin_routing_note }}</blockquote>
+        {% endif %}
+      </div>
+      {% if can_clear_routing %}
+        <div class="advisory-banner__actions">
+          <details>
+            <summary class="advisory-banner__dismiss">Clear flag</summary>
+            <form method="post"
+                  action="{% url 'advisories:clear_routing_flag' advisory.advisory_id %}"
+                  class="inline">
+              {% csrf_token %}
+              <label for="clear-flag-note">Optional reason</label>
+              <textarea id="clear-flag-note" name="note" rows="2"></textarea>
+              <button type="submit">Clear routing flag</button>
+            </form>
+          </details>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if can_grant and advisory.access_review_required_at %}
+    <div class="advisory-banner advisory-banner--access-review" role="status">
+      <div class="advisory-banner__body">
+        <strong>Review access</strong> — the project for this advisory changed on
+        {{ advisory.access_review_required_at|date:"Y-m-d" }}.
+        The previous project's security team is no longer an implicit owner;
+        check who is still on the list before continuing.
+      </div>
+      <div class="advisory-banner__actions">
+        <form method="post"
+              action="{% url 'advisories:access_review_dismiss' advisory.advisory_id %}"
+              class="inline">
+          {% csrf_token %}
+          <button type="submit" class="advisory-banner__dismiss">Dismiss</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  <dl>
+    <dt>Project</dt>
+    <dd>
+      {% if is_triage and is_unsorted %}<em>unrouted</em>{% else %}{{ advisory.project.name }}{% endif %}
+    </dd>
+    <dt>Summary</dt><dd>{{ advisory.summary|default:"—" }}</dd>
+    {% if is_triage %}
+      <dt>Reporter</dt>
+      <dd>
+        {% if intake and intake.reporter_user %}
+          {% user_chip intake.reporter_user %} <span class="muted">(authenticated)</span>
+        {% elif intake and intake.reporter_display_name %}
+          {{ intake.reporter_display_name }}
+        {% else %}
+          <em>anonymous</em>
+        {% endif %}
+      </dd>
+    {% endif %}
+    {% if not is_triage %}
+    <dt>CVE</dt>
+    <dd class="advisory-cve">
+      {% if advisory.assigned_cve_id %}
+        <code class="cve-assigned">{{ advisory.assigned_cve_id }}</code>
+        {% if can_unassign_cve %}
+          <button type="button"
+                  class="cve-unassign-icon"
+                  aria-label="Remove CVE assignment"
+                  title="Remove CVE assignment"
+                  onclick="document.getElementById('cve-unassign-dialog').showModal();">×</button>
+          <dialog id="cve-unassign-dialog" class="confirm-dialog">
+            <form method="post"
+                  action="{% url 'advisories:unassign_cve' advisory.advisory_id %}"
+                  class="cve-unassign-form">
+              {% csrf_token %}
+              <h3>Remove CVE assignment</h3>
+              <p>
+                This will detach <code>{{ advisory.assigned_cve_id }}</code> from the advisory
+                and create an orphan record for the security team to mark rejected on cve.org.
+              </p>
+              <label for="cve-unassign-reason">Reason (required — visible to the security team)</label>
+              <textarea id="cve-unassign-reason" name="reason" rows="3" required></textarea>
+              <div class="dialog-actions">
+                <button type="button"
+                        onclick="this.closest('dialog').close();">Cancel</button>
+                <button type="submit" class="danger">Confirm removal</button>
+              </div>
+            </form>
+          </dialog>
+        {% endif %}
+      {% elif cve_request_state == 'pending' %}
+        <button type="button" class="cve-inline-action cve-request-pending" disabled>CVE Reservation Pending</button>
+      {% elif cve_request_state == 'banned' %}
+        <button type="button" class="cve-inline-action cve-request-disabled" disabled>CVE Requests Disabled</button>
+      {% elif cve_request_state == 'available' %}
+        <form method="post" action="{% url 'advisories:request_cve' advisory.advisory_id %}" class="inline">
+          {% csrf_token %}<button type="submit" class="cve-inline-action">Request a CVE Number</button>
+        </form>
+      {% else %}
+        —
+      {% endif %}
+    </dd>
+    {% endif %}
+    <dt>Aliases</dt>
+    <dd>
+      {% if advisory.aliases %}
+        <span class="chip-list">
+          {% for alias in advisory.aliases %}<code class="chip">{{ alias }}</code>{% endfor %}
+        </span>
+      {% else %}—{% endif %}
+    </dd>
+    <dt>CWE IDs</dt>
+    <dd>
+      {% if advisory.cwe_ids %}
+        <span class="chip-list">
+          {% for cwe in advisory.cwe_ids %}<code class="chip" title="{{ cwe|cwe_name }}">{{ cwe }}</code>{% endfor %}
+        </span>
+      {% else %}—{% endif %}
+    </dd>
+    <dt>Created</dt><dd>{{ advisory.created_at|date:"Y-m-d H:i" }} by {% user_chip advisory.created_by %}</dd>
+    <dt>Modified</dt><dd>{{ advisory.modified_at|date:"Y-m-d H:i" }}</dd>
+    {% if advisory.published_at %}<dt>Published</dt><dd>{{ advisory.published_at|date:"Y-m-d H:i" }}</dd>{% endif %}
+  </dl>
+
+  <section>
+    <h2 class="section-heading">
+      <span>Details</span>
+      {% if details_edit_count %}
+        <button class="link-button history-drawer-trigger"
+                type="button"
+                hx-get="{% url 'advisories:details_history' advisory.advisory_id %}"
+                hx-target="#details-history-host"
+                hx-swap="innerHTML">
+          history &middot; {{ details_edit_count }} edit{{ details_edit_count|pluralize }}
+        </button>
+      {% endif %}
+    </h2>
+    {% if advisory.details %}
+      <div class="adv-prose">{{ advisory.details|comment_markdown }}</div>
+    {% else %}
+      <p class="empty">No details yet.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Affected</h2>
+    {% if advisory.affected %}
+      <div class="adv-affected">
+        {% for entry in advisory.affected %}
+          <article class="adv-affected-card">
+            <header>
+              {% include "advisories/_icons.html" with icon="package" %}
+              <span class="pkg-name">{{ entry.package.name|default:"(unnamed package)" }}</span>
+              {% if entry.package.ecosystem %}<span class="badge ecosystem">{{ entry.package.ecosystem }}</span>{% endif %}
+            </header>
+            {% if entry.package.purl %}<p class="purl"><code>{{ entry.package.purl }}</code></p>{% endif %}
+
+            {% if entry.ranges %}
+              <div class="adv-section-label">Ranges</div>
+              <ul class="ranges">
+                {% for r in entry.ranges %}
+                  <li class="range-row">
+                    <span class="badge range-type">{{ r.type|default:"?" }}</span>
+                    <span class="events">
+                      {% for ev in r.events %}
+                        <span class="event event-{{ ev.kind|event_kind_class }}">
+                          <span class="event-kind">{{ ev.kind|default:"?" }}</span>
+                          <code class="event-value">{{ ev.value|default:"" }}</code>
+                        </span>
+                        {% if not forloop.last %}{% include "advisories/_icons.html" with icon="arrow-right" %}{% endif %}
+                      {% endfor %}
+                    </span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            {% if entry.versions %}
+              <div class="adv-section-label">Versions</div>
+              <p class="chip-list">
+                {% for v in entry.versions %}<code class="chip">{{ v }}</code>{% endfor %}
+              </p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty">No affected packages declared.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>References</h2>
+    {% if advisory.references %}
+      <ul class="adv-references">
+        {% for ref in advisory.references %}
+          <li class="ref-row ref-{{ ref.type|reference_class }}">
+            <span class="ref-icon">{% include "advisories/_icons.html" with icon=ref.type|reference_icon %}</span>
+            <span class="badge ref-type">{{ ref.type|default:"WEB" }}</span>
+            <a class="ref-url" href="{{ ref.url }}" rel="nofollow noopener" target="_blank">{{ ref.url }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No references.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Severity</h2>
+    {% if advisory.severity %}
+      <ul class="adv-severity">
+        {% for s in advisory.severity %}
+          {% with level=s|severity_level %}
+            <li class="sev-row sev-{{ level }}">
+              <span class="badge sev-type">{{ s.type|default:"?" }}</span>
+              <span class="badge sev-level sev-level-{{ level }}">{{ level }}</span>
+              <code class="sev-score">{{ s.score|default:"" }}</code>
+              {% if s.score_ubuntu %}<code class="sev-score sev-score-extra" title="Ubuntu score">{{ s.score_ubuntu }}</code>{% endif %}
+            </li>
+          {% endwith %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No severity recorded.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Credits</h2>
+    {% if advisory.credits %}
+      <ul class="adv-credits">
+        {% for c in advisory.credits %}
+          <li class="credit-row">
+            <span class="credit-icon">{% include "advisories/_icons.html" with icon=c.type|credit_icon %}</span>
+            <span class="credit-name">{{ c.name }}</span>
+            {% if c.type %}<span class="badge credit-type credit-{{ c.type|credit_class }}">{{ c.type|humanize_type }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No credits recorded.</p>
+    {% endif %}
+  </section>
+
+
+  {% if open_review_task %}
+    <p class="actions">
+      <a href="{% url 'advisories:version_diff' advisory.advisory_id open_review_task.version_id %}">View diff against submitted version</a>
+    </p>
+  {% endif %}
+
+  <p class="actions">
+    <a href="{% url 'advisories:history' advisory.advisory_id %}">View edit history</a>
+  </p>
+
+  <div hx-get="{% url 'comments:timeline' advisory.advisory_id %}" hx-trigger="load"></div>
+</div>{# /.advisory-detail__main #}
+
+  <aside class="advisory-detail__sidebar">
+    {% if can_grant %}
+      <div hx-get="{% url 'access:panel' advisory.advisory_id %}" hx-trigger="load"></div>
+    {% endif %}
+
+    {% include "advisories/_sidebar_lifecycle.html" %}
+    {% include "advisories/_sidebar_review.html" %}
+    {% include "advisories/_sidebar_publication.html" %}
+
+    {% if not is_triage %}
+      <div hx-get="{% url 'notifications:advisory_preferences' advisory.advisory_id %}"
+           hx-trigger="load"
+           hx-swap="outerHTML"></div>
+    {% endif %}
+  </aside>
+</div>{# /.advisory-detail #}
+
+<div id="details-history-host"></div>
+
+{% if can_flag_routing %}
+  <div id="modal" hx-on::after-swap="this.querySelector('dialog')?.showModal()"></div>
+{% endif %}
+{% endblock %}

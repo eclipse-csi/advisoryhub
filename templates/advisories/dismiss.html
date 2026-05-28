@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Dismiss {{ advisory.advisory_id }}{% endblock %}
+{% block content %}
+  <h1>Dismiss {{ advisory.advisory_id }}</h1>
+  <p>Provide a reason for dismissing this advisory. This will be recorded in the audit log.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.reason.label_tag }} {{ form.reason }} {{ form.reason.errors }}
+    <p class="actions">
+      <button type="submit">Dismiss</button>
+      <a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>
+    </p>
+  </form>
+{% endblock %}

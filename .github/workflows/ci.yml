@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }} / ${{ matrix.db }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor of requires-python (>=3.12). Dev runs 3.13 (.python-version);
+        # CI deliberately validates the minimum supported version.
+        python-version: ["3.12"]
+        db: [postgres, sqlite]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: advisoryhub
+          POSTGRES_PASSWORD: advisoryhub
+          POSTGRES_DB: advisoryhub
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U advisoryhub"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        # --locked installs exactly the resolved uv.lock and fails if the lock
+        # has drifted from pyproject.toml (run `uv lock` to refresh).
+        run: uv sync --locked --extra dev
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Configure git for Phase D tests
+        run: |
+          git config --global user.email "ci@example.org"
+          git config --global user.name  "CI"
+          git config --global commit.gpgsign false
+          git config --global tag.gpgsign false
+          git config --global init.defaultBranch main
+
+      - name: Run tests (Postgres)
+        if: matrix.db == 'postgres'
+        env:
+          TEST_DATABASE_URL: postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub
+          DJANGO_SETTINGS_MODULE: config.settings.test
+        run: uv run pytest -v --tb=short --cov --cov-report=term-missing
+
+      - name: Run tests (SQLite)
+        if: matrix.db == 'sqlite'
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+        run: uv run pytest -v --tb=short --cov --cov-report=term-missing
+
+  django-checks:
+    name: Django checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --locked --extra dev
+      - run: DJANGO_SETTINGS_MODULE=config.settings.test uv run python manage.py check --deploy --fail-level WARNING || true
+      - run: DJANGO_SETTINGS_MODULE=config.settings.test uv run python manage.py makemigrations --check --dry-run
+
+  typecheck:
+    name: Type check (mypy + django-stubs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --locked --extra dev
+      - run: DJANGO_SETTINGS_MODULE=config.settings.test uv run mypy
+
+  typecheck-ty:
+    name: Type check (ty, advisory)
+    runs-on: ubuntu-latest
+    # Advisory only: ty is preview and has no Django awareness yet, so it
+    # never fails the build. It runs alongside the enforced mypy gate to
+    # surface the categories it catches (config + rule tuning in pyproject).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: uv sync --locked --extra dev
+      # Run ty as an isolated tool (uvx) but resolve imports against the
+      # project venv that `uv sync` just populated.
+      - run: uvx ty check --python .venv
+
+  security:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      # Sync only the runtime dependencies (no dev extra), then audit them. A
+      # known vulnerability with an available fix fails the job; pin/upgrade the
+      # offending package (or use `pip-audit --ignore-vuln <ID>` with a note).
+      - run: uv sync --locked
+      - run: uv run --with pip-audit pip-audit

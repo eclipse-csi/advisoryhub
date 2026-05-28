@@ -1,0 +1,53 @@
+{% load user_display %}
+<tr id="reassignment-{{ task.pk }}"{% if task.advisory %} data-href="{% url 'advisories:detail' task.advisory.advisory_id %}"{% endif %}>
+  <td><code>{{ task.orphan_cve.cve_id }}</code></td>
+  <td>
+    {% if task.advisory %}
+      <a href="{% url 'advisories:detail' task.advisory.advisory_id %}">{{ task.advisory.advisory_id }}</a>
+    {% else %}
+      —
+    {% endif %}
+  </td>
+  <td>
+    <strong>{{ task.get_status_display }}</strong>
+    {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+  </td>
+  <td>
+    {{ task.created_at|date:"Y-m-d H:i" }}<br>
+    <small>requested by {% user_chip task.requested_by %}</small>
+  </td>
+  <td>
+    {% if task.status == 'queued' %}
+      <form hx-post="{% url 'admin_console:orphan_reassignment_resolve' task.pk %}"
+            hx-target="#reassignment-{{ task.pk }}" hx-swap="outerHTML"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% csrf_token %}
+        <fieldset>
+          <legend>Outcome</legend>
+          <label>
+            <input type="radio" name="outcome" value="reassigned" checked
+                   onclick="this.form.querySelector('[name=replacement_cve_id]').disabled=true;">
+            Rejection undone — reattach <code>{{ task.orphan_cve.cve_id }}</code>
+          </label>
+          <label>
+            <input type="radio" name="outcome" value="replaced"
+                   onclick="this.form.querySelector('[name=replacement_cve_id]').disabled=false;">
+            Couldn't undo — assign a new CVE number
+          </label>
+          <input type="text" name="replacement_cve_id" placeholder="e.g. CVE-2026-12345" disabled>
+        </fieldset>
+        <textarea name="notes" placeholder="Notes (optional — e.g. MITRE ticket id)"></textarea>
+        <button type="submit">Resolve</button>
+      </form>
+    {% else %}
+      <small>by {% user_chip task.resolved_by %}<br>
+      {{ task.finished_at|date:"Y-m-d H:i" }}</small>
+      {% if task.replacement_cve_id %}
+        <div>replaced with <code>{{ task.replacement_cve_id }}</code></div>
+      {% endif %}
+      {% if task.resolution_notes %}
+        <details><summary>notes</summary>{{ task.resolution_notes }}</details>
+      {% endif %}
+    {% endif %}
+  </td>
+</tr>

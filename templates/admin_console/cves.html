@@ -1,0 +1,65 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — CVE Assignment{% endblock %}
+{% block admin_section %}cves{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "CVE Assignment" %}</h1>
+
+  <section>
+    <h2>{% translate "Advisories awaiting CVE reservation" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Project" %}</th><th>{% translate "Status" %}</th><th>{% translate "Requested" %}</th><th></th></tr></thead>
+      <tbody>
+        {% for task in cve_open %}
+          {% include "admin_console/_cve_row.html" with task=task %}
+        {% empty %}
+          <tr><td colspan="5">{% translate "No open CVE requests." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "Orphan CVEs (awaiting cve.org rejection)" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "CVE" %}</th><th>{% translate "Previous advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Unassigned" %}</th><th></th></tr></thead>
+      <tbody>
+        {% for orphan in orphan_open %}
+          {% include "admin_console/_orphan_row.html" with orphan=orphan %}
+        {% empty %}
+          <tr><td colspan="5">{% translate "No orphan CVEs awaiting cve.org rejection." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "CVE reassignments after reopen" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "CVE" %}</th><th>{% translate "Advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Requested" %}</th><th></th></tr></thead>
+      <tbody>
+        {% for task in reassignment_open %}
+          {% include "admin_console/_reassignment_row.html" with task=task %}
+        {% empty %}
+          <tr><td colspan="5">{% translate "No pending CVE reassignments." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% if orphan_resolved %}
+    <section>
+      <h2>{% translate "Recently resolved orphans" %}</h2>
+      <table>
+        <thead><tr><th>{% translate "CVE" %}</th><th>{% translate "Previous advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Unassigned" %}</th><th>{% translate "Marked rejected" %}</th></tr></thead>
+        <tbody>
+          {% for orphan in orphan_resolved %}
+            {% include "admin_console/_orphan_row.html" with orphan=orphan %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  <div id="modal" hx-on::after-swap="this.querySelector('dialog')?.showModal()"></div>
+{% endblock %}

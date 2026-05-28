@@ -1,0 +1,13 @@
+{% load i18n %}<!doctype html>
+<html lang="en">
+<body>
+<p>{% blocktranslate with event=event %}A triage advisory event ({{ event }}) is pending your attention.{% endblocktranslate %}</p>
+<dl>
+  <dt>{% translate "Advisory" %}</dt><dd>{{ advisory.advisory_id }}</dd>
+  <dt>{% translate "Summary" %}</dt><dd>{{ advisory.summary }}</dd>
+  <dt>{% translate "Project" %}</dt><dd>{{ advisory.project.slug }}</dd>
+</dl>
+<p><a href="{{ url }}">{% translate "Open the triage view" %}</a></p>
+<p><small>{% translate "Automated message. The reporter's contact details (if provided) are on the advisory's triage page; do not include them in any reply." %}</small></p>
+</body>
+</html>

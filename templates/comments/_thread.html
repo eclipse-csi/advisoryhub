@@ -1,0 +1,14 @@
+<section id="comments" class="comments">
+  <h2>Discussion</h2>
+  <div class="comment-list">
+    {% for comment in thread %}
+      {% include "comments/_comment.html" with comment=comment advisory=advisory can_comment=can_comment can_post_internal=can_post_internal %}
+    {% empty %}
+      <p class="empty">No comments yet.</p>
+    {% endfor %}
+  </div>
+  {% if can_comment %}
+    {% include "comments/_form.html" with form=form advisory=advisory can_post_internal=can_post_internal %}
+  {% endif %}
+  <div id="comment-history-host"></div>
+</section>

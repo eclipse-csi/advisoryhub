@@ -1,0 +1,65 @@
+<section id="advisory-notifications" class="notifications-panel">
+  <h2>Notifications</h2>
+  <p class="notifications-panel__status">
+    {% if advisory_pref %}
+      <strong>You're subscribed</strong> — per-advisory override active.
+    {% else %}
+      <strong>You're subscribed</strong> — inheriting your global defaults.
+    {% endif %}
+  </p>
+
+  <ul class="notifications-panel__events" aria-label="Effective notification settings for this advisory">
+    <li class="{% if effective_lifecycle.on_advisory_submitted_for_review %}on{% else %}off{% endif %}">Submitted for review</li>
+    <li class="{% if effective_lifecycle.on_advisory_published %}on{% else %}off{% endif %}">Published</li>
+    <li class="{% if effective_lifecycle.on_publication_export_status %}on{% else %}off{% endif %}">Publication export status</li>
+    <li>Comments — <strong>{{ effective_comments_level }}</strong></li>
+  </ul>
+
+  <form hx-post="{% url 'notifications:advisory_preferences' advisory.advisory_id %}"
+        hx-trigger="change"
+        hx-target="#advisory-notifications"
+        hx-swap="outerHTML"
+        hx-indicator="#advisory-notifications-saving"
+        class="notif-panel__form">
+    {% csrf_token %}
+
+    <div class="notif-presets" role="radiogroup" aria-label="Notification preset">
+      {% for value, label, desc in preset_options %}
+        <label class="notif-preset{% if active_preset == value %} notif-preset--active{% endif %}">
+          <input type="radio" name="preset" value="{{ value }}"
+                 {% if active_preset == value %}checked{% endif %}>
+          <span class="notif-preset__title">{{ label }}</span>
+          <span class="notif-preset__desc">{{ desc }}</span>
+        </label>
+      {% endfor %}
+    </div>
+
+    {% if active_preset == 'custom' %}
+      <fieldset class="notif-custom">
+        <legend class="sr-only">Customize notifications</legend>
+        <div class="notif-row">
+          {{ advisory_pref_form.on_advisory_submitted_for_review.label_tag }}
+          {{ advisory_pref_form.on_advisory_submitted_for_review }}
+        </div>
+        <div class="notif-row">
+          {{ advisory_pref_form.on_advisory_published.label_tag }}
+          {{ advisory_pref_form.on_advisory_published }}
+        </div>
+        <div class="notif-row">
+          {{ advisory_pref_form.on_publication_export_status.label_tag }}
+          {{ advisory_pref_form.on_publication_export_status }}
+        </div>
+        <div class="notif-row">
+          {{ advisory_pref_form.comments_level.label_tag }}
+          {{ advisory_pref_form.comments_level }}
+        </div>
+      </fieldset>
+    {% endif %}
+
+    <span id="advisory-notifications-saving" class="notif-panel__saving htmx-indicator" aria-live="polite">Saving…</span>
+  </form>
+
+  <p class="notifications-panel__prefs-link">
+    <a href="{% url 'notifications:preferences' %}">Edit global defaults</a>
+  </p>
+</section>

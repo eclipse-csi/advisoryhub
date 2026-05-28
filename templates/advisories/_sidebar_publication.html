@@ -1,0 +1,71 @@
+{% comment %}
+Sidebar card: Publication sub-machine.
+
+Always rendered. Header summarises the last publication-task status;
+body shows the role-neutral hint, the Publish / Re-publish button when
+the user can fire it, and the inline detail of the latest run (attempts,
+commit SHA, last error, artifact preview links, diff-against-current
+link). Absorbs the standalone publication-status section that previously
+lived in the main content column.
+
+Context required: advisory, can_publish, last_publication_task.
+{% endcomment %}
+<section class="sidebar-card sidebar-card--publication">
+  <header class="sidebar-card__header">
+    <h2>Publication</h2>
+    {% if last_publication_task %}
+      <span class="badge status-{{ last_publication_task.status }}">{{ last_publication_task.get_status_display }}</span>
+    {% else %}
+      <span class="badge">Never run</span>
+    {% endif %}
+  </header>
+  {% if publication_hint %}<p class="sidebar-card__hint">{{ publication_hint }}</p>{% endif %}
+
+  {% if advisory.republish_required %}
+    <p class="sidebar-card__meta">
+      <span class="badge republish needs-republish">re-publish required</span>
+    </p>
+  {% endif %}
+
+  {% if can_publish and advisory.state == 'draft' or can_publish and advisory.republish_required %}
+    <div class="sidebar-card__row">
+      <form method="post" action="{% url 'publication:publish' advisory.advisory_id %}" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="warning">{% if advisory.republish_required %}Re-publish{% else %}Publish{% endif %}</button>
+      </form>
+      <p class="sidebar-card__action-hint">
+        {% if advisory.republish_required %}
+          Re-export OSV and CSAF after edits and push an updated commit to the publication repository.
+        {% else %}
+          Generate OSV and CSAF documents and push them to the publication repository. This makes the advisory public.
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+
+  {% if last_publication_task %}
+    <div class="sidebar-card__run">
+      <p class="sidebar-card__meta">
+        {% if last_publication_task.commit_sha %}
+          Commit <code>{{ last_publication_task.commit_sha|slice:":12" }}</code> ·
+        {% endif %}
+        {{ last_publication_task.attempts }} attempt{{ last_publication_task.attempts|pluralize }}
+      </p>
+      {% if last_publication_task.last_error %}
+        <p class="errors">Last error: <code>{{ last_publication_task.last_error }}</code></p>
+      {% endif %}
+      {% if last_publication_task.artifacts.all %}
+        <p class="sidebar-card__meta">
+          {% for artifact in last_publication_task.artifacts.all %}
+            <a href="{% url 'publication:artifact' last_publication_task.pk artifact.kind %}">Preview {{ artifact.get_kind_display }}</a>{% if not forloop.last %} · {% endif %}
+          {% endfor %}
+        </p>
+      {% endif %}
+      {% if last_publication_task.version_id %}
+        <p class="sidebar-card__meta">
+          <a href="{% url 'advisories:version_diff' advisory.advisory_id last_publication_task.version_id %}">Diff against current</a>
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>

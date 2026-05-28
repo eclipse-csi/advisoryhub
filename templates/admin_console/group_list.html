@@ -1,0 +1,53 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — Groups{% endblock %}
+{% block admin_section %}groups{% endblock %}
+{% block admin_content %}
+  <header class="advisory-detail__header">
+    <h1>{% translate "Groups" %}</h1>
+    <p><a href="{% url 'admin_console:user_list' %}">&larr; {% translate "All users" %}</a></p>
+  </header>
+
+  <form method="get" class="audit-filter">
+    <div class="audit-filter__row">
+      <label class="audit-filter__field audit-filter__field--wide">
+        <span>{% translate "Search" %}</span>
+        <input type="text" name="q" value="{{ selected_q }}" maxlength="200"
+               placeholder="{% translate 'group name' %}">
+      </label>
+    </div>
+    <div class="audit-filter__actions-row">
+      <button type="submit">{% translate "Filter" %}</button>
+      {% if any_filter_active %}
+        <a href="{% url 'admin_console:group_list' %}">{% translate "Clear" %}</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{% translate "Name" %}</th>
+        <th>{% translate "Members" %}</th>
+        <th>{% translate "Projects secured" %}</th>
+        <th>{% translate "Admin group" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in page.object_list %}
+        <tr data-href="{% url 'admin_console:group_detail' g.pk %}">
+          <td><a href="{% url 'admin_console:group_detail' g.pk %}"><code>{{ g.name }}</code></a></td>
+          <td>{{ g.member_count }}</td>
+          <td>{{ g.projects_secured_count }}</td>
+          <td>{% if g.name == admin_group_name %}<strong>{% translate "yes" %}</strong>{% else %}—{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% translate "No groups match." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page.has_other_pages %}
+    {% include "admin_console/_paginator.html" with page=page filters_querystring=filters_querystring %}
+  {% endif %}
+{% endblock %}

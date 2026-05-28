@@ -1,0 +1,232 @@
+"""GDPR forgetting + audit retention helpers.
+
+Two operations that intentionally bypass the append-only triggers on
+``audit_auditlogentry``:
+
+* :func:`forget_user` — when a user exercises a right-to-be-forgotten,
+  anonymize their identity everywhere it might still surface (audit log
+  JSON fields, their authored comments, pending invitations they created).
+  The audit log itself stays — we only scrub *personal* fields, leaving
+  the action history intact.
+* :func:`prune_audit_older_than` — drop audit log entries older than the
+  configured retention horizon.
+
+Both functions use :func:`_audit_trigger_bypass` to temporarily lower
+``session_replication_role`` to ``replica`` for the duration of the
+transaction, which is the supported Postgres way to disable
+non-replication triggers without dropping them. On SQLite the
+context-manager is a no-op (there are no triggers to disable).
+
+The escape hatch only applies inside the function's ``with`` block; once
+control leaves it, normal append-only enforcement is back. Each call
+emits an audit entry recording the scrub itself, so the *act* of
+forgetting is itself in the immutable history (with no PII inside).
+"""
+
+from __future__ import annotations
+
+import logging
+from contextlib import contextmanager
+from datetime import timedelta
+from typing import Any
+
+from django.db import connection, transaction
+from django.utils import timezone
+
+from .models import Action, AuditLogEntry
+
+log = logging.getLogger(__name__)
+
+
+@contextmanager
+def _audit_trigger_bypass():
+    """Temporarily allow UPDATE/DELETE on audit_auditlogentry (Postgres-only)."""
+    if connection.vendor != "postgresql":
+        yield
+        return
+    with connection.cursor() as cur:
+        cur.execute("SET LOCAL session_replication_role = replica")
+        try:
+            yield
+        finally:
+            cur.execute("SET LOCAL session_replication_role = origin")
+
+
+# ---------------------------------------------------------------------------
+# forget_user
+# ---------------------------------------------------------------------------
+
+
+def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
+    """Anonymize ``user`` across the system, return per-source counters.
+
+    The user row itself is mutated (email/display_name/oidc_subject
+    blanked), not deleted, so existing FK-NULL columns keep their
+    structural meaning. If you also want the row gone afterwards, call
+    ``user.delete()`` separately.
+    """
+    pseudo = anonymized_email or f"forgotten-{user.pk}@example.invalid"
+    counters = {
+        "audit_entries": 0,
+        "comments": 0,
+        "invitations": 0,
+        "intake_reports": 0,
+    }
+
+    with transaction.atomic(), _audit_trigger_bypass():
+        # 1. Audit JSON fields — scrub any literal occurrence of the user's
+        # original email/display_name. Iterate only entries that referenced
+        # this user (FK or text match) to keep the work bounded.
+        original_email = user.email
+        original_display = user.display_name or ""
+        targets = AuditLogEntry.objects.filter(actor=user) | AuditLogEntry.objects.filter(
+            metadata__icontains=original_email
+        )
+        for entry in targets.iterator():
+            mutated = False
+            for field_name in ("previous_value", "new_value", "metadata"):
+                original = getattr(entry, field_name)
+                replaced = _scrub_json(original, original_email, pseudo, original_display)
+                if replaced != original:
+                    setattr(entry, field_name, replaced)
+                    mutated = True
+            if mutated:
+                # ``save()`` is normally blocked for existing rows; bypass it.
+                AuditLogEntry.objects.filter(pk=entry.pk).update(
+                    previous_value=entry.previous_value,
+                    new_value=entry.new_value,
+                    metadata=entry.metadata,
+                )
+                counters["audit_entries"] += 1
+
+        # 2. Their authored comments — redact body, keep the structural
+        # presence so reply threads stay coherent.
+        try:
+            from comments.models import AdvisoryComment
+
+            comments = AdvisoryComment.objects.filter(author=user)
+            for c in comments:
+                if c.body:
+                    c.body = "[redacted by user-forget request]"
+                c.redacted_at = c.redacted_at or timezone.now()
+                c.save(update_fields=["body", "redacted_at"])
+                counters["comments"] += 1
+        except Exception:
+            log.exception("comments scrub failed during forget_user(%s)", user.pk)
+
+        # 3. Pending invitations they created — drop them entirely.
+        try:
+            from access.models import PendingInvitation
+
+            deleted, _ = PendingInvitation.objects.filter(created_by=user).delete()
+            counters["invitations"] = deleted
+        except Exception:
+            log.exception("invitations scrub failed during forget_user(%s)", user.pk)
+
+        # 4. Triage-advisory intake sidecars they submitted — scrub PII in
+        # place. The Advisory itself persists (audit trail coherence); the
+        # sidecar's identity + network fields are blanked. ``reporter_user``
+        # is nulled so future joins don't surface the (now-anonymized) user.
+        # Reporter REPORTER-credit entries on the advisory carrying this
+        # user's email are stripped as well.
+        try:
+            from advisories.models import Advisory, AdvisoryIntakeMetadata
+
+            scrubbed_intakes = AdvisoryIntakeMetadata.objects.filter(reporter_user=user).update(
+                reporter_user=None,
+                reporter_display_name="",
+                submitted_ip=None,
+                submitted_user_agent="",
+                pii_cleared_at=timezone.now(),
+            )
+            counters["intake_metadata"] = scrubbed_intakes
+
+            # Walk credits looking for mailto:<user.email>; strip matching
+            # entries. Curated credits the triager added by hand against the
+            # original (now reset) email are caught here too.
+            email_marker = f"mailto:{(user.email or '').strip().lower()}"
+            stripped_credits = 0
+            if email_marker != "mailto:":
+                for adv in Advisory.objects.exclude(credits=[]).iterator():
+                    credits = adv.credits or []
+                    filtered = [
+                        c
+                        for c in credits
+                        if email_marker
+                        not in [str(x).strip().lower() for x in (c.get("contact") or [])]
+                    ]
+                    if len(filtered) != len(credits):
+                        adv.credits = filtered
+                        adv.save(update_fields=["credits", "modified_at"])
+                        stripped_credits += 1
+            counters["credits_stripped"] = stripped_credits
+        except Exception:
+            log.exception("advisory intake scrub failed during forget_user(%s)", user.pk)
+
+        # 4b. Honeypot rows are not user-linked, but if the submitter happens
+        # to share an IP with the user's recorded submissions we don't scrub
+        # them here — they're scrubbed by the time-based ``prune_honeypots``
+        # job, which is what retention SLAs target anyway.
+
+        # 5. Mutate the User row last so the queries above can still find it.
+        user.email = pseudo
+        user.display_name = ""
+        user.first_name = ""
+        user.last_name = ""
+        user.oidc_subject = ""
+        user.is_active = False
+        user.save()
+
+        # 6. Audit the act of forgetting itself.
+        AuditLogEntry.objects.create(
+            actor=None,
+            action=Action.NOTIFICATION_PREFS_CHANGED,  # closest-fitting existing action
+            metadata={
+                "operation": "forget_user",
+                "subject_pk": user.pk,
+                "counters": counters,
+            },
+        )
+
+    return counters
+
+
+def _scrub_json(value: Any, email: str, pseudo: str, display: str) -> Any:
+    """Recursively replace ``email`` and ``display`` literals inside a JSON tree."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        out = value.replace(email, pseudo)
+        if display:
+            out = out.replace(display, "[redacted]")
+        return out
+    if isinstance(value, dict):
+        return {k: _scrub_json(v, email, pseudo, display) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_scrub_json(v, email, pseudo, display) for v in value]
+    return value
+
+
+# ---------------------------------------------------------------------------
+# prune_audit_older_than
+# ---------------------------------------------------------------------------
+
+
+def prune_audit_older_than(days: int, *, dry_run: bool = False) -> int:
+    """Delete audit entries older than ``days`` and return the row count.
+
+    With ``dry_run=True`` no rows are deleted and the count is just the
+    number that *would* be removed. Use the management command
+    (``manage.py prune_audit --older-than-days …``) for the standard
+    operator workflow rather than calling this directly.
+    """
+    if days <= 0:
+        raise ValueError("days must be positive")
+    cutoff = timezone.now() - timedelta(days=days)
+    qs = AuditLogEntry.objects.filter(created_at__lt=cutoff)
+    if dry_run:
+        return qs.count()
+
+    with transaction.atomic(), _audit_trigger_bypass():
+        deleted, _ = qs.delete()
+    return deleted

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Notification preferences{% endblock %}
+{% block content %}
+  <h1>Notification preferences</h1>
+  <p class="hint">
+    These are your defaults. For advisories you have access to, you can
+    further customize notifications from each advisory's page. Mentions
+    are always delivered — there is no fully-silent option.
+  </p>
+  <form method="post" data-dirty-form>
+    {% csrf_token %}
+    <fieldset>
+      <legend>Advisory events</legend>
+      <label class="pref-row" for="{{ form.on_advisory_created.id_for_label }}">
+        <span class="pref-row__copy">
+          <span class="pref-row__title">{{ form.on_advisory_created.label }}</span>
+          <span class="pref-row__desc">{{ form.on_advisory_created.help_text }}</span>
+        </span>
+        {{ form.on_advisory_created }}
+      </label>
+      <label class="pref-row" for="{{ form.on_advisory_submitted_for_review.id_for_label }}">
+        <span class="pref-row__copy">
+          <span class="pref-row__title">{{ form.on_advisory_submitted_for_review.label }}</span>
+          <span class="pref-row__desc">{{ form.on_advisory_submitted_for_review.help_text }}</span>
+        </span>
+        {{ form.on_advisory_submitted_for_review }}
+      </label>
+      <label class="pref-row" for="{{ form.on_advisory_published.id_for_label }}">
+        <span class="pref-row__copy">
+          <span class="pref-row__title">{{ form.on_advisory_published.label }}</span>
+          <span class="pref-row__desc">{{ form.on_advisory_published.help_text }}</span>
+        </span>
+        {{ form.on_advisory_published }}
+      </label>
+      <label class="pref-row" for="{{ form.on_publication_export_status.id_for_label }}">
+        <span class="pref-row__copy">
+          <span class="pref-row__title">{{ form.on_publication_export_status.label }}</span>
+          <span class="pref-row__desc">{{ form.on_publication_export_status.help_text }}</span>
+        </span>
+        {{ form.on_publication_export_status }}
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>Comments</legend>
+      <div class="pref-row pref-row--toggle">
+        <span class="pref-row__copy">
+          <span class="pref-row__title">{{ form.comments_level.label }}</span>
+          <span class="pref-row__desc">{{ form.comments_level.help_text }}</span>
+        </span>
+        <div class="pref-toggle" role="radiogroup" aria-label="{{ form.comments_level.label }}">
+          {% for radio in form.comments_level %}
+            <label class="pref-toggle__option">
+              {{ radio.tag }}
+              <span>{{ radio.choice_label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </fieldset>
+    <p class="actions"><button type="submit">Save</button></p>
+  </form>
+{% endblock %}

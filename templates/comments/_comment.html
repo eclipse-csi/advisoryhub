@@ -1,0 +1,32 @@
+{% load comment_filters user_display %}
+<article class="comment {% if comment.is_redacted %}redacted{% endif %} {% if comment.is_internal %}internal{% endif %}" id="comment-{{ comment.pk }}">
+  <header>
+    <strong>{% user_chip comment.author fallback="unknown" %}</strong>
+    <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"Y-m-d H:i" }}</time>
+    {% if comment.edited_at %}
+      <small>(edited {{ comment.edited_at|date:"Y-m-d H:i" }})</small>
+      {% if not comment.is_redacted %}
+        <button type="button" class="link-button history-drawer-trigger"
+                hx-get="{% url 'comments:history' comment.advisory.advisory_id comment.pk %}"
+                hx-target="#comment-history-host"
+                hx-swap="innerHTML">view history</button>
+      {% endif %}
+    {% endif %}
+    {% if comment.is_internal %}<span class="badge badge-internal" title="Visible to collaborators and owners only">Internal</span>{% endif %}
+  </header>
+  {% if comment.is_redacted %}
+    <p><em>This comment was redacted on {{ comment.redacted_at|date:"Y-m-d H:i" }}.</em></p>
+  {% else %}
+    <div class="body">{{ comment.body|comment_markdown }}</div>
+    {% if comment.author_id == request.user.pk %}
+      <p class="actions">
+        <button hx-get="{% url 'comments:edit' comment.advisory.advisory_id comment.pk %}"
+                hx-target="#comment-{{ comment.pk }}" hx-swap="outerHTML">Edit</button>
+        <button hx-post="{% url 'comments:redact' comment.advisory.advisory_id comment.pk %}"
+                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                hx-confirm="Redact this comment? This cannot be undone."
+                hx-target="#comment-{{ comment.pk }}" hx-swap="outerHTML">Redact</button>
+      </p>
+    {% endif %}
+  {% endif %}
+</article>

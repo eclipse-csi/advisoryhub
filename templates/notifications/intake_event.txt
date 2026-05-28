@@ -1,0 +1,12 @@
+{% load i18n %}{% blocktranslate with summary=report.summary state=report.state event=event %}A vulnerability report event ({{ event }}) is pending your attention.
+
+Summary: {{ summary }}
+State: {{ state }}
+{% endblocktranslate %}
+{% if report.project %}Project: {{ report.project.slug }}
+{% else %}Project: (unsorted){% endif %}
+
+Open the triage view: {{ url }}
+
+This message is automated. Do not include sensitive details in any reply —
+the reporter's contact information lives on the triage page itself.

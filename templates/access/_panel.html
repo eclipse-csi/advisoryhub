@@ -1,0 +1,86 @@
+{% load user_display %}
+<section id="access-panel"
+         class="access-panel"
+         data-advisory-id="{{ advisory.advisory_id }}"
+         data-panel-url="{% url 'access:panel' advisory.advisory_id %}"
+         data-save-url="{% url 'access:batch_save' advisory.advisory_id %}"
+         data-csrf="{{ csrf_token }}">
+  <header class="access-panel__header">
+    <h2>Access</h2>
+    <span class="access-panel__status" data-access-status aria-live="polite"></span>
+  </header>
+
+  <div class="access-panel__section">
+    <h3>Current access</h3>
+    <p class="access-panel__hint">Drag to change its permissions</p>
+    <div class="access-buckets" data-access-list>
+      {% for section in sections %}
+        <div class="access-bucket" data-permission-bucket="{{ section.permission }}">
+          <div class="access-bucket__header">
+            <span class="access-bucket__title">{{ section.label }}</span>
+          </div>
+          <ul class="access-bucket__rows">
+            {% for row in section.rows %}
+              {% if row.locked %}
+                <li class="access-row access-row--locked"
+                    draggable="false"
+                    data-locked
+                    data-permission="{{ row.permission }}"
+                    data-kind="{{ row.kind }}"
+                    title="The project security team is always an owner of this advisory">
+                  <span class="access-row__handle access-row__handle--locked" aria-hidden="true">{% include "advisories/_icons.html" with icon="lock" %}</span>
+                  <span class="access-row__principal">{{ row.label }}</span>
+                </li>
+              {% else %}
+              <li class="access-row{% if row.pending %} access-row--pending{% endif %}"
+                  draggable="true"
+                  {% if row.type == 'grant' %}data-grant-id="{{ row.id }}"{% else %}data-invitation-id="{{ row.id }}"{% endif %}
+                  data-permission="{{ row.permission }}"
+                  data-kind="{{ row.kind }}">
+                <span class="access-row__handle" aria-hidden="true">{% include "advisories/_icons.html" with icon="grip" %}</span>
+                <span class="access-row__principal"{% if row.pending %} title="{{ row.label }} — invited, expires {{ row.expires_at|date:'Y-m-d' }}"{% elif row.kind != 'user' %} title="{{ row.label }}"{% endif %}>
+                  {% if row.pending %}<em>{{ row.label }}</em><span class="access-row__tag">invited</span>{% elif row.kind == 'user' and row.user %}{% user_chip row.user %}{% else %}{{ row.label }}{% endif %}
+                </span>
+                <button type="button" class="icon-btn access-row__remove"
+                        {% if row.type == 'grant' %}data-remove-grant{% else %}data-remove-invitation{% endif %}
+                        aria-label="Remove {{ row.label }}">
+                  <span class="icon-default" aria-hidden="true">{% include "advisories/_icons.html" with icon="trash" %}</span>
+                  <span class="icon-alt" aria-hidden="true">{% include "advisories/_icons.html" with icon="undo" %}</span>
+                </button>
+              </li>
+              {% endif %}
+            {% empty %}
+              <li class="access-bucket__empty" data-empty-marker>—</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="access-panel__section">
+    <h3>Grant access</h3>
+    <div class="access-add">
+      <input type="text"
+             list="access-groups-{{ advisory.advisory_id }}"
+             data-principal-input
+             placeholder="email or @group"
+             autocomplete="off"
+             aria-label="Email or @group">
+      <datalist id="access-groups-{{ advisory.advisory_id }}">
+        {% for name in groups_available %}
+          <option value="@{{ name }}">@{{ name }} (group)</option>
+        {% endfor %}
+      </datalist>
+      <button type="button" class="icon-btn access-add__btn" data-add-grant aria-label="Add">
+        {% include "advisories/_icons.html" with icon="plus" %}
+      </button>
+      <select data-add-permission aria-label="Permission for new grant">
+        {% for value, label in permission_choices %}
+          <option value="{{ value }}" {% if value == 'viewer' %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+</section>

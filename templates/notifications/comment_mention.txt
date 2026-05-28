@@ -1,0 +1,5 @@
+You were mentioned on advisory {{ advisory.advisory_id }}
+
+By: {{ comment.author.display_name|default:comment.author.email|default:"unknown" }}
+
+Open: {{ url }}

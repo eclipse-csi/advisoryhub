@@ -1,0 +1,17 @@
+<form hx-post="{% url 'comments:create' advisory.advisory_id %}"
+      hx-target="#comments" hx-swap="outerHTML"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+      class="comment-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}
+  <p>{{ form.body }}</p>
+  {% if form.body.errors %}<div class="errors">{{ form.body.errors }}</div>{% endif %}
+  <p class="markdown-hint"><small>Markdown supported (bold, italic, code, lists, links).</small></p>
+  {% if can_post_internal %}
+    <p class="internal-toggle">
+      {{ form.is_internal }}
+      <label for="{{ form.is_internal.id_for_label }}">Internal — collaborators and owners only</label>
+    </p>
+  {% endif %}
+  <p><button type="submit">Post comment</button></p>
+</form>

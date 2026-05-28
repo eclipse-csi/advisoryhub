@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Report submitted" %} — AdvisoryHub{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<section class="intake-thanks">
+  <h1>{% translate "Thanks — your report has been received." %}</h1>
+  <p>
+    {% blocktranslate %}A security team member will review your report. We do not send acknowledgement
+    emails to anonymous reporters; if you provided an email address, the
+    security team may contact you directly.{% endblocktranslate %}
+  </p>
+  {% if ref %}
+    <p class="muted">{% translate "Reference id" %}: <code>{{ ref }}</code></p>
+  {% endif %}
+  <p><a href="{% url 'intake:report' %}">{% translate "Submit another report" %}</a></p>
+</section>
+{% endblock %}

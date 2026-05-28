@@ -1,0 +1,77 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — {{ group.name }}{% endblock %}
+{% block admin_section %}groups{% endblock %}
+{% block admin_content %}
+  <header class="advisory-detail__header">
+    <h1><code>{{ group.name }}</code>{% if is_admin_group %} <strong>({% translate "admin group" %})</strong>{% endif %}</h1>
+    <p><a href="{% url 'admin_console:group_list' %}">&larr; {% translate "All groups" %}</a></p>
+  </header>
+
+  {% if is_admin_group %}
+    <section class="banner">
+      <p><strong>{% translate "Global admin group." %}</strong>
+        {% translate "Every member has owner permission on every advisory." %}</p>
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>{% translate "Members" %}</h2>
+    {% if members %}
+      <table>
+        <thead><tr><th>{% translate "Email" %}</th><th>{% translate "Display name" %}</th><th>{% translate "Last login" %}</th></tr></thead>
+        <tbody>
+          {% for m in members %}
+            <tr data-href="{% url 'admin_console:user_detail' m.pk %}">
+              <td><a href="{% url 'admin_console:user_detail' m.pk %}">{{ m.email }}</a></td>
+              <td>{{ m.display_name|default:"—" }}</td>
+              <td>{% if m.last_login %}{{ m.last_login|date:"Y-m-d H:i" }}{% else %}{% translate "never" %}{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>{% translate "No members." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Projects secured by this group" %}</h2>
+    {% if secured_projects %}
+      <table>
+        <thead><tr><th>{% translate "Project" %}</th><th>{% translate "Slug" %}</th><th>{% translate "Mature publisher" %}</th></tr></thead>
+        <tbody>
+          {% for p in secured_projects %}
+            <tr>
+              <td><a href="{% url 'admin_console:project_edit' p.id %}">{{ p.name }}</a></td>
+              <td>{{ p.slug }}</td>
+              <td>{{ p.is_mature_publisher|yesno:"yes,no" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>{% translate "This group is not a security team for any project." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Group-level advisory grants" %}</h2>
+    {% if group_grants %}
+      <table>
+        <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Project" %}</th><th>{% translate "Permission" %}</th></tr></thead>
+        <tbody>
+          {% for grant in group_grants %}
+            <tr>
+              <td><a href="{% url 'advisories:detail' grant.advisory.advisory_id %}">{{ grant.advisory.advisory_id }}</a></td>
+              <td>{{ grant.advisory.project.slug }}</td>
+              <td>{{ grant.permission }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>{% translate "No direct group grants." %}</p>
+    {% endif %}
+  </section>
+{% endblock %}

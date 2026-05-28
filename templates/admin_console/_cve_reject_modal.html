@@ -1,0 +1,25 @@
+<dialog class="confirm-dialog"
+        onclose="document.getElementById('modal').innerHTML='';">
+  <form hx-post="{% url 'admin_console:cve_transition' task.pk %}"
+        hx-target="#cve-task-{{ task.pk }}"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-on::after-request="if(event.detail.successful){this.closest('dialog').close();}">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="rejected">
+    <h3>Reject CVE request for {{ task.advisory.advisory_id }}</h3>
+    <p>The reason below will be posted as a public comment on the advisory.</p>
+    <label>Reason (required)
+      <textarea name="notes" required rows="4"></textarea>
+    </label>
+    <label>
+      <input type="checkbox" name="ban_future_requests" value="1">
+      Ban further CVE requests for this advisory
+    </label>
+    <div class="dialog-actions">
+      <button type="button"
+              onclick="this.closest('dialog').close();">Cancel</button>
+      <button type="submit" class="danger">Reject CVE request</button>
+    </div>
+  </form>
+</dialog>

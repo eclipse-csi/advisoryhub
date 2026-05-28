@@ -1,0 +1,14 @@
+{% load i18n %}<!doctype html>
+<html lang="en">
+<body>
+<p>{% blocktranslate with event=event %}A vulnerability report event ({{ event }}) is pending your attention.{% endblocktranslate %}</p>
+<dl>
+  <dt>{% translate "Summary" %}</dt><dd>{{ report.summary }}</dd>
+  <dt>{% translate "State" %}</dt><dd>{{ report.state }}</dd>
+  <dt>{% translate "Project" %}</dt>
+  <dd>{% if report.project %}{{ report.project.slug }}{% else %}<em>{% translate "unsorted" %}</em>{% endif %}</dd>
+</dl>
+<p><a href="{{ url }}">{% translate "Open the triage view" %}</a></p>
+<p><small>{% translate "Automated message. The reporter's contact details (if provided) are on the triage page; do not include them in any reply." %}</small></p>
+</body>
+</html>

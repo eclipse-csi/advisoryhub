@@ -1,0 +1,21 @@
+{% load i18n %}
+<dialog class="confirm-dialog"
+        onclose="document.getElementById('modal').innerHTML='';">
+  <form hx-post="{% url 'intake:triage_dismiss' report.id %}"
+        hx-target="#modal"
+        hx-swap="innerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-on::after-request="if(event.detail.successful){this.closest('dialog').close();}">
+    {% csrf_token %}
+    <h3>{% translate "Dismiss this report?" %}</h3>
+    <p>{% translate "Provide a short reason. This will be recorded in the audit log." %}</p>
+    {% if error %}<p class="errors">{{ error }}</p>{% endif %}
+    <label>{% translate "Reason (required)" %}
+      <textarea name="reason" required rows="4" autofocus></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button type="button" onclick="this.closest('dialog').close();">{% translate "Cancel" %}</button>
+      <button type="submit" class="danger">{% translate "Dismiss report" %}</button>
+    </div>
+  </form>
+</dialog>

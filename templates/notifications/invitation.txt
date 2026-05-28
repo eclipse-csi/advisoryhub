@@ -1,0 +1,10 @@
+You've been invited to view advisory {{ invite.advisory.advisory_id }}.
+
+Permission: {{ invite.get_permission_display }}
+Project: {{ invite.advisory.project.name }}
+
+Sign in at AdvisoryHub with the email address {{ invite.email }} — once
+authenticated, the invitation will attach this permission to your account.
+The invitation expires on {{ invite.expires_at }}.
+
+Sign-in URL: {{ url }}

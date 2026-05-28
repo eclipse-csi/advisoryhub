@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}GitHub App configuration · AdvisoryHub{% endblock %}
+
+{% block content %}
+<main class="container">
+  <h1>GitHub App configuration</h1>
+  <p>
+    AdvisoryHub talks to GitHub as a registered GitHub App with
+    <code>repository_security_advisories: read &amp; write</code> and
+    <code>metadata: read</code>. The App is installed per-repo by Eclipse
+    org admins. The private key (loaded from the deployment environment)
+    is the only sensitive credential and is never persisted to the DB.
+  </p>
+
+  <dl class="kv">
+    <dt>Feature flag</dt>
+    <dd>{% if feature_enabled %}enabled{% else %}disabled (set <code>GHSA_FEATURE_ENABLED=True</code>){% endif %}</dd>
+    <dt>App id</dt>
+    <dd>{{ app_id|default:"(unset)" }}</dd>
+    <dt>API base URL</dt>
+    <dd>{{ api_base_url|default:"(unset)" }}</dd>
+    <dt>Private key</dt>
+    <dd>{% if has_private_key %}configured{% else %}<strong>NOT configured</strong> — set
+      <code>GITHUB_APP_PRIVATE_KEY_PATH</code> (preferred) or
+      <code>GITHUB_APP_PRIVATE_KEY</code>{% endif %}</dd>
+    <dt>Webhook secret</dt>
+    <dd>{% if has_webhook_secret %}configured{% else %}<strong>NOT configured</strong> — set
+      <code>GITHUB_APP_WEBHOOK_SECRET</code> (otherwise inbound webhooks are rejected with 401){% endif %}</dd>
+  </dl>
+
+  <h2>Registered installations</h2>
+  <p>
+    Each GitHub account (org or user) that has installed the App appears
+    here. Routing is per-account: when AdvisoryHub asks for a GHSA in
+    <code>owner/repo</code>, it looks up the row matching <em>owner</em>
+    and mints a token against that installation. There is no env-var
+    fallback — an unregistered owner is a hard error.
+  </p>
+
+  {% if installations %}
+    <table class="kv-table">
+      <thead>
+        <tr><th>Account</th><th>Installation id</th><th>Type</th><th>App slug</th><th>Status</th><th>Last seen</th></tr>
+      </thead>
+      <tbody>
+        {% for inst in installations %}
+          <tr>
+            <td>{{ inst.account_login }}</td>
+            <td>{{ inst.installation_id }}</td>
+            <td>{{ inst.get_account_type_display }}</td>
+            <td>{{ inst.app_slug|default:"—" }}</td>
+            <td>{% if inst.suspended_at %}<strong>suspended</strong> at {{ inst.suspended_at|date:"Y-m-d H:i" }}{% else %}active{% endif %}</td>
+            <td>{{ inst.last_seen_at|default:"never" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p><em>No installations registered yet. Run <code>manage.py discover_github_installations</code>
+    or wait for an <code>installation.created</code> webhook.</em></p>
+  {% endif %}
+
+  <form method="post" action="{% url 'ghsa:rescan-installations' %}" class="inline">
+    {% csrf_token %}
+    <button type="submit">Rescan installations from GitHub</button>
+  </form>
+
+  <h2>How to install</h2>
+  <ol>
+    <li>Register the AdvisoryHub GitHub App on the Eclipse organisation.</li>
+    <li>Grant the two permissions above; deny everything else.</li>
+    <li>Set the webhook URL to <code>https://&lt;your-host&gt;/ghsa/webhook/</code>
+      and copy the webhook secret into <code>GITHUB_APP_WEBHOOK_SECRET</code>.</li>
+    <li>Subscribe the App to at least the
+      <code>installation</code>, <code>installation_repositories</code>, and
+      <code>repository_advisory</code> events.</li>
+    <li>Install the App on the specific repositories that should be visible
+      to AdvisoryHub. PMI's project↔repo mapping decides which repos a
+      given AdvisoryHub project will discover GHSAs from.</li>
+    <li>Copy the App id into <code>GITHUB_APP_ID</code>. Mount the App
+      private key as a file and point
+      <code>GITHUB_APP_PRIVATE_KEY_PATH</code> at it.</li>
+    <li>Flip <code>GHSA_FEATURE_ENABLED=True</code>, then click
+      <em>Rescan installations</em> above (or wait for the first
+      <code>installation.created</code> webhook).</li>
+  </ol>
+</main>
+{% endblock %}

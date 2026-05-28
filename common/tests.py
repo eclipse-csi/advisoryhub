@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+from django.test import override_settings
+from django.urls import reverse
+
+
+@pytest.fixture
+def setup(make_user, make_project, settings):
+    settings.OIDC_ADMIN_GROUP = "advisoryhub-security"
+    member = make_user(email="m@example.org")
+    project = make_project("p", team_members=[member])
+    from advisories.models import Advisory
+
+    advisory = Advisory.objects.create(project=project, summary="x", created_by=member)
+    return {"member": member, "advisory": advisory}
+
+
+@pytest.mark.django_db
+@override_settings(RATELIMIT_ENABLE=True)
+def test_html_comment_post_rate_limit_kicks_in(client, setup):
+    """The HTML comment-create endpoint enforces a per-user rate limit.
+
+    The configured rate is 30/min. To keep the test under that ceiling
+    fast, we set a dedicated low cap via the cache directly: not all
+    rate-limit knobs are easy to override at test time, so we just hit
+    the endpoint enough times to exceed the realistic-but-low default
+    (30/m) by sending 35 quick requests, accept that the test is slightly
+    slow (sub-second), and verify the last few are 429.
+    """
+    client.force_login(setup["member"])
+    url = reverse("comments:create", args=[setup["advisory"].advisory_id])
+    statuses = []
+    for _ in range(35):
+        statuses.append(client.post(url, data={"body": "spam"}).status_code)
+    assert statuses.count(429) > 0
+    assert statuses[0] != 429  # the first one was allowed
+
+
+@pytest.mark.django_db
+@override_settings(RATELIMIT_ENABLE=True)
+def test_json_comment_post_rate_limit_kicks_in(client, setup):
+    client.force_login(setup["member"])
+    url = reverse("api:comments", args=[setup["advisory"].advisory_id])
+    statuses = []
+    for _ in range(35):
+        r = client.post(url, data=json.dumps({"body": "spam"}), content_type="application/json")
+        statuses.append(r.status_code)
+    # The 30/m bucket gets exceeded; subsequent requests are 429 with our JSON body.
+    assert 429 in statuses
+    # The JSON 429 response carries our structured error code.
+    r = client.post(url, data=json.dumps({"body": "spam"}), content_type="application/json")
+    if r.status_code == 429:
+        assert r.json()["error"] == "rate_limited"
+
+
+@pytest.mark.django_db
+def test_rate_limit_off_in_default_test_settings(client, setup):
+    """Sanity: with RATELIMIT_ENABLE=False (the test default), 35 posts all succeed."""
+    client.force_login(setup["member"])
+    url = reverse("comments:create", args=[setup["advisory"].advisory_id])
+    for _ in range(35):
+        r = client.post(url, data={"body": "ok"})
+        assert r.status_code != 429
+
+
+# ---- Health endpoints ----------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_healthz_returns_200_unauthenticated(client):
+    r = client.get(reverse("healthz"))
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
+
+@pytest.mark.django_db
+def test_readyz_succeeds_when_db_and_cache_are_up(client):
+    r = client.get(reverse("readyz"))
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+
+@pytest.mark.django_db
+def test_readyz_returns_503_when_a_check_fails(client, monkeypatch):
+    from common import health
+
+    def boom():
+        raise RuntimeError("simulated cache outage")
+
+    monkeypatch.setattr(health, "_check_cache", boom)
+    r = client.get(reverse("readyz"))
+    assert r.status_code == 503
+    body = r.json()
+    assert body["status"] == "fail"
+    assert "cache" in body["failures"]
+
+
+# ---- Request-ID middleware ----------------------------------------------
+
+
+@pytest.mark.django_db
+def test_request_id_minted_when_header_absent(client):
+    r = client.get(reverse("healthz"))
+    assert r["X-Request-ID"]
+    assert len(r["X-Request-ID"]) >= 16
+
+
+@pytest.mark.django_db
+def test_request_id_honors_upstream_header(client):
+    r = client.get(reverse("healthz"), HTTP_X_REQUEST_ID="abc-from-edge-12345")
+    assert r["X-Request-ID"] == "abc-from-edge-12345"
+
+
+# ---- JSON log formatter --------------------------------------------------
+
+
+def test_json_formatter_emits_one_line_json():
+    import logging
+
+    from common.logging import JSONFormatter, set_request_id
+
+    fmt = JSONFormatter()
+    rec = logging.LogRecord(
+        name="advisoryhub.test",
+        level=logging.INFO,
+        pathname="x.py",
+        lineno=1,
+        msg="hello %s",
+        args=("world",),
+        exc_info=None,
+    )
+    rec.request_id = "req-42"
+    rec.advisory_id = "ECL-cccc-ffff-gggg"
+    out = fmt.format(rec)
+    assert "\n" not in out
+    parsed = json.loads(out)
+    assert parsed["msg"] == "hello world"
+    assert parsed["level"] == "INFO"
+    assert parsed["request_id"] == "req-42"
+    assert parsed["advisory_id"] == "ECL-cccc-ffff-gggg"
+    set_request_id(None)
+
+
+def test_json_formatter_handles_unjson_extras():
+    import logging
+
+    from common.logging import JSONFormatter
+
+    fmt = JSONFormatter()
+    rec = logging.LogRecord(
+        name="x", level=logging.INFO, pathname="x.py", lineno=1, msg="hi", args=(), exc_info=None
+    )
+
+    class Weird:
+        pass
+
+    rec.weirdo = Weird()
+    out = fmt.format(rec)
+    parsed = json.loads(out)
+    # 'weirdo' falls through to repr() and lands as a string.
+    assert "weirdo" in parsed
+
+
+# ---- Sentry init noop ---------------------------------------------------
+
+
+def test_sentry_init_is_noop_without_dsn(monkeypatch):
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    from common.sentry import init_from_env
+
+    assert init_from_env() is False
+
+
+# ---- i18n machinery ------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_locale_middleware_is_installed(settings):
+    assert "django.middleware.locale.LocaleMiddleware" in settings.MIDDLEWARE
+
+
+@pytest.mark.django_db
+def test_translatable_strings_render_in_default_language(client, setup):
+    """Sanity: marked strings in base.html resolve to their default form."""
+    client.force_login(setup["member"])
+    r = client.get(reverse("advisories:list"))
+    body = r.content.decode()
+    # Default language is English; the literal resolves to itself.
+    assert "Advisories" in body
+    assert "New advisory" in body
+
+
+# ---- Prometheus metrics endpoint ----------------------------------------
+
+
+@pytest.mark.django_db
+def test_metrics_endpoint_serves_prometheus_format(client):
+    """The /metrics route should serve a Prometheus exposition payload."""
+    r = client.get("/metrics")
+    assert r.status_code == 200
+    body = r.content.decode()
+    # The django_prometheus default exposition contains at least one
+    # request-counter HELP line; we don't pin specific metric names
+    # because django_prometheus updates them between versions.
+    assert "# HELP" in body or "# TYPE" in body

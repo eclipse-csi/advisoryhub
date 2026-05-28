@@ -1,0 +1,242 @@
+{% load i18n %}
+{% comment %}
+OSV-shaped advisory fields. Included by templates/advisories/form.html
+(always visible) and templates/intake/report.html (inside a <details>
+disclosure). Expects ``formsets``, ``affected_rows``, ``empty_event_form``,
+``ecosystem_datalist_id``, ``osv_ecosystems``, ``cwe_catalog`` in the
+render context — see advisories.form_assembly.advanced_form_context.
+{% endcomment %}
+<datalist id="{{ ecosystem_datalist_id }}">
+  {% for name in osv_ecosystems %}<option value="{{ name }}">{% endfor %}
+</datalist>
+{{ cwe_catalog|json_script:"cwe-catalog-data" }}
+
+<fieldset>
+  <legend>{% translate "Aliases" %}</legend>
+  {% if formsets.aliases.non_form_errors %}<div class="errors">{{ formsets.aliases.non_form_errors }}</div>{% endif %}
+  {{ formsets.aliases.management_form }}
+  <div class="formset-rows" data-formset-prefix="aliases">
+    {% for sub in formsets.aliases.forms %}
+      <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}">
+        {{ sub.value }} {{ sub.value.errors }}
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="hidden-delete">{{ sub.DELETE }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <template class="empty-form-template" data-prefix="aliases">
+    <div class="formset-row">
+      {{ formsets.aliases.empty_form.value }}
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="hidden-delete">{{ formsets.aliases.empty_form.DELETE }}</span>
+    </div>
+  </template>
+  <button type="button" class="add-row-btn" data-prefix="aliases">+ {% translate "Add alias" %}</button>
+</fieldset>
+
+<fieldset>
+  <legend>{% translate "CWE identifiers" %}</legend>
+  {% if formsets.cwe_ids.non_form_errors %}<div class="errors">{{ formsets.cwe_ids.non_form_errors }}</div>{% endif %}
+  {{ formsets.cwe_ids.management_form }}
+  <div class="formset-rows" data-formset-prefix="cwe_ids">
+    {% for sub in formsets.cwe_ids.forms %}
+      <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}">
+        {{ sub.value }}
+        <input type="text" data-cwe-input data-cwe-target="{{ sub.value.html_name }}"
+               autocomplete="off" inputmode="search"
+               placeholder="e.g. 79 or Cross-site Scripting"
+               value="{{ sub.value.value|default_if_none:'' }}">
+        {{ sub.value.errors }}
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="hidden-delete">{{ sub.DELETE }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <template class="empty-form-template" data-prefix="cwe_ids">
+    <div class="formset-row">
+      {{ formsets.cwe_ids.empty_form.value }}
+      <input type="text" data-cwe-input data-cwe-target="cwe_ids-__prefix__-value"
+             autocomplete="off" inputmode="search"
+             placeholder="e.g. 79 or Cross-site Scripting">
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="hidden-delete">{{ formsets.cwe_ids.empty_form.DELETE }}</span>
+    </div>
+  </template>
+  <button type="button" class="add-row-btn" data-prefix="cwe_ids">+ {% translate "Add CWE" %}</button>
+</fieldset>
+
+<fieldset>
+  <legend>{% translate "Affected products / vulnerable & patched versions" %}</legend>
+  {% if formsets.affected.non_form_errors %}<div class="errors">{{ formsets.affected.non_form_errors }}</div>{% endif %}
+  {{ formsets.affected.management_form }}
+  <div class="formset-rows" data-formset-prefix="affected">
+    {% for outer, inner in affected_rows %}
+      <div class="formset-row affected-row{% if outer.DELETE.value %} is-deleted{% endif %}" data-outer-index="{{ forloop.counter0 }}">
+        <div class="affected-package">
+          <p>{{ outer.package_name.label_tag }} {{ outer.package_name }} {{ outer.package_name.errors }}</p>
+          <p>{{ outer.package_ecosystem.label_tag }} {{ outer.package_ecosystem }} {{ outer.package_ecosystem.errors }}</p>
+          <p>{{ outer.package_purl.label_tag }} {{ outer.package_purl }} <small>{{ outer.package_purl.help_text }}</small> {{ outer.package_purl.errors }}</p>
+          <p data-describing-row>{{ outer.range_type.label_tag }} {{ outer.range_type }} <small data-describing-help></small> {{ outer.range_type.errors }}</p>
+          <p>{{ outer.versions.label_tag }} {{ outer.versions }} <small>{{ outer.versions.help_text }}</small> {{ outer.versions.errors }}</p>
+        </div>
+        <fieldset class="inner-events" data-event-formset>
+          <legend>{% translate "Events" %}</legend>
+          {% if inner.non_form_errors %}<div class="errors">{{ inner.non_form_errors }}</div>{% endif %}
+          {{ inner.management_form }}
+          <div class="formset-rows" data-formset-prefix="{{ inner.prefix }}">
+            {% for ev in inner.forms %}
+              <div class="formset-row event-row{% if ev.DELETE.value %} is-deleted{% endif %}" data-describing-row>
+                {{ ev.kind }} {{ ev.kind.errors }}
+                {{ ev.value }} {{ ev.value.errors }}
+                <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">−</button></span>
+                <small data-describing-help></small>
+                <span class="hidden-delete">{{ ev.DELETE }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <template class="empty-form-template" data-prefix="{{ inner.prefix }}">
+            <div class="formset-row event-row" data-describing-row>
+              {{ inner.empty_form.kind }}
+              {{ inner.empty_form.value }}
+              <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">−</button></span>
+              <small data-describing-help></small>
+              <span class="hidden-delete">{{ inner.empty_form.DELETE }}</span>
+            </div>
+          </template>
+          <button type="button" class="add-row-btn" data-prefix="{{ inner.prefix }}">+ {% translate "Add event" %}</button>
+          <small class="event-status" data-event-status aria-live="polite"></small>
+        </fieldset>
+        <span class="row-actions outer">
+          <button type="button" class="remove-row-btn" aria-label="Remove package">− {% translate "Remove package" %}</button>
+        </span>
+        <span class="hidden-delete">{{ outer.DELETE }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <template class="empty-form-template" data-prefix="affected">
+    <div class="formset-row affected-row" data-outer-index="__prefix__">
+      <div class="affected-package">
+        <p>{{ formsets.affected.empty_form.package_name.label_tag }} {{ formsets.affected.empty_form.package_name }}</p>
+        <p>{{ formsets.affected.empty_form.package_ecosystem.label_tag }} {{ formsets.affected.empty_form.package_ecosystem }}</p>
+        <p>{{ formsets.affected.empty_form.package_purl.label_tag }} {{ formsets.affected.empty_form.package_purl }} <small>{{ formsets.affected.empty_form.package_purl.help_text }}</small></p>
+        <p data-describing-row>{{ formsets.affected.empty_form.range_type.label_tag }} {{ formsets.affected.empty_form.range_type }} <small data-describing-help></small></p>
+        <p>{{ formsets.affected.empty_form.versions.label_tag }} {{ formsets.affected.empty_form.versions }} <small>{{ formsets.affected.empty_form.versions.help_text }}</small></p>
+      </div>
+      <fieldset class="inner-events" data-event-formset>
+        <legend>{% translate "Events" %}</legend>
+        <input type="hidden" name="affected-__prefix__-events-TOTAL_FORMS" value="0">
+        <input type="hidden" name="affected-__prefix__-events-INITIAL_FORMS" value="0">
+        <input type="hidden" name="affected-__prefix__-events-MIN_NUM_FORMS" value="0">
+        <input type="hidden" name="affected-__prefix__-events-MAX_NUM_FORMS" value="1000">
+        <div class="formset-rows" data-formset-prefix="affected-__prefix__-events"></div>
+        <template class="empty-form-template" data-prefix="affected-__prefix__-events">
+          <div class="formset-row event-row" data-describing-row>
+            {{ empty_event_form.kind }}
+            {{ empty_event_form.value }}
+            <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">−</button></span>
+            <small data-describing-help></small>
+            <span class="hidden-delete">{{ empty_event_form.DELETE }}</span>
+          </div>
+        </template>
+        <button type="button" class="add-row-btn" data-prefix="affected-__prefix__-events">+ {% translate "Add event" %}</button>
+        <small class="event-status" data-event-status aria-live="polite"></small>
+      </fieldset>
+      <span class="row-actions outer">
+        <button type="button" class="remove-row-btn" aria-label="Remove package">− {% translate "Remove package" %}</button>
+      </span>
+      <span class="hidden-delete">{{ formsets.affected.empty_form.DELETE }}</span>
+    </div>
+  </template>
+  <button type="button" class="add-row-btn" data-prefix="affected">+ {% translate "Add affected package" %}</button>
+</fieldset>
+
+<fieldset>
+  <legend>{% translate "Severity" %}</legend>
+  {% if formsets.severity.non_form_errors %}<div class="errors">{{ formsets.severity.non_form_errors }}</div>{% endif %}
+  {{ formsets.severity.management_form }}
+  <div class="formset-rows" data-formset-prefix="severity">
+    {% for sub in formsets.severity.forms %}
+      <div class="formset-row severity-row{% if sub.DELETE.value %} is-deleted{% endif %}" data-severity-row data-describing-row>
+        {{ sub.type }} {{ sub.type.errors }}
+        {{ sub.score }} {{ sub.score.errors }}
+        {{ sub.score_ubuntu }} {{ sub.score_ubuntu.errors }}
+        <output data-cvss-score class="cvss-score" aria-live="polite">—</output>
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <small data-describing-help></small>
+        <details class="cvss-calculator" data-cvss-calculator>
+          <summary>{% translate "CVSS calculator" %}</summary>
+        </details>
+        <span class="hidden-delete">{{ sub.DELETE }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <template class="empty-form-template" data-prefix="severity">
+    <div class="formset-row severity-row" data-severity-row data-describing-row>
+      {{ formsets.severity.empty_form.type }}
+      {{ formsets.severity.empty_form.score }}
+      {{ formsets.severity.empty_form.score_ubuntu }}
+      <output data-cvss-score class="cvss-score" aria-live="polite">—</output>
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <small data-describing-help></small>
+      <details class="cvss-calculator" data-cvss-calculator>
+        <summary>{% translate "CVSS calculator" %}</summary>
+      </details>
+      <span class="hidden-delete">{{ formsets.severity.empty_form.DELETE }}</span>
+    </div>
+  </template>
+  <button type="button" class="add-row-btn" data-prefix="severity">+ {% translate "Add severity" %}</button>
+</fieldset>
+
+<fieldset>
+  <legend>{% translate "References" %}</legend>
+  {% if formsets.references.non_form_errors %}<div class="errors">{{ formsets.references.non_form_errors }}</div>{% endif %}
+  {{ formsets.references.management_form }}
+  <div class="formset-rows" data-formset-prefix="references">
+    {% for sub in formsets.references.forms %}
+      <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}" data-describing-row>
+        {{ sub.type }} {{ sub.type.errors }}
+        {{ sub.url }} {{ sub.url.errors }}
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <small data-describing-help></small>
+        <span class="hidden-delete">{{ sub.DELETE }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <template class="empty-form-template" data-prefix="references">
+    <div class="formset-row" data-describing-row>
+      {{ formsets.references.empty_form.type }}
+      {{ formsets.references.empty_form.url }}
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <small data-describing-help></small>
+      <span class="hidden-delete">{{ formsets.references.empty_form.DELETE }}</span>
+    </div>
+  </template>
+  <button type="button" class="add-row-btn" data-prefix="references">+ {% translate "Add reference" %}</button>
+</fieldset>
+
+<fieldset>
+  <legend>{% translate "Credits" %}</legend>
+  {% if formsets.credits.non_form_errors %}<div class="errors">{{ formsets.credits.non_form_errors }}</div>{% endif %}
+  {{ formsets.credits.management_form }}
+  <div class="formset-rows" data-formset-prefix="credits">
+    {% for sub in formsets.credits.forms %}
+      <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}" data-describing-row>
+        {{ sub.type }} {{ sub.type.errors }}
+        {{ sub.name }} {{ sub.name.errors }}
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <small data-describing-help></small>
+        <span class="hidden-delete">{{ sub.DELETE }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <template class="empty-form-template" data-prefix="credits">
+    <div class="formset-row" data-describing-row>
+      {{ formsets.credits.empty_form.type }}
+      {{ formsets.credits.empty_form.name }}
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <small data-describing-help></small>
+      <span class="hidden-delete">{{ formsets.credits.empty_form.DELETE }}</span>
+    </div>
+  </template>
+  <button type="button" class="add-row-btn" data-prefix="credits">+ {% translate "Add credit" %}</button>
+</fieldset>

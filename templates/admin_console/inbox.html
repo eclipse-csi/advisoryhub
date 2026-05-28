@@ -1,0 +1,48 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — Inbox{% endblock %}
+{% block admin_section %}inbox{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "Inbox" %}</h1>
+
+  <ul class="inbox-counts">
+    <li><a class="inbox-counts__chip{% if not selected_category %} inbox-counts__chip--active{% endif %}" href="{% url 'admin_console:index' %}">{% translate "All" %}</a></li>
+    <li><a class="inbox-counts__chip{% if selected_category == 'cve' %} inbox-counts__chip--active{% endif %}" href="?category=cve"><strong>{{ counts.cve_open }}</strong> {% translate "CVE requests" %}</a></li>
+    <li><a class="inbox-counts__chip{% if selected_category == 'review' %} inbox-counts__chip--active{% endif %}" href="?category=review"><strong>{{ counts.review_open }}</strong> {% translate "reviews pending" %}</a></li>
+    <li><a class="inbox-counts__chip{% if counts.pub_failed %} inbox-counts__chip--danger{% endif %}{% if selected_category == 'pub_failed' %} inbox-counts__chip--active{% endif %}" href="?category=pub_failed"><strong>{{ counts.pub_failed }}</strong> {% translate "failed publications" %}</a></li>
+    <li><a class="inbox-counts__chip{% if counts.triage %} inbox-counts__chip--warn{% endif %}{% if selected_category == 'triage' %} inbox-counts__chip--active{% endif %}" href="?category=triage"><strong>{{ counts.triage }}</strong> {% translate "awaiting triage" %}</a></li>
+    {% if counts.triage_routing %}
+      <li><a class="inbox-counts__chip inbox-counts__chip--danger{% if selected_category == 'triage_routing' %} inbox-counts__chip--active{% endif %}" href="?category=triage_routing"><strong>{{ counts.triage_routing }}</strong> {% translate "awaiting routing" %}</a></li>
+    {% endif %}
+    <li><a class="inbox-counts__chip{% if selected_category == 'orphan' %} inbox-counts__chip--active{% endif %}" href="?category=orphan"><strong>{{ counts.orphan }}</strong> {% translate "orphan CVEs" %}</a></li>
+  </ul>
+
+  <ul class="inbox-feed">
+    {% for item in page.object_list %}
+      <li class="inbox-feed__row">
+        <span class="inbox-badge {{ item.badge_class }}">{{ item.badge }}</span>
+        <span>
+          <span class="inbox-feed__title"><a href="{{ item.url }}">{{ item.title }}</a></span>
+          {% if item.subtitle %}<br><span class="inbox-feed__subtitle">{{ item.subtitle }}</span>{% endif %}
+        </span>
+        <span class="inbox-feed__age" title="{{ item.age_dt|date:'Y-m-d H:i' }}">{{ item.age_dt|timesince }} ago</span>
+      </li>
+    {% empty %}
+      <li class="inbox-feed__empty">{% translate "Nothing waiting — you're all caught up." %}</li>
+    {% endfor %}
+  </ul>
+
+  {% if page.has_other_pages %}
+    {% include "admin_console/_paginator.html" with page=page %}
+  {% endif %}
+
+  {% if show_more %}
+    <p class="inbox-show-more">
+      {% for more in show_more %}
+        <a href="{{ more.url }}">{{ more.label }} ({{ more.remaining }}) →</a>
+      {% endfor %}
+    </p>
+  {% endif %}
+
+  <div id="modal" hx-on::after-swap="this.querySelector('dialog')?.showModal()"></div>
+{% endblock %}

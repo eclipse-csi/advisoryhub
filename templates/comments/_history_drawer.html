@@ -1,0 +1,40 @@
+{% load comment_filters %}
+<dialog id="comment-history-drawer" class="drawer drawer--right" aria-label="Comment history">
+  <header class="drawer__header">
+    <h2>Comment history</h2>
+    <form method="dialog">
+      <button class="drawer__close" type="submit" aria-label="Close history">&times;</button>
+    </form>
+  </header>
+
+  <div class="drawer__body">
+    {% if not entries %}
+      <p class="empty">No history available.</p>
+    {% elif entries|length == 1 and not next_cursor %}
+      <p class="empty">This comment has not been edited.</p>
+    {% else %}
+      <div class="history-versions">
+        {% include "common/_history_page.html" %}
+      </div>
+    {% endif %}
+  </div>
+</dialog>
+
+<script>
+  (function () {
+    var dlg = document.getElementById('comment-history-drawer');
+    if (!dlg) return;
+    if (typeof dlg.showModal === 'function') {
+      dlg.showModal();
+    } else {
+      dlg.setAttribute('open', 'open');
+    }
+    dlg.addEventListener('click', function (event) {
+      if (event.target === dlg) dlg.close();
+    });
+    dlg.addEventListener('close', function () {
+      var host = document.getElementById('comment-history-host');
+      if (host) host.innerHTML = '';
+    });
+  })();
+</script>

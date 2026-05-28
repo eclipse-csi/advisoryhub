@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load i18n user_display %}
+
+{% block title %}{% translate "Report" %} {{ report.id }} — AdvisoryHub{% endblock %}
+
+{% block content %}
+<section class="triage-detail">
+  <p class="breadcrumb"><a href="{% url 'intake:triage_list' %}">{% translate "Pending reports" %}</a></p>
+  <h1>{% translate "Vulnerability report" %} <code>{{ report.id }}</code></h1>
+
+  {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+
+  {% if report.needs_admin_routing %}
+    <div class="banner banner-warning">
+      <strong>{% translate "Flagged for admin re-routing" %}</strong>
+      {% if report.flagged_for_routing_by %}
+        — {% translate "flagged by" %} {% user_chip report.flagged_for_routing_by %}
+        {% blocktranslate with when=report.flagged_for_routing_at|date:"Y-m-d H:i" %}on {{ when }}{% endblocktranslate %}
+      {% endif %}
+      {% if report.admin_routing_note %}
+        <blockquote>{{ report.admin_routing_note }}</blockquote>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <dl class="meta">
+    <dt>{% translate "Submitted" %}</dt><dd>{{ report.created_at|date:"Y-m-d H:i" }}</dd>
+    <dt>{% translate "State" %}</dt><dd>{{ report.state }}</dd>
+    {% include "intake/_project_metadata.html" %}
+    <dt>{% translate "Reporter" %}</dt>
+    <dd>
+      {% if report.reporter_user %}{% user_chip report.reporter_user %} <span class="muted">({% translate "authenticated" %})</span>
+      {% elif report.reporter_name or report.reporter_email %}
+        {{ report.reporter_name }}{% if report.reporter_email %} &lt;{{ report.reporter_email }}&gt;{% endif %}
+      {% else %}<em>{% translate "anonymous" %}</em>{% endif %}
+    </dd>
+    {% if report.affected_versions %}<dt>{% translate "Affected versions" %}</dt><dd>{{ report.affected_versions }}</dd>{% endif %}
+    {% if report.reporter_pgp_key %}
+      <dt>{% translate "Reporter PGP key" %}</dt>
+      <dd><details><summary>{% translate "Show key" %}</summary><pre>{{ report.reporter_pgp_key }}</pre></details></dd>
+    {% endif %}
+  </dl>
+
+  <h2>{% translate "Details" %}</h2>
+  <div class="markdown-body">{{ details_html|safe }}</div>
+
+  {% if report.state == "new" %}
+    {% if can_act %}
+      <div class="triage-actions">
+        <form method="post" action="{% url 'intake:triage_convert' report.id %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="primary" {% if not report.project %}disabled aria-disabled="true"{% endif %}>
+            {% translate "Convert to draft advisory" %}
+          </button>
+          {% if not report.project %}
+            <span class="muted">{% translate "Set a project first." %}</span>
+          {% endif %}
+        </form>
+        <button type="button"
+                class="danger"
+                hx-get="{% url 'intake:triage_dismiss_modal' report.id %}"
+                hx-target="#modal" hx-swap="innerHTML">
+          {% translate "Dismiss" %}
+        </button>
+      </div>
+    {% else %}
+      <p class="muted">
+        {% translate "This report is awaiting admin re-routing. Acting on it is disabled until an admin resolves the flag." %}
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="muted">{% translate "This report has already been triaged." %}
+      {% if report.converted_advisory %}
+        <a href="{% url 'advisories:detail' report.converted_advisory.advisory_id %}">
+          {% translate "Open the advisory." %}
+        </a>
+      {% endif %}
+    </p>
+  {% endif %}
+</section>
+
+<div id="modal" hx-on::after-swap="this.querySelector('dialog')?.showModal()"></div>
+{% endblock %}

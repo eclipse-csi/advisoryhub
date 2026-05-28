@@ -1,0 +1,9 @@
+<form hx-post="{% url 'comments:edit' comment.advisory.advisory_id comment.pk %}"
+      hx-target="#comment-{{ comment.pk }}" hx-swap="outerHTML"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+      id="comment-{{ comment.pk }}">
+  {% csrf_token %}
+  <p>{{ form.body }}</p>
+  {% if form.body.errors %}<div class="errors">{{ form.body.errors }}</div>{% endif %}
+  <p><button type="submit">Save</button></p>
+</form>

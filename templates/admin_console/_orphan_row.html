@@ -1,0 +1,39 @@
+{% load user_display %}
+<tr id="orphan-{{ orphan.pk }}"{% if orphan.previous_advisory %} data-href="{% url 'advisories:detail' orphan.previous_advisory.advisory_id %}"{% endif %}>
+  <td><code>{{ orphan.cve_id }}</code></td>
+  <td>
+    {% if orphan.previous_advisory %}
+      <a href="{% url 'advisories:detail' orphan.previous_advisory.advisory_id %}">{{ orphan.previous_advisory.advisory_id }}</a>
+    {% else %}
+      {{ orphan.previous_advisory_label|default:"—" }} <small>(advisory deleted)</small>
+    {% endif %}
+  </td>
+  <td>
+    <strong>{{ orphan.get_status_display }}</strong>
+    {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+  </td>
+  <td>
+    {{ orphan.unassigned_at|date:"Y-m-d H:i" }}<br>
+    <small>{% user_chip orphan.unassigned_by %}</small>
+    {% if orphan.unassign_reason %}
+      <details><summary>reason</summary>{{ orphan.unassign_reason }}</details>
+    {% endif %}
+  </td>
+  <td>
+    {% if orphan.status == 'orphaned' %}
+      <form hx-post="{% url 'admin_console:orphan_mark_rejected' orphan.pk %}"
+            hx-target="#orphan-{{ orphan.pk }}" hx-swap="outerHTML"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% csrf_token %}
+        <textarea name="notes" placeholder="Notes (optional — e.g. cve.org ticket id)"></textarea>
+        <button type="submit">Mark rejected at cve.org</button>
+      </form>
+    {% else %}
+      <small>by {% user_chip orphan.marked_rejected_by %}<br>
+      {{ orphan.marked_rejected_at|date:"Y-m-d H:i" }}</small>
+      {% if orphan.marked_rejected_notes %}
+        <details><summary>notes</summary>{{ orphan.marked_rejected_notes }}</details>
+      {% endif %}
+    {% endif %}
+  </td>
+</tr>

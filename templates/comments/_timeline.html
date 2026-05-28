@@ -1,0 +1,18 @@
+<section id="comments" class="comments timeline">
+  <h2>Activity</h2>
+  <div class="comment-list">
+    {% for item in timeline %}
+      {% if item.kind == "comment" %}
+        {% include "comments/_comment.html" with comment=item.obj advisory=advisory can_comment=can_comment can_post_internal=can_post_internal %}
+      {% else %}
+        {% include "comments/_event.html" with event=item.obj advisory=advisory %}
+      {% endif %}
+    {% empty %}
+      <p class="empty">Nothing has happened on this advisory yet.</p>
+    {% endfor %}
+  </div>
+  {% if can_comment %}
+    {% include "comments/_form.html" with form=form advisory=advisory can_post_internal=can_post_internal %}
+  {% endif %}
+  <div id="comment-history-host"></div>
+</section>

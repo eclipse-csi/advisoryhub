@@ -1,0 +1,65 @@
+{% load static i18n user_display %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}AdvisoryHub{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    // Apply theme before paint to avoid a flash of light content on dark systems.
+    (function () {
+      try {
+        var pref = localStorage.getItem("advisoryhub.theme");
+        if (pref !== "light" && pref !== "dark" && pref !== "auto") pref = "auto";
+        var dark = pref === "dark" || (pref === "auto" &&
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.setAttribute("data-theme-pref", pref);
+      } catch (e) { /* localStorage disabled — fall back to light */ }
+    })();
+  </script>
+  <link rel="preconnect" href="https://rsms.me/">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <link rel="stylesheet" href="{% static 'advisoryhub.css' %}">
+  <script src="{% static 'htmx.min.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-formsets.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-access.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-theme.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-form-dirty.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-row-link.js' %}" defer></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{% url 'advisories:list' %}">AdvisoryHub</a>
+  <nav>
+    <div class="theme-toggle" role="group" aria-label="{% translate 'Color theme' %}">
+      <button type="button" data-theme-pref-btn="light" aria-pressed="false" title="{% translate 'Light theme' %}" aria-label="{% translate 'Light theme' %}">
+        <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button type="button" data-theme-pref-btn="auto" aria-pressed="false" title="{% translate 'Auto (match system)' %}" aria-label="{% translate 'Auto (match system)' %}">
+        <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button type="button" data-theme-pref-btn="dark" aria-pressed="false" title="{% translate 'Dark theme' %}" aria-label="{% translate 'Dark theme' %}">
+        <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+    <a href="{% url 'intake:report' %}">{% translate "Report a vulnerability" %}</a>
+    {% if user.is_authenticated %}
+      <a href="{% url 'advisories:list' %}">{% translate "Advisories" %}</a>
+      <a href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a>
+      {% if user.is_global_admin %}<a href="{% url 'admin_console:index' %}">{% translate "Admin Console" %}</a>{% endif %}
+      <a href="{% url 'notifications:preferences' %}">{% translate "Notifications" %}</a>
+      <a href="{% url 'accounts:profile' %}">{% user_chip user %}</a>
+      <form method="post" action="{% url 'oidc_logout' %}" class="inline">{% csrf_token %}<button type="submit">{% translate "Sign out" %}</button></form>
+    {% else %}
+      <a href="{% url 'oidc_authentication_init' %}">{% translate "Sign in" %}</a>
+    {% endif %}
+  </nav>
+</header>
+<main class="container">
+  {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{% load i18n %}
+<dialog class="confirm-dialog"
+        onclose="document.getElementById('modal').innerHTML='';">
+  <form hx-post="{% url 'intake:triage_flag' report.id %}"
+        hx-target="#modal"
+        hx-swap="innerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-on::after-request="if(event.detail.successful){this.closest('dialog').close();}">
+    {% csrf_token %}
+    <h3>{% translate "Flag for admin re-routing" %}</h3>
+    <p>{% translate "Briefly describe where this report should go and why. An admin will review and reassign." %}</p>
+    {% if error %}<p class="errors">{{ error }}</p>{% endif %}
+    <label>{% translate "Routing note (required)" %}
+      <textarea name="note" required rows="4" autofocus></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button type="button" onclick="this.closest('dialog').close();">{% translate "Cancel" %}</button>
+      <button type="submit">{% translate "Flag" %}</button>
+    </div>
+  </form>
+</dialog>

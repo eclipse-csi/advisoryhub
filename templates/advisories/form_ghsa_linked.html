@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Edit GHSA-linked advisory {{ advisory.advisory_id }} · AdvisoryHub{% endblock %}
+
+{% block content %}
+<main class="container">
+  <h1>Edit {{ advisory.advisory_id }} (GHSA-linked)</h1>
+  <p class="help">
+    This advisory's content is synced from the upstream GitHub Security
+    Advisory and is read-only here. To edit summary, description,
+    severity, references, affected packages, etc., make the change on
+    GitHub and then click <em>Refresh from GHSA</em> on the detail page.
+  </p>
+
+  {% include "advisories/_ghsa_panel.html" with advisory=advisory can_sync_ghsa=True %}
+
+  <h2>Editable fields</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+      <label for="{{ form.project.id_for_label }}">Project</label>
+      {{ form.project }}
+      {{ form.project.errors }}
+    </p>
+    <button type="submit">Save</button>
+    <a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>
+  </form>
+
+  <h2>Synced from GHSA (read-only)</h2>
+  <dl class="kv">
+    <dt>Summary</dt><dd>{{ advisory.summary|default:"—" }}</dd>
+    <dt>Severity</dt>
+    <dd>
+      {% for s in advisory.severity %}
+        <code>{{ s.type }}: {{ s.score }}</code>{% if not forloop.last %}, {% endif %}
+      {% empty %}—{% endfor %}
+    </dd>
+    <dt>CWE ids</dt>
+    <dd>{{ advisory.cwe_ids|join:", "|default:"—" }}</dd>
+    <dt>Aliases</dt>
+    <dd>{{ advisory.aliases|join:", "|default:"—" }}</dd>
+    <dt>Affected</dt>
+    <dd>
+      <ul>
+        {% for a in advisory.affected %}
+          <li>
+            {{ a.package.ecosystem|default:"(ecosystem?)" }} /
+            {{ a.package.name }}
+          </li>
+        {% empty %}—{% endfor %}
+      </ul>
+    </dd>
+  </dl>
+</main>
+{% endblock %}

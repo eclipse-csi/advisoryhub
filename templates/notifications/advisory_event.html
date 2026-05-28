@@ -1,0 +1,7 @@
+<p>Advisory <a href="{{ url }}"><strong>{{ advisory.advisory_id }}</strong></a> — event: <em>{{ event }}</em></p>
+<ul>
+  <li>Project: {{ advisory.project.name }}</li>
+  <li>State: {{ advisory.get_state_display }}{% if advisory.review_status != 'none' %} ({{ advisory.get_review_status_display }}){% endif %}</li>
+</ul>
+<p><a href="{{ url }}">Open in AdvisoryHub</a></p>
+<p>You're receiving this because you have access to this advisory and your notification preferences are enabled for this event.</p>

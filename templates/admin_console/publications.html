@@ -1,0 +1,67 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — Publication{% endblock %}
+{% block admin_section %}publications{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "Publication" %}</h1>
+
+  <section>
+    <h2>{% translate "Publication queue" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Attempts" %}</th><th>{% translate "Started" %}</th></tr></thead>
+      <tbody>
+        {% for t in open_publications %}
+          <tr data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
+            <td><a href="{% url 'advisories:detail' t.advisory.advisory_id %}">{{ t.advisory.advisory_id }}</a></td>
+            <td><span class="badge status-{{ t.status }}">{{ t.get_status_display }}</span></td>
+            <td>{{ t.attempts }}</td>
+            <td>{{ t.started_at|date:"Y-m-d H:i"|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">{% translate "No open publication runs." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "Failed publication exports" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Failed" %}</th><th>{% translate "Last error" %}</th><th></th></tr></thead>
+      <tbody>
+        {% for t in failed_publications %}
+          <tr data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
+            <td><a href="{% url 'advisories:detail' t.advisory.advisory_id %}">{{ t.advisory.advisory_id }}</a></td>
+            <td>{{ t.finished_at|date:"Y-m-d H:i" }}</td>
+            <td><code>{{ t.last_error|truncatechars:120 }}</code></td>
+            <td>
+              <form method="post" action="{% url 'publication:retry' t.pk %}" class="inline">
+                {% csrf_token %}<button type="submit">{% translate "Retry" %}</button>
+              </form>
+              {% for artifact in t.artifacts.all %}
+                <a href="{% url 'publication:artifact' t.pk artifact.kind %}">{{ artifact.get_kind_display }}</a>{% if not forloop.last %} · {% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">{% translate "No failed publications." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "Recently published" %}</h2>
+    <ul>
+      {% for a in recently_published %}
+        <li>
+          <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
+          — {{ a.summary|default:"—"|truncatechars:100 }}
+          <span class="muted">({{ a.published_at|date:"Y-m-d"|default:"—" }})</span>
+        </li>
+      {% empty %}
+        <li>{% translate "None yet." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

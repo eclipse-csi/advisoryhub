@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Report intake temporarily closed" %} — AdvisoryHub{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<section>
+  <h1>{% translate "Report intake is temporarily closed." %}</h1>
+  <p>
+    {% blocktranslate %}This form is not accepting submissions right now. Please email the
+    Eclipse Foundation security team directly.{% endblocktranslate %}
+  </p>
+</section>
+{% endblock %}

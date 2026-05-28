@@ -1,0 +1,10 @@
+{% load i18n %}
+<nav class="paginator" aria-label="{% translate 'Pagination' %}">
+  {% if page.has_previous %}
+    <a href="?{% if filters_querystring %}{{ filters_querystring }}&amp;{% else %}{% if request.GET %}{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&amp;{% endif %}{% endfor %}{% endif %}{% endif %}page={{ page.previous_page_number }}">&larr; {% translate "Previous" %}</a>
+  {% endif %}
+  <span class="muted">{% blocktranslate with current=page.number total=page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>
+  {% if page.has_next %}
+    <a href="?{% if filters_querystring %}{{ filters_querystring }}&amp;{% else %}{% if request.GET %}{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&amp;{% endif %}{% endfor %}{% endif %}{% endif %}page={{ page.next_page_number }}">{% translate "Next" %} &rarr;</a>
+  {% endif %}
+</nav>

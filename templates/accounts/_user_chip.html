@@ -1,0 +1,20 @@
+{% spaceless %}
+{% if user %}
+  <span class="user-chip" tabindex="0">
+    <span class="user-chip__name">{{ user.display_name|default:user.email|default:fallback }}</span>
+    <span class="user-chip__pop" role="tooltip">
+      {% if user.email %}<span class="user-chip__email">{{ user.email }}</span>{% endif %}
+      {% with groups=user.groups.all %}
+        {% if groups %}
+          <span class="user-chip__groups-label">Groups</span>
+          <ul class="user-chip__groups">
+            {% for g in groups %}<li>{{ g.name }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+    </span>
+  </span>
+{% else %}
+  <span class="user-chip user-chip--missing">{{ fallback }}</span>
+{% endif %}
+{% endspaceless %}

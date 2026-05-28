@@ -1,0 +1,66 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — Users{% endblock %}
+{% block admin_section %}users{% endblock %}
+{% block admin_content %}
+  <header class="advisory-detail__header">
+    <h1>{% translate "Users" %}</h1>
+    <p><a href="{% url 'admin_console:group_list' %}">{% translate "View all groups" %} &rarr;</a></p>
+  </header>
+
+  <form method="get" class="audit-filter">
+    <div class="audit-filter__row">
+      <label class="audit-filter__field audit-filter__field--wide">
+        <span>{% translate "Search" %}</span>
+        <input type="text" name="q" value="{{ selected_q }}" maxlength="200"
+               placeholder="{% translate 'email, display name, first/last name' %}">
+      </label>
+
+      <label class="audit-filter__field">
+        <span>{% translate "Group" %}</span>
+        <select name="group">
+          <option value="">{% translate "Any group" %}</option>
+          {% for g in group_choices %}
+            <option value="{{ g.pk }}" {% if selected_group == g.pk|stringformat:'s' %}selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="audit-filter__actions-row">
+      <button type="submit">{% translate "Filter" %}</button>
+      {% if any_filter_active %}
+        <a href="{% url 'admin_console:user_list' %}">{% translate "Clear" %}</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{% translate "Email" %}</th>
+        <th>{% translate "Display name" %}</th>
+        <th>{% translate "Groups" %}</th>
+        <th>{% translate "Last login" %}</th>
+        <th>{% translate "Admin" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in page.object_list %}
+        <tr data-href="{% url 'admin_console:user_detail' u.pk %}">
+          <td><a href="{% url 'admin_console:user_detail' u.pk %}">{{ u.email }}</a></td>
+          <td>{{ u.display_name|default:"—" }}</td>
+          <td>{% for g in u.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td>{% if u.last_login %}{{ u.last_login|date:"Y-m-d H:i" }}{% else %}{% translate "never" %}{% endif %}</td>
+          <td>{% if u.is_global_admin %}<strong>{% translate "yes" %}</strong>{% else %}—{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% translate "No users match." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page.has_other_pages %}
+    {% include "admin_console/_paginator.html" with page=page filters_querystring=filters_querystring %}
+  {% endif %}
+{% endblock %}

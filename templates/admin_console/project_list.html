@@ -1,0 +1,36 @@
+{% extends "admin_console/_admin_base.html" %}
+{% block title %}Admin Console — Projects & OIDC groups{% endblock %}
+{% block admin_section %}projects{% endblock %}
+{% block admin_content %}
+  <header class="advisory-detail__header">
+    <h1>Projects &amp; OIDC groups</h1>
+    <p><a href="{% url 'admin_console:project_create' %}">New project</a></p>
+  </header>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Slug</th>
+        <th>OIDC group</th>
+        <th>Mature publisher</th>
+        <th>Advisories</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projects %}
+        <tr data-href="{% url 'admin_console:project_edit' p.id %}">
+          <td>{{ p.name }}</td>
+          <td>{{ p.slug }}</td>
+          <td><code>{{ p.security_team.name }}</code></td>
+          <td>{{ p.is_mature_publisher|yesno:"yes,no" }}</td>
+          <td>{{ p.advisory_count }}</td>
+          <td><a href="{% url 'admin_console:project_edit' p.id %}">Edit</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">No projects yet. <a href="{% url 'admin_console:project_create' %}">Create one</a>.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

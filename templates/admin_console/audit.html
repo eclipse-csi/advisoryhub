@@ -1,0 +1,106 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n user_display %}
+{% block title %}Admin Console — Audit logs{% endblock %}
+{% block admin_section %}audit{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "Audit logs" %}</h1>
+
+  <form method="get" class="audit-filter">
+    <div class="audit-filter__row">
+      <fieldset class="audit-filter__actions">
+        <legend>{% translate "Actions" %}</legend>
+        <details {% if selected_actions %}open{% endif %}>
+          <summary>
+            {% if selected_actions %}
+              {% blocktranslate count counter=selected_actions|length %}{{ counter }} selected{% plural %}{{ counter }} selected{% endblocktranslate %}
+            {% else %}
+              {% translate "Any action" %}
+            {% endif %}
+          </summary>
+          <div class="audit-filter__action-list">
+            {% for value, label in action_choices %}
+              <label class="audit-filter__action-item">
+                <input type="checkbox" name="action" value="{{ value }}"
+                       {% if value in selected_actions %}checked{% endif %}>
+                <span>{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </details>
+      </fieldset>
+
+      <label class="audit-filter__field">
+        <span>{% translate "Actor" %}</span>
+        <input type="text" name="actor" value="{{ selected_actor }}"
+               placeholder='{% translate "email, name, or \"system\"" %}'>
+      </label>
+
+      <label class="audit-filter__field">
+        <span>{% translate "Advisory ID" %}</span>
+        <input type="text" name="advisory" value="{{ selected_advisory }}"
+               placeholder="AHV-2026 ({% translate 'partial OK' %})">
+      </label>
+    </div>
+
+    <div class="audit-filter__row">
+      <fieldset class="audit-filter__dates">
+        <legend>{% translate "Time span" %}</legend>
+        <div class="audit-filter__presets">
+          <button type="submit" name="preset" value="24h"
+                  class="{% if selected_preset == '24h' %}is-active{% endif %}">
+            {% translate "Last 24h" %}
+          </button>
+          <button type="submit" name="preset" value="7d"
+                  class="{% if selected_preset == '7d' %}is-active{% endif %}">
+            {% translate "Last 7 days" %}
+          </button>
+          <button type="submit" name="preset" value="30d"
+                  class="{% if selected_preset == '30d' %}is-active{% endif %}">
+            {% translate "Last 30 days" %}
+          </button>
+        </div>
+        <label class="audit-filter__field">
+          <span>{% translate "From" %}</span>
+          <input type="date" name="since" value="{{ selected_since }}">
+        </label>
+        <label class="audit-filter__field">
+          <span>{% translate "Until" %}</span>
+          <input type="date" name="until" value="{{ selected_until }}">
+        </label>
+      </fieldset>
+
+      <label class="audit-filter__field audit-filter__field--wide">
+        <span>{% translate "Search metadata" %}</span>
+        <input type="text" name="q" value="{{ selected_q }}" maxlength="200"
+               placeholder="{% translate 'searches metadata / previous / new values' %}">
+      </label>
+    </div>
+
+    <div class="audit-filter__actions-row">
+      <button type="submit">{% translate "Filter" %}</button>
+      {% if any_filter_active %}
+        <a href="{% url 'admin_console:audit' %}">{% translate "Clear" %}</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <table class="audit">
+    <thead><tr><th>{% translate "When" %}</th><th>{% translate "Actor" %}</th><th>{% translate "Action" %}</th><th>{% translate "Advisory" %}</th></tr></thead>
+    <tbody>
+      {% for entry in page.object_list %}
+        <tr{% if entry.advisory %} data-href="{% url 'advisories:detail' entry.advisory.advisory_id %}"{% endif %}>
+          <td>{{ entry.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{% user_chip entry.actor fallback="system" %}</td>
+          <td>{{ entry.action }}</td>
+          <td>{% if entry.advisory %}<a href="{% url 'advisories:detail' entry.advisory.advisory_id %}">{{ entry.advisory.advisory_id }}</a>{% else %}—{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% translate "No audit entries match." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page.has_other_pages %}
+    {% include "admin_console/_paginator.html" with page=page filters_querystring=filters_querystring %}
+  {% endif %}
+{% endblock %}

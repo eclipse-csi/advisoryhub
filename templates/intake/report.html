@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% translate "Report a vulnerability" %} — AdvisoryHub{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-cwe.js' %}" defer></script>{% endblock %}
+
+{% block content %}
+<section class="intake-form">
+  <h1>{% translate "Report a vulnerability" %}</h1>
+  <p>
+    {% blocktranslate %}Use this form to disclose a security issue in an Eclipse Foundation project.
+    You can submit anonymously, or sign in for faster handling. Avoid posting
+    public proof-of-concept material here; provide enough detail for the
+    project's security team to assess the issue.{% endblocktranslate %}
+  </p>
+
+  {% if not user.is_authenticated %}
+  <p class="muted">
+    <a href="{% url 'oidc_authentication_init' %}?next={% url 'intake:report' %}">
+      {% translate "Sign in first" %}
+    </a>
+    {% translate "to identify yourself to the security team." %}
+  </p>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="errors">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <fieldset>
+      <legend>{% translate "Identity" %}</legend>
+      <div class="field">
+        <label for="id_project_slug">{% translate "Project" %}</label>
+        <input
+          id="id_project_slug"
+          name="project_slug"
+          list="intake-projects"
+          value="{{ form.project_slug.value|default_if_none:'' }}"
+          autocomplete="off"
+          required
+        >
+        <datalist id="intake-projects">
+          <option value="__unsorted__" label="{% translate 'I do not know — route to admins' %}"></option>
+          {% for p in projects %}
+            <option value="{{ p.slug }}" label="{{ p.name }}"></option>
+          {% endfor %}
+        </datalist>
+        {{ form.project_slug.errors }}
+      </div>
+
+      <div class="field">
+        <label for="id_summary">{% translate "Summary" %}</label>
+        <input id="id_summary" name="summary" type="text" maxlength="300"
+               value="{{ form.summary.value|default_if_none:'' }}" required>
+        {{ form.summary.errors }}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>{% translate "Detailed description" %}</legend>
+      <div class="field">
+        <label for="id_details">{% translate "Details" %} <small>{% translate "(markdown)" %}</small></label>
+        <textarea id="id_details" name="details" rows="10" required>{{ form.details.value|default_if_none:'' }}</textarea>
+        {{ form.details.errors }}
+      </div>
+    </fieldset>
+
+    {% if not user.is_authenticated %}
+      <div class="field">
+        <label for="id_reporter_display_name">
+          {% translate "Preferred name for recognition" %}
+          <small>{% translate "(optional)" %}</small>
+        </label>
+        <input id="id_reporter_display_name" name="reporter_display_name" type="text" maxlength="200"
+               value="{{ form.reporter_display_name.value|default_if_none:'' }}">
+        {{ form.reporter_display_name.errors }}
+      </div>
+    {% endif %}
+
+    <details class="advanced-fields"{% if advanced_open %} open{% endif %}>
+      <summary>{% translate "Advanced — aliases, CWE, affected packages, severity, references, credits" %}</summary>
+      <p class="muted">
+        {% translate "Optional. Fill in only the fields you're confident about. The security team will refine these during triage." %}
+      </p>
+      {% include "advisories/_form_advanced_fields.html" %}
+    </details>
+
+    {% if "website" in form.fields %}
+      {# Honeypot: real users do not see this field. #}
+      <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">
+        <label for="id_website">Website</label>
+        <input id="id_website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+    {% endif %}
+
+    {% if "hcaptcha" in form.fields %}
+      <div class="field">
+        {{ form.hcaptcha }}
+        {{ form.hcaptcha.errors }}
+      </div>
+    {% endif %}
+
+    <button type="submit">{% translate "Submit report" %}</button>
+  </form>
+</section>
+{% endblock %}

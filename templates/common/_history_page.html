@@ -1,0 +1,37 @@
+{% load comment_filters user_display %}{% comment %}
+One page of history-drawer cards plus a "Load older edits" button.
+Expects ``entries`` (list of {version, diff_chunks, is_initial,
+full_markdown}), ``next_cursor``, ``load_more_url``, ``is_first_page``.
+{% endcomment %}
+{% for entry in entries %}
+  <div class="history-version">
+    <header>
+      <span class="version-tag">v{{ entry.version.version }}{% if is_first_page and forloop.first %} &middot; current{% endif %}</span>
+      <time datetime="{{ entry.version.created_at|date:'c' }}">{{ entry.version.created_at|date:"Y-m-d H:i" }}</time>
+      <span class="version-editor">{% user_chip entry.version.editor fallback="system" %}</span>
+    </header>
+
+    {% if entry.is_initial %}
+      <p class="version-note">Original version &mdash; no prior content to diff against.</p>
+    {% else %}
+      {% include "common/_diff_chunks.html" with chunks=entry.diff_chunks %}
+    {% endif %}
+
+    <details class="show-full">
+      <summary>Show full rendered v{{ entry.version.version }}</summary>
+      {% if entry.full_markdown %}
+        <div class="adv-prose">{{ entry.full_markdown|comment_markdown }}</div>
+      {% else %}
+        <p class="empty">(empty)</p>
+      {% endif %}
+    </details>
+  </div>
+{% endfor %}
+
+{% if next_cursor %}
+  <button class="link-button history-load-more"
+          type="button"
+          hx-get="{{ load_more_url }}?before={{ next_cursor }}"
+          hx-target="this"
+          hx-swap="outerHTML">Load older edits</button>
+{% endif %}

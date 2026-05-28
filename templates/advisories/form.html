@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if mode == 'edit' %}Edit {{ advisory.advisory_id }}{% else %}New advisory{% endif %}{% endblock %}
+{% block extra_head %}
+  <script src="{% static 'advisoryhub-cwe.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-cvss.js' %}" defer></script>
+{% endblock %}
+{% block content %}
+  <h1>{% if mode == 'edit' %}Edit {{ advisory.advisory_id }}{% else %}New advisory{% endif %}</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}
+
+    <fieldset>
+      <legend>Identity</legend>
+      <p>{{ form.project.label_tag }} {{ form.project }} {{ form.project.errors }}</p>
+      <p>{{ form.summary.label_tag }} {{ form.summary }} {{ form.summary.errors }}</p>
+    </fieldset>
+
+    {% include "advisories/_form_advanced_fields.html" %}
+
+    <fieldset>
+      <legend>Detailed description</legend>
+      <p>{{ form.details }} <small>{{ form.details.help_text }}</small> {{ form.details.errors }}</p>
+    </fieldset>
+
+    <p class="actions">
+      <button type="submit">{% if mode == 'edit' %}Save{% else %}Create{% endif %}</button>
+      {% if mode == 'edit' %}<a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>{% endif %}
+    </p>
+  </form>
+{% endblock %}

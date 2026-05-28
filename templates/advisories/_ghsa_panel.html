@@ -1,0 +1,52 @@
+{% comment %}
+GHSA-linked panel — included from advisory detail/form templates to show
+the live sync state and provide a refresh entry-point.
+
+Caller passes:
+  advisory          — the Advisory (must be kind=GHSA_LINKED)
+  can_sync_ghsa     — boolean; controls visibility of the Refresh button
+{% endcomment %}
+
+<section class="ghsa-panel" aria-labelledby="ghsa-panel-heading">
+  <h2 id="ghsa-panel-heading">Linked GitHub Security Advisory</h2>
+  <dl class="kv">
+    <dt>GHSA id</dt>
+    <dd>
+      <a href="https://github.com/{{ advisory.ghsa_owner }}/{{ advisory.ghsa_repo }}/security/advisories/{{ advisory.ghsa_id }}"
+         target="_blank" rel="noopener">
+        {{ advisory.ghsa_id }}
+      </a>
+    </dd>
+    <dt>Repository</dt>
+    <dd>{{ advisory.ghsa_owner }}/{{ advisory.ghsa_repo }}</dd>
+    <dt>Upstream state</dt>
+    <dd>{{ advisory.get_ghsa_state_display }}</dd>
+    <dt>Last sync</dt>
+    <dd>{{ advisory.ghsa_metadata_synced_at|default:"never" }}</dd>
+    {% if advisory.ghsa_cve_push_status != 'none' %}
+      <dt>CVE push status</dt>
+      <dd>{{ advisory.get_ghsa_cve_push_status_display }}
+        {% if advisory.ghsa_cve_push_attempted_at %}
+          (last attempt {{ advisory.ghsa_cve_push_attempted_at }})
+        {% endif %}
+      </dd>
+    {% endif %}
+  </dl>
+
+  {% if advisory.ghsa_cve_conflict_detected_at %}
+    <div class="banner banner-warning" role="alert">
+      <strong>CVE id conflict.</strong>
+      Upstream GHSA carries <code>{{ advisory.ghsa_cve_conflict_ghsa_value }}</code>
+      but AdvisoryHub has assigned <code>{{ advisory.assigned_cve_id|default:"none" }}</code>.
+      An admin must reconcile (re-push the EF id, or unassign internally).
+      Publication is blocked until this is resolved.
+    </div>
+  {% endif %}
+
+  {% if can_sync_ghsa %}
+    <form method="post" action="{% url 'ghsa:refresh-advisory' advisory.advisory_id %}">
+      {% csrf_token %}
+      <button type="submit">Refresh from GHSA</button>
+    </form>
+  {% endif %}
+</section>

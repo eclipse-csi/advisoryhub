@@ -1,0 +1,4 @@
+<p>You've been invited to view advisory <strong>{{ invite.advisory.advisory_id }}</strong> ({{ invite.advisory.project.name }}).</p>
+<p>Permission level: <em>{{ invite.get_permission_display }}</em>. Expires {{ invite.expires_at }}.</p>
+<p>Sign in at AdvisoryHub with <code>{{ invite.email }}</code>. The invitation will attach automatically once your authenticated email matches.</p>
+<p><a href="{{ url }}">Open in AdvisoryHub</a></p>

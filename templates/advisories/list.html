@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Advisories" %}{% endblock %}
+{% block content %}
+  <h1>{% translate "Advisories" %}</h1>
+  <p><a href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a></p>
+
+  <form method="get" class="advisory-filters">
+    <input type="search" name="q" value="{{ filters.q|default:'' }}" placeholder="{% translate 'Search summary / details / aliases…' %}">
+    <select name="project">
+      <option value="">{% translate "All projects" %}</option>
+      {% for p in projects_for_filter %}
+        <option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }} ({{ p.slug }})</option>
+      {% endfor %}
+    </select>
+    <select name="state">
+      <option value="">{% translate "Any state" %}</option>
+      <option value="draft" {% if filters.state == 'draft' %}selected{% endif %}>{% translate "Draft" %}</option>
+      <option value="published" {% if filters.state == 'published' %}selected{% endif %}>{% translate "Published" %}</option>
+      <option value="dismissed" {% if filters.state == 'dismissed' %}selected{% endif %}>{% translate "Dismissed" %}</option>
+    </select>
+    <select name="review_status">
+      <option value="">{% translate "Any review status" %}</option>
+      <option value="none" {% if filters.review_status == 'none' %}selected{% endif %}>{% translate "Not submitted" %}</option>
+      <option value="submitted" {% if filters.review_status == 'submitted' %}selected{% endif %}>{% translate "Submitted" %}</option>
+      <option value="changes_requested" {% if filters.review_status == 'changes_requested' %}selected{% endif %}>{% translate "Changes requested" %}</option>
+      <option value="approved" {% if filters.review_status == 'approved' %}selected{% endif %}>{% translate "Approved" %}</option>
+      <option value="rejected" {% if filters.review_status == 'rejected' %}selected{% endif %}>{% translate "Rejected" %}</option>
+    </select>
+    <label>
+      <input type="checkbox" name="republish_required" value="1" {% if filters.republish_required %}checked{% endif %}>
+      {% translate "Re-publish required" %}
+    </label>
+    <button type="submit">{% translate "Filter" %}</button>
+    {% if filters %}
+      <a href="{% url 'advisories:list' %}">{% translate "Clear" %}</a>
+    {% endif %}
+  </form>
+
+  <p class="muted">{{ total }} advisor{{ total|pluralize:"y,ies" }} match{{ total|pluralize:"es," }}.</p>
+
+  <table class="advisories">
+    <thead><tr><th>ID</th><th>Project</th><th>State</th><th>Review</th><th>Summary</th><th>Modified</th></tr></thead>
+    <tbody>
+    {% for a in advisories %}
+      <tr data-href="{% url 'advisories:detail' a.advisory_id %}">
+        <td>
+          <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
+          {% if a.kind == 'ghsa_linked' %}<span class="badge ghsa-linked" title="Synced from a GitHub Security Advisory">GHSA</span>{% endif %}
+        </td>
+        <td>{{ a.project.name }}</td>
+        <td>
+          <span class="badge state-{{ a.state }}{% if a.republish_required %} needs-republish{% endif %}"{% if a.republish_required %} title="{% translate 'Edited since publication — re-publish required' %}"{% endif %}>{{ a.get_state_display }}</span>
+        </td>
+        <td>
+          {% if a.review_status != 'none' %}<span class="badge review-{{ a.review_status }}">{{ a.get_review_status_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td>{{ a.summary|default:"—" }}</td>
+        <td>{{ a.modified_at|date:"Y-m-d H:i" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">No advisories match the current filters.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if has_prev or has_next %}
+    <p class="pager">
+      {% if has_prev %}<a href="?{% for k, v in filters.items %}{{ k }}={{ v }}&{% endfor %}page={{ page|add:'-1' }}">‹ Prev</a>{% endif %}
+      <span>page {{ page }}</span>
+      {% if has_next %}<a href="?{% for k, v in filters.items %}{{ k }}={{ v }}&{% endfor %}page={{ page|add:'1' }}">Next ›</a>{% endif %}
+    </p>
+  {% endif %}
+{% endblock %}

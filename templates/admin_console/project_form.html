@@ -1,0 +1,25 @@
+{% extends "admin_console/_admin_base.html" %}
+{% block title %}Admin Console — {% if project %}Edit project{% else %}New project{% endif %}{% endblock %}
+{% block admin_section %}projects{% endblock %}
+{% block admin_content %}
+  <h1>{% if project %}Edit project: {{ project.name }}{% else %}New project{% endif %}</h1>
+  <p><a href="{% url 'admin_console:project_list' %}">&larr; Projects</a></p>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <table class="form">
+      {% for field in form %}
+        <tr>
+          <th><label for="{{ field.id_for_label }}">{{ field.label }}</label></th>
+          <td>
+            {{ field }}
+            {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+            {{ field.errors }}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    <button type="submit">{% if project %}Save{% else %}Create{% endif %}</button>
+  </form>
+{% endblock %}

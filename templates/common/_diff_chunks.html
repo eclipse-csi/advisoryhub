@@ -1,0 +1,37 @@
+{# Renders a list of diff chunks from common.text_diff.text_diff. #}
+<div class="history-diff" aria-label="Diff">
+  {% for chunk in chunks %}
+    {% if chunk.kind == "equal" %}
+      {% if chunk.lines %}
+        <div class="diff-block diff-block--equal">
+          {% for line in chunk.lines %}
+            <div class="diff-line diff-line--equal"><span class="diff-gutter">&nbsp;</span><span class="diff-text">{{ line|default:" " }}</span></div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% elif chunk.kind == "insert" %}
+      <div class="diff-block diff-block--insert">
+        {% for line in chunk.lines %}
+          <div class="diff-line diff-line--insert"><span class="diff-gutter" aria-hidden="true">+</span><ins>{{ line|default:" " }}</ins></div>
+        {% endfor %}
+      </div>
+    {% elif chunk.kind == "delete" %}
+      <div class="diff-block diff-block--delete">
+        {% for line in chunk.lines %}
+          <div class="diff-line diff-line--delete"><span class="diff-gutter" aria-hidden="true">&minus;</span><del>{{ line|default:" " }}</del></div>
+        {% endfor %}
+      </div>
+    {% elif chunk.kind == "replace" %}
+      <div class="diff-block diff-block--replace">
+        {% for pair in chunk.pairs %}
+          {% if pair.before_runs %}
+            <div class="diff-line diff-line--delete"><span class="diff-gutter" aria-hidden="true">&minus;</span><span class="diff-text">{% for run in pair.before_runs %}{% if run.op == "delete" %}<del>{{ run.text }}</del>{% else %}{{ run.text }}{% endif %}{% endfor %}</span></div>
+          {% endif %}
+          {% if pair.after_runs %}
+            <div class="diff-line diff-line--insert"><span class="diff-gutter" aria-hidden="true">+</span><span class="diff-text">{% for run in pair.after_runs %}{% if run.op == "insert" %}<ins>{{ run.text }}</ins>{% else %}{{ run.text }}{% endif %}{% endfor %}</span></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>

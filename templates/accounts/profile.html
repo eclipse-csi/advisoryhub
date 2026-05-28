@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Your profile{% endblock %}
+{% block content %}
+  <h1>Profile</h1>
+  <dl>
+    <dt>Email</dt><dd>{{ user.email }}</dd>
+    <dt>Name</dt><dd>{{ user.display_name|default:"—" }}</dd>
+    <dt>Groups</dt>
+    <dd>
+      <ul>
+        {% for g in user.groups.all %}<li>{{ g.name }}</li>{% empty %}<li>(none)</li>{% endfor %}
+      </ul>
+    </dd>
+    <dt>Global admin</dt><dd>{{ user.is_global_admin|yesno:"yes,no" }}</dd>
+  </dl>
+{% endblock %}

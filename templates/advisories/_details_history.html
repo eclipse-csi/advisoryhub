@@ -1,0 +1,40 @@
+{% load comment_filters %}
+<dialog id="details-history-drawer" class="drawer drawer--right" aria-label="Description history">
+  <header class="drawer__header">
+    <h2>Description history</h2>
+    <form method="dialog">
+      <button class="drawer__close" type="submit" aria-label="Close history">&times;</button>
+    </form>
+  </header>
+
+  <div class="drawer__body">
+    {% if not entries or entries|length == 1 and not next_cursor %}
+      <p class="empty">No edits to the description yet.</p>
+    {% else %}
+      <div class="history-versions">
+        {% include "common/_history_page.html" %}
+      </div>
+    {% endif %}
+  </div>
+</dialog>
+
+<script>
+  (function () {
+    var dlg = document.getElementById('details-history-drawer');
+    if (!dlg) return;
+    if (typeof dlg.showModal === 'function') {
+      dlg.showModal();
+    } else {
+      dlg.setAttribute('open', 'open');
+    }
+    // Close when the user clicks on the backdrop (outside the dialog box).
+    dlg.addEventListener('click', function (event) {
+      if (event.target === dlg) dlg.close();
+    });
+    // Clear the host on close so reopening fetches a fresh partial.
+    dlg.addEventListener('close', function () {
+      var host = document.getElementById('details-history-host');
+      if (host) host.innerHTML = '';
+    });
+  })();
+</script>

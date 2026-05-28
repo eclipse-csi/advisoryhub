@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n user_display %}
+
+{% block title %}{% translate "Vulnerability report triage" %} — AdvisoryHub{% endblock %}
+
+{% block content %}
+<section class="triage-list">
+  <h1>{% translate "Pending vulnerability reports" %}</h1>
+
+  {% if is_admin %}
+    <p class="muted">
+      {% if show_unsorted %}
+        <a href="{% url 'intake:triage_list' %}">{% translate "Show all" %}</a>
+      {% else %}
+        <a href="{% url 'intake:triage_list' %}?only_unsorted=1">{% translate "Show unsorted only" %}</a>
+      {% endif %}
+      ·
+      {% if show_flagged %}
+        <a href="{% url 'intake:triage_list' %}">{% translate "Show all" %}</a>
+      {% else %}
+        <a href="{% url 'intake:triage_list' %}?flagged=1">{% blocktranslate count counter=flagged_total %}Show flagged ({{ counter }}){% plural %}Show flagged ({{ counter }}){% endblocktranslate %}</a>
+      {% endif %}
+    </p>
+  {% endif %}
+
+  {% if reports %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>{% translate "Submitted" %}</th>
+          <th>{% translate "Project" %}</th>
+          <th>{% translate "Summary" %}</th>
+          <th>{% translate "Reporter" %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in reports %}
+        <tr data-href="{% url 'intake:triage_detail' r.id %}">
+          <td><a href="{% url 'intake:triage_detail' r.id %}">{{ r.created_at|date:"Y-m-d H:i" }}</a></td>
+          <td>{% if r.project %}{{ r.project.slug }}{% else %}<em>{% translate "unsorted" %}</em>{% endif %}</td>
+          <td>{{ r.summary }}</td>
+          <td>{% if r.reporter_user %}{% user_chip r.reporter_user %}{% elif r.reporter_email %}{{ r.reporter_email }}{% else %}<em>{% translate "anonymous" %}</em>{% endif %}</td>
+          <td>{% if r.needs_admin_routing %}<span class="badge badge-warning">{% translate "Flagged for admin review" %}</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>{% translate "No reports awaiting triage." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

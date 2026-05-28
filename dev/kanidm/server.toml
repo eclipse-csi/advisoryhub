@@ -1,0 +1,24 @@
+# Kanidm dev-bundle config.
+#
+# This file exists purely to give the AdvisoryHub dev environment a
+# real OIDC provider so the mozilla-django-oidc code path is exercised
+# end-to-end (instead of bypassed by force_login).
+#
+# Cert/key generation, admin recovery, and OAuth2 client seeding are
+# all handled by dev/kanidm/setup.sh — nothing in this file references
+# them. Keep this minimal so kanidm version bumps don't break us on
+# unknown / removed config keys.
+
+version = "2"
+bindaddress = "[::]:8443"
+domain = "localhost"
+origin = "https://localhost:8443"
+
+# Self-signed cert/key written by setup.sh into the persistent volume.
+tls_chain = "/data/chain.pem"
+tls_key = "/data/key.pem"
+
+# DB lives in the persistent volume.
+db_path = "/data/kanidm.db"
+
+log_level = "info"

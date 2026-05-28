@@ -1,0 +1,175 @@
+# AdvisoryHub local-dev compose file.
+#
+# This file is dev-only. Production deploys do NOT use it — they
+# inject env vars through their own platform (Kubernetes Secrets,
+# Docker Swarm secrets, AWS SSM Parameter Store, …). Therefore the
+# values below are intentionally hard-coded with dev-fixture
+# credentials; nothing in this file is sensitive.
+#
+# First-run flow:
+#
+#   docker compose up -d kanidm
+#   bash dev/kanidm/setup.sh           # mints the OIDC client secret
+#   docker compose up                  # web + worker pick it up
+#
+# After that, plain `docker compose up` is enough.
+
+x-django-env: &django-env
+  # ---- Django ----
+  DJANGO_SECRET_KEY: dev-only-not-a-real-secret
+  DJANGO_DEBUG: "True"
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,web
+  DJANGO_TIME_ZONE: UTC
+  # ---- Database & broker ----
+  DATABASE_URL: postgres://advisoryhub:advisoryhub@postgres:5432/advisoryhub
+  CELERY_BROKER_URL: redis://valkey:6379/0
+  CELERY_RESULT_BACKEND: redis://valkey:6379/1
+  CACHE_URL: redis://valkey:6379/2
+  CELERY_TASK_ALWAYS_EAGER: "False"
+  # ---- Email (console backend in dev) ----
+  EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+  DEFAULT_FROM_EMAIL: AdvisoryHub <noreply@example.org>
+  # ---- OIDC (defaults match dev/kanidm/setup.sh) ----
+  # OIDC_RP_CLIENT_ID and OIDC_RP_CLIENT_SECRET are written by the
+  # bootstrap script into dev/kanidm/.env.kanidm; that file is loaded
+  # below via env_file (with required:false so first-time `docker
+  # compose up` doesn't fail before kanidm is bootstrapped).
+  # Browser-facing endpoint (the user is redirected here):
+  # /ui/oauth2 is kanidm's web flow that drives login+consent. The
+  # back-end /oauth2/authorise endpoint requires a Bearer token and
+  # is NOT what we want here.
+  OIDC_OP_AUTHORIZATION_ENDPOINT: https://localhost:8443/ui/oauth2
+  # Server-to-server endpoints — the web container talks to kanidm by
+  # service name on the docker network.
+  OIDC_OP_TOKEN_ENDPOINT: https://kanidm:8443/oauth2/token
+  OIDC_OP_USER_ENDPOINT: https://kanidm:8443/oauth2/openid/advisoryhub/userinfo
+  OIDC_OP_JWKS_ENDPOINT: https://kanidm:8443/oauth2/openid/advisoryhub/public_key.jwk
+  # Browser-facing logout endpoint. Kanidm 1.10.x does NOT advertise an
+  # OIDC `end_session_endpoint` (RP-initiated logout per the spec), so we
+  # point at its UI session-termination route. It ignores standard OIDC
+  # params (`id_token_hint`, `post_logout_redirect_uri`) and redirects to
+  # the kanidm UI on success — that's fine for dev; the SSO cookie is
+  # killed, which is what stops the silent re-auth after sign-out.
+  # In prod, set this to the real OP's OIDC end_session_endpoint.
+  OIDC_OP_LOGOUT_ENDPOINT: https://localhost:8443/ui/logout
+  OIDC_RP_SIGN_ALGO: ES256
+  OIDC_VERIFY_SSL: "False"           # self-signed kanidm cert in dev
+  OIDC_GROUP_CLAIM: groups
+  OIDC_ADMIN_GROUP: advisoryhub-security
+  # ---- Operability (looser in dev) ----
+  LOG_FORMAT: plain                   # "json" in production
+  LOG_LEVEL: INFO
+  RATELIMIT_ENABLE: "False"
+  STEP_UP_REQUIRED: "False"
+  STEP_UP_MAX_AGE_SECONDS: "300"
+  READYZ_INCLUDE_PUB_REPO: "False"
+  SENTRY_DSN: ""                      # disabled in dev
+  # ---- Publication (Phase D) — empty in dev unless you wire it up ----
+  PUB_REPO_URL: ""
+  PUB_REPO_BRANCH: main
+  PUB_REPO_AUTH: ssh
+  PUB_REPO_SSH_KEY_PATH: ""
+  PUB_REPO_TOKEN: ""
+  PUB_COMMIT_AUTHOR_NAME: AdvisoryHub Bot
+  PUB_COMMIT_AUTHOR_EMAIL: advisoryhub-bot@example.org
+  PUB_OSV_PATH_TEMPLATE: osv/{advisory_id}.json
+  PUB_CSAF_PATH_TEMPLATE: csaf/{advisory_id}.json
+  # ---- GHSA integration (off by default in dev) ----
+  # Flip GHSA_FEATURE_ENABLED to True after registering a sandbox GitHub
+  # App and installing it on one or more test repos. The App private key
+  # is the only sensitive credential here — never commit it; mount it as
+  # a file or paste it (only for short-lived dev experiments).
+  GHSA_FEATURE_ENABLED: "False"
+  GITHUB_APP_ID: "0"
+  GITHUB_APP_PRIVATE_KEY_PATH: ""
+  GITHUB_APP_PRIVATE_KEY: ""
+  GITHUB_APP_WEBHOOK_SECRET: ""
+  GITHUB_APP_API_BASE_URL: https://api.github.com
+  PMI_API_BASE_URL: https://projects.eclipse.org/api
+  PMI_API_TOKEN: ""
+  PMI_SYNC_INTERVAL_HOURS: "6"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: advisoryhub
+      POSTGRES_PASSWORD: advisoryhub
+      POSTGRES_DB: advisoryhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U advisoryhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ------------------------------------------------------------------
+  # Dev-only OIDC provider. See dev/kanidm/README.md.
+  # Run `bash dev/kanidm/setup.sh` once after the container is up to
+  # generate the TLS cert, recover admin, and seed users + OAuth2 client.
+  # ------------------------------------------------------------------
+  kanidm:
+    image: kanidm/server:latest
+    ports:
+      - "8443:8443"
+    volumes:
+      - kanidm-data:/data
+      - ./dev/kanidm/server.toml:/data/server.toml:ro
+    environment:
+      KANIDM_DOMAIN: localhost
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -fsk https://localhost:8443/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    environment: *django-env
+    env_file:
+      # OIDC_RP_CLIENT_ID / OIDC_RP_CLIENT_SECRET written by
+      # dev/kanidm/setup.sh. required:false → compose tolerates the
+      # file's absence on a brand-new clone, before bootstrap runs.
+      - path: ./dev/kanidm/.env.kanidm
+        required: false
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  worker:
+    build: .
+    command: celery -A config worker -l info
+    environment: *django-env
+    env_file:
+      - path: ./dev/kanidm/.env.kanidm
+        required: false
+    depends_on:
+      - postgres
+      - valkey
+    volumes:
+      - .:/app
+
+volumes:
+  pgdata:
+  kanidm-data:

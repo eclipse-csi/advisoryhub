@@ -1,0 +1,161 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}Admin Console — {{ target_user.display_name|default:target_user.email }}{% endblock %}
+{% block admin_section %}users{% endblock %}
+{% block admin_content %}
+  <header class="advisory-detail__header">
+    <h1>{{ target_user.display_name|default:target_user.email }}</h1>
+    <p><a href="{% url 'admin_console:user_list' %}">&larr; {% translate "All users" %}</a></p>
+  </header>
+
+  <section>
+    <h2>{% translate "Account" %}</h2>
+    <dl>
+      <dt>{% translate "Email" %}</dt><dd>{{ target_user.email }}</dd>
+      <dt>{% translate "Display name" %}</dt><dd>{{ target_user.display_name|default:"—" }}</dd>
+      <dt>{% translate "First / last name" %}</dt><dd>{{ target_user.first_name|default:"—" }} {{ target_user.last_name|default:"" }}</dd>
+      <dt>{% translate "Last login" %}</dt><dd>{% if target_user.last_login %}{{ target_user.last_login|date:"Y-m-d H:i" }}{% else %}{% translate "never" %}{% endif %}</dd>
+      <dt>{% translate "Date joined" %}</dt><dd>{{ target_user.date_joined|date:"Y-m-d H:i" }}</dd>
+      <dt>{% translate "OIDC subject" %}</dt><dd><code>{{ target_user.oidc_subject|default:"—" }}</code></dd>
+      <dt>{% translate "Admin" %}</dt><dd>{% if is_admin %}<strong>{% translate "yes — global admin" %}</strong>{% else %}—{% endif %}</dd>
+    </dl>
+  </section>
+
+  {% if is_admin %}
+    <section class="banner">
+      <p><strong>{% translate "Global admin." %}</strong>
+        {% translate "Has owner permission on every advisory (rendered as owner-via-admin on advisory pages); the per-advisory tables below show only direct/group grants and do not enumerate every advisory." %}</p>
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>{% translate "Groups" %}</h2>
+    {% if groups %}
+      <ul class="chips">
+        {% for g in groups %}
+          <li><a href="{% url 'admin_console:group_detail' g.pk %}">{{ g.name }}</a></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>{% translate "Not a member of any group." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Project security teams" %}</h2>
+    <p class="muted">{% translate "Membership here confers owner on every advisory of these projects (INV-AUTH-3 — owner is derived, never granted)." %}</p>
+    {% if secured_projects %}
+      <table>
+        <thead><tr><th>{% translate "Project" %}</th><th>{% translate "Slug" %}</th><th>{% translate "Via group" %}</th><th>{% translate "Mature publisher" %}</th></tr></thead>
+        <tbody>
+          {% for p in secured_projects %}
+            <tr>
+              <td>{{ p.name }}</td>
+              <td>{{ p.slug }}</td>
+              <td><code>{{ p.security_team.name }}</code></td>
+              <td>{{ p.is_mature_publisher|yesno:"yes,no" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>{% translate "Not on any project security team." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Direct advisory grants" %}</h2>
+    {% if direct_grants %}
+      <table>
+        <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Project" %}</th><th>{% translate "Permission" %}</th></tr></thead>
+        <tbody>
+          {% for grant in direct_grants %}
+            <tr>
+              <td><a href="{% url 'advisories:detail' grant.advisory.advisory_id %}">{{ grant.advisory.advisory_id }}</a></td>
+              <td>{{ grant.advisory.project.slug }}</td>
+              <td>{{ grant.permission }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>{% translate "No direct grants." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Group-inherited grants" %}</h2>
+    {% if inherited_groups %}
+      {% for bucket in inherited_groups %}
+        <h3>{% blocktranslate with name=bucket.group.name %}Via group {{ name }}{% endblocktranslate %}</h3>
+        <table>
+          <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Project" %}</th><th>{% translate "Permission" %}</th></tr></thead>
+          <tbody>
+            {% for grant in bucket.grants %}
+              <tr>
+                <td><a href="{% url 'advisories:detail' grant.advisory.advisory_id %}">{{ grant.advisory.advisory_id }}</a></td>
+                <td>{{ grant.advisory.project.slug }}</td>
+                <td>{{ grant.permission }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
+    {% else %}
+      <p>{% translate "No group-inherited grants." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Pending invitations" %}</h2>
+    <p class="muted">{% translate "Invitations sent to this user's email (case-insensitive). Each becomes a real grant on next login." %}</p>
+    {% if pending_invitations %}
+      <table>
+        <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Project" %}</th><th>{% translate "Permission" %}</th><th>{% translate "Expires" %}</th></tr></thead>
+        <tbody>
+          {% for inv in pending_invitations %}
+            <tr>
+              <td><a href="{% url 'advisories:detail' inv.advisory.advisory_id %}">{{ inv.advisory.advisory_id }}</a></td>
+              <td>{{ inv.advisory.project.slug }}</td>
+              <td>{{ inv.permission }}</td>
+              <td>{{ inv.expires_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>{% translate "No pending invitations." %}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>{% translate "Notification preferences" %}</h2>
+    {% if global_prefs %}
+      <h3>{% translate "Global" %}</h3>
+      <dl>
+        <dt>{% translate "On advisory created (security-team projects)" %}</dt><dd>{{ global_prefs.on_advisory_created|yesno:"on,off" }}</dd>
+        <dt>{% translate "On advisory submitted for review" %}</dt><dd>{{ global_prefs.on_advisory_submitted_for_review|yesno:"on,off" }}</dd>
+        <dt>{% translate "On advisory published" %}</dt><dd>{{ global_prefs.on_advisory_published|yesno:"on,off" }}</dd>
+        <dt>{% translate "On publication export status" %}</dt><dd>{{ global_prefs.on_publication_export_status|yesno:"on,off" }}</dd>
+        <dt>{% translate "Comments" %}</dt><dd>{{ global_prefs.get_comments_level_display }}</dd>
+      </dl>
+    {% else %}
+      <p>{% translate "Using defaults (no global row provisioned yet)." %}</p>
+    {% endif %}
+
+    <h3>{% translate "Per-advisory overrides" %}</h3>
+    {% if advisory_pref_overrides_count %}
+      <p>{% blocktranslate count counter=advisory_pref_overrides_count %}{{ counter }} advisory has an override.{% plural %}{{ counter }} advisories have overrides.{% endblocktranslate %}</p>
+      <ul>
+        {% for override in advisory_pref_overrides_preview %}
+          <li><a href="{% url 'advisories:detail' override.advisory.advisory_id %}">{{ override.advisory.advisory_id }}</a></li>
+        {% endfor %}
+      </ul>
+      {% if advisory_pref_overrides_count > advisory_pref_overrides_preview|length %}
+        <p class="muted">{% blocktranslate with shown=advisory_pref_overrides_preview|length total=advisory_pref_overrides_count %}Showing {{ shown }} of {{ total }}.{% endblocktranslate %}</p>
+      {% endif %}
+    {% else %}
+      <p>{% translate "No per-advisory overrides." %}</p>
+    {% endif %}
+  </section>
+{% endblock %}

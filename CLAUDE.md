@@ -137,7 +137,10 @@ Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-au
 
 ## Commit policy
 
-When creating commits in this repository, every AI-generated commit MUST include this Git trailer in the commit message footer:
+When creating commits in this repository, every rules bellow must be respected: 
+
+- Every commit must be signed (`-S`) and singed-off-by (`-s`).
+- Every AI-generated commit MUST include this Git trailer in the commit message footer:
 
 ```text
 Assisted-by: <AGENT_NAME>:<MODEL_VERSION>

@@ -74,6 +74,9 @@ class Action(models.TextChoices):
     GHSA_WEBHOOK_RECEIVED = "ghsa.webhook_received"
     GHSA_WEBHOOK_REJECTED = "ghsa.webhook_rejected"
     PMI_PROJECT_REPOS_SYNCED = "pmi.project_repos_synced"
+    # Site-wide maintenance mode toggle (admin console). See INV-MAINT-1.
+    MAINTENANCE_ENABLED = "maintenance.enabled"
+    MAINTENANCE_DISABLED = "maintenance.disabled"
     # Triage flow (current). The intake form creates an Advisory(state=triage)
     # rather than a separate report row. Old REPORT_* values below remain in
     # the enum so existing audit rows stay readable; new code emits the

@@ -2559,3 +2559,70 @@ dialog.drawer--right {
   line-height: 1.25;
   min-height: 1.6em;
 }
+
+/* ------------------------------------------------------------ maintenance mode */
+
+/* Full-bleed banner above the topbar content area. Backgrounds use tokens that
+   carry dark-theme overrides; the paused-variant TEXT color is set explicitly
+   per theme below (the dark warn-soft surface needs a lighter amber to meet
+   WCAG AA contrast). */
+.maintenance-banner {
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+.maintenance-banner__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+}
+.maintenance-banner .adv-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+.maintenance-banner__text { min-width: 0; }
+.maintenance-banner__msg {
+  display: block;
+  margin-top: 0.15rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.maintenance-banner a { font-weight: 600; text-decoration: underline; }
+
+/* Paused users get the loud warning treatment; admins get a calmer accent
+   strip (they keep working, it's just a reminder the site is paused). */
+.maintenance-banner--paused {
+  background: var(--warn-soft);
+  border-color: #f3d9a3;
+  color: #7a4900;
+}
+.maintenance-banner--paused .adv-icon,
+.maintenance-banner--paused a { color: #7a4900; }
+.maintenance-banner--admin {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+
+/* Dark theme: --warn-soft becomes a very dark amber (#3a2a0a), on which the
+   light-theme #7a4900 text fails AA. Use a light amber for adequate contrast. */
+:root[data-theme="dark"] .maintenance-banner--paused {
+  border-color: #5a4416;
+  color: #ffcb6b;
+}
+:root[data-theme="dark"] .maintenance-banner--paused .adv-icon,
+:root[data-theme="dark"] .maintenance-banner--paused a {
+  color: #ffcb6b;
+}
+
+/* Disabled action controls under maintenance (set by advisoryhub-maintenance.js).
+   Mirrors the native :disabled button styling for anchors/links that can't use
+   the disabled attribute. */
+.is-maintenance-disabled {
+  cursor: not-allowed !important;
+  opacity: 0.55;
+  pointer-events: none;
+}

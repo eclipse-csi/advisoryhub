@@ -62,6 +62,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-AUTH-5](#inv-auth-5) | Triage advisories are owner-only for edit / publish / CVE / comment. | Authorization | Critical |
 | [INV-AUTH-6](#inv-auth-6) | Admin-routing-flagged advisories are editable only by global admins. | Authorization | High |
 | [INV-AUTH-7](#inv-auth-7) | Publication state grants no implicit read access inside AdvisoryHub. | Authorization | Critical |
+| [INV-MAINT-1](#inv-maint-1) | While maintenance mode is on, only global admins may mutate state; everyone else is paused server-side. | Maintenance | Critical |
 | [INV-AUDIT-1](#inv-audit-1) | The audit log is append-only at both the application layer and the database. | Audit | Critical |
 | [INV-AUDIT-2](#inv-audit-2) | All user/CI-supplied strings are redacted before reaching audit / errors / notifications. | Audit | Critical |
 | [INV-AUDIT-3](#inv-audit-3) | Every governance action is recorded in the audit log. | Audit | High |
@@ -537,6 +538,44 @@ leak to unauthenticated users.
 
 ---
 
+<a id="inv-maint-1"></a>
+### INV-MAINT-1 — Maintenance mode pauses everyone but admins, server-side   [Critical]
+
+**Statement.** When `MaintenanceMode.is_enabled` is true, every request that would
+mutate state (any non-`GET`/`HEAD`/`OPTIONS`/`TRACE` method) from a non-admin is
+refused with `503` before reaching the view. Members of `settings.OIDC_ADMIN_GROUP`
+are exempt and keep working normally. The banner and disabled buttons are
+display-only — they never *grant* or *withhold* access.
+
+**Rationale.** A maintenance pause is an authorization decision: it must hold against
+a crafted `POST`, an HTMX action, and the JSON API — not just hidden buttons. Hiding
+a button is not security (see [INV-AUTH-1](#inv-auth-1)); the middleware is the
+authority.
+
+**Enforced in.**
+- `common/middleware.py` — `MaintenanceModeMiddleware` blocks unsafe methods for
+  non-admins. Exempt prefixes: auth plumbing (`/oidc/`) and probes/assets so anyone
+  can still sign in/out and an admin can lift the pause, plus the HMAC-authenticated
+  GHSA webhook (`/ghsa/webhook/`) — machine traffic GitHub stops retrying, so it is
+  still received (and recorded) rather than dropped. `/django-admin/` is deliberately
+  *not* exempt, so a stale `is_staff` session cannot mutate data there while paused.
+- `admin_console/models.py` — `MaintenanceMode` singleton (`pk=1`). Enforcement reads
+  the authoritative uncached `is_paused()` (coherent across workers); the banner reads
+  the cached `current()` snapshot. `advisories.permissions.is_global_admin` is the
+  exemption predicate.
+- `common/context_processors.py` + `templates/base.html` + `static/advisoryhub-maintenance.js`
+  — display only.
+
+**Violation impact.** A paused (or anonymous) user mutates state during maintenance —
+files a report, edits, publishes — defeating the pause and risking writes against an
+inconsistent backend mid-maintenance.
+
+**Tests.** `admin_console/test_maintenance.py`.
+
+**Related.** [INV-AUTH-1](#inv-auth-1), [INV-OIDC-2](#inv-oidc-2), [INV-AUDIT-3](#inv-audit-3).
+
+---
+
 ## 4. Audit trail integrity
 
 <a id="inv-audit-1"></a>
@@ -599,7 +638,8 @@ downstream surface that an operator might inspect or that might be forwarded.
 **Statement.** Every governance-relevant action emits exactly one `AuditLogEntry`:
 advisory state changes, access grant / revoke / invitation events, comment
 create / edit / redact, CVE-request transitions, review decisions, publication
-attempts (success and failure), OIDC group sync changes, and intake transitions.
+attempts (success and failure), OIDC group sync changes, intake transitions, and
+site-wide maintenance toggles.
 
 **Rationale.** Compliance and forensics rely on a complete record. Missing entries
 make incident investigation guesswork.

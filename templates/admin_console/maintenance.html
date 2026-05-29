@@ -1,0 +1,47 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Admin Console — Maintenance mode" %}{% endblock %}
+{% block admin_section %}maintenance{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "Maintenance mode" %}</h1>
+
+  <p class="muted">
+    {% blocktranslate %}When maintenance mode is ON, only admins can act. Every other
+    user — including anonymous vulnerability reporters — is paused: their action
+    buttons are disabled and the server refuses any write. A banner with the message
+    below is shown to impacted users.{% endblocktranslate %}
+  </p>
+
+  <p>
+    {% if maintenance.is_enabled %}
+      <span class="badge state-published">{% translate "Currently ON" %}</span>
+      {% if maintenance.updated_by %}
+        {% blocktranslate with who=maintenance.updated_by.display_label time=maintenance.updated_at %}Enabled by {{ who }} at {{ time }}.{% endblocktranslate %}
+      {% endif %}
+    {% else %}
+      <span class="badge state-draft">{% translate "Currently OFF" %}</span>
+    {% endif %}
+  </p>
+
+  {# This form is itself a write, but admins are exempt from the maintenance gate,
+     so it stays usable precisely when it is needed most — to turn the pause off. #}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <table class="form">
+      {% for field in form %}
+        <tr>
+          <th><label for="{{ field.id_for_label }}">{{ field.label }}</label></th>
+          <td>
+            {{ field }}
+            {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+            {{ field.errors }}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    <button type="submit" class="{% if maintenance.is_enabled %}danger{% else %}warning{% endif %}">
+      {% if maintenance.is_enabled %}{% translate "Update / turn off" %}{% else %}{% translate "Save" %}{% endif %}
+    </button>
+  </form>
+{% endblock %}

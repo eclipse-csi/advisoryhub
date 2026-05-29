@@ -27,9 +27,10 @@
   <script src="{% static 'advisoryhub-theme.js' %}" defer></script>
   <script src="{% static 'advisoryhub-form-dirty.js' %}" defer></script>
   <script src="{% static 'advisoryhub-row-link.js' %}" defer></script>
+  <script src="{% static 'advisoryhub-maintenance.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body{% if maintenance_mode.paused %} data-maintenance-paused{% endif %}>
 <header class="topbar">
   <a class="brand" href="{% url 'advisories:list' %}">AdvisoryHub</a>
   <nav>
@@ -51,12 +52,30 @@
       {% if user.is_global_admin %}<a href="{% url 'admin_console:index' %}">{% translate "Admin Console" %}</a>{% endif %}
       <a href="{% url 'notifications:preferences' %}">{% translate "Notifications" %}</a>
       <a href="{% url 'accounts:profile' %}">{% user_chip user %}</a>
-      <form method="post" action="{% url 'oidc_logout' %}" class="inline">{% csrf_token %}<button type="submit">{% translate "Sign out" %}</button></form>
+      <form method="post" action="{% url 'oidc_logout' %}" class="inline" data-maintenance-allow>{% csrf_token %}<button type="submit">{% translate "Sign out" %}</button></form>
     {% else %}
       <a href="{% url 'oidc_authentication_init' %}">{% translate "Sign in" %}</a>
     {% endif %}
   </nav>
 </header>
+{% if maintenance_mode.is_enabled %}
+  <div class="maintenance-banner {% if maintenance_mode.is_admin %}maintenance-banner--admin{% else %}maintenance-banner--paused{% endif %}" role="status" aria-live="polite">
+    <div class="maintenance-banner__inner container">
+      <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div class="maintenance-banner__text">
+        {% if maintenance_mode.is_admin %}
+          <strong>{% translate "Maintenance mode is ON." %}</strong>
+          {% translate "Regular users are paused — only admins can act." %}
+          {% if maintenance_mode.message %}<span class="maintenance-banner__msg">{{ maintenance_mode.message }}</span>{% endif %}
+          <a href="{% url 'admin_console:maintenance' %}">{% translate "Manage" %}</a>
+        {% else %}
+          <strong>{% translate "Maintenance in progress." %}</strong>
+          {% if maintenance_mode.message %}<span class="maintenance-banner__msg">{{ maintenance_mode.message }}</span>{% else %}<span class="maintenance-banner__msg">{% translate "Actions are temporarily paused. Please check back soon." %}</span>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endif %}
 <main class="container">
   {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
   {% block content %}{% endblock %}

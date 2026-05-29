@@ -5,6 +5,22 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """Reset the default cache around every test.
+
+    The DB is rolled back per test, but the cache is not — and the
+    maintenance-mode snapshot (and rate-limit counters) live there. Clearing
+    keeps a test that enables maintenance from leaking an "on" snapshot into
+    the next test, and gives rate-limit tests fresh counters.
+    """
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def admin_group(db, settings):
     from django.contrib.auth.models import Group

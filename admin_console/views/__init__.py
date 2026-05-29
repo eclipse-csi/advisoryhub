@@ -10,6 +10,7 @@ from .cves import (
 )
 from .groups import group_detail, group_list
 from .inbox import inbox
+from .maintenance import maintenance
 from .projects import project_create, project_edit, project_list
 from .publications import publications
 from .users import user_detail, user_list
@@ -27,6 +28,7 @@ __all__ = [
     "group_list",
     "index",
     "inbox",
+    "maintenance",
     "orphan_mark_rejected",
     "orphan_reassignment_resolve",
     "project_create",

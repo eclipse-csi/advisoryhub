@@ -3,7 +3,7 @@ name = "advisoryhub"
 version = "0.1.0"
 description = "Eclipse Foundation security advisory authoring, review, and publication system"
 readme = "README.md"
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "Django>=5.2,<5.3",
     "psycopg[binary]>=3.2",
@@ -65,7 +65,12 @@ filterwarnings = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+# Deliberately one notch below the 3.14 runtime. ruff's py314 *formatter* strips
+# the parentheses from `except (A, B):` (PEP 758) — a 3.14-only spelling that
+# reads like the old Python-2 `except A, B` idiom and is an easy misread.
+# Targeting py313 stops the formatter from introducing it; no lint (UP) gains are
+# lost (there are none for this codebase at py314). mypy/ty still target 3.14.
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "DJ"]
@@ -93,7 +98,7 @@ omit = [
 ]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 plugins = ["mypy_django_plugin.main"]
 files = [
     "accounts", "access", "advisories", "api", "audit", "comments",
@@ -127,7 +132,7 @@ fail_under = 80
 # false positives; silence that rule so the remaining categories stay
 # actionable. Revisit (and consider promoting to blocking) as ty matures.
 [tool.ty.environment]
-python-version = "3.12"
+python-version = "3.14"
 
 [tool.ty.src]
 exclude = [

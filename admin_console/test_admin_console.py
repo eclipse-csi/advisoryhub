@@ -12,10 +12,22 @@ from django.utils import timezone as dj_tz
 
 from advisories.models import Advisory, AdvisoryIntakeMetadata, State
 from audit.models import Action, AuditLogEntry
+from audit.retention import _audit_trigger_bypass
 from publication.models import PublicationTask, PublicationTaskStatus
 from workflows import services as wf
 
 SECTIONS = ["index", "cves", "publications", "audit", "project_list"]
+
+
+def _backdate(entry, when):
+    """Set an audit entry's created_at for the date-filter tests.
+
+    The append-only Postgres trigger forbids UPDATE on audit_auditlogentry, so
+    lower session_replication_role for this one write (no-op on SQLite). Same
+    escape hatch production code uses (audit.retention).
+    """
+    with _audit_trigger_bypass():
+        AuditLogEntry.objects.filter(pk=entry.pk).update(created_at=when)
 
 
 @pytest.fixture
@@ -459,15 +471,9 @@ def test_audit_page_filters_by_date_range_inclusive_until(client, setup):
     outside_after = AuditLogEntry.objects.create(
         actor=setup["admin"], action=Action.ADVISORY_DISMISSED
     )
-    AuditLogEntry.objects.filter(pk=inside.pk).update(
-        created_at=datetime(2026, 5, 23, 12, 0, tzinfo=UTC)
-    )
-    AuditLogEntry.objects.filter(pk=outside_before.pk).update(
-        created_at=datetime(2026, 4, 30, 23, 0, tzinfo=UTC)
-    )
-    AuditLogEntry.objects.filter(pk=outside_after.pk).update(
-        created_at=datetime(2026, 5, 24, 0, 30, tzinfo=UTC)
-    )
+    _backdate(inside, datetime(2026, 5, 23, 12, 0, tzinfo=UTC))
+    _backdate(outside_before, datetime(2026, 4, 30, 23, 0, tzinfo=UTC))
+    _backdate(outside_after, datetime(2026, 5, 24, 0, 30, tzinfo=UTC))
     client.force_login(setup["admin"])
     table = _audit_table(
         client.get(
@@ -494,7 +500,7 @@ def test_audit_page_preset_24h_filters_old_entries(client, setup):
     AuditLogEntry.objects.create(actor=setup["admin"], action=Action.ADVISORY_CREATED)
     old = AuditLogEntry.objects.create(actor=setup["admin"], action=Action.ADVISORY_EDITED)
     # The recent entry keeps its auto-now timestamp; force `old` two days ago.
-    AuditLogEntry.objects.filter(pk=old.pk).update(created_at=dj_tz.now() - timedelta(days=2))
+    _backdate(old, dj_tz.now() - timedelta(days=2))
     client.force_login(setup["admin"])
     table = _audit_table(
         client.get(reverse("admin_console:audit") + "?preset=24h").content.decode()
@@ -515,7 +521,7 @@ def test_audit_page_invalid_preset_is_ignored(client, setup):
 @pytest.mark.django_db
 def test_audit_page_explicit_since_overrides_preset(client, setup):
     week_old = AuditLogEntry.objects.create(actor=setup["admin"], action=Action.ADVISORY_CREATED)
-    AuditLogEntry.objects.filter(pk=week_old.pk).update(created_at=dj_tz.now() - timedelta(days=5))
+    _backdate(week_old, dj_tz.now() - timedelta(days=5))
     client.force_login(setup["admin"])
     # preset=24h would hide a 5-day-old entry; explicit since=very-old must keep it.
     long_ago = (dj_tz.now() - timedelta(days=30)).date().isoformat()

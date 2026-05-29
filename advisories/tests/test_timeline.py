@@ -13,6 +13,7 @@ from access.services import grant_to_user
 from advisories import timeline as tl
 from advisories.models import Advisory, State
 from audit.models import Action, AuditLogEntry
+from audit.retention import _audit_trigger_bypass
 from audit.services import record
 from comments import services as comment_services
 from comments.models import AdvisoryComment
@@ -165,9 +166,7 @@ def test_events_for_advisory_returns_chronological_order(setup):
         new_value={"state": "published"},
     )
     # Force `older` to be older than `newer` regardless of creation order.
-    AuditLogEntry.objects.filter(pk=older.pk).update(
-        created_at=newer.created_at - timedelta(minutes=5)
-    )
+    _backdate_audit(older, newer.created_at - timedelta(minutes=5))
     events = list(tl.events_for_advisory(setup["advisory"], viewer=setup["owner"]))
     assert [e.pk for e in events] == [older.pk, newer.pk]
 
@@ -701,10 +700,10 @@ def test_advisory_timeline_interleaves_comments_and_events(setup):
     c2 = comment_services.add_comment(advisory, author=owner, body="second comment")
 
     # Backdate to enforce a deterministic ordering: e1 < c1 < e2 < c2.
-    AuditLogEntry.objects.filter(pk=e1.pk).update(created_at=t0 + timedelta(seconds=1))
-    AdvisoryComment.objects.filter(pk=c1.pk).update(created_at=t0 + timedelta(seconds=2))
-    AuditLogEntry.objects.filter(pk=e2.pk).update(created_at=t0 + timedelta(seconds=3))
-    AdvisoryComment.objects.filter(pk=c2.pk).update(created_at=t0 + timedelta(seconds=4))
+    _backdate_audit(e1, t0 + timedelta(seconds=1))
+    _backdate_comment(c1, t0 + timedelta(seconds=2))
+    _backdate_audit(e2, t0 + timedelta(seconds=3))
+    _backdate_comment(c2, t0 + timedelta(seconds=4))
 
     items = comment_services.advisory_timeline(advisory, viewer=owner)
     kinds = [i["kind"] for i in items]
@@ -723,8 +722,8 @@ def test_advisory_timeline_breaks_ties_with_comment_first(setup):
     same = timezone.now()
     c = comment_services.add_comment(advisory, author=owner, body="hi")
     e = record(action=Action.ADVISORY_CREATED, actor=owner, advisory=advisory)
-    AdvisoryComment.objects.filter(pk=c.pk).update(created_at=same)
-    AuditLogEntry.objects.filter(pk=e.pk).update(created_at=same)
+    _backdate_comment(c, same)
+    _backdate_audit(e, same)
 
     items = comment_services.advisory_timeline(advisory, viewer=owner)
     assert [i["kind"] for i in items] == ["comment", "event"]
@@ -802,11 +801,16 @@ def test_timeline_view_rejects_outsider(client, setup, make_user):
 
 
 def _backdate_audit(entry, when):
-    AuditLogEntry.objects.filter(pk=entry.pk).update(created_at=when)
+    # The append-only Postgres trigger forbids UPDATE on audit_auditlogentry;
+    # lower session_replication_role for this one backdating write (no-op on
+    # SQLite). Same escape hatch production code uses (audit.retention).
+    with _audit_trigger_bypass():
+        AuditLogEntry.objects.filter(pk=entry.pk).update(created_at=when)
 
 
 def _backdate_comment(comment, when):
-    AdvisoryComment.objects.filter(pk=comment.pk).update(created_at=when)
+    with _audit_trigger_bypass():
+        AdvisoryComment.objects.filter(pk=comment.pk).update(created_at=when)
 
 
 def _emit_edited(advisory, *, actor, version, at):

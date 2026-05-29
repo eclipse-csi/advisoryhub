@@ -553,8 +553,9 @@ the requirements are:
    `tempfile.TemporaryDirectory()` per attempt
    ([INV-PUB-1](./invariant.md#inv-pub-1)), shallow
    ([INV-PUB-3](./invariant.md#inv-pub-3)). Files land at the
-   configured templates (default `osv/{advisory_id}.json` and
-   `csaf/{advisory_id}.json`).
+   configured templates (default `osv/{year}/{advisory_id}.json` and
+   `csaf/{year}/{advisory_id}.json`, bucketed by the advisory's
+   first-publication year).
 5. The commit is created with the configured author (no GPG signing
    — the deploy key/token is the trust signal) and pushed to the
    configured branch.

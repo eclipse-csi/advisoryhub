@@ -46,8 +46,10 @@ env = environ.Env(
     PUB_REPO_TOKEN=(str, ""),
     PUB_COMMIT_AUTHOR_NAME=(str, "AdvisoryHub Bot"),
     PUB_COMMIT_AUTHOR_EMAIL=(str, "advisoryhub-bot@example.org"),
-    PUB_OSV_PATH_TEMPLATE=(str, "osv/{advisory_id}.json"),
-    PUB_CSAF_PATH_TEMPLATE=(str, "csaf/{advisory_id}.json"),
+    # OSV/CSAF files are bucketed by the advisory's publication year.
+    # Placeholders: {advisory_id}, {year} (the year of first publication).
+    PUB_OSV_PATH_TEMPLATE=(str, "osv/{year}/{advisory_id}.json"),
+    PUB_CSAF_PATH_TEMPLATE=(str, "csaf/{year}/{advisory_id}.json"),
     # CVE Record export (only for advisories with an EF-assigned CVE).
     # Default path mirrors the official CVEProject/cvelistV5 layout:
     # ``cves/<year>/<thousands>xxx/<CVE-id>.json``.

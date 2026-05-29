@@ -603,8 +603,10 @@ construct absolute URLs in notification bodies.
 (default `main`), `PUB_REPO_AUTH` (`ssh`|`token`),
 `PUB_REPO_SSH_KEY_PATH`, `PUB_REPO_TOKEN`,
 `PUB_COMMIT_AUTHOR_NAME`, `PUB_COMMIT_AUTHOR_EMAIL`,
-`PUB_OSV_PATH_TEMPLATE` (default `osv/{advisory_id}.json`),
-`PUB_CSAF_PATH_TEMPLATE` (default `csaf/{advisory_id}.json`).
+`PUB_OSV_PATH_TEMPLATE` (default `osv/{year}/{advisory_id}.json`),
+`PUB_CSAF_PATH_TEMPLATE` (default `csaf/{year}/{advisory_id}.json`)
+— bucketed by the advisory's publication year (`{year}` = year of first
+publication; the advisory id carries no year of its own).
 
 **GHSA / GitHub App / PMI.** `GHSA_FEATURE_ENABLED` (default False),
 `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH` (preferred in prod),

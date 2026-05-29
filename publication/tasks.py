@@ -95,8 +95,17 @@ def run_publication(self, task_id: int) -> str:
         # 2. Persist generated documents to PublicationArtifact (the
         # single source of truth for what we pushed). The pinned
         # AdvisoryVersion provides the immutable input payload.
-        osv_path = config.osv_path(task.advisory.advisory_id)
-        csaf_path = config.csaf_path(task.advisory.advisory_id)
+        # OSV/CSAF files are bucketed by the advisory's publication year.
+        # The advisory id is intentionally opaque (no year inside it), so the
+        # bucket comes from ``published_at`` — set once, on the first
+        # successful publish (INV-LIFECYCLE-3). On that first run it is still
+        # ``None`` here (it is set in step 4, after the push), so we fall back
+        # to "now": the same calendar year ``published_at`` is about to be
+        # stamped with. On every later re-publish ``published_at`` is already
+        # set, so the path stays stable and never moves between buckets.
+        pub_year = (task.advisory.published_at or timezone.now()).year
+        osv_path = config.osv_path(task.advisory.advisory_id, pub_year)
+        csaf_path = config.csaf_path(task.advisory.advisory_id, pub_year)
         PublicationArtifact.objects.update_or_create(
             task=task,
             kind=PublicationArtifact.Kind.OSV,

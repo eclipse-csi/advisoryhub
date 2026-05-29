@@ -102,8 +102,8 @@ def setup(make_user, make_project, settings, tmp_path):
     settings.PUB_REPO_TOKEN = ""
     settings.PUB_COMMIT_AUTHOR_NAME = "AdvisoryHub Test"
     settings.PUB_COMMIT_AUTHOR_EMAIL = "bot@example.org"
-    settings.PUB_OSV_PATH_TEMPLATE = "osv/{advisory_id}.json"
-    settings.PUB_CSAF_PATH_TEMPLATE = "csaf/{advisory_id}.json"
+    settings.PUB_OSV_PATH_TEMPLATE = "osv/{year}/{advisory_id}.json"
+    settings.PUB_CSAF_PATH_TEMPLATE = "csaf/{year}/{advisory_id}.json"
     settings.PUB_CVE_PATH_TEMPLATE = "cves/{year}/{bucket}/{cve_id}.json"
     settings.PUB_CVE_ASSIGNER_ORG_ID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
     settings.PUB_CVE_ASSIGNER_SHORT_NAME = "eclipse"
@@ -213,11 +213,12 @@ def test_run_publication_writes_files_and_flips_state(setup):
     assert setup["advisory"].state == State.PUBLISHED
     assert setup["advisory"].published_at is not None
 
-    # Verify file content reached the bare repo
+    # Verify file content reached the bare repo, bucketed by publication year.
+    year = setup["advisory"].published_at.year
     verify = setup["tmp_path"] / "verify"
     Repo.clone_from(str(setup["bare_repo"]), str(verify), branch="main")
-    osv_file = verify / "osv" / "ECL-cccc-ffff-gggg.json"
-    csaf_file = verify / "csaf" / "ECL-cccc-ffff-gggg.json"
+    osv_file = verify / "osv" / str(year) / "ECL-cccc-ffff-gggg.json"
+    csaf_file = verify / "csaf" / str(year) / "ECL-cccc-ffff-gggg.json"
     assert osv_file.exists()
     assert csaf_file.exists()
     assert "ECL-cccc-ffff-gggg" in osv_file.read_text()
@@ -402,6 +403,15 @@ def test_edit_after_publish_marks_republish_required_and_new_commit_on_republish
     assert setup["advisory"].republish_required is False
     assert setup["advisory"].state == State.PUBLISHED
 
+    # Re-publishing must not move the file to a different year bucket: the
+    # path is pinned to the (immutable) first-publication year, so a re-export
+    # overwrites the same file rather than orphaning the original.
+    def _osv_path(task):
+        return PublicationArtifact.objects.get(task=task, kind=PublicationArtifact.Kind.OSV).path
+
+    year = setup["advisory"].published_at.year
+    assert _osv_path(t1) == _osv_path(t2) == f"osv/{year}/ECL-cccc-ffff-gggg.json"
+
 
 # ---- Artifacts persisted -----------------------------------------------
 
@@ -410,10 +420,13 @@ def test_edit_after_publish_marks_republish_required_and_new_commit_on_republish
 def test_artifacts_persisted_on_success(setup):
     task = pub_services.publish(setup["advisory"], by=setup["admin"])
     pub_tasks.run_publication(task.pk)
+    setup["advisory"].refresh_from_db()
+    year = setup["advisory"].published_at.year
     artifacts = {a.kind: a for a in PublicationArtifact.objects.filter(task=task)}
     assert PublicationArtifact.Kind.OSV in artifacts
     assert PublicationArtifact.Kind.CSAF in artifacts
-    assert artifacts[PublicationArtifact.Kind.OSV].path == "osv/ECL-cccc-ffff-gggg.json"
+    assert artifacts[PublicationArtifact.Kind.OSV].path == f"osv/{year}/ECL-cccc-ffff-gggg.json"
+    assert artifacts[PublicationArtifact.Kind.CSAF].path == f"csaf/{year}/ECL-cccc-ffff-gggg.json"
 
 
 # ---- CVE export ----------------------------------------------------------

@@ -51,11 +51,11 @@ class RepoConfig:
     cve_assigner_org_id: str
     cve_assigner_short_name: str
 
-    def osv_path(self, advisory_id: str) -> str:
-        return self.osv_path_template.format(advisory_id=advisory_id)
+    def osv_path(self, advisory_id: str, year: int | str) -> str:
+        return self.osv_path_template.format(advisory_id=advisory_id, year=year)
 
-    def csaf_path(self, advisory_id: str) -> str:
-        return self.csaf_path_template.format(advisory_id=advisory_id)
+    def csaf_path(self, advisory_id: str, year: int | str) -> str:
+        return self.csaf_path_template.format(advisory_id=advisory_id, year=year)
 
     def cve_path(self, cve_id: str) -> str:
         year, bucket = _cve_path_parts(cve_id)

@@ -108,8 +108,8 @@ class PublicationRepositoryConfig(models.Model):
     token = models.CharField(max_length=512, blank=True)
     commit_author_name = models.CharField(max_length=200)
     commit_author_email = models.EmailField()
-    osv_path_template = models.CharField(max_length=255, default="osv/{advisory_id}.json")
-    csaf_path_template = models.CharField(max_length=255, default="csaf/{advisory_id}.json")
+    osv_path_template = models.CharField(max_length=255, default="osv/{year}/{advisory_id}.json")
+    csaf_path_template = models.CharField(max_length=255, default="csaf/{year}/{advisory_id}.json")
     cve_path_template = models.CharField(
         max_length=255, default="cves/{year}/{bucket}/{cve_id}.json"
     )

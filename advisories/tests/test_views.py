@@ -536,6 +536,21 @@ def test_detail_shows_request_cve_button_when_available(client, member_a, projec
 
 
 @pytest.mark.django_db
+def test_detail_hides_request_cve_button_from_collaborator(client, member_a, project_a, make_user):
+    """Requesting a CVE is owner-only; a collaborator must not see the button.
+    Regression for advisoryhub--002."""
+    from access.models import Permission as AccessPermission
+    from access.services import grant_to_user
+
+    advisory = Advisory.objects.create(project=project_a, summary="x", created_by=member_a)
+    collaborator = make_user(email="collab-view@example.org")
+    grant_to_user(advisory, collaborator, AccessPermission.COLLABORATOR, by=member_a)
+    client.force_login(collaborator)
+    response = client.get(reverse("advisories:detail", args=[advisory.advisory_id]))
+    assert "Request a CVE Number" not in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_detail_shows_pending_label_when_request_open(client, member_a, project_a):
     from workflows import services as wf
 

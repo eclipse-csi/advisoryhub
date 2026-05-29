@@ -227,6 +227,11 @@ def _cve_request_state(user, advisory: Advisory) -> str:
         return "banned"
     if advisory.cve_requests.filter(status=CveRequestStatus.QUEUED).exists():
         return "pending"
+    # Requesting a CVE is owner-only (see permissions.can_request_cve). A
+    # collaborator may edit the advisory but must not initiate the request,
+    # so they get no actionable button even when no blocking state applies.
+    if not perms.can_request_cve(user, advisory):
+        return "not_allowed"
     return "available"
 
 

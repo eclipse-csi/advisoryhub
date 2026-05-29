@@ -39,7 +39,11 @@ from .models import (
 
 @transaction.atomic
 def request_cve(advisory: Advisory, *, by) -> CveRequestTask:
-    if not perms.can_edit(by, advisory):
+    # Requesting a CVE is owner-only. Gate on the dedicated predicate, not the
+    # generic can_edit (which also admits collaborators) — see INV-AUTH-1 and
+    # advisories/permissions.can_request_cve. The banned/assigned/queued guards
+    # below are kept as belt-and-braces (can_request_cve already covers them).
+    if not perms.can_request_cve(by, advisory):
         raise PermissionDenied("You cannot request a CVE for this advisory.")
     if advisory.cve_requests_banned:
         raise PermissionDenied("CVE requests are disabled for this advisory.")

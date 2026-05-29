@@ -362,9 +362,9 @@ def reopen_advisory(advisory: Advisory, *, by) -> Advisory:
         ):
             latest_cve_task = locked.cve_requests.order_by("-created_at").first()
             if latest_cve_task is not None and latest_cve_task.status == CveRequestStatus.CANCELLED:
-                # request_cve re-checks ``can_edit``; reopen has already
-                # flipped state to draft and the reopener is owner-or-admin
-                # by ``can_reopen``, so the gate passes.
+                # request_cve re-checks ``can_request_cve`` (owner-only); reopen
+                # has already flipped state to draft and the reopener is
+                # owner-or-admin by ``can_reopen``, so the gate passes.
                 request_cve(locked, by=by)
                 cve_request_restored = True
 

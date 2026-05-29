@@ -249,6 +249,20 @@ def test_request_cve_endpoint_blocked_for_outsider(client, setup):
 
 
 @pytest.mark.django_db
+def test_request_cve_endpoint_blocked_for_collaborator(client, setup, make_user):
+    """A collaborator can edit but must not request a CVE over HTTP — owner-only.
+    Regression for advisoryhub--002."""
+    from access.models import Permission as AccessPermission
+    from access.services import grant_to_user
+
+    collaborator = make_user(email="collab@example.org")
+    grant_to_user(setup["advisory"], collaborator, AccessPermission.COLLABORATOR, by=setup["admin"])
+    client.force_login(collaborator)
+    response = client.post(reverse("advisories:request_cve", args=[setup["advisory"].advisory_id]))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
 def test_request_cve_endpoint_creates_task(client, setup):
     client.force_login(setup["member"])
     response = client.post(reverse("advisories:request_cve", args=[setup["advisory"].advisory_id]))

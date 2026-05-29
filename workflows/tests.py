@@ -45,6 +45,19 @@ def test_request_cve_blocked_for_outsider(setup):
 
 
 @pytest.mark.django_db
+def test_request_cve_blocked_for_collaborator(setup, make_user):
+    """A per-advisory collaborator (can_edit) must not request a CVE — that is
+    an owner-only action (can_request_cve). Regression for advisoryhub--002."""
+    from access.models import Permission as AccessPermission
+    from access.services import grant_to_user
+
+    collaborator = make_user(email="collab@example.org")
+    grant_to_user(setup["advisory"], collaborator, AccessPermission.COLLABORATOR, by=setup["admin"])
+    with pytest.raises(PermissionDenied):
+        wf.request_cve(setup["advisory"], by=collaborator)
+
+
+@pytest.mark.django_db
 def test_cve_transition_only_admin(setup):
     task = wf.request_cve(setup["advisory"], by=setup["member"])
     with pytest.raises(PermissionDenied):

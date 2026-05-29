@@ -94,6 +94,37 @@ def test_inbox_lists_cve_request_in_merged_feed(client, setup):
 
 
 @pytest.mark.django_db
+def test_inbox_cve_row_links_to_cve_queue_not_advisory(client, setup):
+    """The CVE-assignment row deep-links to the CVE queue (where assigning a
+    CVE actually happens), not the advisory detail page where admins can't."""
+    from workflows.models import CveRequestStatus, CveRequestTask
+
+    wf.request_cve(setup["advisory"], by=setup["member"])
+    task = CveRequestTask.objects.get(advisory=setup["advisory"], status=CveRequestStatus.QUEUED)
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index"))
+    item = next(i for i in response.context["page"].object_list if i.kind == "cve")
+    assert item.url == reverse("admin_console:cves") + f"#cve-task-{task.pk}"
+
+
+@pytest.mark.django_db
+def test_inbox_failed_publication_row_links_to_publication_queue(client, setup):
+    """The failed-publication row deep-links to the publication queue (where
+    Retry lives), not the advisory detail page."""
+    task = PublicationTask.objects.create(
+        advisory=setup["advisory"],
+        version=setup["advisory"].versions.get(version=1),
+        enqueued_by=setup["admin"],
+        status=PublicationTaskStatus.FAILED,
+        last_error="boom",
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index"))
+    item = next(i for i in response.context["page"].object_list if i.kind == "pub_failed")
+    assert item.url == reverse("admin_console:publications") + f"#pub-task-{task.pk}"
+
+
+@pytest.mark.django_db
 def test_inbox_orders_items_by_age_desc(client, setup):
     # Older CVE request, newer review submission. CVE is created first
     # because submit_for_review locks editing; the resulting review row

@@ -96,7 +96,9 @@ def _cve_items(see_more_url: str) -> list[InboxItem]:
             title=t.advisory.advisory_id,
             subtitle=t.advisory.project.slug,
             age_dt=t.created_at,
-            url=reverse("advisories:detail", args=[t.advisory.advisory_id]),
+            # CVE assignment is admin-only and happens on the CVE queue, not on
+            # the advisory detail page — deep-link straight to this task's row.
+            url=f"{see_more_url}#cve-task-{t.pk}",
             see_more_url=see_more_url,
         )
         for t in qs
@@ -140,7 +142,9 @@ def _publication_items(see_more_url: str) -> list[InboxItem]:
             title=t.advisory.advisory_id,
             subtitle=_truncate(t.last_error, 80),
             age_dt=t.finished_at or t.created_at,
-            url=reverse("advisories:detail", args=[t.advisory.advisory_id]),
+            # Retry of a failed export lives on the publication queue, not on
+            # the advisory detail page — deep-link straight to this task's row.
+            url=f"{see_more_url}#pub-task-{t.pk}",
             see_more_url=see_more_url,
         )
         for t in qs

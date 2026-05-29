@@ -30,7 +30,7 @@
       <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Failed" %}</th><th>{% translate "Last error" %}</th><th></th></tr></thead>
       <tbody>
         {% for t in failed_publications %}
-          <tr data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
+          <tr id="pub-task-{{ t.pk }}" data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
             <td><a href="{% url 'advisories:detail' t.advisory.advisory_id %}">{{ t.advisory.advisory_id }}</a></td>
             <td>{{ t.finished_at|date:"Y-m-d H:i" }}</td>
             <td><code>{{ t.last_error|truncatechars:120 }}</code></td>

@@ -71,6 +71,22 @@ python manage.py prune_audit / forget_user            # in audit/management/comm
 celery -A config worker -l info
 ```
 
+### Sanity checks (prek)
+
+`.pre-commit-config.yaml` runs the lint/format/type/Django gates above via [prek](https://github.com/j178/prek) (the Rust pre-commit drop-in). Hooks shell out through `uv run --no-sync --python .venv …`, so they use the exact `uv.lock`-pinned tools CI runs — no second place to bump versions.
+
+```sh
+uv sync --extra dev      # provides the ruff / mypy the hooks call
+uv tool install prek     # or: pipx install prek / cargo install prek
+prek install             # installs BOTH the pre-commit and pre-push hooks
+
+prek run --all-files                          # commit stage: hygiene + ruff
+prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
+prek run --all-files --hook-stage manual      # advisory ty (mirrors CI's ty job)
+```
+
+Commit stage = file hygiene + `ruff check --fix` + `ruff format`; push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored assets (`static/htmx.*`, `publication/schemas/*.upstream.json`) are excluded.
+
 ## Load-bearing rules
 
 Full catalog with stable IDs, severity tiers, and enforcement file paths in [`docs/specification/invariant.md`](docs/specification/invariant.md). Cite `INV-*` IDs in commits, PRs, and code comments. The rules that shape almost every change in this codebase:
@@ -137,9 +153,10 @@ Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-au
 
 ## Commit policy
 
-When creating commits in this repository, every rules bellow must be respected: 
+When creating commits in this repository, every rules bellow must be respected:
 
 - Every commit must be signed (`-S`) and singed-off-by (`-s`).
+- Every commit messages must follow the Conventional Commits specification.
 - Every AI-generated commit MUST include this Git trailer in the commit message footer:
 
 ```text

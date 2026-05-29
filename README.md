@@ -95,6 +95,35 @@ Default test DB is SQLite (fast); CI also runs Postgres via
 triggers. Testing strategy, conventions, and the dual-database setup are
 documented in [`architecture.md §9`](docs/specification/architecture.md).
 
+## Code quality
+
+Lint, format, type, and Django checks run locally through
+[prek](https://github.com/j178/prek) — the fast Rust reimplementation of
+pre-commit — from [`.pre-commit-config.yaml`](.pre-commit-config.yaml). The
+hooks invoke the Python tools out of the project venv, so they run the exact
+versions pinned in `uv.lock`: what passes locally is what CI runs.
+
+```sh
+uv sync --extra dev        # install the pinned ruff / mypy the hooks call
+uv tool install prek       # or: pipx install prek / cargo install prek
+prek install               # wire up the pre-commit AND pre-push git hooks
+```
+
+Once installed the hooks fire automatically:
+
+- **on commit** — file hygiene (trailing whitespace, end-of-file, merge
+  markers, private-key detection, …) plus `ruff check --fix` and `ruff format`.
+- **on push** — additionally `mypy` (+ django-stubs), `manage.py
+  makemigrations --check`, and `manage.py check`.
+
+Run them on demand any time:
+
+```sh
+prek run --all-files                          # commit-stage checks
+prek run --all-files --hook-stage pre-push    #   + type & Django checks
+prek run --all-files --hook-stage manual      # advisory `ty` type-check
+```
+
 ## Out of scope
 
 - No public anonymous website — that lives in the consumer publication

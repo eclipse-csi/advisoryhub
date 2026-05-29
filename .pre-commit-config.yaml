@@ -1,0 +1,118 @@
+# Sanity checks for AdvisoryHub, run by prek — the fast Rust reimplementation
+# of pre-commit (https://github.com/j178/prek). The file format is pre-commit
+# compatible, so plain `pre-commit` works against it too.
+#
+# One-time setup:
+#   uv sync --extra dev      # install the pinned ruff / mypy these hooks call
+#   uv tool install prek     # or: pipx install prek  /  cargo install prek
+#   prek install             # wire up BOTH the pre-commit and pre-push git hooks
+#
+# Run by hand:
+#   prek run --all-files                          # commit stage: hygiene + ruff
+#   prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
+#   prek run --all-files --hook-stage manual      # advisory ty type-check
+#
+# Why `uv run --no-sync --python .venv`: the Python tools (ruff, mypy, Django)
+# run out of the project venv, so the EXACT versions pinned in uv.lock execute —
+# the same ones CI runs — with no second place to bump them. `--no-sync` keeps a
+# hook side-effect-free (never mutates the venv mid-commit); `--python .venv`
+# pins the interpreter so uv stays quiet about the host Python. Run
+# `uv sync --extra dev` first if a hook reports a tool is missing.
+
+minimum_pre_commit_version: "3.2.0"
+default_install_hook_types: [pre-commit, pre-push]
+
+# Vendored / upstream-verbatim assets stay byte-identical to upstream, so no
+# hook (least of all the whitespace fixers) may rewrite them.
+exclude: '^(static/htmx\.min\.js|static/htmx\.VERSION|publication/schemas/.*\.upstream\.json)$'
+
+repos:
+  # ---- Generic file hygiene (fast; every commit) ----------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Keep intentional Markdown hard line breaks (trailing double-space).
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: debug-statements
+      - id: detect-private-key
+        # AdvisoryHub legitimately contains PRIVATE KEY markers: the audit
+        # redaction regex (audit/services.py) and the GHSA-secret redaction
+        # tests/fixtures. Those are not real secrets — exclude them so the guard
+        # stays useful for every other path.
+        exclude: '^(audit/services\.py|audit/test_redact_ghsa_secrets\.py|ghsa/tests/conftest\.py)$'
+
+  # ---- Lint & format (ruff) — every commit ----------------------------------
+  # Local hooks so the ruff pinned in uv.lock runs (local == CI) with no ruff
+  # version duplicated in this file. `--fix` auto-applies safe fixes (incl.
+  # import sorting); a fix or reformat fails the run so you re-stage the result.
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (lint + import sort, autofix)
+        entry: uv run --no-sync --python .venv ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --no-sync --python .venv ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+
+  # ---- Type & Django checks (pre-push only — whole-project, slower) ---------
+  # Run when pushing, mirroring the enforced CI gates. pass_filenames is false:
+  # each command analyses the whole project, not the changed files.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy + django-stubs (type check)
+        entry: env DJANGO_SETTINGS_MODULE=config.settings.test uv run --no-sync --python .venv mypy
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: django-makemigrations-check
+        name: django makemigrations --check (no missing migrations)
+        entry: env DJANGO_SETTINGS_MODULE=config.settings.test uv run --no-sync --python .venv python manage.py makemigrations --check --dry-run
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: django-check
+        name: django system check
+        entry: env DJANGO_SETTINGS_MODULE=config.settings.test uv run --no-sync --python .venv python manage.py check
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+  # ---- Advisory type check (ty) — manual only, never blocks -----------------
+  # Mirrors CI's advisory `ty` job. ty has no Django plugin yet (ORM attribute
+  # reports are false positives, already silenced in pyproject), so it runs only
+  # on demand: `prek run --all-files --hook-stage manual`.
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check (advisory, mirrors CI)
+        # `uv tool run` == `uvx` (CI uses uvx); the longer form needs only `uv`
+        # on PATH. ty is preview + Django-unaware, so diagnostics are advisory:
+        # a non-zero exit here is informational, never a gate.
+        entry: uv tool run ty check --python .venv
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [manual]

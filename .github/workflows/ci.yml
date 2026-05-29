@@ -8,16 +8,19 @@ on:
 permissions:
   contents: read
 
+# Toolchain + commands are defined once in mise.toml and invoked here via
+# `mise run <task>`, so dev and CI run identical command bodies. jdx/mise-action
+# installs the [tools] (uv + prek), trusts the config, and caches the tool
+# binaries; actions/cache covers uv's wheel cache and the CPython it downloads.
+# Python comes from .python-version (3.14.2) — dev = CI = prod, no UV_PYTHON.
+
 jobs:
   test:
-    name: Tests (Python ${{ matrix.python-version }} / ${{ matrix.db }})
+    name: Tests (${{ matrix.db }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # Floor of requires-python (>=3.12). Dev runs 3.13 (.python-version);
-        # CI deliberately validates the minimum supported version.
-        python-version: ["3.12"]
         db: [postgres, sqlite]
 
     services:
@@ -37,21 +40,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+      - uses: jdx/mise-action@v4
+
+      - name: Cache uv (wheels + managed Python)
+        uses: actions/cache@v4
         with:
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv/python
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', '.python-version') }}
 
       - name: Install
-        # --locked installs exactly the resolved uv.lock and fails if the lock
-        # has drifted from pyproject.toml (run `uv lock` to refresh).
-        run: uv sync --locked --extra dev
+        # mise run sync == `uv sync --locked --extra dev`. --locked fails if the
+        # lock has drifted from pyproject.toml (run `uv lock` to refresh). uv
+        # provisions CPython from .python-version (3.14.2).
+        run: mise run sync
 
       - name: Lint
-        run: |
-          uv run ruff check .
-          uv run ruff format --check .
+        run: mise run lint
 
       - name: Configure git for Phase D tests
         run: |
@@ -65,69 +71,80 @@ jobs:
         if: matrix.db == 'postgres'
         env:
           TEST_DATABASE_URL: postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub
-          DJANGO_SETTINGS_MODULE: config.settings.test
-        run: uv run pytest -v --tb=short --cov --cov-report=term-missing
+        run: mise run test -- -v --tb=short --cov --cov-report=term-missing
 
       - name: Run tests (SQLite)
         if: matrix.db == 'sqlite'
-        env:
-          DJANGO_SETTINGS_MODULE: config.settings.test
-        run: uv run pytest -v --tb=short --cov --cov-report=term-missing
+        run: mise run test -- -v --tb=short --cov --cov-report=term-missing
 
   django-checks:
     name: Django checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache@v4
         with:
-          enable-cache: true
-          python-version: "3.12"
-      - run: uv sync --locked --extra dev
-      - run: DJANGO_SETTINGS_MODULE=config.settings.test uv run python manage.py check --deploy --fail-level WARNING || true
-      - run: DJANGO_SETTINGS_MODULE=config.settings.test uv run python manage.py makemigrations --check --dry-run
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv/python
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', '.python-version') }}
+      - run: mise run sync
+      # `check --deploy` surfaces hardening advice under the test settings; kept
+      # advisory (|| true), exactly as before. makemigrations-check is enforced.
+      - run: mise run check || true
+      - run: mise run makemigrations-check
 
   typecheck:
     name: Type check (mypy + django-stubs)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache@v4
         with:
-          enable-cache: true
-          python-version: "3.12"
-      - run: uv sync --locked --extra dev
-      - run: DJANGO_SETTINGS_MODULE=config.settings.test uv run mypy
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv/python
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', '.python-version') }}
+      - run: mise run sync
+      - run: mise run typecheck
 
   typecheck-ty:
     name: Type check (ty, advisory)
     runs-on: ubuntu-latest
-    # Advisory only: ty is preview and has no Django awareness yet, so it
-    # never fails the build. It runs alongside the enforced mypy gate to
-    # surface the categories it catches (config + rule tuning in pyproject).
+    # Advisory only: ty is preview and has no Django awareness yet, so it never
+    # fails the build. It runs alongside the enforced mypy gate to surface the
+    # categories it catches (config + rule tuning in pyproject).
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache@v4
         with:
-          enable-cache: true
-          python-version: "3.12"
-      - run: uv sync --locked --extra dev
-      # Run ty as an isolated tool (uvx) but resolve imports against the
-      # project venv that `uv sync` just populated.
-      - run: uvx ty check --python .venv
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv/python
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', '.python-version') }}
+      - run: mise run sync
+      # mise run ty == `uv tool run ty check --python .venv`: ty as an isolated
+      # tool, resolving imports against the project venv mise run sync populated.
+      - run: mise run ty
 
   security:
     name: Dependency audit (pip-audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache@v4
         with:
-          enable-cache: true
-          python-version: "3.12"
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv/python
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', '.python-version') }}
       # Sync only the runtime dependencies (no dev extra), then audit them. A
       # known vulnerability with an available fix fails the job; pin/upgrade the
       # offending package (or use `pip-audit --ignore-vuln <ID>` with a note).
-      - run: uv sync --locked
-      - run: uv run --with pip-audit pip-audit
+      - run: mise exec -- uv sync --locked
+      - run: mise run audit

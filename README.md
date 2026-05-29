@@ -7,7 +7,7 @@ publication Git repository whose own CI/CD renders the public website.
 AdvisoryHub itself is the **private** authoring/review/audit system —
 there is no public anonymous surface in this codebase.
 
-Stack: Python 3.12+, Django 5.2 LTS, PostgreSQL, Celery + Valkey,
+Stack: Python 3.14, Django 5.2 LTS, PostgreSQL, Celery + Valkey,
 mozilla-django-oidc, server-rendered templates with HTMX.
 
 ## Specifications
@@ -73,6 +73,24 @@ bash dev/kanidm/setup.sh
 docker compose up
 ```
 
+## With mise (optional)
+
+If you use [mise](https://mise.jdx.dev), it wraps the flows above so you don't
+have to remember the individual commands:
+
+```sh
+mise trust && mise run setup     # install uv + prek, sync the locked .venv, wire git hooks
+mise run kanidm-up               # start the dev OIDC provider
+mise run kanidm-setup            # one-time: cert, users, OAuth2 client
+mise run up                      # web + worker (full stack)
+mise run migrate && mise run seed
+```
+
+`mise tasks` lists them all (`test`, `test-pg`, `lint`, `fix`, `typecheck`, `ty`,
+`check`, `reset`, …). mise is a convenience wrapper only: tool versions live in
+`uv.lock`, the Python version in `.python-version`, and CI runs these same tasks —
+the raw `uv` / `docker compose` commands above stay canonical.
+
 ## Configuration
 
 `docker-compose.yml`'s `x-django-env` anchor is the canonical dev
@@ -104,8 +122,10 @@ hooks invoke the Python tools out of the project venv, so they run the exact
 versions pinned in `uv.lock`: what passes locally is what CI runs.
 
 ```sh
+mise run setup             # one-shot: installs uv+prek, syncs .venv, wires hooks
+# …or by hand:
 uv sync --extra dev        # install the pinned ruff / mypy the hooks call
-uv tool install prek       # or: pipx install prek / cargo install prek
+uv tool install prek       # or: pipx install prek / cargo install prek / mise install
 prek install               # wire up the pre-commit AND pre-push git hooks
 ```
 

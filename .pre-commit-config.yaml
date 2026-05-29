@@ -2,9 +2,9 @@
 # of pre-commit (https://github.com/j178/prek). The file format is pre-commit
 # compatible, so plain `pre-commit` works against it too.
 #
-# One-time setup:
+# One-time setup (or just `mise run setup`):
 #   uv sync --extra dev      # install the pinned ruff / mypy these hooks call
-#   uv tool install prek     # or: pipx install prek  /  cargo install prek
+#   uv tool install prek     # or: pipx install prek / cargo install prek / mise install
 #   prek install             # wire up BOTH the pre-commit and pre-push git hooks
 #
 # Run by hand:

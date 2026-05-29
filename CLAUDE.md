@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AdvisoryHub is a **private** Django application for authoring, reviewing, publishing, and auditing security advisories for Eclipse Foundation projects. Published advisories are exported to OSV+CSAF JSON and pushed to a separate publication Git repo whose own CI/CD renders the public website. There is no public anonymous surface in this codebase.
 
-Stack: Python 3.12+, Django 5.2 LTS, PostgreSQL (required in prod — append-only audit triggers and JSON queries are Postgres-specific), Celery + Valkey (Redis-wire compatible — `redis://` URLs work unchanged), mozilla-django-oidc, server-rendered templates with HTMX.
+Stack: Python 3.14, Django 5.2 LTS, PostgreSQL (required in prod — append-only audit triggers and JSON queries are Postgres-specific), Celery + Valkey (Redis-wire compatible — `redis://` URLs work unchanged), mozilla-django-oidc, server-rendered templates with HTMX.
 
 ## Specifications
 
@@ -37,6 +37,19 @@ docker compose down -v && docker compose up -d kanidm && bash dev/kanidm/setup.s
 ```
 
 Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/kanidm/setup.sh` to match `seed_demo`).
+
+### mise (optional task runner)
+
+[mise](https://mise.jdx.dev) wraps every command in this section. `mise trust && mise run setup` installs the bootstrap toolchain (uv + prek), syncs the locked dev env, and wires the git hooks; `mise tasks` lists them all. Each task is a thin 1:1 wrapper over the documented `uv run …` / `docker compose …` command, with `DJANGO_SETTINGS_MODULE` set per task:
+
+- `mise run up` / `down` / `reset` — docker dev stack (`reset` wipes volumes + re-bootstraps kanidm)
+- `mise run kanidm-up` / `kanidm-setup` — first-run OIDC bootstrap
+- `mise run migrate` / `seed` — schema + demo data
+- `mise run test` / `test-pg` — pytest (SQLite / Postgres); args pass through: `mise run test -- -k name path/`
+- `mise run lint` / `fix` / `typecheck` / `ty` — ruff + mypy + advisory ty
+- `mise run check` / `makemigrations-check` / `audit` — Django checks + pip-audit
+
+mise pins only the bootstrap `uv` + `prek` (in `mise.toml`); all dev tool versions stay in `uv.lock`, the Python version in `.python-version`. CI runs these same tasks. Raw `uv`/`docker compose` commands remain canonical.
 
 ### Tests
 
@@ -76,8 +89,10 @@ celery -A config worker -l info
 `.pre-commit-config.yaml` runs the lint/format/type/Django gates above via [prek](https://github.com/j178/prek) (the Rust pre-commit drop-in). Hooks shell out through `uv run --no-sync --python .venv …`, so they use the exact `uv.lock`-pinned tools CI runs — no second place to bump versions.
 
 ```sh
+mise run setup           # one-shot: installs uv+prek, syncs .venv, wires hooks
+# …or by hand:
 uv sync --extra dev      # provides the ruff / mypy the hooks call
-uv tool install prek     # or: pipx install prek / cargo install prek
+uv tool install prek     # or: pipx install prek / cargo install prek / mise install
 prek install             # installs BOTH the pre-commit and pre-push hooks
 
 prek run --all-files                          # commit stage: hygiene + ruff

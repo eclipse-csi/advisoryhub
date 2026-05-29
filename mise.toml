@@ -1,0 +1,115 @@
+# mise.toml — AdvisoryHub dev/CI convenience layer (https://mise.jdx.dev).
+#
+# Scope (deliberately thin): mise provides the *bootstrap* tools a contributor
+# would otherwise install by hand (uv + prek) and a task runner wrapping the
+# commands already documented in README.md / CLAUDE.md. CI runs the same tasks.
+#
+# SINGLE SOURCE OF TRUTH IS PRESERVED:
+#   * Python version            -> .python-version (3.14.2); uv reads it natively.
+#                                  No `python` in [tools]: one interpreter everywhere.
+#   * Dev tool versions         -> uv.lock (ruff/mypy/pytest/django-stubs/ty/…),
+#                                  invoked via `uv run` / `uv tool run`; NEVER here.
+#   * Runtime env (~68 vars)    -> docker-compose x-django-env anchor.
+#
+# First run: `mise trust && mise run setup`. Full PATH/venv auto-activation needs a
+# shell hook (`eval "$(mise activate <shell>)"`); without it, `mise run <task>` and
+# `mise exec` still load tools + env.
+
+[tools]
+uv   = "latest"   # resolves to aqua:astral-sh/uv
+prek = "latest"   # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wires git hooks
+# NO python here  -> .python-version + uv own the interpreter (3.14.2 everywhere).
+# NO ruff/mypy/pytest/ty here -> they live in uv.lock, run via `uv run`.
+
+[env]
+# Activate the venv that `uv sync` creates. create = false so mise never races uv
+# over .venv creation (the `sync`/`setup` task is the sole creator).
+_.python.venv = { path = ".venv", create = false }
+# DJANGO_SETTINGS_MODULE intentionally ABSENT (set per-task below): manage.py
+# defaults to config.settings.dev, tests/checks need config.settings.test.
+
+# ---- Onboarding (host) -----------------------------------------------------
+[tasks.sync]
+description = "Install the locked dev environment into .venv"
+run = "uv sync --locked --extra dev"
+
+[tasks.setup]
+description = "First-run dev setup: sync deps + wire prek git hooks"
+depends = ["sync"]
+run = "prek install"
+
+# ---- Quality gates (host; run uv.lock-pinned tools => local == CI) ---------
+[tasks.lint]
+description = "ruff lint + format check"
+run = ["uv run ruff check .", "uv run ruff format --check ."]
+
+[tasks.fix]
+description = "ruff autofix + format (writes changes)"
+run = ["uv run ruff check --fix .", "uv run ruff format ."]
+
+[tasks.typecheck]
+description = "mypy + django-stubs"
+env = { DJANGO_SETTINGS_MODULE = "config.settings.test" }
+run = "uv run mypy"
+
+[tasks.ty]
+description = "ty advisory type-check (mirrors CI; never blocks)"
+run = "uv tool run ty check --python .venv"
+
+[tasks.test]
+description = "pytest on SQLite. Extra args: `mise run test -- -k name path/`"
+env = { DJANGO_SETTINGS_MODULE = "config.settings.test" }
+run = "uv run pytest"
+
+[tasks.test-pg]
+description = "pytest against the compose Postgres (needs `mise run up`)"
+env = { DJANGO_SETTINGS_MODULE = "config.settings.test", TEST_DATABASE_URL = "postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub" }
+run = "uv run pytest"
+
+[tasks.check]
+description = "Django deploy system check"
+env = { DJANGO_SETTINGS_MODULE = "config.settings.test" }
+run = "uv run python manage.py check --deploy --fail-level WARNING"
+
+[tasks.makemigrations-check]
+description = "Fail if migrations are missing"
+env = { DJANGO_SETTINGS_MODULE = "config.settings.test" }
+run = "uv run python manage.py makemigrations --check --dry-run"
+
+[tasks.audit]
+description = "pip-audit on installed deps (mirrors CI security job)"
+run = "uv run --with pip-audit pip-audit"
+
+# ---- Docker dev stack (verbatim wrappers of the README flow) --------------
+[tasks.kanidm-up]
+description = "Start only the dev OIDC provider (kanidm)"
+run = "docker compose up -d kanidm"
+
+[tasks.kanidm-setup]
+description = "One-time kanidm bootstrap: cert, demo users, OAuth2 client"
+run = "bash dev/kanidm/setup.sh"
+
+[tasks.up]
+description = "Start the full dev stack (postgres, valkey, kanidm, web, worker)"
+run = "docker compose up"
+
+[tasks.down]
+description = "Stop the dev stack"
+run = "docker compose down"
+
+[tasks.reset]
+description = "Wipe volumes and re-bootstrap the dev stack (matches README)"
+run = [
+    "docker compose down -v",
+    "docker compose up -d kanidm",
+    "bash dev/kanidm/setup.sh",
+    "docker compose up",
+]
+
+[tasks.migrate]
+description = "Apply DB migrations inside the web container"
+run = "docker compose exec web python manage.py migrate"
+
+[tasks.seed]
+description = "Seed demo data + a local publish repo inside the web container"
+run = "docker compose exec web python manage.py seed_demo --with-publish-repo /tmp/advisoryhub-pub.git"

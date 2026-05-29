@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 
 from advisories.models import GHSA_READONLY_FIELDS, Advisory, GhsaState
-from advisories.validators import GHSA_ID_RE
+from advisories.validators import GHSA_ID_RE, is_safe_reference_url
 
 
 @dataclass
@@ -241,6 +241,12 @@ def _translate_references(payload: dict) -> list[dict]:
             continue
         if not url or url in seen:
             continue
+        # Drop references whose scheme isn't web-safe (javascript:, data:,
+        # …). The detail page renders each url as a live <a href>, and this
+        # import path persists via Advisory.save() without full_clean(), so
+        # the model validator never sees these — we must filter here.
+        if not is_safe_reference_url(url):
+            continue
         seen.add(url)
         if rtype not in {
             "ADVISORY",
@@ -259,7 +265,7 @@ def _translate_references(payload: dict) -> list[dict]:
         out.append({"type": rtype, "url": url})
     # Make the GHSA's own HTML URL discoverable as an ADVISORY reference.
     html_url = (payload.get("html_url") or "").strip()
-    if html_url and html_url not in seen:
+    if html_url and html_url not in seen and is_safe_reference_url(html_url):
         seen.add(html_url)
         out.append({"type": "ADVISORY", "url": html_url})
     return out

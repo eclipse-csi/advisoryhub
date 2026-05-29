@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 
 from .identifiers import ADVISORY_ID_RE
 
@@ -50,6 +51,32 @@ def validate_aliases(value: Any) -> None:
             )
 
 
+# References surface as a clickable <a href> on the advisory detail page
+# (templates/advisories/detail.html) and are exported to the public OSV/CSAF
+# site repo, so a ``javascript:`` / ``data:`` / ``vbscript:`` URL stored here
+# would be a stored-XSS vector. ``URLValidator`` restricts to the same web-safe
+# schemes (http/https/ftp/ftps) the ``ReferenceForm`` URLField already enforces.
+_REFERENCE_URL_VALIDATOR = URLValidator()
+
+
+def is_safe_reference_url(url: Any) -> bool:
+    """Return ``True`` iff ``url`` is a valid http/https/ftp(s) URL.
+
+    Shared by ``validate_references`` (which raises) and the GHSA translator
+    (which drops), so the scheme allow-list can never drift between the write
+    paths. The GHSA import path is the load-bearing caller: it persists via
+    ``Advisory.save()`` without ``full_clean()``, so the model validator below
+    never runs on imported references — the translator must filter them itself.
+    """
+    if not isinstance(url, str):
+        return False
+    try:
+        _REFERENCE_URL_VALIDATOR(url)
+    except ValidationError:
+        return False
+    return True
+
+
 def validate_references(value: Any) -> None:
     """OSV-style references: list of {type, url}."""
     if value is None:
@@ -75,6 +102,11 @@ def validate_references(value: Any) -> None:
         if "url" not in ref or not isinstance(ref["url"], str) or not ref["url"]:
             raise ValidationError(
                 "each reference needs a non-empty url.", code="invalid_references"
+            )
+        if not is_safe_reference_url(ref["url"]):
+            raise ValidationError(
+                "each reference url must be a valid http(s) URL.",
+                code="invalid_references",
             )
         rtype = ref.get("type", "WEB")
         if rtype not in allowed_types:

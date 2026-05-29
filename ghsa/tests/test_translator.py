@@ -81,6 +81,37 @@ def test_translator_translates_credits(make_project, ghsa_payload):
 
 
 @pytest.mark.django_db
+def test_translator_drops_unsafe_scheme_references(make_project, ghsa_payload):
+    # A repo-advisory author (or PVR reporter) can set a reference URL; the
+    # detail page renders it as a live <a href>, and this import path saves
+    # without full_clean(), so the translator itself must drop dangerous
+    # schemes. See reports/advisoryhub--001.md.
+    ghsa_payload = dict(
+        ghsa_payload,
+        references=[
+            "https://example.org/fix",
+            {"type": "WEB", "url": "javascript:alert(document.cookie)"},
+            {"type": "ARTICLE", "url": "data:text/html,<script>alert(1)</script>"},
+        ],
+    )
+    project = make_project("p6")
+    advisory = Advisory.objects.create(
+        project=project,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-abcd-1234-efgh",
+        ghsa_owner="eclipse",
+        ghsa_repo="example",
+    )
+    apply_ghsa_to_advisory(advisory, ghsa_payload)
+    urls = [r["url"] for r in advisory.references]
+    # The clean https reference and the GHSA's own html_url survive…
+    assert "https://example.org/fix" in urls
+    assert ghsa_payload["html_url"] in urls
+    # …but no dangerous-scheme reference is ever stored.
+    assert not any(u.lower().startswith(("javascript:", "data:", "vbscript:")) for u in urls)
+
+
+@pytest.mark.django_db
 def test_translator_does_not_change_anything_outside_ghsa_readonly_fields(
     make_project, ghsa_payload
 ):

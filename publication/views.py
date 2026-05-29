@@ -59,7 +59,11 @@ def artifact_preview(request, task_id: int, kind: str):
     task = get_object_or_404(PublicationTask, pk=task_id)
     if not perms.can_view(request.user, task.advisory):
         raise PermissionDenied()
-    if kind not in (PublicationArtifact.Kind.OSV, PublicationArtifact.Kind.CSAF):
+    if kind not in (
+        PublicationArtifact.Kind.OSV,
+        PublicationArtifact.Kind.CSAF,
+        PublicationArtifact.Kind.CVE,
+    ):
         return HttpResponseBadRequest("Unknown artifact kind.")
     artifact = get_object_or_404(PublicationArtifact, task=task, kind=kind)
     pretty = json.dumps(artifact.content, indent=2, sort_keys=True, ensure_ascii=False)

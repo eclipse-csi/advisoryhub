@@ -72,6 +72,9 @@ def config(bare_repo) -> RepoConfig:
         commit_author_email="bot@example.org",
         osv_path_template="osv/{advisory_id}.json",
         csaf_path_template="csaf/{advisory_id}.json",
+        cve_path_template="cves/{year}/{bucket}/{cve_id}.json",
+        cve_assigner_org_id="",
+        cve_assigner_short_name="eclipse",
     )
 
 
@@ -129,6 +132,9 @@ def test_publish_clone_failure_raises(config, tmp_path):
         commit_author_email="x@example.org",
         osv_path_template="osv/{advisory_id}.json",
         csaf_path_template="csaf/{advisory_id}.json",
+        cve_path_template="cves/{year}/{bucket}/{cve_id}.json",
+        cve_assigner_org_id="",
+        cve_assigner_short_name="eclipse",
     )
     with pytest.raises(GitPublicationError):
         publish_files(
@@ -149,6 +155,9 @@ def test_publish_redacts_token_in_error_message(tmp_path):
         commit_author_email="x@example.org",
         osv_path_template="osv/{advisory_id}.json",
         csaf_path_template="csaf/{advisory_id}.json",
+        cve_path_template="cves/{year}/{bucket}/{cve_id}.json",
+        cve_assigner_org_id="",
+        cve_assigner_short_name="eclipse",
     )
     try:
         publish_files(

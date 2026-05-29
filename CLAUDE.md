@@ -85,7 +85,7 @@ prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
 prek run --all-files --hook-stage manual      # advisory ty (mirrors CI's ty job)
 ```
 
-Commit stage = file hygiene + `ruff check --fix` + `ruff format`; push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored assets (`static/htmx.*`, `publication/schemas/*.upstream.json`) are excluded.
+Commit stage = file hygiene + `ruff check --fix` + `ruff format`; push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored assets (`static/htmx.*`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded.
 
 ## Load-bearing rules
 

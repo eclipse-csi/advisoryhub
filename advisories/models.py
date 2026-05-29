@@ -337,6 +337,10 @@ class Advisory(models.Model):
         return {
             "advisory_id": self.advisory_id,
             "project_slug": self.project.slug,
+            # Pinned so downstream exports (e.g. the CVE record's affected
+            # ``vendor``) read an immutable value rather than the live Project
+            # row — a project rename must not retro-change a published record.
+            "project_name": self.project.name,
             "summary": self.summary,
             "details": self.details,
             "aliases": copy.deepcopy(self.aliases),

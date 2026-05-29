@@ -14,7 +14,10 @@ from django.core.validators import URLValidator
 
 from .identifiers import ADVISORY_ID_RE
 
-CVE_ID_RE = re.compile(r"^CVE-\d{4}-\d{1,10}$")
+# The CVE program (and the CVE 5.x record schema's ``cveId`` pattern) require a
+# 4-to-19-digit sequence number. Keep this in lock-step with the schema so an
+# operator cannot reserve/assign an id that later fails CVE export validation.
+CVE_ID_RE = re.compile(r"^CVE-\d{4}-\d{4,19}$")
 GHSA_ID_RE = re.compile(r"^GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$", re.IGNORECASE)
 
 
@@ -28,7 +31,7 @@ def validate_advisory_id(value: str) -> None:
 
 def validate_cve_id(value: str) -> None:
     if not value or not CVE_ID_RE.match(value):
-        raise ValidationError("CVE id must look like CVE-YYYY-NNNN.")
+        raise ValidationError("CVE id must look like CVE-YYYY-NNNN (4–19 digit sequence number).")
 
 
 def validate_ghsa_id(value: str) -> None:

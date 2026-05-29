@@ -55,6 +55,7 @@ class Action(models.TextChoices):
     PUBLICATION_EXPORT_FAILED = "publication.export_failed"
     PUBLICATION_OSV_GENERATED = "publication.osv_generated"
     PUBLICATION_CSAF_GENERATED = "publication.csaf_generated"
+    PUBLICATION_CVE_GENERATED = "publication.cve_generated"
     PUBLICATION_GIT_COMMIT = "publication.git_commit"
     PUBLICATION_GIT_PUSH = "publication.git_push"
     PUBLICATION_GIT_PUSH_FAILED = "publication.git_push_failed"

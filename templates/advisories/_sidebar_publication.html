@@ -35,9 +35,9 @@ Context required: advisory, can_publish, last_publication_task.
       </form>
       <p class="sidebar-card__action-hint">
         {% if advisory.republish_required %}
-          Re-export OSV and CSAF after edits and push an updated commit to the publication repository.
+          Re-export OSV, CSAF{% if advisory.assigned_cve_id %} and CVE{% endif %} after edits and push an updated commit to the publication repository.
         {% else %}
-          Generate OSV and CSAF documents and push them to the publication repository. This makes the advisory public.
+          Generate OSV, CSAF{% if advisory.assigned_cve_id %} and CVE{% endif %} documents and push them to the publication repository. This makes the advisory public.
         {% endif %}
       </p>
     </div>

@@ -48,6 +48,16 @@ env = environ.Env(
     PUB_COMMIT_AUTHOR_EMAIL=(str, "advisoryhub-bot@example.org"),
     PUB_OSV_PATH_TEMPLATE=(str, "osv/{advisory_id}.json"),
     PUB_CSAF_PATH_TEMPLATE=(str, "csaf/{advisory_id}.json"),
+    # CVE Record export (only for advisories with an EF-assigned CVE).
+    # Default path mirrors the official CVEProject/cvelistV5 layout:
+    # ``cves/<year>/<thousands>xxx/<CVE-id>.json``.
+    PUB_CVE_PATH_TEMPLATE=(str, "cves/{year}/{bucket}/{cve_id}.json"),
+    # Eclipse Foundation CNA identity, written into the CVE record's
+    # ``assignerOrgId``/``providerMetadata.orgId``. The org id is a v4 UUID
+    # and MUST be set in prod — publishing a CVE-assigned advisory fails
+    # loudly while it is empty (see publication.cve.CveAssignerNotConfigured).
+    PUB_CVE_ASSIGNER_ORG_ID=(str, ""),
+    PUB_CVE_ASSIGNER_SHORT_NAME=(str, "eclipse"),
     # GitHub App (GHSA integration). Installations are stored in the
     # ``ghsa_githubappinstallation`` table — there is no env-var
     # short-circuit. Run ``manage.py discover_github_installations`` (or
@@ -292,6 +302,9 @@ PUB_COMMIT_AUTHOR_NAME = env("PUB_COMMIT_AUTHOR_NAME")
 PUB_COMMIT_AUTHOR_EMAIL = env("PUB_COMMIT_AUTHOR_EMAIL")
 PUB_OSV_PATH_TEMPLATE = env("PUB_OSV_PATH_TEMPLATE")
 PUB_CSAF_PATH_TEMPLATE = env("PUB_CSAF_PATH_TEMPLATE")
+PUB_CVE_PATH_TEMPLATE = env("PUB_CVE_PATH_TEMPLATE")
+PUB_CVE_ASSIGNER_ORG_ID = env("PUB_CVE_ASSIGNER_ORG_ID")
+PUB_CVE_ASSIGNER_SHORT_NAME = env("PUB_CVE_ASSIGNER_SHORT_NAME")
 
 # ---------------------------------------------------------------------------
 # GHSA integration (GitHub App + Eclipse PMI)

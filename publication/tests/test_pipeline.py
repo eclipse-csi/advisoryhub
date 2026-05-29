@@ -104,6 +104,9 @@ def setup(make_user, make_project, settings, tmp_path):
     settings.PUB_COMMIT_AUTHOR_EMAIL = "bot@example.org"
     settings.PUB_OSV_PATH_TEMPLATE = "osv/{advisory_id}.json"
     settings.PUB_CSAF_PATH_TEMPLATE = "csaf/{advisory_id}.json"
+    settings.PUB_CVE_PATH_TEMPLATE = "cves/{year}/{bucket}/{cve_id}.json"
+    settings.PUB_CVE_ASSIGNER_ORG_ID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+    settings.PUB_CVE_ASSIGNER_SHORT_NAME = "eclipse"
 
     return {
         "admin": admin,
@@ -411,6 +414,94 @@ def test_artifacts_persisted_on_success(setup):
     assert PublicationArtifact.Kind.OSV in artifacts
     assert PublicationArtifact.Kind.CSAF in artifacts
     assert artifacts[PublicationArtifact.Kind.OSV].path == "osv/ECL-cccc-ffff-gggg.json"
+
+
+# ---- CVE export ----------------------------------------------------------
+
+
+def _cve_advisory(setup, *, advisory_id, cve_id):
+    return Advisory.objects.create(
+        project=setup["project"],
+        advisory_id=advisory_id,
+        summary="Advisory with an assigned CVE",
+        details="Some details.",
+        assigned_cve_id=cve_id,
+        cwe_ids=["CWE-79"],
+        references=[{"type": "ADVISORY", "url": "https://example.org/x"}],
+        affected=[
+            {
+                "package": {"ecosystem": "Maven", "name": "org.example:lib"},
+                "ranges": [
+                    {
+                        "type": "ECOSYSTEM",
+                        "events": [{"introduced": "1.0.0"}, {"fixed": "1.0.5"}],
+                    }
+                ],
+            }
+        ],
+        severity=[{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"}],
+        created_by=setup["member"],
+    )
+
+
+@pytest.mark.django_db
+def test_run_publication_generates_and_pushes_cve_when_assigned(setup):
+    advisory = _cve_advisory(setup, advisory_id="ECL-1111-2222-3333", cve_id="CVE-2026-0001")
+    task = pub_services.publish(advisory, by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+
+    task.refresh_from_db()
+    advisory.refresh_from_db()
+    assert task.status == PublicationTaskStatus.SUCCEEDED
+    assert advisory.state == State.PUBLISHED
+
+    arts = {a.kind: a for a in PublicationArtifact.objects.filter(task=task)}
+    assert PublicationArtifact.Kind.CVE in arts
+    cve_art = arts[PublicationArtifact.Kind.CVE]
+    # Year-bucketed cvelistV5 layout.
+    assert cve_art.path == "cves/2026/0xxx/CVE-2026-0001.json"
+    assert cve_art.content["cveMetadata"]["cveId"] == "CVE-2026-0001"
+    assert cve_art.content["dataVersion"] == "5.2.0"
+
+    # File reached the bare repo at the bucketed path.
+    verify = setup["tmp_path"] / "verify-cve"
+    Repo.clone_from(str(setup["bare_repo"]), str(verify), branch="main")
+    assert (verify / "cves" / "2026" / "0xxx" / "CVE-2026-0001.json").exists()
+
+    assert AuditLogEntry.objects.filter(
+        advisory=advisory, action=Action.PUBLICATION_CVE_GENERATED
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_run_publication_skips_cve_when_unassigned(setup):
+    """The fixture advisory has no assigned CVE — only OSV/CSAF are produced."""
+    task = pub_services.publish(setup["advisory"], by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+    task.refresh_from_db()
+
+    kinds = set(PublicationArtifact.objects.filter(task=task).values_list("kind", flat=True))
+    assert kinds == {PublicationArtifact.Kind.OSV, PublicationArtifact.Kind.CSAF}
+    assert not AuditLogEntry.objects.filter(
+        advisory=setup["advisory"], action=Action.PUBLICATION_CVE_GENERATED
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_cve_assigner_not_configured_fails_publish(setup, settings):
+    """A CVE-assigned advisory cannot publish while the CNA org id is unset."""
+    settings.PUB_CVE_ASSIGNER_ORG_ID = ""
+    advisory = _cve_advisory(setup, advisory_id="ECL-4444-5555-6666", cve_id="CVE-2026-0009")
+    task = pub_services.publish(advisory, by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+
+    task.refresh_from_db()
+    advisory.refresh_from_db()
+    assert task.status == PublicationTaskStatus.FAILED
+    assert "PUB_CVE_ASSIGNER_ORG_ID" in task.last_error
+    # State must not flip when any export step fails (INV-LIFECYCLE-3).
+    assert advisory.state == State.DRAFT
+    assert not PublicationArtifact.objects.filter(task=task).exists()
 
 
 @pytest.mark.django_db

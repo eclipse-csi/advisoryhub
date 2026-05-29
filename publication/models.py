@@ -71,6 +71,7 @@ class PublicationArtifact(models.Model):
     class Kind(models.TextChoices):
         OSV = "osv", "OSV"
         CSAF = "csaf", "CSAF"
+        CVE = "cve", "CVE"
 
     task = models.ForeignKey(PublicationTask, on_delete=models.CASCADE, related_name="artifacts")
     kind = models.CharField(max_length=8, choices=Kind.choices)
@@ -109,6 +110,9 @@ class PublicationRepositoryConfig(models.Model):
     commit_author_email = models.EmailField()
     osv_path_template = models.CharField(max_length=255, default="osv/{advisory_id}.json")
     csaf_path_template = models.CharField(max_length=255, default="csaf/{advisory_id}.json")
+    cve_path_template = models.CharField(
+        max_length=255, default="cves/{year}/{bucket}/{cve_id}.json"
+    )
 
     class Meta:
         verbose_name = "publication repository config"

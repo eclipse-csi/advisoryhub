@@ -20,6 +20,7 @@ from audit.models import Action
 from audit.services import record
 
 from . import csaf as csaf_builder
+from . import cve as cve_builder
 from . import osv as osv_builder
 from . import services
 from .git_service import GitPublicationError, WrittenFile, publish_files
@@ -71,6 +72,26 @@ def run_publication(self, task_id: int) -> str:
             new_value={"task_id": task.pk},
         )
 
+        # A CVE record is exported only when the Eclipse Foundation has
+        # assigned a CVE to this advisory. The id is read from the pinned
+        # version payload (INV-VERSION-3), never live form data.
+        cve_doc = None
+        cve_path = None
+        assigned_cve = task.version.payload.get("assigned_cve_id")
+        if assigned_cve:
+            cve_doc = cve_builder.build_cve(
+                task.version,
+                assigner_org_id=config.cve_assigner_org_id,
+                assigner_short_name=config.cve_assigner_short_name,
+            )
+            cve_builder.validate_cve(cve_doc)
+            cve_path = config.cve_path(assigned_cve)
+            record(
+                action=Action.PUBLICATION_CVE_GENERATED,
+                advisory=task.advisory,
+                new_value={"task_id": task.pk, "cve_id": assigned_cve},
+            )
+
         # 2. Persist generated documents to PublicationArtifact (the
         # single source of truth for what we pushed). The pinned
         # AdvisoryVersion provides the immutable input payload.
@@ -86,12 +107,20 @@ def run_publication(self, task_id: int) -> str:
             kind=PublicationArtifact.Kind.CSAF,
             defaults={"path": csaf_path, "content": csaf_doc},
         )
+        if cve_doc is not None and cve_path is not None:
+            PublicationArtifact.objects.update_or_create(
+                task=task,
+                kind=PublicationArtifact.Kind.CVE,
+                defaults={"path": cve_path, "content": cve_doc},
+            )
 
         # 3. Push to Git
         files = [
             WrittenFile(path=osv_path, content=osv_builder.serialize_osv(osv_doc)),
             WrittenFile(path=csaf_path, content=csaf_builder.serialize_csaf(csaf_doc)),
         ]
+        if cve_doc is not None and cve_path is not None:
+            files.append(WrittenFile(path=cve_path, content=cve_builder.serialize_cve(cve_doc)))
         result = publish_files(
             config=config,
             files=files,
@@ -145,7 +174,12 @@ def run_publication(self, task_id: int) -> str:
 
         return PublicationTaskStatus.SUCCEEDED
 
-    except (osv_builder.OsvValidationError, csaf_builder.CsafValidationError) as exc:
+    except (
+        osv_builder.OsvValidationError,
+        csaf_builder.CsafValidationError,
+        cve_builder.CveValidationError,
+        cve_builder.CveBuildError,
+    ) as exc:
         return _fail(task, error=f"validation: {exc}", action=Action.PUBLICATION_EXPORT_FAILED)
     except GitPublicationError as exc:
         return _fail(task, error=f"git: {exc}", action=Action.PUBLICATION_GIT_PUSH_FAILED)

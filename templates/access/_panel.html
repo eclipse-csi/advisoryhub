@@ -41,8 +41,7 @@
                 <span class="access-row__principal"{% if row.pending %} title="{{ row.label }} — invited, expires {{ row.expires_at|date:'Y-m-d' }}"{% elif row.kind != 'user' %} title="{{ row.label }}"{% endif %}>
                   {% if row.pending %}<em>{{ row.label }}</em><span class="access-row__tag">invited</span>{% elif row.kind == 'user' and row.user %}{% user_chip row.user %}{% else %}{{ row.label }}{% endif %}
                 </span>
-                {# Keyboard/screen-reader-operable equivalent of the drag-and-drop
-                   permission change (advisoryhub-access.js wires the change). #}
+                {# Keyboard/SR-operable equivalent of drag-drop; advisoryhub-access.js wires the change. #}
                 <select class="access-row__permission" data-row-permission
                         aria-label="Permission for {{ row.label }}">
                   {% for value, label in permission_choices %}

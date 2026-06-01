@@ -10,9 +10,7 @@
 {% endblock %}
 {% block content %}
   <h1>{% if mode == 'edit' %}Edit {{ advisory.advisory_id }}{% else %}New advisory{% endif %}</h1>
-  {# novalidate kept: the multi-formset form has conditionally hidden/extra-row
-     fields where native required-validation would wrongly block submit. The
-     server is the validation authority; data-unsaved-guard warns on nav-away. #}
+  {# novalidate kept: hidden/extra formset fields would let native validation wrongly block submit; the server validates and data-unsaved-guard warns on nav-away. #}
   <form method="post" novalidate data-unsaved-guard>
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}

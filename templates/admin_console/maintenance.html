@@ -23,8 +23,7 @@
     {% endif %}
   </p>
 
-  {# This form is itself a write, but admins are exempt from the maintenance gate,
-     so it stays usable precisely when it is needed most — to turn the pause off. #}
+  {# This form is itself a write, but admins are exempt from the maintenance gate, so it stays usable precisely when needed — to turn the pause off. #}
   <form method="post">
     {% csrf_token %}
     {{ form.non_field_errors }}

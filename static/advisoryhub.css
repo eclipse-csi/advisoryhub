@@ -88,13 +88,17 @@
   --font-sans:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono:    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Heading + panel-title sizes. (Body text still uses each component's own
-     font-size — those values are too scattered to tokenise without rationalising
-     them, which is a deliberate visual change for a separate pass.) */
-  --text-h1:    1.7rem;
-  --text-h2:    1.2rem;
+  /* Type scale. The UI-chrome small-text sizes were ~14 hand-tuned values drifting
+     within 0.7–0.95rem; rationalised to four steps (max shift ~0.05rem). Larger
+     markdown-prose sizes (1.02–1.3rem) keep their own values. */
+  --text-2xs:   0.72rem;   /* micro labels, tags, uppercase section labels */
+  --text-xs:    0.8rem;    /* small / secondary text */
+  --text-sm:    0.85rem;   /* default small body */
+  --text-base:  0.9rem;    /* body-adjacent (nav, labels, table) */
   --text-h3:    1rem;
-  --text-title: 1.05rem;
+  --text-title: 1.05rem;   /* panel / card / drawer titles */
+  --text-h2:    1.2rem;
+  --text-h1:    1.7rem;
 }
 
 /* ------------------------------------------------------------ reset/base */
@@ -382,13 +386,13 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.92rem;
+  font-size: var(--text-base);
   background: var(--surface);
 }
 thead th {
   text-align: left;
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -436,7 +440,7 @@ main.container > form.advisory-filters {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: var(--text-soft);
   padding: 0.35rem 0.6rem;
   border: 1px solid var(--border);
@@ -449,7 +453,7 @@ main.container > form.advisory-filters {
 }
 .advisory-filters a {
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
 }
 
 /* ------------------------------------------------------------ forms */
@@ -533,7 +537,7 @@ textarea:required:user-valid {
   text-decoration: none;
 }
 
-label { color: var(--text-soft); font-size: 0.92rem; }
+label { color: var(--text-soft); font-size: var(--text-base); }
 
 fieldset {
   border: 1px solid var(--border);
@@ -546,13 +550,13 @@ fieldset legend {
   font-weight: 600;
   color: var(--text);
   padding: 0 0.45rem;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 fieldset p { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
 /* Public intake form wraps fields in <div class="field"> (the authoring form uses
    <p>, caught by `fieldset p` above). Give them the same label/control/error rhythm. */
 .field { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
-fieldset small { color: var(--text-muted); font-size: 0.82rem; }
+fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
 
 /* ------------------------------------------------------------ formsets */
 
@@ -593,7 +597,7 @@ fieldset small { color: var(--text-muted); font-size: 0.82rem; }
   border-radius: var(--radius-sm);
   padding: 0.2rem 0.6rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 .formset-row .row-actions button:hover {
   color: var(--danger);
@@ -618,7 +622,7 @@ fieldset small { color: var(--text-muted); font-size: 0.82rem; }
   border-radius: var(--radius-sm);
   padding: 0.3rem 0.8rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 .add-row-btn:hover { background: var(--surface-alt); }
 .inner-events { margin: 0.6rem 0 0.2rem; padding: 0.6rem 0.8rem; }
@@ -633,7 +637,7 @@ fieldset small { color: var(--text-muted); font-size: 0.82rem; }
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
-  font-size: 0.92rem;
+  font-size: var(--text-base);
   padding: 0.2rem 0;
 }
 .cwe-combobox-option {
@@ -676,7 +680,7 @@ dl {
 dt {
   font-weight: 600;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   padding-top: 0.15rem;
@@ -691,7 +695,7 @@ dd { margin: 0; color: var(--text); }
   gap: 0.35rem;
   padding: 0.18rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   border: 1px solid var(--border);
@@ -722,7 +726,7 @@ dd { margin: 0; color: var(--text); }
 .badge.status-succeeded  { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
 .badge.status-failed     { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
 
-p.state { font-size: 0.95rem; color: var(--text-soft); margin-top: -0.3em; }
+p.state { font-size: var(--text-base); color: var(--text-soft); margin-top: -0.3em; }
 p.state strong { color: var(--text); }
 
 /* ------------------------------------------------------------ counts strip */
@@ -740,7 +744,7 @@ p.state strong { color: var(--text); }
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.9rem;
-  font-size: 0.92rem;
+  font-size: var(--text-base);
   color: var(--text-soft);
   min-width: 130px;
 }
@@ -763,7 +767,7 @@ p.state strong { color: var(--text); }
   gap: 0.6rem;
   flex-wrap: wrap;
   margin-bottom: 0.4rem;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 .comment header strong { color: var(--text); font-weight: 600; }
@@ -795,7 +799,7 @@ p.state strong { color: var(--text); }
   border-color: var(--warn-bd);
 }
 .internal-toggle {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-soft);
 }
 .internal-toggle input[type="checkbox"] { margin-inline-end: 0.3rem; }
@@ -803,7 +807,7 @@ p.state strong { color: var(--text); }
   margin-top: 0.6rem;
 }
 .comment .actions button {
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   padding: 0.3rem 0.6rem;
 }
 /* No !important needed: nothing else sets .comment-form's background/margin at a
@@ -895,7 +899,7 @@ p.state strong { color: var(--text); }
   background: var(--surface);
   border-radius: 999px;
   padding: 0.3rem 0.75rem;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: var(--text-soft);
   text-decoration: none;
 }
@@ -919,8 +923,8 @@ p.state strong { color: var(--text); }
 .inbox-feed__row:hover { background: var(--surface-alt); }
 .inbox-feed__title { font-weight: 600; }
 .inbox-feed__title a { color: var(--text); }
-.inbox-feed__subtitle { color: var(--text-muted); font-size: 0.9rem; }
-.inbox-feed__age { color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; }
+.inbox-feed__subtitle { color: var(--text-muted); font-size: var(--text-base); }
+.inbox-feed__age { color: var(--text-muted); font-size: var(--text-sm); white-space: nowrap; }
 .inbox-feed__empty { padding: 1rem; color: var(--text-muted); font-style: italic; text-align: center; }
 
 .inbox-show-more {
@@ -928,7 +932,7 @@ p.state strong { color: var(--text); }
   flex-wrap: wrap;
   gap: 0.8rem;
   margin: 0.8rem 0 0;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 
 .inbox-badge {
@@ -937,7 +941,7 @@ p.state strong { color: var(--text); }
   text-align: center;
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-sm);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -967,8 +971,8 @@ p.state strong { color: var(--text); }
 }
 .pref-row + .pref-row { border-top: 1px solid var(--border); }
 .pref-row__copy { display: flex; flex-direction: column; gap: 0.2rem; }
-.pref-row__title { font-weight: 600; color: var(--text); font-size: 0.95rem; }
-.pref-row__desc { color: var(--text-soft); font-size: 0.85rem; line-height: 1.4; }
+.pref-row__title { font-weight: 600; color: var(--text); font-size: var(--text-base); }
+.pref-row__desc { color: var(--text-soft); font-size: var(--text-sm); line-height: 1.4; }
 /* Nudge the checkbox down so it aligns with the title's optical baseline
    when a description wraps onto a second line below the title. */
 .pref-row input[type="checkbox"] { margin-top: 0.15rem; }
@@ -1000,7 +1004,7 @@ p.state strong { color: var(--text); }
   align-items: center;
   justify-content: center;
   padding: 0.45rem 0.9rem;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: var(--text-soft);
   cursor: pointer;
   transition: background 80ms ease, color 80ms ease;
@@ -1045,7 +1049,7 @@ p.state strong { color: var(--text); }
 }
 .notifications-panel__status {
   margin: 0 0 0.75rem;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: var(--text-soft);
 }
 .notifications-panel__status strong { color: var(--text); font-weight: 600; }
@@ -1053,7 +1057,7 @@ p.state strong { color: var(--text); }
   list-style: none;
   padding: 0;
   margin: 0 0 0.85rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -1081,7 +1085,7 @@ p.state strong { color: var(--text); }
   flex-wrap: wrap;
 }
 .notifications-panel__actions form.inline { margin: 0; }
-.notifications-panel__prefs-link { font-size: 0.85rem; }
+.notifications-panel__prefs-link { font-size: var(--text-sm); }
 
 /* Preset selector — card-style radio group. We hide the native input
    and style the surrounding <label> so the whole card is the hit
@@ -1150,14 +1154,14 @@ p.state strong { color: var(--text); }
   grid-column: 2;
   grid-row: 1;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: var(--text);
 }
 .notif-preset__desc {
   display: block;
   grid-column: 2;
   grid-row: 2;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-soft);
   margin-top: 0.1rem;
 }
@@ -1175,19 +1179,19 @@ p.state strong { color: var(--text); }
   align-items: center;
   gap: 0.5rem;
   padding: 0.3rem 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 .notif-row + .notif-row { border-top: 1px solid var(--border); }
 .notif-row label { color: var(--text-soft); }
 .notif-row select {
   min-width: 11rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .notif-panel__saving {
   display: block;
   margin-top: 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-soft);
   font-style: italic;
 }
@@ -1213,7 +1217,7 @@ p.state strong { color: var(--text); }
 .access-panel__section h3 {
   margin: 0 0 0.5rem 0;
   text-transform: uppercase;
-  font-size: 0.74rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }
@@ -1221,7 +1225,7 @@ p.state strong { color: var(--text); }
 .access-panel__hint {
   margin: 0 0 0.5rem;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }
 
 .access-buckets {
@@ -1244,7 +1248,7 @@ p.state strong { color: var(--text); }
 }
 .access-bucket__title {
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.06em;
   color: var(--text-muted);
   font-weight: 600;
@@ -1261,7 +1265,7 @@ p.state strong { color: var(--text); }
 .access-bucket__empty {
   color: var(--text-muted);
   font-style: italic;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   padding: 0;
 }
 .access-bucket--dropping {
@@ -1275,7 +1279,7 @@ p.state strong { color: var(--text); }
   gap: 0.4rem;
   padding: 0.15rem 0;
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   line-height: 1.25;
   cursor: grab;
   background: transparent;
@@ -1383,7 +1387,7 @@ p.state strong { color: var(--text); }
 .access-row__tag {
   display: inline-block;
   margin-inline-start: 0.4rem;
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
@@ -1401,7 +1405,7 @@ p.state strong { color: var(--text); }
   width: auto;
   min-height: 0;
   padding: 0.1rem 0.35rem;
-  font-size: 0.76rem;
+  font-size: var(--text-2xs);
   color: var(--text-soft);
   background: var(--surface);
   border-color: var(--border);
@@ -1446,12 +1450,12 @@ p.state strong { color: var(--text); }
   grid-area: permission;
   min-width: 0;
   padding: 0.2rem 0.4rem;
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   justify-self: start;
 }
 
 .access-panel__status {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   transition: opacity 0.15s ease;
 }
@@ -1471,7 +1475,7 @@ p.state strong { color: var(--text); }
   justify-content: center;
   margin: 1.2rem 0 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 .pager a {
   padding: 0.3rem 0.7rem;
@@ -1484,7 +1488,7 @@ p.state strong { color: var(--text); }
 /* ------------------------------------------------------------ diff */
 
 .diff pre {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -1579,7 +1583,7 @@ main.container section > p.empty {
   color: var(--text-soft);
   padding: 0.1rem 0.5rem;
   border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
@@ -1610,7 +1614,7 @@ main.container section > p.empty {
   align-items: center;
   gap: 0.5rem;
   color: var(--text-muted);
-  font-size: 0.92rem;
+  font-size: var(--text-base);
   font-weight: 500;
 }
 .lifecycle-stepper__node:not(:first-child)::before {
@@ -1667,7 +1671,7 @@ main.container section > p.empty {
 }
 .submachine-status__label {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1682,7 +1686,7 @@ main.container section > p.empty {
 }
 .submachine-status__hint {
   color: var(--text-muted);
-  font-size: 0.86rem;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 .advisory-status-header__warn,
@@ -1721,13 +1725,13 @@ main.container section > p.empty {
 .sidebar-card__hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 .sidebar-card__meta {
   margin: 0;
   color: var(--text-soft);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 .sidebar-card__meta a { word-break: break-word; }
@@ -1755,7 +1759,7 @@ main.container section > p.empty {
 .sidebar-card__action-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   line-height: 1.35;
 }
 .sidebar-card__action-hint--blocked {
@@ -1783,7 +1787,7 @@ main.container section > p.empty {
    the surrounding dt/dd text so the row height matches Summary/Aliases. */
 .advisory-cve .cve-inline-action {
   padding: 0.08rem 0.6rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 .advisory-cve form.inline { display: inline; margin: 0; }
@@ -1819,7 +1823,7 @@ main.container section > p.empty {
 .confirm-dialog p { margin: 0 0 0.9rem; color: var(--text-soft); }
 .confirm-dialog label {
   display: block;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   margin-bottom: 0.3rem;
 }
@@ -1887,7 +1891,7 @@ button.info:hover, .btn.info:hover {
 /* ---- small section label inside a card ---- */
 
 .adv-section-label {
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1972,7 +1976,7 @@ button.info:hover, .btn.info:hover {
 }
 .adv-affected-card .purl {
   margin: 0.2rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   word-break: break-all;
 }
@@ -2015,7 +2019,7 @@ button.info:hover, .btn.info:hover {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
 }
 .event .event-kind {
   font-weight: 600;
@@ -2027,7 +2031,7 @@ button.info:hover, .btn.info:hover {
   border: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
 }
 .event.event-warn    { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
 .event.event-ok      { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
@@ -2061,12 +2065,12 @@ button.info:hover, .btn.info:hover {
 }
 .adv-references .badge.ref-type {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   flex-shrink: 0;
 }
 .adv-references .ref-url {
   word-break: break-all;
-  font-size: 0.92rem;
+  font-size: var(--text-base);
 }
 
 .ref-row.ref-danger  { border-left-color: var(--danger); }
@@ -2109,23 +2113,23 @@ button.info:hover, .btn.info:hover {
 }
 .adv-severity .badge.sev-type {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   color: var(--text-soft);
 }
 .adv-severity .badge.sev-level {
   text-transform: uppercase;
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   letter-spacing: 0.06em;
 }
 .adv-severity code.sev-score {
   word-break: break-all;
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   flex: 1 1 auto;
   min-width: 0;
 }
 .adv-severity code.sev-score-extra {
   flex: 0 0 auto;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .sev-row.sev-critical { border-left-color: var(--danger); }
@@ -2265,7 +2269,7 @@ main.container .adv-affected-card ul.ranges li {
   min-width: 18rem;
 }
 .triage-detail .project-metadata .htmx-indicator {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-soft);
   font-style: italic;
   opacity: 0;
@@ -2273,13 +2277,13 @@ main.container .adv-affected-card ul.ranges li {
 }
 .triage-detail .project-metadata .htmx-indicator.htmx-request { opacity: 1; }
 .triage-detail .project-metadata .errors.inline {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--danger);
 }
 .triage-detail .project-metadata a.muted.small {
   display: inline-block;
   margin-inline-start: 0.6rem;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-decoration: underline;
 }
 
@@ -2292,7 +2296,7 @@ main.container .adv-affected-card ul.ranges li {
   border-top: 1px solid var(--border);
 }
 .triage-detail .triage-actions form.inline { margin: 0; }
-.triage-detail .triage-actions .muted { font-size: 0.85rem; }
+.triage-detail .triage-actions .muted { font-size: var(--text-sm); }
 
 /* ---------------------------------------- history drawer (shared: description + comments) */
 
@@ -2309,7 +2313,7 @@ main.container .adv-affected-card ul.ranges li {
   padding: 0;
   margin: 0;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--accent-text);
   cursor: pointer;
   text-decoration: underline;
@@ -2398,7 +2402,7 @@ dialog.drawer--right {
   align-items: baseline;
   gap: 0.5rem 0.85rem;
   margin-bottom: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-soft);
 }
 .history-version > header .version-tag {
@@ -2407,12 +2411,12 @@ dialog.drawer--right {
   border-radius: 999px;
   padding: 0.05rem 0.55rem;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 .history-version > header time { font-variant-numeric: tabular-nums; }
 .history-version .version-note {
   margin: 0.25rem 0 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-soft);
   font-style: italic;
 }
@@ -2423,7 +2427,7 @@ dialog.drawer--right {
 }
 .history-version .show-full > summary {
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-soft);
 }
 .history-version .show-full > summary:hover { color: var(--accent); }
@@ -2431,7 +2435,7 @@ dialog.drawer--right {
 
 .history-diff {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
 }
 .diff-block { border-radius: 4px; }
@@ -2525,7 +2529,7 @@ dialog.drawer--right {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
   display: none;
   white-space: normal;
@@ -2543,7 +2547,7 @@ dialog.drawer--right {
 .user-chip__groups-label {
   display: block;
   margin-top: 0.4rem;
-  font-size: 0.75rem;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
@@ -2576,7 +2580,7 @@ dialog.drawer--right {
  */
 .cvss-score {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
   padding: 0.15rem 0.5rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -2597,7 +2601,7 @@ dialog.drawer--right {
 .cvss-calculator > summary {
   cursor: pointer;
   color: var(--text-soft);
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   padding: 0.2rem 0;
 }
 .cvss-calculator[open] > summary { margin-bottom: 0.5rem; }
@@ -2611,7 +2615,7 @@ dialog.drawer--right {
   gap: 0.6rem 1rem;
 }
 .cvss-calculator .cvss-group legend {
-  font-size: 0.75rem;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -2624,13 +2628,13 @@ dialog.drawer--right {
   min-width: 0;
 }
 .cvss-calculator .metric-name {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 .cvss-calculator .metric select { width: 100%; }
 .cvss-calculator .metric-help {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   line-height: 1.25;
   min-height: 1.6em;
 }
@@ -2643,7 +2647,7 @@ dialog.drawer--right {
    WCAG AA contrast). */
 .maintenance-banner {
   border-bottom: 1px solid var(--border);
-  font-size: 0.92rem;
+  font-size: var(--text-base);
 }
 .maintenance-banner__inner {
   display: flex;
@@ -2758,7 +2762,7 @@ dialog.drawer--right {
 .error-page__code {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   letter-spacing: 0.12em;
   color: var(--text-muted);
 }

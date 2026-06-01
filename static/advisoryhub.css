@@ -25,53 +25,58 @@
 }
 
 :root {
-  --bg:           #f5f7fb;
-  --surface:      #ffffff;
-  --surface-alt:  #f4f9fe;
-  --border:       #d8e4f0;
-  --border-strong:#b8c8dc;
-  --text:         #000000;
-  --text-soft:    #2a3550;
-  --text-muted:   #5f6b83;
+  /* Colour tokens that differ by theme are light-dark() pairs, resolved via
+     `color-scheme` (light here; the :root[data-theme="dark"] block flips it to
+     dark). advisoryhub-theme.js sets data-theme=dark for the dark theme; its
+     absence = light. Shadows aren't <color> so they can't use light-dark() —
+     their dark variants stay in the dark block. */
+  color-scheme: light;
+
+  --bg:           light-dark(#f5f7fb, #04081f);
+  --surface:      light-dark(#ffffff, #0a1240);
+  --surface-alt:  light-dark(#f4f9fe, #0d1858);
+  --border:       light-dark(#d8e4f0, #1d2a6a);
+  --border-strong:light-dark(#b8c8dc, #2c3c8c);
+  --text:         light-dark(#000000, #e7ecf5);
+  --text-soft:    light-dark(#2a3550, #b6bfd1);
+  --text-muted:   light-dark(#5f6b83, #818ea8);
 
   /* Royal blue = primary action colour. Light blue = its soft backdrop. */
   --brand:        #2C1CD8;
   --brand-hover:  #1f14a8;
-  --brand-soft:   #E2F4FF;
+  --brand-soft:   light-dark(#E2F4FF, #0e1c5c);
   --brand-ring:   rgba(44, 28, 216, 0.30);
 
   /* Eclipse-Foundation orange — used as a focused accent (logo, "republish"). */
   --accent:       #F06C02;
-  --accent-soft:  #ffe4cc;
-  --accent-border:#ffc999;
-  /* Accent used as TEXT on a surface needs more contrast than the fill orange:
-     #F06C02 on white is only 3.07:1 (fails AA). Darkened for light theme. */
-  --accent-text:       #a14600;
-  --accent-text-hover: #7a3400;
+  --accent-soft:  light-dark(#ffe4cc, #3a1f08);
+  --accent-border:light-dark(#ffc999, #6a3a08);
+  /* Accent as TEXT needs more contrast than the fill orange (on white #F06C02 is
+     only 3.07:1): darkened in light; the bright orange reads fine on dark. */
+  --accent-text:       light-dark(#a14600, #F06C02);
+  --accent-text-hover: light-dark(#7a3400, #ffa860);
 
   /* Topbar gradient stops. */
-  --navy:         #000966;
-  --navy-2:       #001f8c;
+  --navy:         light-dark(#000966, #000333);
+  --navy-2:       light-dark(#001f8c, #000966);
 
   --ok:           #137a4a;
-  --ok-soft:      #e1f4ea;
+  --ok-soft:      light-dark(#e1f4ea, #0d3328);
   --warn:         #8a5300;
-  --warn-soft:    #fff1d6;
+  --warn-soft:    light-dark(#fff1d6, #3a2a0a);
   --danger:       #b3261e;
-  --danger-soft:  #fde7e6;
+  --danger-soft:  light-dark(#fde7e6, #3a1816);
   --info:         #2C1CD8;
-  --info-soft:    #E2F4FF;
+  --info-soft:    light-dark(#E2F4FF, #0e1c5c);
 
   /* Status role text (fg) + soft-border (bd), referenced by .badge / .event /
-     .ref-row / .sev-level / .credit / .ecosystem in BOTH themes. The dark theme
-     redefines these (brighter, for contrast on dark surfaces) in its :root block,
-     so the component rules carry no per-theme color overrides. */
-  --ok-fg:     var(--ok);     --ok-bd:     #c0e6cf;
-  --warn-fg:   var(--warn);   --warn-bd:   #f3d9a3;
-  --danger-fg: var(--danger); --danger-bd: #f1c7c4;
-  --info-fg:   var(--info);   --info-bd:   #c7dcf3;
-  --brand-fg:  var(--brand);  --brand-bd:  #b8d6f6;
-  --accent-fg: var(--accent);
+     .ref-row / .sev-level / .credit / .ecosystem. Brighter in dark for contrast. */
+  --ok-fg:     light-dark(var(--ok), #54FFD4);     --ok-bd:     light-dark(#c0e6cf, #156a4a);
+  --warn-fg:   light-dark(var(--warn), #ffcb6b);   --warn-bd:   light-dark(#f3d9a3, #5a4416);
+  --danger-fg: light-dark(var(--danger), #f08983); --danger-bd: light-dark(#f1c7c4, #5a2522);
+  --info-fg:   light-dark(var(--info), #82b6ee);   --info-bd:   light-dark(#c7dcf3, #1c3d63);
+  --brand-fg:  light-dark(var(--brand), #9fb4ff);  --brand-bd:  light-dark(#b8d6f6, #1f2a8c);
+  --accent-fg: light-dark(var(--accent), #ffa860);
 
   --radius:       10px;
   --radius-sm:    6px;
@@ -2224,41 +2229,9 @@ main.container .adv-affected-card ul.ranges li {
  */
 
 :root[data-theme="dark"] {
+  /* Flip color-scheme so every light-dark() token in :root resolves to its dark
+     value. Only the non-<color> shadow tokens still need an explicit override. */
   color-scheme: dark;
-
-  --bg:           #04081f;
-  --surface:      #0a1240;
-  --surface-alt:  #0d1858;
-  --border:       #1d2a6a;
-  --border-strong:#2c3c8c;
-  --text:         #e7ecf5;
-  --text-soft:    #b6bfd1;
-  --text-muted:   #818ea8;
-
-  /* Soft backgrounds tinted toward each role's hue. */
-  --brand-soft:   #0e1c5c;   /* royal-blue tint */
-  --accent-soft:  #3a1f08;   /* eclipse-orange tint */
-  --accent-border:#6a3a08;
-  /* On the dark surface the bright orange has enough contrast as text; brighten on hover. */
-  --accent-text:       #F06C02;
-  --accent-text-hover: #ffa860;
-  --ok-soft:      #0d3328;
-  --warn-soft:    #3a2a0a;
-  --danger-soft:  #3a1816;
-  --info-soft:    #0e1c5c;
-
-  /* Brighter status text/border for adequate contrast on the dark surfaces.
-     (Transcribed verbatim from the former per-component dark overrides.) */
-  --ok-fg:     #54FFD4; --ok-bd:     #156a4a;
-  --warn-fg:   #ffcb6b; --warn-bd:   #5a4416;
-  --danger-fg: #f08983; --danger-bd: #5a2522;
-  --info-fg:   #82b6ee; --info-bd:   #1c3d63;
-  --brand-fg:  #9fb4ff; --brand-bd:  #1f2a8c;
-  --accent-fg: #ffa860;
-
-  --navy:         #000333;
-  --navy-2:       #000966;
-
   --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md:    0 4px 14px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
 }

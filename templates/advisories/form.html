@@ -21,12 +21,12 @@
       <p>{{ form.summary.label_tag }} {{ form.summary }} {{ form.summary.errors }}</p>
     </fieldset>
 
-    {% include "advisories/_form_advanced_fields.html" %}
-
     <fieldset>
       <legend>Detailed description</legend>
       <p>{{ form.details }} <small>{{ form.details.help_text }}</small> {{ form.details.errors }}</p>
     </fieldset>
+
+    {% include "advisories/_form_advanced_fields.html" %}
 
     <p class="actions">
       <button type="submit">{% if mode == 'edit' %}Save{% else %}Create{% endif %}</button>

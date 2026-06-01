@@ -208,26 +208,6 @@ main.container > form,
 main.container > h1,
 .advisory-detail__main > h1 { margin-top: 0.3rem; }
 
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  background: transparent !important;
-  border: 0 !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-}
-.two-col > div {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.1rem 1.3rem;
-  box-shadow: var(--shadow-sm);
-}
-@media (max-width: 760px) {
-  .two-col { grid-template-columns: 1fr; }
-}
-
 /* ------------------------------------------------------------ messages */
 
 .messages {
@@ -245,12 +225,12 @@ main.container > h1,
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   position: relative;
-  padding-left: 2.5rem;
+  padding-inline-start: 2.5rem;
 }
 .messages li::before {
   content: "";
   position: absolute;
-  left: 0.9rem; top: 50%;
+  inset-inline-start: 0.9rem; top: 50%;
   width: 0.7rem; height: 0.7rem;
   border-radius: 50%;
   transform: translateY(-50%);
@@ -568,7 +548,7 @@ fieldset small { color: var(--text-muted); font-size: 0.82rem; }
   display: block;
 }
 .formset-row .row-actions {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .formset-row .row-actions button {
   background: transparent;
@@ -699,7 +679,7 @@ dd { margin: 0; color: var(--text); }
 .badge.review-approved           { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
 .badge.review-rejected           { color: var(--danger); background: var(--danger-soft); border-color: #f1c7c4; }
 .badge.republish                 { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-border); }
-.badge.needs-republish::after    { content: "⟳"; margin-left: 0.2rem; font-weight: 700; }
+.badge.needs-republish::after    { content: "⟳"; margin-inline-start: 0.2rem; font-weight: 700; }
 
 .badge.status-queued    { color: var(--info);   background: var(--info-soft);   border-color: #c7dcf3; }
 .badge.status-running    { color: var(--brand);  background: var(--brand-soft);  border-color: #b8d6f6; }
@@ -782,7 +762,7 @@ p.state strong { color: var(--text); }
   font-size: 0.85rem;
   color: var(--text-soft);
 }
-.internal-toggle input[type="checkbox"] { margin-right: 0.3rem; }
+.internal-toggle input[type="checkbox"] { margin-inline-end: 0.3rem; }
 .comment .actions {
   margin-top: 0.6rem;
 }
@@ -883,7 +863,7 @@ p.state strong { color: var(--text); }
 }
 .inbox-counts__chip:hover { filter: brightness(0.97); }
 .inbox-counts__chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.inbox-counts__chip strong { color: var(--text); margin-right: 0.25rem; }
+.inbox-counts__chip strong { color: var(--text); margin-inline-end: 0.25rem; }
 .inbox-counts__chip--warn { background: var(--warn-soft); border-color: var(--warn-soft); }
 .inbox-counts__chip--danger { background: var(--danger-soft); border-color: var(--danger-soft); color: var(--danger); }
 .inbox-counts__chip--active { outline: 2px solid var(--brand); outline-offset: 1px; }
@@ -1364,7 +1344,7 @@ p.state strong { color: var(--text); }
 }
 .access-row__tag {
   display: inline-block;
-  margin-left: 0.4rem;
+  margin-inline-start: 0.4rem;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2183,7 +2163,7 @@ main.container .adv-affected-card ul.ranges li {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius-sm);
-  margin-right: 0.35rem;
+  margin-inline-end: 0.35rem;
 }
 .topbar .theme-toggle button {
   background: transparent;
@@ -2308,7 +2288,7 @@ main.container .adv-affected-card ul.ranges li {
 }
 .triage-detail .project-metadata a.muted.small {
   display: inline-block;
-  margin-left: 0.6rem;
+  margin-inline-start: 0.6rem;
   font-size: 0.8rem;
   text-decoration: underline;
 }

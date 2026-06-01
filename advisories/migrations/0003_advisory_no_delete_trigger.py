@@ -41,5 +41,5 @@ def _reverse(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("advisories", "0006_ghsa_linked_advisory")]
+    dependencies = [("advisories", "0002_initial")]
     operations = [migrations.RunPython(_apply, _reverse)]

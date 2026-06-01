@@ -1673,7 +1673,7 @@ project lets the permission machinery flow naturally.
 ### INV-IMPL-1 — `Advisory.delete()` is blocked   [Critical]
 
 **Statement.** `Advisory.delete()` and `AdvisoryQuerySet.delete()` raise
-`PermissionError`. A Postgres trigger (advisories migration `0007_advisory_no_delete_trigger`)
+`PermissionError`. A Postgres trigger (advisories migration `0003_advisory_no_delete_trigger`)
 adds DB-level enforcement. Seed / reset tooling must use the explicit
 `_unsafe_dev_reset_bypass()` context manager.
 
@@ -1684,7 +1684,7 @@ orphan dependents and destroy history.
 **Enforced in.**
 - `advisories/models.py` — `Advisory.delete`, `AdvisoryQuerySet.delete`,
   `_unsafe_dev_reset_bypass`.
-- `advisories/migrations/0007_advisory_no_delete_trigger.py`.
+- `advisories/migrations/0003_advisory_no_delete_trigger.py`.
 
 **Violation impact.** Orphaned audit history; references to a non-existent
 advisory in published artefacts.

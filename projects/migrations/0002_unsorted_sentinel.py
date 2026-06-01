@@ -48,8 +48,8 @@ def remove_unsorted_sentinel(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("projects", "0002_ghsa_linked_advisory"),
-        ("advisories", "0008_alter_advisory_state_advisoryintakemetadata"),
+        ("projects", "0001_initial"),
+        ("advisories", "0002_initial"),
         ("auth", "0001_initial"),
     ]
 

@@ -148,7 +148,7 @@ Three tables are append-only by design:
 `Advisory` is non-deletable via a model-layer guard
 (`Advisory.delete` and `AdvisoryQuerySet.delete` raise) and a
 Postgres trigger
-(`advisories/migrations/0007_advisory_no_delete_trigger.py`).
+(`advisories/migrations/0003_advisory_no_delete_trigger.py`).
 Dev-only seed-reset has an explicit
 `_unsafe_dev_reset_bypass()` context manager that lowers
 `session_replication_role` to `replica` for the transaction

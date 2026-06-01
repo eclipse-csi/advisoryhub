@@ -16,6 +16,7 @@ import copy
 from contextlib import contextmanager
 
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.db import connection, models
 
@@ -253,6 +254,15 @@ class Advisory(models.Model):
             models.Index(fields=["review_status"]),
             models.Index(fields=["kind"]),
             models.Index(fields=["ghsa_id"]),
+            # Search accelerators. The trigram (``gin_trgm_ops``) indexes need
+            # the ``pg_trgm`` extension, which the initial migration installs
+            # first via ``TrigramExtension``.
+            GinIndex(fields=["aliases"], opclasses=["jsonb_path_ops"], name="adv_aliases_gin"),
+            GinIndex(fields=["summary"], opclasses=["gin_trgm_ops"], name="adv_summary_trgm"),
+            GinIndex(fields=["details"], opclasses=["gin_trgm_ops"], name="adv_details_trgm"),
+            GinIndex(
+                fields=["advisory_id"], opclasses=["gin_trgm_ops"], name="adv_advisory_id_trgm"
+            ),
         ]
         constraints = [
             # A GHSA id maps to a single AdvisoryHub advisory. We enforce

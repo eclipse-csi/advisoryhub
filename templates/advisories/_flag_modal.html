@@ -1,5 +1,5 @@
 {% load i18n %}
-<dialog class="confirm-dialog" aria-labelledby="flag-modal-title">
+<dialog class="confirm-dialog" aria-labelledby="flag-modal-title" data-light-dismiss>
   <form hx-post="{% url 'advisories:flag' advisory.advisory_id %}"
         hx-target="#modal"
         hx-swap="innerHTML">

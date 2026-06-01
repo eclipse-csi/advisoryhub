@@ -1,5 +1,5 @@
 {% load i18n %}
-<dialog class="confirm-dialog" aria-labelledby="triage-flag-modal-title">
+<dialog class="confirm-dialog" aria-labelledby="triage-flag-modal-title" data-light-dismiss>
   <form hx-post="{% url 'intake:triage_flag' report.id %}"
         hx-target="#modal"
         hx-swap="innerHTML">

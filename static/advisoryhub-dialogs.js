@@ -88,6 +88,15 @@
       if (!isDialog(event.target)) return;
       var host = event.target.closest("[data-dialog-host]");
       if (host) host.innerHTML = "";
+      // Native <dialog> restores focus to the opener — but if the opener was
+      // swapped out of the DOM (e.g. the CVE-reject form replaces the table row
+      // that held its trigger), focus falls back to <body>, stranding keyboard
+      // and screen-reader users at the top. Move it to the main landmark
+      // (#content is focusable, tabindex=-1) so context isn't lost.
+      if (document.activeElement === document.body || document.activeElement === null) {
+        var main = document.getElementById("content");
+        if (main && typeof main.focus === "function") main.focus();
+      }
     },
     true,
   );

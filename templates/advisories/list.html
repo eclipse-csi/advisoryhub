@@ -3,7 +3,7 @@
 {% block title %}{% translate "Advisories" %}{% endblock %}
 {% block content %}
   <h1>{% translate "Advisories" %}</h1>
-  <p><a href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a></p>
+  <p><a class="btn" href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a></p>
 
   <form method="get" class="advisory-filters">
     <input type="search" name="q" value="{{ filters.q|default:'' }}" placeholder="{% translate 'Search summary / details / aliases…' %}">

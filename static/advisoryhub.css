@@ -846,6 +846,15 @@ p.state strong { color: var(--text); }
 }
 .advisory-detail__header h1 { margin: 0; }
 .advisory-detail__edit { flex-shrink: 0; }
+/* The advisory_id is the canonical <h1>; surface the human summary as a lead
+   so the page isn't headed only by an opaque identifier. */
+.advisory-detail__summary {
+  margin: -0.1rem 0 0.9rem;
+  font-size: var(--text-h2);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-soft);
+}
 .advisory-detail__sidebar {
   position: sticky;
   top: 1rem;

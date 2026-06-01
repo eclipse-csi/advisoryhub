@@ -8,6 +8,7 @@
   <div class="advisory-detail__header">
     <h1>{{ advisory.advisory_id }}</h1>
   </div>
+  {% if advisory.summary %}<p class="advisory-detail__summary">{{ advisory.summary }}</p>{% endif %}
 
   {% include "advisories/_status_header.html" %}
 

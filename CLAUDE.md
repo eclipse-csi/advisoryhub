@@ -173,6 +173,7 @@ When creating commits in this repository, every rules bellow must be respected:
 
 - Every commit must be signed (`-S`) and singed-off-by (`-s`).
 - Every commit messages must follow the Conventional Commits specification.
+- Never include add a Git trailer "Co-Authored-By" in the commit message footer.
 - Every AI-generated commit MUST include this Git trailer in the commit message footer:
 
 ```text

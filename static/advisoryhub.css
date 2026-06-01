@@ -44,6 +44,10 @@
   --accent:       #F06C02;
   --accent-soft:  #ffe4cc;
   --accent-border:#ffc999;
+  /* Accent used as TEXT on a surface needs more contrast than the fill orange:
+     #F06C02 on white is only 3.07:1 (fails AA). Darkened for light theme. */
+  --accent-text:       #a14600;
+  --accent-text-hover: #7a3400;
 
   /* Topbar gradient stops. */
   --navy:         #000966;
@@ -516,6 +520,9 @@ fieldset legend {
   font-size: 0.95rem;
 }
 fieldset p { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
+/* Public intake form wraps fields in <div class="field"> (the authoring form uses
+   <p>, caught by `fieldset p` above). Give them the same label/control/error rhythm. */
+.field { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
 fieldset small { color: var(--text-muted); font-size: 0.82rem; }
 
 /* ------------------------------------------------------------ formsets */
@@ -2212,6 +2219,9 @@ main.container .adv-affected-card ul.ranges li {
   --brand-soft:   #0e1c5c;   /* royal-blue tint */
   --accent-soft:  #3a1f08;   /* eclipse-orange tint */
   --accent-border:#6a3a08;
+  /* On the dark surface the bright orange has enough contrast as text; brighten on hover. */
+  --accent-text:       #F06C02;
+  --accent-text-hover: #ffa860;
   --ok-soft:      #0d3328;
   --warn-soft:    #3a2a0a;
   --danger-soft:  #3a1816;
@@ -2241,6 +2251,9 @@ main.container .adv-affected-card ul.ranges li {
 :root[data-theme="dark"] .badge.status-running    { color: #9fb4ff; border-color: #1f2a8c; }
 :root[data-theme="dark"] .badge.status-succeeded  { color: #54FFD4; border-color: #156a4a; }
 :root[data-theme="dark"] .badge.status-failed     { color: #f08983; border-color: #5a2522; }
+/* Light --danger (#b3261e) on the dark --danger-soft (#3a1816) is only ~1.9:1 (fails
+   WCAG AA) — and this is the most urgent admin count. Reuse the status-failed reds. */
+:root[data-theme="dark"] .inbox-counts__chip--danger { color: #f08983; border-color: #5a2522; }
 
 :root[data-theme="dark"] .adv-affected-card .badge.ecosystem { color: #9fb4ff; border-color: #1f2a8c; }
 :root[data-theme="dark"] .event.event-warn    { color: #ffcb6b; border-color: #5a4416; }
@@ -2320,12 +2333,12 @@ main.container .adv-affected-card ul.ranges li {
   margin: 0;
   font: inherit;
   font-size: 0.85rem;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.link-button:hover { color: #a14600; }
+.link-button:hover { color: var(--accent-text-hover); }
 .link-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 
 .history-drawer-trigger { font-weight: 500; }

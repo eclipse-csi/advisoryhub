@@ -62,6 +62,17 @@
   --info:         #2C1CD8;
   --info-soft:    #E2F4FF;
 
+  /* Status role text (fg) + soft-border (bd), referenced by .badge / .event /
+     .ref-row / .sev-level / .credit / .ecosystem in BOTH themes. The dark theme
+     redefines these (brighter, for contrast on dark surfaces) in its :root block,
+     so the component rules carry no per-theme color overrides. */
+  --ok-fg:     var(--ok);     --ok-bd:     #c0e6cf;
+  --warn-fg:   var(--warn);   --warn-bd:   #f3d9a3;
+  --danger-fg: var(--danger); --danger-bd: #f1c7c4;
+  --info-fg:   var(--info);   --info-bd:   #c7dcf3;
+  --brand-fg:  var(--brand);  --brand-bd:  #b8d6f6;
+  --accent-fg: var(--accent);
+
   --radius:       10px;
   --radius-sm:    6px;
   --radius-md:    8px;
@@ -679,20 +690,20 @@ dd { margin: 0; color: var(--text); }
   background: currentColor;
   opacity: 0.85;
 }
-.badge.state-draft       { color: var(--warn);   background: var(--warn-soft);   border-color: #f3d9a3; }
-.badge.state-published   { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
+.badge.state-draft       { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
+.badge.state-published   { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
 .badge.state-dismissed   { color: var(--text-muted); background: var(--surface-alt); border-color: var(--border); }
-.badge.review-submitted          { color: var(--info);   background: var(--info-soft);   border-color: #c7dcf3; }
-.badge.review-changes_requested  { color: var(--warn);   background: var(--warn-soft);   border-color: #f3d9a3; }
-.badge.review-approved           { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
-.badge.review-rejected           { color: var(--danger); background: var(--danger-soft); border-color: #f1c7c4; }
-.badge.republish                 { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-border); }
+.badge.review-submitted          { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+.badge.review-changes_requested  { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
+.badge.review-approved           { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
+.badge.review-rejected           { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
+.badge.republish                 { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-border); }
 .badge.needs-republish::after    { content: "⟳"; margin-inline-start: 0.2rem; font-weight: 700; }
 
-.badge.status-queued    { color: var(--info);   background: var(--info-soft);   border-color: #c7dcf3; }
-.badge.status-running    { color: var(--brand);  background: var(--brand-soft);  border-color: #b8d6f6; }
-.badge.status-succeeded  { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
-.badge.status-failed     { color: var(--danger); background: var(--danger-soft); border-color: #f1c7c4; }
+.badge.status-queued    { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+.badge.status-running    { color: var(--brand-fg);  background: var(--brand-soft);  border-color: var(--brand-bd); }
+.badge.status-succeeded  { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
+.badge.status-failed     { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
 
 p.state { font-size: 0.95rem; color: var(--text-soft); margin-top: -0.3em; }
 p.state strong { color: var(--text); }
@@ -762,9 +773,9 @@ p.state strong { color: var(--text); }
   border-left-color: var(--warn);
 }
 .badge.badge-internal {
-  color: var(--warn);
+  color: var(--warn-fg);
   background: var(--surface);
-  border-color: #f3d9a3;
+  border-color: var(--warn-bd);
 }
 .internal-toggle {
   font-size: 0.85rem;
@@ -1934,9 +1945,9 @@ button.info:hover, .btn.info:hover {
   color: var(--text);
 }
 .adv-affected-card .badge.ecosystem {
-  color: var(--brand);
+  color: var(--brand-fg);
   background: var(--brand-soft);
-  border-color: #b8d6f6;
+  border-color: var(--brand-bd);
 }
 .adv-affected-card .purl {
   margin: 0.2rem 0 0;
@@ -1997,9 +2008,9 @@ button.info:hover, .btn.info:hover {
   font-family: var(--font-mono);
   font-size: 0.82rem;
 }
-.event.event-warn    { color: var(--warn);   background: var(--warn-soft);   border-color: #f3d9a3; }
-.event.event-ok      { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
-.event.event-danger  { color: var(--danger); background: var(--danger-soft); border-color: #f1c7c4; }
+.event.event-warn    { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
+.event.event-ok      { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
+.event.event-danger  { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
 .event.event-neutral { color: var(--text-soft); }
 
 /* ---- references ---- */
@@ -2038,19 +2049,19 @@ button.info:hover, .btn.info:hover {
 }
 
 .ref-row.ref-danger  { border-left-color: var(--danger); }
-.ref-row.ref-danger  .badge.ref-type { color: var(--danger); background: var(--danger-soft); border-color: #f1c7c4; }
+.ref-row.ref-danger  .badge.ref-type { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
 .ref-row.ref-danger  .ref-icon { color: var(--danger); }
 .ref-row.ref-ok      { border-left-color: var(--ok); }
-.ref-row.ref-ok      .badge.ref-type { color: var(--ok); background: var(--ok-soft); border-color: #c0e6cf; }
+.ref-row.ref-ok      .badge.ref-type { color: var(--ok-fg); background: var(--ok-soft); border-color: var(--ok-bd); }
 .ref-row.ref-ok      .ref-icon { color: var(--ok); }
 .ref-row.ref-info    { border-left-color: var(--info); }
-.ref-row.ref-info    .badge.ref-type { color: var(--info); background: var(--info-soft); border-color: #c7dcf3; }
+.ref-row.ref-info    .badge.ref-type { color: var(--info-fg); background: var(--info-soft); border-color: var(--info-bd); }
 .ref-row.ref-info    .ref-icon { color: var(--info); }
 .ref-row.ref-warn    { border-left-color: var(--warn); }
-.ref-row.ref-warn    .badge.ref-type { color: var(--warn); background: var(--warn-soft); border-color: #f3d9a3; }
+.ref-row.ref-warn    .badge.ref-type { color: var(--warn-fg); background: var(--warn-soft); border-color: var(--warn-bd); }
 .ref-row.ref-warn    .ref-icon { color: var(--warn); }
 .ref-row.ref-brand   { border-left-color: var(--brand); }
-.ref-row.ref-brand   .badge.ref-type { color: var(--brand); background: var(--brand-soft); border-color: #b8d6f6; }
+.ref-row.ref-brand   .badge.ref-type { color: var(--brand-fg); background: var(--brand-soft); border-color: var(--brand-bd); }
 .ref-row.ref-brand   .ref-icon { color: var(--brand); }
 .ref-row.ref-neutral { border-left-color: var(--border-strong); }
 
@@ -2103,10 +2114,10 @@ button.info:hover, .btn.info:hover {
 .sev-row.sev-negligible,
 .sev-row.sev-none     { border-left-color: var(--border-strong); }
 
-.sev-level-critical   { color: var(--danger); background: var(--danger-soft); border-color: #f1c7c4; }
-.sev-level-high       { color: var(--warn);   background: var(--warn-soft);   border-color: #f3d9a3; }
-.sev-level-medium     { color: var(--info);   background: var(--info-soft);   border-color: #c7dcf3; }
-.sev-level-low        { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
+.sev-level-critical   { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
+.sev-level-high       { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
+.sev-level-medium     { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+.sev-level-low        { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
 .sev-level-negligible,
 .sev-level-none       { color: var(--text-muted); }
 
@@ -2137,10 +2148,10 @@ button.info:hover, .btn.info:hover {
   font-weight: 600;
   color: var(--text);
 }
-.adv-credits .credit-type.credit-brand   { color: var(--brand);  background: var(--brand-soft);  border-color: #b8d6f6; }
-.adv-credits .credit-type.credit-info    { color: var(--info);   background: var(--info-soft);   border-color: #c7dcf3; }
-.adv-credits .credit-type.credit-ok      { color: var(--ok);     background: var(--ok-soft);     border-color: #c0e6cf; }
-.adv-credits .credit-type.credit-warn    { color: var(--warn);   background: var(--warn-soft);   border-color: #f3d9a3; }
+.adv-credits .credit-type.credit-brand   { color: var(--brand-fg);  background: var(--brand-soft);  border-color: var(--brand-bd); }
+.adv-credits .credit-type.credit-info    { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+.adv-credits .credit-type.credit-ok      { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
+.adv-credits .credit-type.credit-warn    { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
 .adv-credits .credit-type.credit-neutral { color: var(--text-muted); }
 
 /* Override the relaxed UL padding for our list-styled groups */
@@ -2228,6 +2239,15 @@ main.container .adv-affected-card ul.ranges li {
   --danger-soft:  #3a1816;
   --info-soft:    #0e1c5c;
 
+  /* Brighter status text/border for adequate contrast on the dark surfaces.
+     (Transcribed verbatim from the former per-component dark overrides.) */
+  --ok-fg:     #54FFD4; --ok-bd:     #156a4a;
+  --warn-fg:   #ffcb6b; --warn-bd:   #5a4416;
+  --danger-fg: #f08983; --danger-bd: #5a2522;
+  --info-fg:   #82b6ee; --info-bd:   #1c3d63;
+  --brand-fg:  #9fb4ff; --brand-bd:  #1f2a8c;
+  --accent-fg: #ffa860;
+
   --navy:         #000333;
   --navy-2:       #000966;
 
@@ -2240,42 +2260,9 @@ main.container .adv-affected-card ul.ranges li {
   border-left-color: #ffcb6b;
 }
 :root[data-theme="dark"] .comment.internal.redacted { background: var(--surface); }
-:root[data-theme="dark"] .badge.badge-internal { color: #ffcb6b; background: var(--surface); border-color: #5a4416; }
-:root[data-theme="dark"] .badge.state-draft       { color: #ffcb6b; border-color: #5a4416; }
-:root[data-theme="dark"] .badge.state-published   { color: #54FFD4; border-color: #156a4a; }
-:root[data-theme="dark"] .badge.review-submitted          { color: #82b6ee; border-color: #1c3d63; }
-:root[data-theme="dark"] .badge.review-changes_requested  { color: #ffcb6b; border-color: #5a4416; }
-:root[data-theme="dark"] .badge.review-approved           { color: #54FFD4; border-color: #156a4a; }
-:root[data-theme="dark"] .badge.review-rejected           { color: #f08983; border-color: #5a2522; }
-:root[data-theme="dark"] .badge.republish                 { color: #ffa860; background: var(--accent-soft); border-color: var(--accent-border); }
-:root[data-theme="dark"] .badge.status-queued    { color: #82b6ee; border-color: #1c3d63; }
-:root[data-theme="dark"] .badge.status-running    { color: #9fb4ff; border-color: #1f2a8c; }
-:root[data-theme="dark"] .badge.status-succeeded  { color: #54FFD4; border-color: #156a4a; }
-:root[data-theme="dark"] .badge.status-failed     { color: #f08983; border-color: #5a2522; }
 /* Light --danger (#b3261e) on the dark --danger-soft (#3a1816) is only ~1.9:1 (fails
    WCAG AA) — and this is the most urgent admin count. Reuse the status-failed reds. */
 :root[data-theme="dark"] .inbox-counts__chip--danger { color: #f08983; border-color: #5a2522; }
-
-:root[data-theme="dark"] .adv-affected-card .badge.ecosystem { color: #9fb4ff; border-color: #1f2a8c; }
-:root[data-theme="dark"] .event.event-warn    { color: #ffcb6b; border-color: #5a4416; }
-:root[data-theme="dark"] .event.event-ok      { color: #54FFD4; border-color: #156a4a; }
-:root[data-theme="dark"] .event.event-danger  { color: #f08983; border-color: #5a2522; }
-
-:root[data-theme="dark"] .ref-row.ref-danger  .badge.ref-type { color: #f08983; border-color: #5a2522; }
-:root[data-theme="dark"] .ref-row.ref-ok      .badge.ref-type { color: #54FFD4; border-color: #156a4a; }
-:root[data-theme="dark"] .ref-row.ref-info    .badge.ref-type { color: #82b6ee; border-color: #1c3d63; }
-:root[data-theme="dark"] .ref-row.ref-warn    .badge.ref-type { color: #ffcb6b; border-color: #5a4416; }
-:root[data-theme="dark"] .ref-row.ref-brand   .badge.ref-type { color: #9fb4ff; border-color: #1f2a8c; }
-
-:root[data-theme="dark"] .sev-level-critical   { color: #f08983; border-color: #5a2522; }
-:root[data-theme="dark"] .sev-level-high       { color: #ffcb6b; border-color: #5a4416; }
-:root[data-theme="dark"] .sev-level-medium     { color: #82b6ee; border-color: #1c3d63; }
-:root[data-theme="dark"] .sev-level-low        { color: #54FFD4; border-color: #156a4a; }
-
-:root[data-theme="dark"] .adv-credits .credit-type.credit-brand   { color: #9fb4ff; border-color: #1f2a8c; }
-:root[data-theme="dark"] .adv-credits .credit-type.credit-info    { color: #82b6ee; border-color: #1c3d63; }
-:root[data-theme="dark"] .adv-credits .credit-type.credit-ok      { color: #54FFD4; border-color: #156a4a; }
-:root[data-theme="dark"] .adv-credits .credit-type.credit-warn    { color: #ffcb6b; border-color: #5a4416; }
 
 /* ----------------------------------------------- vulnerability report triage */
 

@@ -935,7 +935,7 @@ p.state strong { color: var(--text); }
 .inbox-feed { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .inbox-feed__row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-columns: 94px minmax(0, 1fr) auto;
   gap: 0.8rem;
   align-items: baseline;
   padding: 0.65rem 0.9rem;
@@ -959,8 +959,9 @@ p.state strong { color: var(--text); }
 
 .inbox-badge {
   display: inline-block;
-  min-width: 52px;
+  min-width: 82px;
   text-align: center;
+  white-space: nowrap;
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-sm);
   font-size: var(--text-2xs);

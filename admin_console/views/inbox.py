@@ -114,7 +114,7 @@ def _review_items(see_more_url: str) -> list[InboxItem]:
     return [
         InboxItem(
             kind="review",
-            badge="REVW",
+            badge="Review",
             badge_class="inbox-badge--review",
             title=t.advisory.advisory_id,
             subtitle=f"submitted by {t.submitted_by.email}"
@@ -137,7 +137,7 @@ def _publication_items(see_more_url: str) -> list[InboxItem]:
     return [
         InboxItem(
             kind="pub_failed",
-            badge="PUB!",
+            badge="Publish",
             badge_class="inbox-badge--pub",
             title=t.advisory.advisory_id,
             subtitle=_truncate(t.last_error, 80),
@@ -164,11 +164,11 @@ def _triage_items(see_more_url: str) -> list[InboxItem]:
         if flagged:
             note = _truncate(intake.admin_routing_note, 70)
             subtitle = f"{a.project.slug} · {note}" if note else a.project.slug
-            badge = "ROUT"
+            badge = "Routing"
             badge_class = "inbox-badge--triage-routing"
         else:
             subtitle = _reporter_label(a) or a.project.slug
-            badge = "TRG"
+            badge = "Triage"
             badge_class = "inbox-badge--triage"
         items.append(
             InboxItem(
@@ -194,7 +194,7 @@ def _orphan_items(see_more_url: str) -> list[InboxItem]:
     return [
         InboxItem(
             kind="orphan",
-            badge="ORPH",
+            badge="Orphan",
             badge_class="inbox-badge--orphan",
             title=o.cve_id,
             subtitle=o.previous_advisory_label or "(advisory deleted)",
@@ -215,7 +215,7 @@ def _reassignment_items(see_more_url: str) -> list[InboxItem]:
     return [
         InboxItem(
             kind="reassignment",
-            badge="REAS",
+            badge="Reassign",
             badge_class="inbox-badge--orphan",
             title=t.orphan_cve.cve_id,
             subtitle=f"reopened: {t.advisory.advisory_id}",

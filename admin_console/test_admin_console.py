@@ -160,7 +160,7 @@ def test_inbox_empty_state_for_admin(client, setup):
 
 @pytest.mark.django_db
 def test_inbox_marks_flagged_triage_advisory(client, setup):
-    """Flagged triage rows render with the ROUT badge; non-flagged with TRG."""
+    """Flagged triage rows render with the Routing badge; non-flagged with Triage."""
     flagged = Advisory.objects.create(
         project=setup["project"],
         summary="needs re-routing",
@@ -182,9 +182,9 @@ def test_inbox_marks_flagged_triage_advisory(client, setup):
     client.force_login(setup["admin"])
     response = client.get(reverse("admin_console:index"))
     items = {i.title: i for i in response.context["page"].object_list}
-    assert items["needs re-routing"].badge == "ROUT"
+    assert items["needs re-routing"].badge == "Routing"
     assert items["needs re-routing"].badge_class == "inbox-badge--triage-routing"
-    assert items["regular triage"].badge == "TRG"
+    assert items["regular triage"].badge == "Triage"
     assert items["regular triage"].badge_class == "inbox-badge--triage"
 
 

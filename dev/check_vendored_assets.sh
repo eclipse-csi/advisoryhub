@@ -1,41 +1,52 @@
 #!/usr/bin/env bash
-# Verify vendored, upstream-verbatim assets still match their pinned hashes.
+# Verify vendored, upstream-verbatim assets still match their pinned hashes:
+#   - static/htmx.min.js          vs static/htmx.VERSION
+#   - static/fonts/Inter*.woff2   vs static/fonts/Inter.VERSION
 #
-# Right now that is the htmx bundle: static/htmx.min.js must match the sha256
-# recorded in static/htmx.VERSION. This mirrors how publication/schemas/*.upstream.json
-# are kept pinned, and gives us an automated tamper/staleness check for a script
-# that ships on every page (including the public intake form). Run by prek
-# (pre-commit stage) and CI's django-checks job.
+# These ship on every page (including the public intake form), so an automated
+# tamper/staleness check mirrors how publication/schemas/*.upstream.json are
+# kept pinned. Run by prek (pre-commit stage) and CI's django-checks job.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 fail=0
 
-check_sha256() {
-  local file="$1" version_file="$2"
-  local expected actual
-  expected=$(sed -n 's/^sha256://p' "$version_file" | head -n1)
-  if [ -z "$expected" ]; then
-    echo "ERROR: could not read sha256 from $version_file" >&2
-    fail=1
-    return
-  fi
+sha256_of() {
   if command -v sha256sum >/dev/null 2>&1; then
-    actual=$(sha256sum "$file" | cut -d' ' -f1)
+    sha256sum "$1" | cut -d' ' -f1
   else
-    actual=$(shasum -a 256 "$file" | cut -d' ' -f1)
+    shasum -a 256 "$1" | cut -d' ' -f1
   fi
-  if [ "$expected" != "$actual" ]; then
-    echo "ERROR: $file sha256 mismatch" >&2
-    echo "  expected ($version_file): $expected" >&2
-    echo "  actual   ($file):        $actual" >&2
-    echo "  If you intentionally upgraded, update $version_file." >&2
-    fail=1
-    return
-  fi
-  echo "OK: $file matches pinned sha256 ($expected)"
 }
 
-check_sha256 static/htmx.min.js static/htmx.VERSION
+check() {
+  local file="$1" expected="$2"
+  if [ -z "$expected" ]; then
+    echo "ERROR: no expected hash recorded for $file" >&2
+    fail=1
+    return
+  fi
+  local actual
+  actual=$(sha256_of "$file")
+  if [ "$expected" != "$actual" ]; then
+    echo "ERROR: $file sha256 mismatch" >&2
+    echo "  expected: $expected" >&2
+    echo "  actual:   $actual" >&2
+    echo "  If you intentionally upgraded, update the matching .VERSION file." >&2
+    fail=1
+    return
+  fi
+  echo "OK: $file matches pinned sha256"
+}
+
+# htmx.VERSION records the hash on a `sha256:<hash>` line.
+check static/htmx.min.js "$(sed -n 's/^sha256://p' static/htmx.VERSION | head -n1)"
+
+# Inter.VERSION lists `<hash>  <filename>` lines; grep the filename, take the hash.
+hash_for() { grep -F "$2" "$1" | grep -oE '[0-9a-f]{64}' | head -n1; }
+check static/fonts/InterVariable.woff2 \
+  "$(hash_for static/fonts/Inter.VERSION InterVariable.woff2)"
+check static/fonts/InterVariable-Italic.woff2 \
+  "$(hash_for static/fonts/Inter.VERSION InterVariable-Italic.woff2)"
 
 exit "$fail"

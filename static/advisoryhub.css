@@ -3,6 +3,27 @@
  * with clear status signalling and dense-but-readable tables.
  */
 
+/* Self-hosted Inter (variable, weights 100–900). Self-hosting keeps every
+ * request same-origin — no third-party font CDN to leak client IP/referrer
+ * from a private app, no extra connection on the critical path, and the CSP
+ * style/font-src can stay 'self'. font-display:swap avoids FOIT. Provenance +
+ * checksums in static/fonts/Inter.VERSION (verified by dev/check_vendored_assets.sh).
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/InterVariable-Italic.woff2") format("woff2");
+}
+
 :root {
   --bg:           #f5f7fb;
   --surface:      #ffffff;
@@ -62,6 +83,11 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Normalise the fallback stack's x-height to Inter's (~0.545) so the swap
+     from the system fallback to InterVariable shifts layout less (CLS).
+     Baseline-newly-available; degrades to a no-op on older engines. Reset on
+     the monospace elements below so code keeps its native metrics. */
+  font-size-adjust: 0.545;
 }
 
 h1, h2, h3, h4 {
@@ -79,7 +105,7 @@ p { margin: 0 0 0.8em; }
 a { color: var(--brand); text-decoration: none; }
 a:hover { color: var(--brand-hover); text-decoration: underline; }
 
-code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.9em; }
+code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.9em; font-size-adjust: none; }
 code { background: var(--surface-alt); padding: 0.1em 0.35em; border-radius: 4px; border: 1px solid var(--border); }
 pre {
   background: var(--surface-alt);

@@ -24,6 +24,7 @@ dependencies = [
     "PyJWT[crypto]>=2.8",
     "django-hcaptcha>=0.2",
     "django-csp>=4.0",
+    "whitenoise[brotli]>=6.6",
 ]
 
 [tool.setuptools]

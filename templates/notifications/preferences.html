@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Notification preferences{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 {% block content %}
   <h1>Notification preferences</h1>
   <p class="hint">

@@ -19,19 +19,17 @@
       } catch (e) { /* localStorage disabled — fall back to light */ }
     })();
   </script>
-  <link rel="preconnect" href="https://rsms.me/">
-  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <link rel="stylesheet" href="{% static 'advisoryhub.css' %}">
   <script src="{% static 'htmx.min.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-htmx.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-dialogs.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-forms.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
-  <script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
-  <script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-theme.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
-  <script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-row-link.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-maintenance.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  {# Page-only scripts (formsets, access drag-drop, form-dirty) load via each
+     page's extra_head block, not globally — see advisories/form.html, detail.html,
+     intake/report.html, notifications/preferences.html. #}
   {% block extra_head %}{% endblock %}
 </head>
 <body{% if maintenance_mode.paused %} data-maintenance-paused{% endif %}>

@@ -75,6 +75,24 @@ def test_forget_user_drops_their_pending_invitations(setup):
 
 
 @pytest.mark.django_db
+def test_forget_user_deletes_access_log_rows(setup):
+    """Access-log rows (views/chatter) carry actor + IP/UA; forget deletes them."""
+    from audit.models import AccessLogEntry
+
+    record(
+        action=Action.ADVISORY_VIEWED,
+        actor=setup["member"],
+        advisory=setup["advisory"],
+        ip_address="198.51.100.7",
+        user_agent="curl/8.5.0",
+    )
+    assert AccessLogEntry.objects.filter(actor=setup["member"]).exists()
+    counters = forget_user(setup["member"])
+    assert AccessLogEntry.objects.filter(actor=setup["member"]).count() == 0
+    assert counters["access_log_entries"] >= 1
+
+
+@pytest.mark.django_db
 def test_forget_user_records_audit_of_the_forgetting(setup):
     forget_user(setup["member"])
     forget_audit = AuditLogEntry.objects.filter(metadata__operation="forget_user").first()

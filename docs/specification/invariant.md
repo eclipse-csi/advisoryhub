@@ -67,6 +67,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-AUDIT-2](#inv-audit-2) | All user/CI-supplied strings are redacted before reaching audit / errors / notifications. | Audit | Critical |
 | [INV-AUDIT-3](#inv-audit-3) | Every governance action is recorded in the audit log. | Audit | High |
 | [INV-AUDIT-4](#inv-audit-4) | Web-originated audit entries include IP and User-Agent. | Audit | Medium |
+| [INV-AUDIT-5](#inv-audit-5) | Access-log events are retention-bounded (partitioned, droppable) and disjoint from the timeline. | Audit | Medium |
 | [INV-VERSION-3](#inv-version-3) | OSV / CSAF are generated from an immutable `AdvisoryVersion`, never from live data. | Versions | Critical |
 | [INV-SECRET-1](#inv-secret-1) | Tokens never appear in `PublicationTask.last_error` or audit metadata. | Secrets | Critical |
 | [INV-SECRET-2](#inv-secret-2) | SSH keys and token-bearing URLs are never persisted or logged. | Secrets | Critical |
@@ -589,6 +590,11 @@ in two independent layers:
 2. **Database (Postgres)** — triggers `audit_log_no_update` and `audit_log_no_delete`
    raise on `UPDATE` or `DELETE`.
 
+**Scope.** This invariant governs the durable ledger (`AuditLogEntry`) only.
+High-volume, non-compliance *access-log* events (advisory views, GHSA/PMI
+chatter) are routed to the separate, retention-managed `AccessLogEntry` table,
+which is deliberately weaker — see [INV-AUDIT-5](#inv-audit-5).
+
 **Rationale.** Tamper resistance. Even a compromised admin or raw `psql` session
 cannot rewrite history; both layers must be subverted, and the database trigger
 removal would itself appear in `git log`.
@@ -676,6 +682,45 @@ account compromise.
 **Tests.** `audit/tests.py`.
 
 **Related.** [INV-AUDIT-3](#inv-audit-3).
+
+---
+
+<a id="inv-audit-5"></a>
+### INV-AUDIT-5 — Access log is retention-bounded, not tamper-proof   [Medium]
+
+**Statement.** The actions in `audit.models.EPHEMERAL_ACTIONS` (advisory views
+plus GHSA/PMI machine chatter) are written to `AccessLogEntry`, **not** the
+durable ledger. This table is:
+
+1. **Monthly range-partitioned** on `created_at`; retention is a `DROP PARTITION`
+   of months older than `AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90), run daily
+   by `audit.tasks.maintain_access_log_partitions`.
+2. **Application-layer write-once** (`AccessLogEntry.save()` refuses updates) but
+   **not** protected by append-only DB triggers — it must stay droppable, so DB
+   `DELETE`/`DROP` is permitted (retention, and `forget_user` deletes a forgotten
+   user's rows outright rather than scrubbing them).
+3. **Disjoint from the advisory-timeline tiers.** `EPHEMERAL_ACTIONS` must never
+   intersect `advisories.timeline` tiers A/B/C, or dropping a partition would
+   erase events shown on advisory pages.
+
+**Rationale.** View pings and integration chatter dominate audit volume but carry
+no long-term compliance value and never appear on a timeline. Isolating them lets
+the ledger stay small and fully tamper-proof while this table is pruned cheaply.
+
+**Enforced in.**
+- `audit/models.py` — `AccessLogEntry`, `EPHEMERAL_ACTIONS`.
+- `audit/services.py` — `record()` routes by action.
+- `audit/migrations/0003_accesslogentry.py` — partitioned table DDL.
+- `audit/partitions.py`, `audit/tasks.py` — partition lifecycle / retention.
+
+**Violation impact.** Either unbounded growth (retention disabled/broken) or, if
+the disjointness is violated, silent loss of timeline-visible history.
+
+**Tests.** `audit/tests.py`, `audit/test_partitions.py`,
+`advisories/tests/test_access_log_disjoint.py`, `audit/test_retention.py`.
+
+**Related.** [INV-AUDIT-1](#inv-audit-1), [INV-AUDIT-2](#inv-audit-2),
+[INV-AUDIT-4](#inv-audit-4).
 
 ---
 

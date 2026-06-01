@@ -93,6 +93,31 @@ class Action(models.TextChoices):
     REPORT_FLAGGED_FOR_ROUTING = "report.flagged_for_routing"
 
 
+# Actions routed to the retention-managed, monthly-partitioned access log
+# (:class:`AccessLogEntry`) instead of the durable ledger. This is a deliberate
+# ALLOWLIST: only actions named here become subject to DROP PARTITION pruning.
+# Every other action stays in the append-only :class:`AuditLogEntry` forever, so
+# a newly-added ``Action`` is retained in the ledger until a human explicitly
+# moves it here.
+#
+# INVARIANT: this set must stay disjoint from the advisory-timeline tiers
+# (``advisories.timeline``). An ephemeral action that became timeline-visible
+# would silently vanish when its month-partition is dropped. A cross-app test
+# enforces the disjointness (``advisories/tests/test_access_log_disjoint.py``).
+# See INV-AUDIT-5 in docs/specification/invariant.md.
+EPHEMERAL_ACTIONS: frozenset[str] = frozenset(
+    {
+        Action.ADVISORY_VIEWED,
+        Action.GHSA_WEBHOOK_RECEIVED,
+        Action.GHSA_WEBHOOK_REJECTED,
+        Action.GHSA_SYNC_RUN_STARTED,
+        Action.GHSA_SYNC_RUN_FINISHED,
+        Action.GHSA_METADATA_FETCHED,
+        Action.PMI_PROJECT_REPOS_SYNCED,
+    }
+)
+
+
 class AuditLogEntry(models.Model):
     """Single append-only audit log row."""
 
@@ -139,3 +164,72 @@ class AuditLogEntry(models.Model):
 
     def delete(self, *args, **kwargs):
         raise PermissionError("AuditLogEntry is append-only; deletion is not allowed.")
+
+
+class AccessLogEntry(models.Model):
+    """High-volume, retention-managed access / telemetry events.
+
+    A deliberately lower-tier sibling of :class:`AuditLogEntry`. It holds the
+    actions in :data:`EPHEMERAL_ACTIONS` — advisory views plus GHSA/PMI machine
+    chatter — none of which appear on any advisory timeline. Unlike the ledger,
+    this table is:
+
+    * **Range-partitioned by month on ``created_at``.** The physical table is
+      created with ``PARTITION BY RANGE`` in migration ``0003`` (the ORM only
+      tracks the logical columns). Retention is a ``DROP PARTITION`` of months
+      older than the horizon — O(1), no per-row ``DELETE``, no dead tuples (see
+      :mod:`audit.partitions`).
+    * **Not protected by the append-only triggers.** It must be droppable.
+      Writes are still append-only at the *application* layer (``save`` refuses
+      to update an existing row), but the database permits ``DELETE``/``DROP``
+      so retention and ``forget_user`` can do their work.
+
+    Because the table is partitioned, its real primary key is the composite
+    ``(id, created_at)`` (Postgres requires the partition key in the PK); Django
+    still tracks the bare ``id`` in model state, which is harmless since these
+    rows are never updated or fetched by a bare pk in a hot path.
+
+    See INV-AUDIT-5 in docs/specification/invariant.md.
+    """
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    action = models.CharField(max_length=64, choices=Action.choices)
+    advisory = models.ForeignKey(
+        "advisories.Advisory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="access_log_entries",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["created_at"], name="acclog_created_idx"),
+            models.Index(fields=["advisory", "created_at"], name="acclog_adv_created_idx"),
+            models.Index(fields=["actor", "created_at"], name="acclog_actor_created_idx"),
+            models.Index(fields=["action"], name="acclog_action_idx"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        actor = self.actor.email if self.actor else "system"
+        return f"{self.created_at:%Y-%m-%d %H:%M} {actor} {self.action}"
+
+    def save(self, *args, **kwargs):
+        # Application-layer write-once. The DB has no append-only trigger here
+        # (the table must stay droppable for retention), so this is the only
+        # guard against accidental ORM updates. Deletes are intentionally
+        # allowed (retention / forget_user).
+        if self.pk is not None:
+            raise PermissionError("AccessLogEntry is append-only; updates are not allowed.")
+        super().save(*args, **kwargs)

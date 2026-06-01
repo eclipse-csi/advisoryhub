@@ -83,6 +83,11 @@ env = environ.Env(
     RATELIMIT_INTAKE_USER=(str, "20/h"),
     INTAKE_REPORT_RETENTION_DAYS=(int, 365),
     INTAKE_DISABLED=(bool, False),
+    # Access-log (AccessLogEntry) retention: monthly partitions older than this
+    # horizon are dropped by the daily maintenance task. Enabled by default; the
+    # beat entry no-ops when disabled. See INV-AUDIT-5.
+    AUDIT_ACCESS_LOG_RETENTION_DAYS=(int, 90),
+    AUDIT_ACCESS_LOG_RETENTION_ENABLED=(bool, True),
     # Number of trusted reverse proxies that append to X-Forwarded-For
     # directly in front of the app. 0 = ignore XFF and use REMOTE_ADDR.
     # See common.net.client_ip. Set to the real proxy depth in prod (e.g.
@@ -367,6 +372,10 @@ RATELIMIT_INTAKE_USER = env("RATELIMIT_INTAKE_USER")
 INTAKE_REPORT_RETENTION_DAYS = env("INTAKE_REPORT_RETENTION_DAYS")
 INTAKE_DISABLED = env("INTAKE_DISABLED")
 
+# Access-log partition retention (see audit.partitions / INV-AUDIT-5).
+AUDIT_ACCESS_LOG_RETENTION_DAYS = env("AUDIT_ACCESS_LOG_RETENTION_DAYS")
+AUDIT_ACCESS_LOG_RETENTION_ENABLED = env("AUDIT_ACCESS_LOG_RETENTION_ENABLED")
+
 # Celery beat schedule. The worker that runs `celery -A config beat` will
 # fire run_pmi_repo_sync every PMI_SYNC_INTERVAL_HOURS hours, refreshing
 # the local ProjectGitHubRepository mirror from PMI. GHSA *discovery* (i.e.
@@ -378,6 +387,13 @@ CELERY_BEAT_SCHEDULE = {
     "pmi-repo-mirror": {
         "task": "ghsa.tasks.run_pmi_repo_sync",
         "schedule": timedelta(hours=PMI_SYNC_INTERVAL_HOURS),
+    },
+    # Daily access-log partition maintenance: create the upcoming month and
+    # drop months past the retention horizon. No-ops when retention is
+    # disabled. See audit.tasks.maintain_access_log_partitions / INV-AUDIT-5.
+    "access-log-partition-maintenance": {
+        "task": "audit.tasks.maintain_access_log_partitions",
+        "schedule": timedelta(days=1),
     },
 }
 

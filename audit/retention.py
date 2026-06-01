@@ -32,7 +32,7 @@ from typing import Any
 from django.db import connection, transaction
 from django.utils import timezone
 
-from .models import Action, AuditLogEntry
+from .models import AccessLogEntry, Action, AuditLogEntry
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +64,7 @@ def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
     pseudo = anonymized_email or f"forgotten-{user.pk}@example.invalid"
     counters = {
         "audit_entries": 0,
+        "access_log_entries": 0,
         "comments": 0,
         "invitations": 0,
         "intake_reports": 0,
@@ -94,6 +95,14 @@ def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
                     metadata=entry.metadata,
                 )
                 counters["audit_entries"] += 1
+
+        # 1b. Access-log rows (views + GHSA/PMI chatter) carry the user's
+        # actor FK, IP, and user-agent. The access log is a retention-bounded,
+        # non-compliance store, so delete the user's rows outright rather than
+        # scrub them. No append-only trigger on this table, so the bypass isn't
+        # needed here — but running inside it is harmless.
+        deleted_access, _ = AccessLogEntry.objects.filter(actor=user).delete()
+        counters["access_log_entries"] = deleted_access
 
         # 2. Their authored comments — redact body, keep the structural
         # presence so reply threads stay coherent.

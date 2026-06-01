@@ -498,7 +498,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-A single periodic job is registered in `config/settings/base.py`:
+Two periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -506,8 +506,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "ghsa.tasks.run_pmi_repo_sync",
         "schedule": timedelta(hours=PMI_SYNC_INTERVAL_HOURS),
     },
+    "access-log-partition-maintenance": {
+        "task": "audit.tasks.maintain_access_log_partitions",
+        "schedule": timedelta(days=1),
+    },
 }
 ```
+
+`access-log-partition-maintenance` creates the upcoming month's
+`AccessLogEntry` partition and drops months older than
+`AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90); it no-ops when
+`AUDIT_ACCESS_LOG_RETENTION_ENABLED` is False (see §8.6, INV-AUDIT-5).
 
 GHSA *discovery* is intentionally not on beat — it is
 user-triggered, scoped (project or all), and recorded as a
@@ -527,6 +536,7 @@ user-triggered, scoped (project or all), and recorded as a
 | `ghsa` | `run_ghsa_sync_project` | On-demand GHSA discovery for one project. |
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
+| `audit` | `maintain_access_log_partitions` | Beat-scheduled `AccessLogEntry` partition create-ahead + drop-expired. |
 
 Idempotency story:
 
@@ -718,17 +728,31 @@ user) — picked dynamically in `intake.views`.
 
 ### 8.6 Audit hygiene
 
-Two management commands live in `audit/management/commands/`:
+The audit log is split into two tables (see INV-AUDIT-5). The durable,
+append-only **ledger** `AuditLogEntry` holds governance/timeline events. The
+high-volume, retention-managed **access log** `AccessLogEntry` holds the actions
+in `audit.models.EPHEMERAL_ACTIONS` (advisory views + GHSA/PMI chatter);
+`audit.services.record()` routes by action. The access log is monthly
+range-partitioned on `created_at`, so retention is a `DROP PARTITION` (O(1), no
+per-row DELETE) rather than a sweep — handled by the daily
+`maintain_access_log_partitions` task (§6.2) and the matching command.
 
-- `prune_audit` — deletes audit rows older than a configurable
-  retention horizon, using the dev-only trigger bypass when the
-  caller asks. Production retention is conservative and the
-  command is intended for explicit operator invocation, not
-  automated cron.
+Management commands in `audit/management/commands/`:
+
+- `prune_audit` — deletes **ledger** rows older than a configurable
+  retention horizon, using the trigger bypass. Production retention is
+  conservative and the command is intended for explicit operator invocation,
+  not automated cron. Now rarely needed: the high-volume events live in the
+  access log, which prunes itself by partition drop.
+- `maintain_access_log_partitions` — manual equivalent of the beat task:
+  create the upcoming `AccessLogEntry` partition, drop months past the horizon
+  (`--dry-run` reports what would drop).
 - `forget_user` — scrubs identifying fields on `AuditLogEntry`,
   `AdvisoryIntakeMetadata`, and other PII-bearing rows for a
-  named user. Advisories and other governance objects survive;
-  only the identifying columns are nullified or cleared.
+  named user, and **deletes** the user's `AccessLogEntry` rows outright (the
+  access log is retention-bounded, not a compliance ledger). Advisories and
+  other governance objects survive; only the identifying columns are nullified
+  or cleared.
 
 ### 8.7 Seed / demo data
 

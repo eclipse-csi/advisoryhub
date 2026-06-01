@@ -9,6 +9,7 @@ urlpatterns = [
     path("cves/", views.cves, name="cves"),
     path("publications/", views.publications, name="publications"),
     path("audit/", views.audit, name="audit"),
+    path("access-log/", views.access_log, name="access_log"),
     path("cve/<int:task_id>/transition/", views.cve_transition, name="cve_transition"),
     path(
         "cve/<int:task_id>/reject-modal/",

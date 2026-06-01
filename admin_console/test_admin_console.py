@@ -623,3 +623,45 @@ def test_publications_page_lists_failed(client, setup):
     body = client.get(reverse("admin_console:publications")).content.decode()
     assert "Failed publication exports" in body
     assert "boom" in body
+
+
+# ----- Access-log browser -----------------------------------------------
+
+
+@pytest.mark.django_db
+def test_access_log_403_for_non_admin(client, setup):
+    client.force_login(setup["member"])
+    assert client.get(reverse("admin_console:access_log")).status_code == 403
+
+
+@pytest.mark.django_db
+def test_access_log_lists_ephemeral_events(client, setup):
+    from audit.services import record
+
+    record(action=Action.ADVISORY_VIEWED, actor=setup["admin"], advisory=setup["advisory"])
+    client.force_login(setup["admin"])
+    resp = client.get(reverse("admin_console:access_log"))
+    assert resp.status_code == 200
+    assert Action.ADVISORY_VIEWED in _audit_table(resp.content.decode())
+
+
+@pytest.mark.django_db
+def test_access_log_action_filter_offers_only_ephemeral_actions(client, setup):
+    client.force_login(setup["admin"])
+    body = client.get(reverse("admin_console:access_log")).content.decode()
+    assert f'value="{Action.ADVISORY_VIEWED}"' in body  # ephemeral → offered
+    assert f'value="{Action.ADVISORY_CREATED}"' not in body  # ledger → not offered
+
+
+@pytest.mark.django_db
+def test_access_log_q_filters_metadata(client, setup):
+    from audit.services import record
+
+    record(action=Action.GHSA_METADATA_FETCHED, actor=setup["admin"], metadata={"needle": "abc123"})
+    record(action=Action.ADVISORY_VIEWED, actor=setup["admin"], metadata={"other": "zzz"})
+    client.force_login(setup["admin"])
+    table = _audit_table(
+        client.get(reverse("admin_console:access_log") + "?q=abc123").content.decode()
+    )
+    assert Action.GHSA_METADATA_FETCHED in table
+    assert Action.ADVISORY_VIEWED not in table

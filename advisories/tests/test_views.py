@@ -6,7 +6,7 @@ import pytest
 from django.urls import reverse
 
 from advisories.models import Advisory, State
-from audit.models import Action, AuditLogEntry
+from audit.models import AccessLogEntry, Action, AuditLogEntry
 
 FORMSET_SECTIONS = ("aliases", "cwe_ids", "references", "severity", "credits", "affected")
 
@@ -119,7 +119,9 @@ def test_detail_records_audit_view(client, member_a, project_a):
     advisory = Advisory.objects.create(project=project_a)
     client.force_login(member_a)
     client.get(reverse("advisories:detail", args=[advisory.advisory_id]))
-    assert AuditLogEntry.objects.filter(action=Action.ADVISORY_VIEWED, advisory=advisory).exists()
+    # Views are routed to the retention-managed access log, not the ledger.
+    assert AccessLogEntry.objects.filter(action=Action.ADVISORY_VIEWED, advisory=advisory).exists()
+    assert not AuditLogEntry.objects.filter(action=Action.ADVISORY_VIEWED).exists()
 
 
 # ---- create ---------------------------------------------------------------

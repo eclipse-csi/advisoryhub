@@ -15,7 +15,7 @@ from django.http import HttpRequest
 from common.net import client_ip
 from common.users import actor_or_none
 
-from .models import Action, AuditLogEntry
+from .models import EPHEMERAL_ACTIONS, AccessLogEntry, Action, AuditLogEntry
 
 # Patterns where the credential is preceded by a recognisable prefix; the
 # prefix is captured in group(1) and reinstated alongside "***" so the
@@ -78,10 +78,37 @@ def record(
     metadata: dict | None = None,
     ip_address: str | None = None,
     user_agent: str | None = None,
-) -> AuditLogEntry:
-    """Insert an audit log entry. Returns the created entry."""
+) -> AuditLogEntry | AccessLogEntry:
+    """Insert an audit entry and return it.
+
+    Routes the actions in :data:`audit.models.EPHEMERAL_ACTIONS` (advisory
+    views + GHSA/PMI machine chatter) to the retention-managed, monthly
+    partitioned :class:`~audit.models.AccessLogEntry`; every other action goes
+    to the durable, append-only :class:`~audit.models.AuditLogEntry` ledger.
+    Secrets are redacted on both paths (INV-AUDIT-2). The signature is
+    unchanged so the ~60 call sites need no edits.
+    """
     if action not in Action.values:
         raise ValueError(f"Unknown audit action: {action!r}")
+
+    if action in EPHEMERAL_ACTIONS:
+        # AccessLogEntry has no previous/new diff or comment columns. The
+        # ephemeral actions never carry a diff, but fold any caller-supplied
+        # values into metadata under reserved keys so nothing is silently lost.
+        meta = dict(metadata or {})
+        if previous_value is not None:
+            meta.setdefault("_previous_value", previous_value)
+        if new_value is not None:
+            meta.setdefault("_new_value", new_value)
+        return AccessLogEntry.objects.create(
+            actor=actor_or_none(actor),
+            action=action,
+            advisory=advisory,
+            metadata=redact_secrets(meta),
+            ip_address=ip_address,
+            user_agent=(user_agent or "")[:512],
+        )
+
     return AuditLogEntry.objects.create(
         actor=actor_or_none(actor),
         action=action,
@@ -95,7 +122,7 @@ def record(
     )
 
 
-def record_from_request(request: HttpRequest, **kwargs) -> AuditLogEntry:
+def record_from_request(request: HttpRequest, **kwargs) -> AuditLogEntry | AccessLogEntry:
     kwargs.setdefault("actor", getattr(request, "user", None))
     kwargs.setdefault("ip_address", client_ip(request))
     kwargs.setdefault("user_agent", request.META.get("HTTP_USER_AGENT", ""))

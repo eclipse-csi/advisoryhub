@@ -1,5 +1,6 @@
 """Admin console views — re-exports for the URLConf."""
 
+from .access_log import access_log
 from .audit import audit
 from .cves import (
     cve_reject_modal,
@@ -20,6 +21,7 @@ from .users import user_detail, user_list
 index = inbox
 
 __all__ = [
+    "access_log",
     "audit",
     "cve_reject_modal",
     "cve_transition",

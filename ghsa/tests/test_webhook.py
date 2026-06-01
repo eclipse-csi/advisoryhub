@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from advisories.models import Advisory, Kind
-from audit.models import Action, AuditLogEntry
+from audit.models import AccessLogEntry, Action
 from ghsa.models import (
     GitHubAppAccountType,
     GitHubAppInstallation,
@@ -49,8 +49,8 @@ def test_bad_signature_returns_401(http_client, ghsa_settings):
     )
     assert resp.status_code == 401
     assert WebhookDelivery.objects.count() == 0
-    # An audit entry was still written so abuse is visible.
-    assert AuditLogEntry.objects.filter(action=Action.GHSA_WEBHOOK_REJECTED).exists()
+    # An access-log entry was still written so abuse is visible.
+    assert AccessLogEntry.objects.filter(action=Action.GHSA_WEBHOOK_REJECTED).exists()
 
 
 @pytest.mark.django_db
@@ -81,7 +81,7 @@ def test_good_signature_creates_delivery_and_returns_202(http_client, ghsa_setti
     )
     assert resp.status_code == 202
     assert WebhookDelivery.objects.filter(delivery_id="d-1").exists()
-    assert AuditLogEntry.objects.filter(action=Action.GHSA_WEBHOOK_RECEIVED).exists()
+    assert AccessLogEntry.objects.filter(action=Action.GHSA_WEBHOOK_RECEIVED).exists()
 
 
 @pytest.mark.django_db

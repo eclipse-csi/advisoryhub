@@ -76,6 +76,7 @@
   --danger-fg: light-dark(var(--danger), #f08983); --danger-bd: light-dark(#f1c7c4, #5a2522);
   --info-fg:   light-dark(var(--info), #82b6ee);   --info-bd:   light-dark(#c7dcf3, #1c3d63);
   --brand-fg:  light-dark(var(--brand), #9fb4ff);  --brand-bd:  light-dark(#b8d6f6, #1f2a8c);
+  --brand-fg-hover: light-dark(var(--brand-hover), #c3ccff); /* brand-fg for link/hover text; dark brightens */
   --accent-fg: light-dark(var(--accent), #ffa860);
 
   --radius:       10px;
@@ -135,8 +136,8 @@ h3 { font-size: var(--text-h3); font-weight: 600; color: var(--text-soft); }
 
 p { margin: 0 0 0.8em; }
 
-a { color: var(--brand); text-decoration: none; }
-a:hover { color: var(--brand-hover); text-decoration: underline; }
+a { color: var(--brand-fg); text-decoration: none; }
+a:hover { color: var(--brand-fg-hover); text-decoration: underline; }
 
 code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.9em; font-size-adjust: none; }
 code { background: var(--surface-alt); padding: 0.1em 0.35em; border-radius: 4px; border: 1px solid var(--border); }
@@ -617,8 +618,8 @@ fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
 .add-row-btn {
   margin-top: 0.4rem;
   background: transparent;
-  color: var(--brand);
-  border: 1px dashed var(--brand);
+  color: var(--brand-fg);
+  border: 1px dashed var(--brand-fg);
   border-radius: var(--radius-sm);
   padding: 0.3rem 0.8rem;
   cursor: pointer;
@@ -649,7 +650,7 @@ fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
   color: var(--text);
 }
 .cwe-combobox-option strong {
-  color: var(--brand);
+  color: var(--brand-fg);
   font-variant-numeric: tabular-nums;
   flex: 0 0 auto;
 }
@@ -871,10 +872,10 @@ p.state strong { color: var(--text); }
   text-decoration: none;
   font-weight: 500;
 }
-.admin-console__sidebar a:hover { background: var(--surface-alt); color: var(--brand-hover); text-decoration: none; }
+.admin-console__sidebar a:hover { background: var(--surface-alt); color: var(--brand-fg-hover); text-decoration: none; }
 .admin-console__sidebar a.is-active {
   background: var(--brand-soft);
-  color: var(--brand);
+  color: var(--brand-fg);
   font-weight: 600;
 }
 .admin-console__main { min-width: 0; }
@@ -950,7 +951,7 @@ p.state strong { color: var(--text); }
   border: 1px solid var(--border);
 }
 .inbox-badge--cve    { background: #e8e3ff; color: #2C1CD8; border-color: #d4ccff; }
-.inbox-badge--review { background: var(--brand-soft); color: var(--brand); border-color: #b9e0ff; }
+.inbox-badge--review { background: var(--brand-soft); color: var(--brand-fg); border-color: var(--brand-bd); }
 .inbox-badge--pub    { background: var(--danger-soft); color: var(--danger); border-color: #f1c7c4; }
 .inbox-badge--triage { background: var(--warn-soft); color: var(--warn); border-color: #f3d9a3; }
 .inbox-badge--triage-routing { background: var(--danger-soft); color: var(--danger); border-color: #f1c7c4; }
@@ -980,7 +981,7 @@ p.state strong { color: var(--text); }
 .pref-row--select select { min-width: 12rem; }
 .pref-row--toggle { cursor: default; align-items: center; }
 .pref-row:hover:not(.pref-row--select):not(.pref-row--toggle) .pref-row__title {
-  color: var(--brand);
+  color: var(--brand-fg);
 }
 .pref-row:focus-within {
   outline: 2px solid var(--accent);
@@ -1641,7 +1642,7 @@ main.container section > p.empty {
   border-color: var(--ok);
 }
 .lifecycle-stepper__node.is-active {
-  color: var(--brand);
+  color: var(--brand-fg);
   font-weight: 700;
 }
 .lifecycle-stepper__node.is-active .lifecycle-stepper__dot {
@@ -1942,7 +1943,7 @@ button.info:hover, .btn.info:hover {
   text-align: left;
 }
 .adv-prose th { background: var(--surface-alt); }
-.adv-prose a { color: var(--brand); }
+.adv-prose a { color: var(--brand-fg); }
 
 /* ---- affected packages ---- */
 
@@ -2087,7 +2088,7 @@ button.info:hover, .btn.info:hover {
 .ref-row.ref-warn    .ref-icon { color: var(--warn); }
 .ref-row.ref-brand   { border-left-color: var(--brand); }
 .ref-row.ref-brand   .badge.ref-type { color: var(--brand-fg); background: var(--brand-soft); border-color: var(--brand-bd); }
-.ref-row.ref-brand   .ref-icon { color: var(--brand); }
+.ref-row.ref-brand   .ref-icon { color: var(--brand-fg); }
 .ref-row.ref-neutral { border-left-color: var(--border-strong); }
 
 /* ---- severity ---- */

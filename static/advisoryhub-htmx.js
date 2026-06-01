@@ -19,6 +19,10 @@
 
   htmx.config.allowEval = false;
   htmx.config.allowScriptTags = false;
+  // Don't let htmx inject its indicator <style> into <head>: under the enforced
+  // CSP (style-src 'self', no 'unsafe-inline') that inline style is blocked. The
+  // equivalent .htmx-indicator rules are shipped in advisoryhub.css instead.
+  htmx.config.includeIndicatorStyles = false;
 
   function csrfToken() {
     var meta = document.querySelector('meta[name="csrf-token"]');

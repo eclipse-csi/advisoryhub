@@ -404,11 +404,15 @@ X_FRAME_OPTIONS = "DENY"
 # per-form CSRF hx-headers were removed (see static/advisoryhub-dialogs.js and
 # static/advisoryhub-htmx.js) so the policy needs no 'unsafe-inline'/'unsafe-hashes'.
 #
-# Shipped Report-Only first (CSP_REPORT_ONLY=True default) so anything missed is
-# reported, not broken; set CSP_REPORT_ONLY=False to enforce once reports are clean.
+# Enforced by default (CSP_REPORT_ONLY=False). The policy was shipped Report-Only
+# first; the report stream came back clean — the only violation was htmx's injected
+# indicator <style>, now disabled (static/advisoryhub-htmx.js sets
+# includeIndicatorStyles=False, with the rules shipped in advisoryhub.css) — so
+# enforcement is now the default. Set CSP_REPORT_ONLY=True to fall back to
+# Report-Only (e.g. while diagnosing a newly-introduced violation).
 from csp.constants import NONCE, NONE, REPORT_SAMPLE, SELF, STRICT_DYNAMIC  # noqa: E402
 
-CSP_REPORT_ONLY = env.bool("CSP_REPORT_ONLY", default=True)
+CSP_REPORT_ONLY = env.bool("CSP_REPORT_ONLY", default=False)
 _CSP_REPORT_URI = env.str("CSP_REPORT_URI", default="")
 
 _CSP_DIRECTIVES: dict = {

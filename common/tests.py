@@ -146,13 +146,16 @@ def test_request_id_honors_upstream_header(client):
 
 
 @pytest.mark.django_db
-def test_csp_report_only_header_and_nonce_match(client, setup):
+def test_csp_header_and_nonce_match(client, setup):
     """A nonce-based CSP is emitted and the nonce in the header matches the
-    one stamped on the inline bootstrap <script> (so the script will execute
-    once the policy is enforced)."""
+    one stamped on the inline bootstrap <script> (so the script executes under
+    the enforced policy). Reads whichever header is active, so it holds whether
+    CSP is enforced (the default) or in Report-Only mode."""
     client.force_login(setup["member"])
     r = client.get(reverse("advisories:list"))
-    csp = r.headers.get("Content-Security-Policy-Report-Only", "")
+    csp = r.headers.get("Content-Security-Policy") or r.headers.get(
+        "Content-Security-Policy-Report-Only", ""
+    )
     assert "script-src" in csp
     assert "'strict-dynamic'" in csp
     assert "object-src 'none'" in csp

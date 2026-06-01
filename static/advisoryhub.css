@@ -139,6 +139,14 @@ p { margin: 0 0 0.8em; }
 a { color: var(--brand-fg); text-decoration: none; }
 a:hover { color: var(--brand-fg-hover); text-decoration: underline; }
 
+/* htmx progress indicators. htmx's built-in <style> injection is disabled
+   (advisoryhub-htmx.js sets includeIndicatorStyles=false) so the enforced CSP
+   style-src 'self' needs no inline-style allowance; these replicate htmx's
+   defaults. Component-scoped indicator rules below override where needed. */
+.htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+.htmx-request .htmx-indicator { opacity: 1; }
+.htmx-request.htmx-indicator { opacity: 1; }
+
 code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.9em; font-size-adjust: none; }
 code { background: var(--surface-alt); padding: 0.1em 0.35em; border-radius: 4px; border: 1px solid var(--border); }
 pre {

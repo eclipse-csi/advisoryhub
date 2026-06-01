@@ -605,11 +605,14 @@ types.
 `CELERY_TASK_ALWAYS_EAGER`. Prod: prefer `rediss://` (TLS) + AUTH; run Valkey
 with `maxmemory-policy noeviction` (see §6.1).
 
-**Security headers / CSP.** `CSP_REPORT_ONLY` (default True — the CSP ships
-Report-Only; set False to enforce once the report stream is clean) and optional
-`CSP_REPORT_URI` (collector for the `report-uri` directive). The nonce-based
-`script-src 'strict-dynamic'` policy and a fixed `Permissions-Policy` are emitted
-by django-csp + `common.middleware.PermissionsPolicyMiddleware` (not env-tunable).
+**Security headers / CSP.** `CSP_REPORT_ONLY` (default False — the CSP is
+enforced; set True to fall back to Report-Only while diagnosing a new violation)
+and optional `CSP_REPORT_URI` (collector for the `report-uri` directive). The
+nonce-based `script-src 'strict-dynamic'` policy (plus `style-src 'self'` with no
+`'unsafe-inline'`, so no inline styles — htmx's indicator-`<style>` injection is
+disabled via `htmx.config.includeIndicatorStyles = false`) and a fixed
+`Permissions-Policy` are emitted by django-csp +
+`common.middleware.PermissionsPolicyMiddleware` (not env-tunable).
 
 **Readiness probes.** `READYZ_INCLUDE_PUB_REPO` (default False — `git ls-remote`
 the pub repo) and `READYZ_INCLUDE_BROKER` (default False — probe the Celery broker)

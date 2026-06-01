@@ -159,10 +159,11 @@ Entry: `publication.services.publish(advisory, by=user)` — pins the latest `Ad
 
 ## Frontend / CSP
 
-Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css`), hand-written vanilla JS. A **nonce-based `script-src 'strict-dynamic'` CSP** (via django-csp; **Report-Only by default**, flip `CSP_REPORT_ONLY=False` to enforce) forbids inline script — so when touching templates/JS:
+Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css`), hand-written vanilla JS. A **nonce-based `script-src 'strict-dynamic'` CSP** (via django-csp; **enforced by default**, set `CSP_REPORT_ONLY=True` to fall back to Report-Only) forbids inline script *and* — via `style-src 'self'` with no `'unsafe-inline'` — inline styles, so when touching templates/JS:
 
 - **No inline `on*=` handlers, no `hx-on::…`, no per-element `hx-headers`.** Add interactive behaviour through the global delegated controllers in `static/advisoryhub-{dialogs,htmx,forms}.js` (open/close native `<dialog>` via `data-dialog-open`/`-close`/`-host`; CSRF is injected on every htmx request from a single `<meta name="csrf-token">` via `htmx:configRequest`). htmx `allowEval`/`allowScriptTags` are off.
 - Any genuinely-inline `<script>` (e.g. the pre-paint theme bootstrap) must carry `nonce="{{ request.csp_nonce }}"`.
+- **No inline `style="…"` / `<style>`** (`style-src 'self'` blocks them) — put rules in `advisoryhub.css`. htmx's own indicator-`<style>` injection is disabled (`htmx.config.includeIndicatorStyles = false` in `advisoryhub-htmx.js`); the `.htmx-indicator` rules live in the stylesheet instead.
 - Reference assets only with `{% static %}` — prod serves **content-hashed** files via WhiteNoise `CompressedManifestStaticFilesStorage`. Inter is **self-hosted** (`static/fonts/`); there is no font CDN.
 - Multi-line `{# #}` comments are forbidden (Django renders them literally — `dev/check_template_comments.py` guards this).
 
@@ -170,7 +171,7 @@ Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css
 
 `docker-compose.yml`'s `x-django-env` anchor is the canonical dev configuration (reused by `web` and `worker`); **don't edit env files for dev**. `.env.example` documents every prod knob and is reference-only — it is *not* loaded by docker-compose. `dev/kanidm/.env.kanidm` is the only file compose actually loads at runtime (for the OIDC client secret minted by the bootstrap script).
 
-Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP ships Report-Only; set `False` to enforce once reports are clean) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`.
+Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP is enforced by default; set `True` for Report-Only) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`.
 
 ## Deferred / out of scope
 

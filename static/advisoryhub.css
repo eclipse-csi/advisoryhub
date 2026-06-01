@@ -45,7 +45,7 @@
   --brand:        #2C1CD8;
   --brand-hover:  #1f14a8;
   --brand-soft:   light-dark(#E2F4FF, #0e1c5c);
-  --brand-ring:   rgba(44, 28, 216, 0.30);
+  --brand-ring:   light-dark(rgba(44, 28, 216, 0.30), rgba(159, 180, 255, 0.65));
 
   /* Eclipse-Foundation orange — used as a focused accent (logo, "republish"). */
   --accent:       #F06C02;
@@ -905,11 +905,11 @@ p.state strong { color: var(--text); }
   text-decoration: none;
 }
 .inbox-counts__chip:hover { filter: brightness(0.97); }
-.inbox-counts__chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.inbox-counts__chip:focus-visible { outline: 2px solid var(--brand-fg); outline-offset: 2px; }
 .inbox-counts__chip strong { color: var(--text); margin-inline-end: 0.25rem; }
 .inbox-counts__chip--warn { background: var(--warn-soft); border-color: var(--warn-soft); }
 .inbox-counts__chip--danger { background: var(--danger-soft); border-color: var(--danger-soft); color: var(--danger); }
-.inbox-counts__chip--active { outline: 2px solid var(--brand); outline-offset: 1px; }
+.inbox-counts__chip--active { outline: 2px solid var(--brand-fg); outline-offset: 1px; }
 
 .inbox-feed { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .inbox-feed__row {

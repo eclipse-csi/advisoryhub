@@ -92,10 +92,17 @@ run = "docker compose up"
 description = "Stop the dev stack"
 run = "docker compose down"
 
+[tasks.build]
+description = "Rebuild the web/worker images (down -v wipes volumes, NOT images — run after a Dockerfile or dependency change)"
+run = "docker compose build"
+
 [tasks.reset]
-description = "Wipe volumes and re-bootstrap the dev stack (matches README)"
+description = "Wipe volumes, rebuild images, and re-bootstrap the dev stack (matches README)"
 run = [
     "docker compose down -v",
+    # down -v drops volumes but keeps cached images; rebuild so a changed
+    # Dockerfile / uv.lock (e.g. a Python bump) is actually picked up.
+    "docker compose build",
     "docker compose up -d kanidm",
     "bash dev/kanidm/setup.sh",
     "docker compose up",

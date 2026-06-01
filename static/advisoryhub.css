@@ -356,11 +356,14 @@ input[type="submit"]:disabled:hover {
 }
 
 /* Secondary / ghost buttons: anything inside .actions or HTMX buttons that
-   isn't a primary submit gets the lighter treatment. */
+   isn't a primary submit gets the lighter treatment. The cancel/close button
+   of a confirmation dialog is secondary too, so the (often destructive)
+   confirm action is the only filled, prominent control in the dialog. */
 .actions a,
 .actions button[type="button"],
 .access-panel button:not([type="submit"]),
 .comment .actions button,
+.confirm-dialog button[data-dialog-close],
 button[hx-post],
 button[hx-get],
 button[hx-delete] {
@@ -372,6 +375,7 @@ button[hx-delete] {
 .actions button[type="button"]:hover,
 .access-panel button:not([type="submit"]):hover,
 .comment .actions button:hover,
+.confirm-dialog button[data-dialog-close]:hover,
 button[hx-post]:hover,
 button[hx-get]:hover,
 button[hx-delete]:hover {

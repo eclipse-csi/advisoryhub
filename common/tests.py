@@ -186,6 +186,20 @@ def test_csp_enforced_when_report_only_disabled(client):
         assert "script-src" in r.headers.get("Content-Security-Policy", "")
 
 
+# ---- Branded error pages -------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(DEBUG=False, ALLOWED_HOSTS=["*"])
+def test_custom_404_page_is_branded(client):
+    """At DEBUG=False a missing route renders the branded 404, not Django's default."""
+    r = client.get("/this-route-does-not-exist-zzz/")
+    assert r.status_code == 404
+    body = r.content.decode()
+    assert "AdvisoryHub" in body
+    assert 'class="error-page"' in body
+
+
 # ---- JSON log formatter --------------------------------------------------
 
 

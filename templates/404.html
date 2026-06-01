@@ -1,0 +1,9 @@
+{% extends "error_base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Page not found" %}{% endblock %}
+{% block code %}404{% endblock %}
+{% block heading %}{% translate "Page not found" %}{% endblock %}
+{% block body %}
+  <p>{% translate "The page you're looking for doesn't exist, has moved, or you may not have access to it." %}</p>
+  <p><a href="/">{% translate "Back to AdvisoryHub" %}</a></p>
+{% endblock %}

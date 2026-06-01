@@ -2773,3 +2773,19 @@ dialog.drawer--right {
   cursor: pointer;
 }
 .toast__dismiss:hover { background: transparent; color: inherit; }
+
+/* ------------------------------------------------------------ error pages
+
+   Branded 404/403/500/CSRF pages (templates/error_base.html). The .error-page
+   section inherits the card surface from `main.container > section`. */
+.error-page { text-align: center; padding: 2.5rem 1.5rem; }
+.error-page__code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.error-page__code:empty { display: none; }
+.error-page h1 { margin: 0.3rem 0 0.8rem; }
+.error-page p { color: var(--text-soft); max-width: 46ch; margin: 0 auto 0.9rem; }

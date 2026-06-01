@@ -1,0 +1,29 @@
+{% load static i18n %}<!DOCTYPE html>
+{% comment %}
+Standalone shell for error pages (404/403/500/CSRF). Deliberately does NOT extend
+base.html or use any context processor / request data — handler500 and the CSRF
+failure view render with an empty context, so this must stay dependency-free (no
+request, user, maintenance_mode, messages, or csp_nonce). Light-theme only; error
+pages don't run the theme bootstrap.
+{% endcomment %}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Error{% endblock %} — AdvisoryHub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="{% static 'advisoryhub.css' %}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">AdvisoryHub</a>
+</header>
+<main class="container">
+  <section class="error-page">
+    <p class="error-page__code">{% block code %}{% endblock %}</p>
+    <h1>{% block heading %}{% translate "Something went wrong" %}{% endblock %}</h1>
+    {% block body %}{% endblock %}
+  </section>
+</main>
+</body>
+</html>

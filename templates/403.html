@@ -1,0 +1,9 @@
+{% extends "error_base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Access denied" %}{% endblock %}
+{% block code %}403{% endblock %}
+{% block heading %}{% translate "Access denied" %}{% endblock %}
+{% block body %}
+  <p>{% translate "You don't have permission to view this page. If you think this is a mistake, contact the advisory's owner or a security-team admin." %}</p>
+  <p><a href="/">{% translate "Back to AdvisoryHub" %}</a></p>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "error_base.html" %}
+{% block title %}Session expired{% endblock %}
+{% block code %}403{% endblock %}
+{% block heading %}Your session expired{% endblock %}
+{% block body %}
+  {# Django's CSRF failure view renders this with a minimal context — keep it dependency-free. #}
+  <p>For your security, the form's session token expired or didn't match. Go back, reload the page, and submit again — your sign-in is still valid.</p>
+  <p><a href="/">Back to AdvisoryHub</a></p>
+{% endblock %}

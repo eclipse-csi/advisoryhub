@@ -2792,3 +2792,31 @@ dialog.drawer--right {
 .error-page__code:empty { display: none; }
 .error-page h1 { margin: 0.3rem 0 0.8rem; }
 .error-page p { color: var(--text-soft); max-width: 46ch; margin: 0 auto 0.9rem; }
+
+/* ------------------------------------------------------------ small screens
+
+   The layout is desktop-first; the 1000px breakpoints above already collapse
+   the detail and admin sidebars to a single column. Below 640px (phones) two
+   further adjustments stop the chrome from breaking down:
+     - let the topbar wrap its nav onto its own full-width row instead of
+       cramming every link into the strip beside the brand;
+     - let wide data tables scroll horizontally instead of being squashed into
+       an unreadable sliver-column grid. A <table> set to display:block still
+       lays its rows out in an anonymous table box, so the tabular structure is
+       preserved while the block itself becomes the horizontal scroll area;
+       nowrap keeps each column at its natural width. */
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    padding: 0.6rem 1rem;
+  }
+  .topbar nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  main table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

@@ -3,9 +3,9 @@
 * ``/healthz`` — does the Django process answer? Returns 200 always.
   Use this for liveness probes.
 * ``/readyz`` — *and* are our dependencies reachable? Pings the default
-  database, the cache, and (when configured) the publication Git remote.
-  Returns 200 only if every check passes; otherwise 503 with a JSON
-  payload listing the failed checks.
+  database, the cache, and (when configured) the Celery broker and the
+  publication Git remote. Returns 200 only if every check passes; otherwise
+  503 with a JSON payload listing the failed checks.
 
 Neither endpoint touches the audit log or other workflow state — they
 are deliberately cheap so a noisy probe never causes load.
@@ -40,6 +40,8 @@ def readyz(_request):
     failures: dict[str, str] = {}
     _check("db", _check_db, failures)
     _check("cache", _check_cache, failures)
+    if getattr(settings, "READYZ_INCLUDE_BROKER", False):
+        _check("broker", _check_broker, failures)
     if getattr(settings, "PUB_REPO_URL", "") and getattr(
         settings, "READYZ_INCLUDE_PUB_REPO", False
     ):
@@ -68,6 +70,21 @@ def _check_cache() -> None:
     cache.set("readyz", "ok", 5)
     if cache.get("readyz") != "ok":
         raise RuntimeError("cache round-trip mismatch")
+
+
+def _check_broker() -> None:
+    """Optional: is the Celery broker (Valkey) reachable?
+
+    Off by default (READYZ_INCLUDE_BROKER=False). ``safe_enqueue`` deliberately
+    never raises on a broker outage (so request latency is unaffected), which
+    means a down broker is otherwise invisible — enqueued publications sit
+    QUEUED forever. Enabling this turns that into a 503 an orchestrator can act
+    on. Cheap: a connection probe, no task round-trip.
+    """
+    from kombu import Connection
+
+    with Connection(settings.CELERY_BROKER_URL) as conn:
+        conn.ensure_connection(max_retries=1, timeout=2)
 
 
 def _check_pub_repo() -> None:

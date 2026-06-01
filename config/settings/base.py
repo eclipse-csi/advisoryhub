@@ -206,12 +206,16 @@ DATABASES = {"default": env.db_url("DATABASE_URL")}
 # CACHE_URL=redis://valkey:6379/2.
 _CACHE_URL = env.str("CACHE_URL", default="")
 if _CACHE_URL:
-    CACHES = {"default": env.cache_url("CACHE_URL")}
+    # KEY_PREFIX namespaces our keys in the shared Valkey instance so rate-limit,
+    # maintenance-snapshot and view-cache entries can't collide with another app/env
+    # and a scoped flush is possible.
+    CACHES = {"default": {**env.cache_url("CACHE_URL"), "KEY_PREFIX": "advisoryhub"}}
 else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "advisoryhub-default",
+            "KEY_PREFIX": "advisoryhub",
         }
     }
 
@@ -293,6 +297,22 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+# Task results are never read back (outcomes live on PublicationTask / domain rows),
+# so don't store them — keeps the result backend (Valkey db1) empty.
+CELERY_TASK_IGNORE_RESULT = True
+# Pin the resilient startup behaviour (Celery's broker_connection_retry_on_startup
+# default flips in 6.0) so a worker racing the broker on boot retries instead of failing.
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# Redelivery window for the Redis/Valkey transport — must exceed the longest-running
+# task. run_publication carries its own soft/hard time limit well under this (see
+# publication/tasks.py); acks_late there relies on this for redelivery after a worker loss.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 3600}
+
+# /readyz optional dependency probes (off by default — see common/health.py). Read from
+# env so the docker-compose / deploy toggles actually take effect (previously these were
+# only read via getattr defaults, so the flags never engaged).
+READYZ_INCLUDE_PUB_REPO = env.bool("READYZ_INCLUDE_PUB_REPO", default=False)
+READYZ_INCLUDE_BROKER = env.bool("READYZ_INCLUDE_BROKER", default=False)
 
 # ---------------------------------------------------------------------------
 # Email

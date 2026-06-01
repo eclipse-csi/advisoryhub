@@ -34,7 +34,19 @@ from .repo_config import active_config
 log = logging.getLogger(__name__)
 
 
-@shared_task(name="publication.run_publication", bind=True)
+# acks_late + reject_on_worker_lost: a worker lost BEFORE the task starts re-delivers
+# (the QUEUED/FAILED guard below lets it re-run). soft_time_limit fires a catchable
+# SoftTimeLimitExceeded (handled by the broad `except` → marked FAILED, operator-retryable)
+# so a hung git clone/push doesn't run until the broker's visibility_timeout (3600s) and
+# get double-delivered; the hard time_limit is a backstop. Tune the limits to the repo size.
+@shared_task(
+    name="publication.run_publication",
+    bind=True,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    soft_time_limit=600,
+    time_limit=660,
+)
 def run_publication(self, task_id: int) -> str:
     """Run a publication task end-to-end. Returns the task's final status."""
     try:

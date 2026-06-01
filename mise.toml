@@ -81,7 +81,9 @@ run = "bash dev/check_vendored_assets.sh"
 
 [tasks.check-templates]
 description = "Fail on multi-line {# #} Django comments (they render as literal text)"
-run = "uv run python dev/check_template_comments.py"
+# Pure-stdlib script — run with system python3 so it never re-syncs / strips the
+# uv dev environment (a plain `uv run python …` would sync to the default group).
+run = "python3 dev/check_template_comments.py"
 
 # ---- Docker dev stack (verbatim wrappers of the README flow) --------------
 [tasks.kanidm-up]

@@ -108,6 +108,11 @@ services:
 
   valkey:
     image: valkey/valkey:8
+    # One instance backs the Celery broker (db0), result backend (db1) and cache
+    # (db2). Pin noeviction (the default) explicitly so an eviction can never
+    # silently drop broker messages or rate-limit/maintenance keys; in prod set
+    # this on the managed instance too (see docs/specification/architecture.md).
+    command: ["valkey-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "6379:6379"
     healthcheck:
@@ -165,8 +170,10 @@ services:
       - path: ./dev/kanidm/.env.kanidm
         required: false
     depends_on:
-      - postgres
-      - valkey
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
     volumes:
       - .:/app
 

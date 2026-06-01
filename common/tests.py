@@ -99,6 +99,33 @@ def test_readyz_returns_503_when_a_check_fails(client, monkeypatch):
     assert "cache" in body["failures"]
 
 
+@pytest.mark.django_db
+def test_readyz_skips_broker_check_by_default(client, monkeypatch):
+    """READYZ_INCLUDE_BROKER defaults False → the broker probe never runs."""
+    from common import health
+
+    def boom():
+        raise RuntimeError("broker probe should not have run")
+
+    monkeypatch.setattr(health, "_check_broker", boom)
+    assert client.get(reverse("readyz")).status_code == 200
+
+
+@pytest.mark.django_db
+@override_settings(READYZ_INCLUDE_BROKER=True)
+def test_readyz_503_when_broker_down(client, monkeypatch):
+    """With the flag on, a broker outage surfaces as a 503 (was previously invisible)."""
+    from common import health
+
+    def boom():
+        raise RuntimeError("broker down")
+
+    monkeypatch.setattr(health, "_check_broker", boom)
+    r = client.get(reverse("readyz"))
+    assert r.status_code == 503
+    assert "broker" in r.json()["failures"]
+
+
 # ---- Request-ID middleware ----------------------------------------------
 
 

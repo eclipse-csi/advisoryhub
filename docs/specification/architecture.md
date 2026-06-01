@@ -26,7 +26,7 @@ Cross-references point at the deep-dive documents in this folder.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Language | Python 3.12+ | Project pins ≥3.12 (see `pyproject.toml`). |
+| Language | Python 3.14 | Project pins `>=3.14,<3.15` (see `pyproject.toml` / `.python-version`). |
 | Web framework | Django 5.2 LTS | Server-rendered, HTMX-augmented. No SPA. |
 | Database | PostgreSQL | The only supported backend — prod, dev, demo, and tests. Append-only audit triggers, the advisory no-delete trigger, `pg_trgm` indexes, and JSONB queries are Postgres-specific. |
 | Async broker | Valkey (Redis-wire-compatible) | `redis://` URLs work unchanged. |
@@ -482,9 +482,19 @@ and `autodiscover_tasks()`. Settings:
 | `CELERY_TIMEZONE` | `TIME_ZONE` (default UTC) | — |
 | `CELERY_TASK_ALWAYS_EAGER` | False | Forced True in `config.settings.test`. |
 | `CELERY_TASK_EAGER_PROPAGATES` | True | Errors raised in tests, not swallowed. |
+| `CELERY_TASK_IGNORE_RESULT` | True | Results are never read (outcomes live on `PublicationTask`); keeps the result backend empty. |
+| `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP` | True | Pins the resilient behaviour across the Celery 6 default flip. |
+| `CELERY_BROKER_TRANSPORT_OPTIONS` | `{"visibility_timeout": 3600}` | Redelivery window for the Redis/Valkey transport; must exceed the longest task. |
+| `run_publication` task | `acks_late`, `reject_on_worker_lost`, `soft_time_limit=600`, `time_limit=660` | At-least-once for the durable publication task; a hung git push fails-and-is-retryable rather than running until the visibility window. |
 
 Run a worker with `celery -A config worker -l info`. Run beat with
 `celery -A config beat`.
+
+**Ops:** the broker (db0), result backend (db1) and cache (db2) share one Valkey
+instance. Run it with `--maxmemory-policy noeviction` (the default) so an eviction
+can never silently drop broker messages or rate-limit/maintenance keys, and in prod
+use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
+`READYZ_INCLUDE_BROKER=True` (off by default — see §7.3).
 
 ### 6.2 Beat schedule
 
@@ -592,7 +602,18 @@ types.
 `STEP_UP_MAX_AGE_SECONDS` (default 300).
 
 **Celery / Valkey.** `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`,
-`CELERY_TASK_ALWAYS_EAGER`.
+`CELERY_TASK_ALWAYS_EAGER`. Prod: prefer `rediss://` (TLS) + AUTH; run Valkey
+with `maxmemory-policy noeviction` (see §6.1).
+
+**Security headers / CSP.** `CSP_REPORT_ONLY` (default True — the CSP ships
+Report-Only; set False to enforce once the report stream is clean) and optional
+`CSP_REPORT_URI` (collector for the `report-uri` directive). The nonce-based
+`script-src 'strict-dynamic'` policy and a fixed `Permissions-Policy` are emitted
+by django-csp + `common.middleware.PermissionsPolicyMiddleware` (not env-tunable).
+
+**Readiness probes.** `READYZ_INCLUDE_PUB_REPO` (default False — `git ls-remote`
+the pub repo) and `READYZ_INCLUDE_BROKER` (default False — probe the Celery broker)
+add optional dependency checks to `/readyz`.
 
 **Email.** `EMAIL_BACKEND` (default console),
 `DEFAULT_FROM_EMAIL`, optional `ADVISORYHUB_BASE_URL` used to

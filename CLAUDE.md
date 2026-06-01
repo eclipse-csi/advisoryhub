@@ -13,7 +13,7 @@ Stack: Python 3.14, Django 5.2 LTS, PostgreSQL (required in prod — append-only
 Authoritative source of truth for what this system *is* and *does* lives in `docs/specification/`. Read the relevant file before making non-trivial changes; cite `INV-*` IDs in commits and PRs.
 
 - [`docs/specification/invariant.md`](docs/specification/invariant.md) — load-bearing rules with stable `INV-*` IDs, severity tiers, enforcement file paths, and test pointers.
-- [`docs/specification/architecture.md`](docs/specification/architecture.md) — tech stack, full 16-app layout, architectural patterns, publication & GHSA pipelines, Celery beat schedule, env-var inventory, operations, testing strategy.
+- [`docs/specification/architecture.md`](docs/specification/architecture.md) — tech stack, full app layout, architectural patterns, publication & GHSA pipelines, Celery beat schedule, env-var inventory, operations, testing strategy.
 - [`docs/specification/permissions.md`](docs/specification/permissions.md) — authorization model: actors, roles, capability matrix, state-conditioned overrides, enforcement surfaces.
 - [`docs/specification/advisory-lifecycle.md`](docs/specification/advisory-lifecycle.md) — four lifecycle states plus three orthogonal sub-machines (review, CVE-request, publication-task), with transition tables and a sequence diagram.
 - [`docs/specification/requirements.md`](docs/specification/requirements.md) — top-down functional spec: actors, domain objects, functional & non-functional requirements, use cases.
@@ -49,6 +49,7 @@ Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/k
 - `mise run test` — pytest against the compose Postgres (needs `mise run up`); args pass through: `mise run test -- -k name path/`
 - `mise run lint` / `fix` / `typecheck` / `ty` — ruff + mypy + advisory ty
 - `mise run check` / `makemigrations-check` / `audit` — Django checks + pip-audit
+- `mise run verify-vendor` / `check-templates` — vendored-asset checksum + template-comment guards (also run by prek/CI)
 
 mise pins only the bootstrap `uv` + `prek` (in `mise.toml`); all dev tool versions stay in `uv.lock`, the Python version in `.python-version`. CI runs these same tasks. Raw `uv`/`docker compose` commands remain canonical.
 
@@ -101,7 +102,7 @@ prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
 prek run --all-files --hook-stage manual      # advisory ty (mirrors CI's ty job)
 ```
 
-Commit stage = file hygiene + `ruff check --fix` + `ruff format`; push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored assets (`static/htmx.*`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded.
+Commit stage = file hygiene + `ruff check --fix` + `ruff format`, plus two repo guards: `dev/check_vendored_assets.sh` (htmx + Inter font sha256 vs their `*.VERSION` files) and `dev/check_template_comments.py` (rejects multi-line `{# #}` — Django's single-line comment renders those as literal text). Push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored/verbatim assets (`static/htmx.*`, `static/fonts/*.woff2`, `static/fonts/Inter.VERSION`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded from the hygiene hooks.
 
 ## Load-bearing rules
 
@@ -117,6 +118,7 @@ Full catalog with stable IDs, severity tiers, and enforcement file paths in [`do
 - **`INV-AUDIT-2`** / **`INV-SECRET-1..3`** — funnel all user/CI-supplied strings through `audit.services.redact_secrets`; secrets never reach logs, audit metadata, task errors, artifact rows, or notification bodies. The publication git layer adds `publication.git_service._redact` for token-rewritten URLs.
 - **`INV-OIDC-1`/`-2`** — OIDC groups are DB-mirrored on every login (`accounts.auth.AdvisoryHubOIDCBackend`); authorization always re-reads the DB mirror, never client-submitted group data. "Mature publisher" lives on the `Project` row, not on group membership.
 - **`INV-INTAKE-1`/`-2`** — honeypot trips create `HoneypotSubmission`, never an `Advisory`. The public intake form has no `reporter_email` field; anonymous reports cannot be re-associated later.
+- **`INV-MAINT-1`** — while maintenance mode is on, only global admins may mutate state; every other user's writes are paused server-side (`common.middleware.MaintenanceModeMiddleware`), toggled from the Admin Console's Maintenance page.
 
 ## Authorization
 
@@ -133,14 +135,14 @@ Capability matrix per role, state-conditioned overrides (triage, admin-routing-f
 
 ## App layout
 
-Sixteen Django apps under the project root. Full per-app inventory in [`docs/specification/architecture.md §2`](docs/specification/architecture.md). The apps you'll touch most:
+Thirteen Django apps under the project root (plus the `config` project package and the `common` helper module, which are not installed apps). Full per-app inventory in [`docs/specification/architecture.md §2`](docs/specification/architecture.md). The apps you'll touch most:
 
 - `advisories/` — `Advisory` (incl. `triage` state) + append-only `AdvisoryVersion` + `AdvisoryIntakeMetadata` sidecar; permissions, services (`promote_triage_to_draft`, `record_advisory_version`), forms, HTMX views.
 - `access/` — `AdvisoryAccessGrant`, `PendingInvitation`, grant services.
 - `audit/` — append-only `AuditLogEntry`, Postgres triggers, `redact_secrets`.
 - `publication/` — OSV+CSAF builders, vendored JSON schemas in `publication/schemas/`, Git push service, Celery task.
 - `workflows/` — `CveRequestTask` + `ReviewTask` state machines.
-- `admin_console/` — sidebar shell at `/admin/` (Inbox, Projects, CVE, Reviews, Publication, Audit); views split into `admin_console/views/<section>.py`. Django admin itself is at `/django-admin/`.
+- `admin_console/` — sidebar shell at `/admin/` (Inbox, Projects, CVE, Reviews, Publication, Audit, Maintenance); views split into `admin_console/views/<section>.py`. Django admin itself is at `/django-admin/`.
 - `intake/` — public `POST /report/` + `HoneypotSubmission` table. Triage UI lives in `advisories.views_triage`.
 
 ## Triage flow
@@ -155,11 +157,20 @@ Entry: `publication.services.publish(advisory, by=user)` — pins the latest `Ad
 - `PUB_REPO_AUTH=ssh` — `GIT_SSH_COMMAND` with `IdentitiesOnly=yes`, `BatchMode=yes`, `StrictHostKeyChecking=accept-new`. Use a pre-populated known_hosts image in prod for strict checking.
 - `PUB_REPO_AUTH=token` — rewrites HTTPS URL with `https://x-access-token:$PUB_REPO_TOKEN@…`; token stripped from every error/audit/artifact/notification surface.
 
+## Frontend / CSP
+
+Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css`), hand-written vanilla JS. A **nonce-based `script-src 'strict-dynamic'` CSP** (via django-csp; **Report-Only by default**, flip `CSP_REPORT_ONLY=False` to enforce) forbids inline script — so when touching templates/JS:
+
+- **No inline `on*=` handlers, no `hx-on::…`, no per-element `hx-headers`.** Add interactive behaviour through the global delegated controllers in `static/advisoryhub-{dialogs,htmx,forms}.js` (open/close native `<dialog>` via `data-dialog-open`/`-close`/`-host`; CSRF is injected on every htmx request from a single `<meta name="csrf-token">` via `htmx:configRequest`). htmx `allowEval`/`allowScriptTags` are off.
+- Any genuinely-inline `<script>` (e.g. the pre-paint theme bootstrap) must carry `nonce="{{ request.csp_nonce }}"`.
+- Reference assets only with `{% static %}` — prod serves **content-hashed** files via WhiteNoise `CompressedManifestStaticFilesStorage`. Inter is **self-hosted** (`static/fonts/`); there is no font CDN.
+- Multi-line `{# #}` comments are forbidden (Django renders them literally — `dev/check_template_comments.py` guards this).
+
 ## Configuration
 
 `docker-compose.yml`'s `x-django-env` anchor is the canonical dev configuration (reused by `web` and `worker`); **don't edit env files for dev**. `.env.example` documents every prod knob and is reference-only — it is *not* loaded by docker-compose. `dev/kanidm/.env.kanidm` is the only file compose actually loads at runtime (for the OIDC client secret minted by the bootstrap script).
 
-Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `READYZ_INCLUDE_PUB_REPO` (probes the pub repo as part of `/readyz`), `RATELIMIT_ENABLE`.
+Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP ships Report-Only; set `False` to enforce once reports are clean) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`.
 
 ## Deferred / out of scope
 
@@ -169,11 +180,11 @@ Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-au
 
 ## Commit policy
 
-When creating commits in this repository, every rules bellow must be respected:
+When creating commits in this repository, every rule below must be respected:
 
-- Every commit must be signed (`-S`) and singed-off-by (`-s`).
-- Every commit messages must follow the Conventional Commits specification.
-- Never include add a Git trailer "Co-Authored-By" in the commit message footer.
+- Every commit must be signed (`-S`) and signed-off (`-s`).
+- Every commit message must follow the Conventional Commits specification.
+- Never add a `Co-Authored-By` Git trailer to the commit message footer (this intentionally overrides the default Co-Authored-By behaviour).
 - Every AI-generated commit MUST include this Git trailer in the commit message footer:
 
 ```text

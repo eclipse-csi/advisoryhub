@@ -32,8 +32,9 @@ docker compose up
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py seed_demo --with-publish-repo /tmp/advisoryhub-pub.git
 
-# Reset everything
-docker compose down -v && docker compose up -d kanidm && bash dev/kanidm/setup.sh && docker compose up
+# Reset everything (down -v drops volumes but keeps cached images — rebuild
+# so a changed Dockerfile / uv.lock, e.g. a Python bump, is actually picked up)
+docker compose down -v && docker compose build && docker compose up -d kanidm && bash dev/kanidm/setup.sh && docker compose up
 ```
 
 Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/kanidm/setup.sh` to match `seed_demo`).
@@ -42,7 +43,7 @@ Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/k
 
 [mise](https://mise.jdx.dev) wraps every command in this section. `mise trust && mise run setup` installs the bootstrap toolchain (uv + prek), syncs the locked dev env, and wires the git hooks; `mise tasks` lists them all. Each task is a thin 1:1 wrapper over the documented `uv run …` / `docker compose …` command, with `DJANGO_SETTINGS_MODULE` set per task:
 
-- `mise run up` / `down` / `reset` — docker dev stack (`reset` wipes volumes + re-bootstraps kanidm)
+- `mise run up` / `down` / `build` / `reset` — docker dev stack (`reset` wipes volumes, rebuilds images, and re-bootstraps kanidm; `build` rebuilds the web/worker images alone — needed after a Dockerfile/dependency change, since `down -v` keeps cached images)
 - `mise run kanidm-up` / `kanidm-setup` — first-run OIDC bootstrap
 - `mise run migrate` / `seed` — schema + demo data
 - `mise run test` — pytest against the compose Postgres (needs `mise run up`); args pass through: `mise run test -- -k name path/`

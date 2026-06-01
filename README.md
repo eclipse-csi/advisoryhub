@@ -68,6 +68,7 @@ To **reset** the dev environment:
 
 ```sh
 docker compose down -v                     # wipes Postgres + kanidm volumes
+docker compose build                       # down -v keeps cached images; rebuild after a Dockerfile/uv.lock change
 docker compose up -d kanidm
 bash dev/kanidm/setup.sh
 docker compose up
@@ -87,7 +88,7 @@ mise run migrate && mise run seed
 ```
 
 `mise tasks` lists them all (`test`, `lint`, `fix`, `typecheck`, `ty`,
-`check`, `reset`, …). mise is a convenience wrapper only: tool versions live in
+`check`, `build`, `reset`, …). mise is a convenience wrapper only: tool versions live in
 `uv.lock`, the Python version in `.python-version`, and CI runs these same tasks —
 the raw `uv` / `docker compose` commands above stay canonical.
 

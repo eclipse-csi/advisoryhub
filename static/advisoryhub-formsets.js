@@ -27,6 +27,13 @@
 
   var OUTER_AFFECTED_PREFIX = "affected";
 
+  // Let the unsaved-changes guard (advisoryhub-form-dirty.js) re-baseline when
+  // rows are added/removed, so a structural change isn't mistaken for unsaved
+  // content edits.
+  function notifyFormsetChanged() {
+    document.dispatchEvent(new CustomEvent("advisoryhub:formset-changed"));
+  }
+
   function cssEscape(s) {
     if (window.CSS && window.CSS.escape) return window.CSS.escape(s);
     return String(s).replace(/(["\\])/g, "\\$1");
@@ -77,6 +84,7 @@
     syncAllSeverityRows();
     syncAllDescribingHints();
     syncAllEventStatuses();
+    notifyFormsetChanged();
   }
 
   function removeRow(button) {
@@ -93,6 +101,7 @@
       // but other affected rows' visual state is unaffected.
       syncAllEventStatuses();
     }
+    notifyFormsetChanged();
   }
 
   // ---- Severity score widget toggling -------------------------------------

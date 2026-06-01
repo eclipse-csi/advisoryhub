@@ -488,6 +488,38 @@ textarea:hover { border-color: var(--brand); }
 
 textarea { min-height: 6em; resize: vertical; }
 
+/* Validation feedback that appears only AFTER the user has interacted with (or
+   submitted) a field — never premature while typing or on page load. :user-valid
+   / :user-invalid are Baseline widely available (2023) and reflect the field's
+   validity regardless of the form's `novalidate`, so this works on both the
+   native-validated intake form and the server-validated advisory form. The
+   aria-invalid mirror for screen readers is wired in advisoryhub-forms.js. */
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid {
+  border-color: var(--danger);
+}
+input:user-invalid:focus-visible,
+select:user-invalid:focus-visible,
+textarea:user-invalid:focus-visible {
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+input:required:user-valid,
+select:required:user-valid,
+textarea:required:user-valid {
+  border-color: var(--ok);
+}
+
+/* Required-field marker (e.g. the intake form labels). The control's own
+   `required` attribute is what assistive tech announces; this asterisk is a
+   purely visual cue, hence aria-hidden in the markup. */
+.req {
+  color: var(--danger);
+  margin-inline-start: 0.15rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 label { color: var(--text-soft); font-size: 0.92rem; }
 
 fieldset {

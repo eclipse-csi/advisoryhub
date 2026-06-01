@@ -1,10 +1,22 @@
-// Disable the submit button on a form until the user has actually
-// changed something. Activates on any <form data-dirty-form>; finds
-// the first <button type="submit"> inside.
+// Two form-protection behaviours, both keyed off a FormData snapshot (sorted
+// and CSRF-token-stripped so token rotation doesn't read as a change):
 //
-// Comparison is done via FormData serialization, sorted and stripped of
-// the CSRF token so its rotation doesn't read as "dirty". This handles
-// checkboxes, radios, selects, and text inputs uniformly.
+//   <form data-dirty-form>     Disable the submit button until something
+//                              changes. Used on the notification-preferences
+//                              form, which has no native validation constraints
+//                              for a disabled submit to gate (so it does not
+//                              suppress error feedback — see the forms guide).
+//
+//   <form data-unsaved-guard>  Warn via `beforeunload` if the user navigates
+//                              away with unsaved edits. Used on the advisory
+//                              authoring form. Re-baselines on formset add/remove
+//                              (advisoryhub-formsets.js dispatches the event) so a
+//                              structural change isn't counted as unsaved content.
+//
+// NOTE: load this AFTER advisoryhub-formsets.js (and cvss/cwe) on a page so the
+// unsaved-guard baseline is captured once those scripts have finished their
+// on-load DOM/field normalisation — otherwise that normalisation would read as
+// an immediate (false) "unsaved change".
 (function () {
   "use strict";
 
@@ -21,7 +33,7 @@
     return pairs.join("&");
   }
 
-  function init(form) {
+  function initDirtyDisable(form) {
     const button = form.querySelector('button[type="submit"]');
     if (!button) return;
     const initial = snapshot(form);
@@ -31,14 +43,28 @@
     sync();
     form.addEventListener("change", sync);
     form.addEventListener("input", sync);
-    // After a server-rendered swap (e.g. HTMX), the listeners on the
-    // *old* form node are gone — but the script doesn't run again. We
-    // don't currently target HTMX-swapped forms with dirty-tracking, so
-    // this is fine; revisit if that changes.
+  }
+
+  function initUnsavedGuard(form) {
+    let baseline = snapshot(form);
+    let submitting = false;
+    form.addEventListener("submit", () => {
+      submitting = true;
+    });
+    document.addEventListener("advisoryhub:formset-changed", () => {
+      baseline = snapshot(form);
+    });
+    window.addEventListener("beforeunload", (e) => {
+      if (submitting) return;
+      if (snapshot(form) === baseline) return;
+      e.preventDefault();
+      e.returnValue = ""; // some browsers require this to show the prompt
+    });
   }
 
   function start() {
-    document.querySelectorAll("form[data-dirty-form]").forEach(init);
+    document.querySelectorAll("form[data-dirty-form]").forEach(initDirtyDisable);
+    document.querySelectorAll("form[data-unsaved-guard]").forEach(initUnsavedGuard);
   }
 
   if (document.readyState === "loading") {

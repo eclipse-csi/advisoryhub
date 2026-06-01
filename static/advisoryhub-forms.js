@@ -38,6 +38,24 @@
     syncWithin(event.target);
   });
 
+  // ---- aria-invalid bridge ---------------------------------------------
+  // Mirror the CSS :user-invalid state to aria-invalid so screen readers learn
+  // a field is in error — the pseudo-class is invisible to assistive tech.
+  // :user-invalid only matches after interaction, so this never fires early.
+  function syncAriaInvalid(el) {
+    if (!el || !el.matches || !el.matches("input, select, textarea")) return;
+    var invalid;
+    try {
+      invalid = el.matches(":user-invalid");
+    } catch (_e) {
+      return; // :user-invalid unsupported on this engine — leave markup as-is
+    }
+    if (invalid) el.setAttribute("aria-invalid", "true");
+    else if (el.getAttribute("aria-invalid") === "true") el.removeAttribute("aria-invalid");
+  }
+  document.addEventListener("blur", function (e) { syncAriaInvalid(e.target); }, true);
+  document.addEventListener("input", function (e) { syncAriaInvalid(e.target); });
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       syncWithin(document);

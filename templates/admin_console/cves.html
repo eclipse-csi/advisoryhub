@@ -61,5 +61,5 @@
     </section>
   {% endif %}
 
-  <div id="modal" hx-on::after-swap="this.querySelector('dialog')?.showModal()"></div>
+  <div id="modal" data-dialog-host></div>
 {% endblock %}

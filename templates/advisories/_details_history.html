@@ -17,24 +17,4 @@
     {% endif %}
   </div>
 </dialog>
-
-<script>
-  (function () {
-    var dlg = document.getElementById('details-history-drawer');
-    if (!dlg) return;
-    if (typeof dlg.showModal === 'function') {
-      dlg.showModal();
-    } else {
-      dlg.setAttribute('open', 'open');
-    }
-    // Close when the user clicks on the backdrop (outside the dialog box).
-    dlg.addEventListener('click', function (event) {
-      if (event.target === dlg) dlg.close();
-    });
-    // Clear the host on close so reopening fetches a fresh partial.
-    dlg.addEventListener('close', function () {
-      var host = document.getElementById('details-history-host');
-      if (host) host.innerHTML = '';
-    });
-  })();
-</script>
+{# Opened + light-dismiss + host-cleared by the delegated controller in advisoryhub-dialogs.js #}

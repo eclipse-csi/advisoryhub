@@ -1,6 +1,7 @@
 """Cross-cutting request middleware.
 
 * :class:`RequestIDMiddleware` — request-id correlation.
+* :class:`PermissionsPolicyMiddleware` — restrictive ``Permissions-Policy`` header.
 * :class:`MaintenanceModeMiddleware` — server-side enforcement of the
   admin-toggled site-wide maintenance pause (``INV-MAINT-1``).
 """
@@ -30,6 +31,32 @@ class RequestIDMiddleware:
         finally:
             reset_request_id(token)
         response["X-Request-ID"] = rid
+        return response
+
+
+class PermissionsPolicyMiddleware:
+    """Emit a restrictive ``Permissions-Policy`` header.
+
+    Django ships no default for this header. AdvisoryHub uses none of these
+    powerful browser features, so denying them outright is zero-risk hardening
+    that shrinks the attack surface for any injected or embedded content. It
+    complements the CSP (django-csp) and the ``X-Frame-Options: DENY`` /
+    ``frame-ancestors`` clickjacking guard.
+    """
+
+    HEADER = "Permissions-Policy"
+    POLICY = (
+        "accelerometer=(), autoplay=(), camera=(), display-capture=(), "
+        "encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), "
+        "magnetometer=(), microphone=(), midi=(), payment=(), usb=()"
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response.setdefault(self.HEADER, self.POLICY)
         return response
 
 

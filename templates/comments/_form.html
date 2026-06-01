@@ -1,6 +1,5 @@
 <form hx-post="{% url 'comments:create' advisory.advisory_id %}"
       hx-target="#comments" hx-swap="outerHTML"
-      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
       class="comment-form">
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}

@@ -12,8 +12,7 @@
     {% if task.status == 'queued' %}
       <form class="inline"
             hx-post="{% url 'admin_console:cve_transition' task.pk %}"
-            hx-target="#cve-task-{{ task.pk }}" hx-swap="outerHTML"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            hx-target="#cve-task-{{ task.pk }}" hx-swap="outerHTML">
         {% csrf_token %}
         <input type="hidden" name="status" value="reserved">
         <input type="text" name="cve_id" placeholder="CVE-2026-12345" required pattern="CVE-\d{4}-\d{1,10}">

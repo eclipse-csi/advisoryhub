@@ -75,6 +75,10 @@ run = "uv run python manage.py makemigrations --check --dry-run"
 description = "pip-audit on installed deps (mirrors CI security job)"
 run = "uv run --with pip-audit pip-audit"
 
+[tasks.verify-vendor]
+description = "Verify vendored assets (htmx) match their pinned hashes"
+run = "bash dev/check_vendored_assets.sh"
+
 # ---- Docker dev stack (verbatim wrappers of the README flow) --------------
 [tasks.kanidm-up]
 description = "Start only the dev OIDC provider (kanidm)"

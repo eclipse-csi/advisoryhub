@@ -22,8 +22,7 @@
   <td>
     {% if orphan.status == 'orphaned' %}
       <form hx-post="{% url 'admin_console:orphan_mark_rejected' orphan.pk %}"
-            hx-target="#orphan-{{ orphan.pk }}" hx-swap="outerHTML"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            hx-target="#orphan-{{ orphan.pk }}" hx-swap="outerHTML">
         {% csrf_token %}
         <textarea name="notes" placeholder="Notes (optional — e.g. cve.org ticket id)"></textarea>
         <button type="submit">Mark rejected at cve.org</button>

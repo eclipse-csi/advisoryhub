@@ -5,7 +5,8 @@
   <title>{% block title %}AdvisoryHub{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <script>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <script nonce="{{ request.csp_nonce }}">
     // Apply theme before paint to avoid a flash of light content on dark systems.
     (function () {
       try {
@@ -21,13 +22,16 @@
   <link rel="preconnect" href="https://rsms.me/">
   <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <link rel="stylesheet" href="{% static 'advisoryhub.css' %}">
-  <script src="{% static 'htmx.min.js' %}" defer></script>
-  <script src="{% static 'advisoryhub-formsets.js' %}" defer></script>
-  <script src="{% static 'advisoryhub-access.js' %}" defer></script>
-  <script src="{% static 'advisoryhub-theme.js' %}" defer></script>
-  <script src="{% static 'advisoryhub-form-dirty.js' %}" defer></script>
-  <script src="{% static 'advisoryhub-row-link.js' %}" defer></script>
-  <script src="{% static 'advisoryhub-maintenance.js' %}" defer></script>
+  <script src="{% static 'htmx.min.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-htmx.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-dialogs.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-forms.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-theme.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-row-link.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-maintenance.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body{% if maintenance_mode.paused %} data-maintenance-paused{% endif %}>
@@ -80,5 +84,7 @@
   {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
   {% block content %}{% endblock %}
 </main>
+{# Transient client-side notifications (e.g. failed HTMX requests). Populated by advisoryhub-htmx.js. #}
+<ul id="toast-region" class="messages toast-region" aria-live="assertive" aria-atomic="false"></ul>
 </body>
 </html>

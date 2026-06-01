@@ -23,7 +23,6 @@
         <button hx-get="{% url 'comments:edit' comment.advisory.advisory_id comment.pk %}"
                 hx-target="#comment-{{ comment.pk }}" hx-swap="outerHTML">Edit</button>
         <button hx-post="{% url 'comments:redact' comment.advisory.advisory_id comment.pk %}"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                 hx-confirm="Redact this comment? This cannot be undone."
                 hx-target="#comment-{{ comment.pk }}" hx-swap="outerHTML">Redact</button>
       </p>

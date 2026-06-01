@@ -19,22 +19,4 @@
     {% endif %}
   </div>
 </dialog>
-
-<script>
-  (function () {
-    var dlg = document.getElementById('comment-history-drawer');
-    if (!dlg) return;
-    if (typeof dlg.showModal === 'function') {
-      dlg.showModal();
-    } else {
-      dlg.setAttribute('open', 'open');
-    }
-    dlg.addEventListener('click', function (event) {
-      if (event.target === dlg) dlg.close();
-    });
-    dlg.addEventListener('close', function () {
-      var host = document.getElementById('comment-history-host');
-      if (host) host.innerHTML = '';
-    });
-  })();
-</script>
+{# Opened + light-dismiss + host-cleared by the delegated controller in advisoryhub-dialogs.js #}

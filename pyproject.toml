@@ -23,6 +23,7 @@ dependencies = [
     "requests>=2.32",
     "PyJWT[crypto]>=2.8",
     "django-hcaptcha>=0.2",
+    "django-csp>=4.0",
 ]
 
 [tool.setuptools]

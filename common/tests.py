@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 from django.test import override_settings
@@ -112,6 +113,50 @@ def test_request_id_minted_when_header_absent(client):
 def test_request_id_honors_upstream_header(client):
     r = client.get(reverse("healthz"), HTTP_X_REQUEST_ID="abc-from-edge-12345")
     assert r["X-Request-ID"] == "abc-from-edge-12345"
+
+
+# ---- Security headers (CSP / Permissions-Policy) -------------------------
+
+
+@pytest.mark.django_db
+def test_csp_report_only_header_and_nonce_match(client, setup):
+    """A nonce-based CSP is emitted and the nonce in the header matches the
+    one stamped on the inline bootstrap <script> (so the script will execute
+    once the policy is enforced)."""
+    client.force_login(setup["member"])
+    r = client.get(reverse("advisories:list"))
+    csp = r.headers.get("Content-Security-Policy-Report-Only", "")
+    assert "script-src" in csp
+    assert "'strict-dynamic'" in csp
+    assert "object-src 'none'" in csp
+    assert "base-uri 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+    match = re.search(r"'nonce-([A-Za-z0-9+/=_-]+)'", csp)
+    assert match, f"no nonce in CSP header: {csp!r}"
+    nonce = match.group(1)
+    assert f'nonce="{nonce}"'.encode() in r.content
+
+
+@pytest.mark.django_db
+def test_permissions_policy_present_and_legacy_xss_header_gone(client):
+    r = client.get(reverse("healthz"))
+    assert "camera=()" in r.headers.get("Permissions-Policy", "")
+    assert "geolocation=()" in r.headers.get("Permissions-Policy", "")
+    # SECURE_BROWSER_XSS_FILTER was removed; the deprecated header must not appear.
+    assert "X-XSS-Protection" not in r.headers
+
+
+@pytest.mark.django_db
+def test_csp_enforced_when_report_only_disabled(client):
+    """With an enforced policy configured, the blocking header is emitted."""
+    from csp.constants import NONCE, SELF
+
+    policy = {"DIRECTIVES": {"default-src": [SELF], "script-src": [SELF, NONCE]}}
+    with override_settings(
+        CONTENT_SECURITY_POLICY=policy, CONTENT_SECURITY_POLICY_REPORT_ONLY=None
+    ):
+        r = client.get(reverse("healthz"))
+        assert "script-src" in r.headers.get("Content-Security-Policy", "")
 
 
 # ---- JSON log formatter --------------------------------------------------

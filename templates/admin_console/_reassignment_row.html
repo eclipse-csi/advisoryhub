@@ -19,22 +19,21 @@
   <td>
     {% if task.status == 'queued' %}
       <form hx-post="{% url 'admin_console:orphan_reassignment_resolve' task.pk %}"
-            hx-target="#reassignment-{{ task.pk }}" hx-swap="outerHTML"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            hx-target="#reassignment-{{ task.pk }}" hx-swap="outerHTML">
         {% csrf_token %}
         <fieldset>
           <legend>Outcome</legend>
           <label>
-            <input type="radio" name="outcome" value="reassigned" checked
-                   onclick="this.form.querySelector('[name=replacement_cve_id]').disabled=true;">
+            <input type="radio" name="outcome" value="reassigned" checked>
             Rejection undone — reattach <code>{{ task.orphan_cve.cve_id }}</code>
           </label>
           <label>
-            <input type="radio" name="outcome" value="replaced"
-                   onclick="this.form.querySelector('[name=replacement_cve_id]').disabled=false;">
+            <input type="radio" name="outcome" value="replaced">
             Couldn't undo — assign a new CVE number
           </label>
-          <input type="text" name="replacement_cve_id" placeholder="e.g. CVE-2026-12345" disabled>
+          {# Enabled only while "replaced" is selected — see advisoryhub-forms.js #}
+          <input type="text" name="replacement_cve_id" placeholder="e.g. CVE-2026-12345"
+                 data-enabled-by="outcome:replaced" disabled>
         </fieldset>
         <textarea name="notes" placeholder="Notes (optional — e.g. MITRE ticket id)"></textarea>
         <button type="submit">Resolve</button>

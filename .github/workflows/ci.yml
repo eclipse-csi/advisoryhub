@@ -85,6 +85,8 @@ jobs:
       # advisory (|| true), exactly as before. makemigrations-check is enforced.
       - run: mise run check || true
       - run: mise run makemigrations-check
+      # Fail if the vendored htmx bundle drifts from its pinned sha256.
+      - run: mise run verify-vendor
 
   typecheck:
     name: Type check (mypy + django-stubs)

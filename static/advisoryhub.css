@@ -2626,3 +2626,51 @@ dialog.drawer--right {
   opacity: 0.55;
   pointer-events: none;
 }
+
+/* ------------------------------------------------------------ honeypot + toasts */
+
+/* Intake honeypot: hidden off-screen rather than display:none (bots tend to
+   skip display:none fields). Kept in a class — not an inline style attribute —
+   so the CSP style-src can stay 'self' with no 'unsafe-inline'. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Transient client-side notifications (e.g. a failed HTMX request) injected by
+   advisoryhub-htmx.js. Reuses the .messages list styling, pinned to the corner
+   and stacked. */
+.toast-region {
+  position: fixed;
+  inset-inline-end: 1rem;
+  inset-block-end: 1rem;
+  z-index: 1000;
+  width: min(28rem, calc(100vw - 2rem));
+  margin: 0;
+  pointer-events: none;
+}
+.toast-region:empty { display: none; }
+.toast-region li {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  box-shadow: var(--shadow-md);
+}
+.toast-region li > span { flex: 1 1 auto; }
+.toast__dismiss {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.toast__dismiss:hover { background: transparent; color: inherit; }

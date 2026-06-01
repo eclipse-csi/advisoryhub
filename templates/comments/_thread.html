@@ -10,5 +10,5 @@
   {% if can_comment %}
     {% include "comments/_form.html" with form=form advisory=advisory can_post_internal=can_post_internal %}
   {% endif %}
-  <div id="comment-history-host"></div>
+  <div id="comment-history-host" data-dialog-host></div>
 </section>

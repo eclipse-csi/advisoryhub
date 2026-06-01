@@ -70,6 +70,13 @@ repos:
         language: system
         types_or: [python, pyi]
 
+      - id: verify-vendored-assets
+        name: vendored asset checksums (htmx matches static/htmx.VERSION)
+        entry: dev/check_vendored_assets.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
   # ---- Type & Django checks (pre-push only — whole-project, slower) ---------
   # Run when pushing, mirroring the enforced CI gates. pass_filenames is false:
   # each command analyses the whole project, not the changed files.

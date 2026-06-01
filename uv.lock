@@ -11,6 +11,7 @@ dependencies = [
     { name = "celery" },
     { name = "cvss" },
     { name = "django" },
+    { name = "django-csp" },
     { name = "django-environ" },
     { name = "django-hcaptcha" },
     { name = "django-htmx" },
@@ -43,6 +44,7 @@ requires-dist = [
     { name = "celery", specifier = ">=5.4" },
     { name = "cvss", specifier = ">=3.0" },
     { name = "django", specifier = ">=5.2,<5.3" },
+    { name = "django-csp", specifier = ">=4.0" },
     { name = "django-environ", specifier = ">=0.11" },
     { name = "django-hcaptcha", specifier = ">=0.2" },
     { name = "django-htmx", specifier = ">=1.21" },
@@ -431,6 +433,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/65/95/95f7faa0950867afaa0bef2460c6263afd6a2c78cc9434046ed28160b015/django-5.2.14.tar.gz", hash = "sha256:58a63ba841662e5c686b57ba1fec52ddd68c0b93bd96ac3029d55728f00bf8a2", size = 10895118, upload-time = "2026-05-05T13:57:31.104Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/44/f172870cf87aa25afef48fb72adba89ee8b77fcab6f3b23d240b923f1528/django-5.2.14-py3-none-any.whl", hash = "sha256:6f712143bd3064310d1f50fac859c3e9a274bdcfc9595339853be7779297fc76", size = 8311320, upload-time = "2026-05-05T13:57:25.795Z" },
+]
+
+[[package]]
+name = "django-csp"
+version = "4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/52/db/23567744dff2169aadb095f726088074476b24dfff5a759ffcf6389cf401/django_csp-4.0.tar.gz", hash = "sha256:b27010bb702eb20a3dad329178df2b61a2b82d338b70fbdc13c3a3bd28712833", size = 20028, upload-time = "2025-04-02T16:41:46.721Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/a4/736ab90ee527a23e194d1ce7358c6bcced66381ced83c28268b4aea236f7/django_csp-4.0-py3-none-any.whl", hash = "sha256:d5a0a05463a6b75a4f1fc1828c58c89af8db9364d09fc6e12f122b4d7f3d00dc", size = 25689, upload-time = "2025-04-02T16:41:45.689Z" },
 ]
 
 [[package]]

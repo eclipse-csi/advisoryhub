@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block title %}{% translate "Report a vulnerability" %} — AdvisoryHub{% endblock %}
-{% block extra_head %}<script src="{% static 'advisoryhub-cwe.js' %}" defer></script>{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 
 {% block content %}
 <section class="intake-form">
@@ -91,7 +91,7 @@
 
     {% if "website" in form.fields %}
       {# Honeypot: real users do not see this field. #}
-      <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">
+      <div aria-hidden="true" class="honeypot">
         <label for="id_website">Website</label>
         <input id="id_website" name="website" type="text" tabindex="-1" autocomplete="off">
       </div>

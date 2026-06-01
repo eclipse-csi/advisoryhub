@@ -93,7 +93,7 @@
                   class="cve-unassign-icon"
                   aria-label="Remove CVE assignment"
                   title="Remove CVE assignment"
-                  onclick="document.getElementById('cve-unassign-dialog').showModal();">×</button>
+                  data-dialog-open="cve-unassign-dialog">×</button>
           <dialog id="cve-unassign-dialog" class="confirm-dialog">
             <form method="post"
                   action="{% url 'advisories:unassign_cve' advisory.advisory_id %}"
@@ -107,8 +107,7 @@
               <label for="cve-unassign-reason">Reason (required — visible to the security team)</label>
               <textarea id="cve-unassign-reason" name="reason" rows="3" required></textarea>
               <div class="dialog-actions">
-                <button type="button"
-                        onclick="this.closest('dialog').close();">Cancel</button>
+                <button type="button" data-dialog-close>Cancel</button>
                 <button type="submit" class="danger">Confirm removal</button>
               </div>
             </form>
@@ -300,9 +299,9 @@
   </aside>
 </div>{# /.advisory-detail #}
 
-<div id="details-history-host"></div>
+<div id="details-history-host" data-dialog-host></div>
 
 {% if can_flag_routing %}
-  <div id="modal" hx-on::after-swap="this.querySelector('dialog')?.showModal()"></div>
+  <div id="modal" data-dialog-host></div>
 {% endif %}
 {% endblock %}

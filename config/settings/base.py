@@ -144,6 +144,10 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "common.middleware.RequestIDMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # CSP nonce must be available during template render and the header set on
+    # every response — keep high in the stack, just after SecurityMiddleware.
+    "csp.middleware.CSPMiddleware",
+    "common.middleware.PermissionsPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     # LocaleMiddleware must come *after* SessionMiddleware (so it can
     # consult the session's preferred language) and *before*
@@ -362,9 +366,50 @@ CELERY_BEAT_SCHEDULE = {
 # ---------------------------------------------------------------------------
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
-SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+# Referrer-Policy ("same-origin") and Cross-Origin-Opener-Policy ("same-origin")
+# are emitted by Django's SecurityMiddleware defaults; no override needed.
+# (SECURE_BROWSER_XSS_FILTER was removed in Django 5.1 — the legacy
+# X-XSS-Protection header is deprecated; the CSP below is the real defense.)
+
+# ---------------------------------------------------------------------------
+# Content-Security-Policy (django-csp)
+# ---------------------------------------------------------------------------
+# Nonce-based script-src + 'strict-dynamic': only per-request-nonced <script>
+# tags (and scripts they load) execute, so an injected inline <script> or event
+# handler cannot run. This is the defence-in-depth layer behind the bleach
+# sanitiser that scrubs user-supplied markdown (comments/services.render_markdown).
+# All scripts, styles and fonts are same-origin; inline event handlers and the
+# per-form CSRF hx-headers were removed (see static/advisoryhub-dialogs.js and
+# static/advisoryhub-htmx.js) so the policy needs no 'unsafe-inline'/'unsafe-hashes'.
+#
+# Shipped Report-Only first (CSP_REPORT_ONLY=True default) so anything missed is
+# reported, not broken; set CSP_REPORT_ONLY=False to enforce once reports are clean.
+from csp.constants import NONCE, NONE, REPORT_SAMPLE, SELF, STRICT_DYNAMIC  # noqa: E402
+
+CSP_REPORT_ONLY = env.bool("CSP_REPORT_ONLY", default=True)
+_CSP_REPORT_URI = env.str("CSP_REPORT_URI", default="")
+
+_CSP_DIRECTIVES: dict = {
+    "default-src": [SELF],
+    "script-src": [SELF, NONCE, STRICT_DYNAMIC, REPORT_SAMPLE],
+    "style-src": [SELF],
+    "img-src": [SELF, "data:"],
+    "font-src": [SELF],
+    "connect-src": [SELF],
+    "form-action": [SELF],
+    "base-uri": [NONE],
+    "object-src": [NONE],
+    "frame-ancestors": [NONE],
+}
+if _CSP_REPORT_URI:
+    _CSP_DIRECTIVES["report-uri"] = [_CSP_REPORT_URI]
+
+if CSP_REPORT_ONLY:
+    CONTENT_SECURITY_POLICY_REPORT_ONLY = {"DIRECTIVES": _CSP_DIRECTIVES}
+else:
+    CONTENT_SECURITY_POLICY = {"DIRECTIVES": _CSP_DIRECTIVES}
 
 # Source-IP resolution (see common.net.client_ip). 0 = trust only the
 # direct peer (REMOTE_ADDR); raise to the number of trusted proxies that

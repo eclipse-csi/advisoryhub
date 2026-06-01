@@ -65,7 +65,7 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
   {% if can_dismiss and advisory.state == 'draft' or can_triage %}
     <div class="sidebar-card__row">
       <button type="button" class="danger"
-              onclick="document.getElementById('advisory-dismiss-dialog').showModal();">Dismiss</button>
+              data-dialog-open="advisory-dismiss-dialog">Dismiss</button>
       <p class="sidebar-card__action-hint">
         {% if is_triage %}
           Drop this report as spam, duplicate, or out-of-scope. Requires a reason and is logged in the audit trail.
@@ -83,7 +83,7 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
           <label for="advisory-dismiss-reason">Reason</label>
           <textarea id="advisory-dismiss-reason" name="reason" rows="4" required></textarea>
           <div class="dialog-actions">
-            <button type="button" onclick="this.closest('dialog').close();">Cancel</button>
+            <button type="button" data-dialog-close>Cancel</button>
             <button type="submit" class="danger">Dismiss</button>
           </div>
         </form>

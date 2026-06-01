@@ -5,7 +5,7 @@
 # commands already documented in README.md / CLAUDE.md. CI runs the same tasks.
 #
 # SINGLE SOURCE OF TRUTH IS PRESERVED:
-#   * Python version            -> .python-version (3.14.2); uv reads it natively.
+#   * Python version            -> .python-version; uv reads it natively.
 #                                  No `python` in [tools]: one interpreter everywhere.
 #   * Dev tool versions         -> uv.lock (ruff/mypy/pytest/django-stubs/ty/…),
 #                                  invoked via `uv run` / `uv tool run`; NEVER here.
@@ -18,7 +18,7 @@
 [tools]
 uv   = "latest"   # resolves to aqua:astral-sh/uv
 prek = "latest"   # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wires git hooks
-# NO python here  -> .python-version + uv own the interpreter (3.14.2 everywhere).
+# NO python here  -> .python-version + uv own the interpreter.
 # NO ruff/mypy/pytest/ty here -> they live in uv.lock, run via `uv run`.
 
 [env]

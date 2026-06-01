@@ -12,7 +12,7 @@ permissions:
 # `mise run <task>`, so dev and CI run identical command bodies. jdx/mise-action
 # installs the [tools] (uv + prek), trusts the config, and caches the tool
 # binaries; actions/cache covers uv's wheel cache and the CPython it downloads.
-# Python comes from .python-version (3.14.2) — dev = CI = prod, no UV_PYTHON.
+# Python comes from .python-version — dev = CI = prod, no UV_PYTHON.
 
 jobs:
   test:
@@ -49,7 +49,7 @@ jobs:
       - name: Install
         # mise run sync == `uv sync --locked --extra dev`. --locked fails if the
         # lock has drifted from pyproject.toml (run `uv lock` to refresh). uv
-        # provisions CPython from .python-version (3.14.2).
+        # provisions CPython from .python-version.
         run: mise run sync
 
       - name: Lint

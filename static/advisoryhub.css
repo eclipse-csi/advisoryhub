@@ -278,21 +278,21 @@ main.container > h1,
   transform: translateY(-50%);
   background: var(--text-muted);
 }
-.messages li.success { background: var(--ok-soft); border-color: #c0e6cf; color: #0e5e38; }
-.messages li.success::before { background: var(--ok); }
-.messages li.warning { background: var(--warn-soft); border-color: #f3d9a3; color: #7a4900; }
-.messages li.warning::before { background: var(--warn); }
+.messages li.success { background: var(--ok-soft); border-color: var(--ok-bd); color: var(--ok-fg); }
+.messages li.success::before { background: var(--ok-fg); }
+.messages li.warning { background: var(--warn-soft); border-color: var(--warn-bd); color: var(--warn-fg); }
+.messages li.warning::before { background: var(--warn-fg); }
 .messages li.error,
-.messages li.danger { background: var(--danger-soft); border-color: #f1c7c4; color: #8a1d17; }
+.messages li.danger { background: var(--danger-soft); border-color: var(--danger-bd); color: var(--danger-fg); }
 .messages li.error::before,
-.messages li.danger::before { background: var(--danger); }
-.messages li.info { background: var(--info-soft); border-color: #c7dcf3; color: #0d3f7a; }
-.messages li.info::before { background: var(--info); }
+.messages li.danger::before { background: var(--danger-fg); }
+.messages li.info { background: var(--info-soft); border-color: var(--info-bd); color: var(--info-fg); }
+.messages li.info::before { background: var(--info-fg); }
 
 .errors {
-  color: var(--danger);
+  color: var(--danger-fg);
   background: var(--danger-soft);
-  border: 1px solid #f1c7c4;
+  border: 1px solid var(--danger-bd);
   padding: 0.6rem 0.9rem;
   border-radius: var(--radius-sm);
   margin: 0.4rem 0;
@@ -972,12 +972,12 @@ p.state strong { color: var(--text); }
   color: var(--text-soft);
   border: 1px solid var(--border);
 }
-.inbox-badge--cve    { background: #e8e3ff; color: #2C1CD8; border-color: #d4ccff; }
+.inbox-badge--cve    { background: light-dark(#e8e3ff, #211a4d); color: light-dark(#2C1CD8, #b9a7ff); border-color: light-dark(#d4ccff, #3a2f73); }
 .inbox-badge--review { background: var(--brand-soft); color: var(--brand-fg); border-color: var(--brand-bd); }
-.inbox-badge--pub    { background: var(--danger-soft); color: var(--danger); border-color: #f1c7c4; }
-.inbox-badge--triage { background: var(--warn-soft); color: var(--warn); border-color: #f3d9a3; }
-.inbox-badge--triage-routing { background: var(--danger-soft); color: var(--danger); border-color: #f1c7c4; }
-.inbox-badge--orphan { background: #f1e6f9; color: #6a1b9a; border-color: #e0c8ee; }
+.inbox-badge--pub    { background: var(--danger-soft); color: var(--danger-fg); border-color: var(--danger-bd); }
+.inbox-badge--triage { background: var(--warn-soft); color: var(--warn-fg); border-color: var(--warn-bd); }
+.inbox-badge--triage-routing { background: var(--danger-soft); color: var(--danger-fg); border-color: var(--danger-bd); }
+.inbox-badge--orphan { background: light-dark(#f1e6f9, #2c1934); color: light-dark(#6a1b9a, #dba6ef); border-color: light-dark(#e0c8ee, #4a2c56); }
 
 /* ------------------------------------------------------------ preferences rows */
 

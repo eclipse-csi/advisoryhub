@@ -77,6 +77,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: template-comments
+        name: no multi-line Django {# #} comments (they render as literal text)
+        entry: dev/check_template_comments.py
+        language: system
+        pass_filenames: false
+        files: '\.(html|txt)$'
+
   # ---- Type & Django checks (pre-push only — whole-project, slower) ---------
   # Run when pushing, mirroring the enforced CI gates. pass_filenames is false:
   # each command analyses the whole project, not the changed files.

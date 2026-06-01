@@ -87,6 +87,8 @@ jobs:
       - run: mise run makemigrations-check
       # Fail if the vendored htmx bundle drifts from its pinned sha256.
       - run: mise run verify-vendor
+      # Fail on multi-line {# #} template comments (they render as literal text).
+      - run: mise run check-templates
 
   typecheck:
     name: Type check (mypy + django-stubs)

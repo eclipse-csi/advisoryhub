@@ -79,6 +79,10 @@ run = "uv run --with pip-audit pip-audit"
 description = "Verify vendored assets (htmx) match their pinned hashes"
 run = "bash dev/check_vendored_assets.sh"
 
+[tasks.check-templates]
+description = "Fail on multi-line {# #} Django comments (they render as literal text)"
+run = "uv run python dev/check_template_comments.py"
+
 # ---- Docker dev stack (verbatim wrappers of the README flow) --------------
 [tasks.kanidm-up]
 description = "Start only the dev OIDC provider (kanidm)"

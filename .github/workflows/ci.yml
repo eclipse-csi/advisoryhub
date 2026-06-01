@@ -16,12 +16,8 @@ permissions:
 
 jobs:
   test:
-    name: Tests (${{ matrix.db }})
+    name: Tests
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        db: [postgres, sqlite]
 
     services:
       postgres:
@@ -67,14 +63,9 @@ jobs:
           git config --global tag.gpgsign false
           git config --global init.defaultBranch main
 
-      - name: Run tests (Postgres)
-        if: matrix.db == 'postgres'
+      - name: Run tests
         env:
           TEST_DATABASE_URL: postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub
-        run: mise run test -- -v --tb=short --cov --cov-report=term-missing
-
-      - name: Run tests (SQLite)
-        if: matrix.db == 'sqlite'
         run: mise run test -- -v --tb=short --cov --cov-report=term-missing
 
   django-checks:

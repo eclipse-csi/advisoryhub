@@ -1,13 +1,8 @@
 """Database-level append-only enforcement for audit_auditlogentry.
 
-On Postgres (the production target), UPDATE/DELETE against the audit log
-table — from the ORM, the admin, the shell, or psql — raise an exception.
-The only way to remove the constraint is to drop the triggers in a
-follow-up migration, captured in git history.
-
-On other backends (SQLite for fast local tests), this migration is a
-no-op: application-layer enforcement in ``AuditLogEntry.save/delete``
-still applies, and the ``test_database_trigger_*`` tests skip.
+UPDATE/DELETE against the audit log table — from the ORM, the admin, the
+shell, or psql — raise an exception. The only way to remove the constraint
+is to drop the triggers in a follow-up migration, captured in git history.
 """
 
 from django.db import migrations
@@ -47,15 +42,11 @@ DROP FUNCTION IF EXISTS audit_no_delete();
 
 
 def _apply(apps, schema_editor):
-    if schema_editor.connection.vendor != "postgresql":
-        return
     with schema_editor.connection.cursor() as cur:
         cur.execute(CREATE_SQL)
 
 
 def _reverse(apps, schema_editor):
-    if schema_editor.connection.vendor != "postgresql":
-        return
     with schema_editor.connection.cursor() as cur:
         cur.execute(DROP_SQL)
 

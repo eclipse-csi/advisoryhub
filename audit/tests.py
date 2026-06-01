@@ -44,9 +44,6 @@ def test_application_layer_blocks_delete(make_user):
 @pytest.mark.django_db(transaction=True)
 def test_database_trigger_blocks_raw_update(make_user):
     """Even raw SQL through the Django connection must be rejected."""
-    if connection.vendor != "postgresql":
-        pytest.skip("Append-only triggers are Postgres-specific")
-
     entry = record(action=Action.ADVISORY_CREATED, actor=make_user())
 
     with pytest.raises(Exception) as exc:
@@ -61,9 +58,6 @@ def test_database_trigger_blocks_raw_update(make_user):
 
 @pytest.mark.django_db(transaction=True)
 def test_database_trigger_blocks_raw_delete(make_user):
-    if connection.vendor != "postgresql":
-        pytest.skip("Append-only triggers are Postgres-specific")
-
     entry = record(action=Action.ADVISORY_CREATED, actor=make_user())
 
     with pytest.raises(Exception) as exc:

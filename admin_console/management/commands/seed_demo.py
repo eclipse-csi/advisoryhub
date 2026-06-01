@@ -407,7 +407,6 @@ def _audit_set_null_unblocked():
     this the Postgres ``audit_log_no_update`` trigger blocks the cascade.
 
     Scope is intentionally narrow:
-    * Postgres-only (no-op on SQLite, where the trigger doesn't exist).
     * Only the UPDATE trigger is touched — the DELETE trigger stays on,
       so seed_demo can never actually remove audit history.
     * On error, the surrounding ``transaction.atomic`` rolls back the
@@ -417,9 +416,6 @@ def _audit_set_null_unblocked():
     Dev-only escape hatch: ``seed_demo --reset`` is documented as a
     destructive dev convenience; nothing in prod ever runs this.
     """
-    if connection.vendor != "postgresql":
-        yield
-        return
     with connection.cursor() as cur:
         cur.execute("ALTER TABLE audit_auditlogentry DISABLE TRIGGER audit_log_no_update")
     # On the success path we must re-enable in the SAME transaction.

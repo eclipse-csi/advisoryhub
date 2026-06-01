@@ -1,12 +1,10 @@
-"""Postgres-only indexes that speed up advisory list filters.
+"""Postgres indexes that speed up advisory list filters.
 
 * GIN index on ``aliases`` (the JSONB list of CVE/GHSA-style IDs) so
   ``aliases__icontains=CVE-2026-1234`` and friends don't sequentially
   scan the table.
 * Trigram (``pg_trgm``) indexes on ``summary`` and ``details`` for
   cheap ``icontains`` searches.
-
-On SQLite this migration is a no-op — the test suite skips it.
 """
 
 from django.db import migrations
@@ -37,15 +35,11 @@ DROP INDEX IF EXISTS adv_advisory_id_trgm;
 
 
 def _apply(apps, schema_editor):
-    if schema_editor.connection.vendor != "postgresql":
-        return
     with schema_editor.connection.cursor() as cur:
         cur.execute(CREATE_SQL)
 
 
 def _reverse(apps, schema_editor):
-    if schema_editor.connection.vendor != "postgresql":
-        return
     with schema_editor.connection.cursor() as cur:
         cur.execute(DROP_SQL)
 

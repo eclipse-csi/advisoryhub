@@ -119,7 +119,7 @@ def _unsafe_dev_reset_bypass():
     * Lowers Postgres ``session_replication_role`` to ``replica`` for the
       current transaction, which disables the ``advisory_no_delete``
       trigger (and any other non-replication triggers) without dropping
-      them. No-op on SQLite.
+      them.
     * Lets the caller use the bypassing ORM path
       :func:`_unsafe_dev_reset_delete_queryset` to actually issue the
       bulk delete; the regular ``AdvisoryQuerySet.delete()`` still
@@ -128,9 +128,6 @@ def _unsafe_dev_reset_bypass():
     Mirrors :func:`audit.retention._audit_trigger_bypass`. Only intended
     for ``seed_demo --reset``; production code paths must not invoke it.
     """
-    if connection.vendor != "postgresql":
-        yield
-        return
     with connection.cursor() as cur:
         cur.execute("SET LOCAL session_replication_role = replica")
         try:

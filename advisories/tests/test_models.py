@@ -149,9 +149,6 @@ def test_advisory_queryset_delete_blocked(make_project):
 @pytest.mark.django_db(transaction=True)
 def test_database_trigger_blocks_raw_delete(make_project):
     """Even raw SQL through the Django connection must be rejected."""
-    if connection.vendor != "postgresql":
-        pytest.skip("Append-only triggers are Postgres-specific")
-
     project = make_project("eclipse-jetty")
     advisory = Advisory.objects.create(project=project)
 

@@ -86,7 +86,7 @@ mise run up                      # web + worker (full stack)
 mise run migrate && mise run seed
 ```
 
-`mise tasks` lists them all (`test`, `test-pg`, `lint`, `fix`, `typecheck`, `ty`,
+`mise tasks` lists them all (`test`, `lint`, `fix`, `typecheck`, `ty`,
 `check`, `reset`, …). mise is a convenience wrapper only: tool versions live in
 `uv.lock`, the Python version in `.python-version`, and CI runs these same tasks —
 the raw `uv` / `docker compose` commands above stay canonical.
@@ -104,14 +104,18 @@ env-var inventory with groups, defaults, and descriptions is in
 
 ## Running tests
 
+Tests run against PostgreSQL (the same engine as prod), so start it first:
+
 ```sh
+docker compose up -d postgres    # or `mise run up` for the full dev stack
 DJANGO_SETTINGS_MODULE=config.settings.test pytest
 ```
 
-Default test DB is SQLite (fast); CI also runs Postgres via
-`TEST_DATABASE_URL=postgres://…` to exercise the append-only audit
-triggers. Testing strategy, conventions, and the dual-database setup are
-documented in [`architecture.md §9`](docs/specification/architecture.md).
+`config.settings.test` defaults to the local compose Postgres; set
+`TEST_DATABASE_URL` to target a different host/port. `--reuse-db` (in
+`addopts`) keeps the test database between runs — pass `--create-db` after a
+migration change. Testing strategy and conventions are documented in
+[`architecture.md §9`](docs/specification/architecture.md).
 
 ## Code quality
 

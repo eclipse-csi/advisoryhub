@@ -14,8 +14,7 @@ Two operations that intentionally bypass the append-only triggers on
 Both functions use :func:`_audit_trigger_bypass` to temporarily lower
 ``session_replication_role`` to ``replica`` for the duration of the
 transaction, which is the supported Postgres way to disable
-non-replication triggers without dropping them. On SQLite the
-context-manager is a no-op (there are no triggers to disable).
+non-replication triggers without dropping them.
 
 The escape hatch only applies inside the function's ``with`` block; once
 control leaves it, normal append-only enforcement is back. Each call
@@ -40,10 +39,7 @@ log = logging.getLogger(__name__)
 
 @contextmanager
 def _audit_trigger_bypass():
-    """Temporarily allow UPDATE/DELETE on audit_auditlogentry (Postgres-only)."""
-    if connection.vendor != "postgresql":
-        yield
-        return
+    """Temporarily allow UPDATE/DELETE on audit_auditlogentry."""
     with connection.cursor() as cur:
         cur.execute("SET LOCAL session_replication_role = replica")
         try:

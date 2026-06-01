@@ -45,7 +45,7 @@ Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/k
 - `mise run up` / `down` / `reset` — docker dev stack (`reset` wipes volumes + re-bootstraps kanidm)
 - `mise run kanidm-up` / `kanidm-setup` — first-run OIDC bootstrap
 - `mise run migrate` / `seed` — schema + demo data
-- `mise run test` / `test-pg` — pytest (SQLite / Postgres); args pass through: `mise run test -- -k name path/`
+- `mise run test` — pytest against the compose Postgres (needs `mise run up`); args pass through: `mise run test -- -k name path/`
 - `mise run lint` / `fix` / `typecheck` / `ty` — ruff + mypy + advisory ty
 - `mise run check` / `makemigrations-check` / `audit` — Django checks + pip-audit
 
@@ -53,13 +53,13 @@ mise pins only the bootstrap `uv` + `prek` (in `mise.toml`); all dev tool versio
 
 ### Tests
 
-Default test DB is SQLite (fast). CI also runs Postgres (`TEST_DATABASE_URL=postgres://…`) to exercise the audit triggers.
+Tests run against PostgreSQL (the same engine as prod), exercising the append-only triggers and JSONB queries. Start Postgres first (`docker compose up -d postgres` or `mise run up`). `config.settings.test` defaults to the local compose Postgres; `TEST_DATABASE_URL` overrides the host/port. `--reuse-db` (in pytest `addopts`) keeps the test DB between runs — pass `--create-db` after a migration change.
 
 ```sh
 DJANGO_SETTINGS_MODULE=config.settings.test pytest          # all tests
 DJANGO_SETTINGS_MODULE=config.settings.test pytest path/to/test_file.py::TestClass::test_name
-TEST_DATABASE_URL=postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub \
-    DJANGO_SETTINGS_MODULE=config.settings.test pytest     # against Postgres
+TEST_DATABASE_URL=postgres://user:pass@host:5432/db \
+    DJANGO_SETTINGS_MODULE=config.settings.test pytest      # custom Postgres
 ```
 
 `config.settings.test` strips OIDC middleware (so `force_login` works), force-disables rate limiting and step-up, and sets `CELERY_TASK_ALWAYS_EAGER=True`. The dedicated `ratelimit_*` and step-up tests re-enable each via `@override_settings`.

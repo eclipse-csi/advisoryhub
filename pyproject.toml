@@ -58,7 +58,7 @@ dev = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-addopts = "-q --strict-markers"
+addopts = "-q --strict-markers --reuse-db"
 filterwarnings = [
     "ignore::DeprecationWarning:bleach",
 ]
@@ -121,7 +121,8 @@ django_settings_module = "config.settings.test"
 show_missing = true
 skip_covered = false
 # Floor set just below the measured baseline (≈81%) so coverage can only
-# ratchet up. SQLite is the lower bound (Postgres-only paths show as missed).
+# ratchet up. The whole suite runs on Postgres, so the trigger/index and
+# JSONB paths count toward coverage rather than showing as missed.
 fail_under = 80
 
 # --- ty (Astral type checker) ---------------------------------------------

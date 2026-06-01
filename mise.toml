@@ -57,13 +57,8 @@ description = "ty advisory type-check (mirrors CI; never blocks)"
 run = "uv tool run ty check --python .venv"
 
 [tasks.test]
-description = "pytest on SQLite. Extra args: `mise run test -- -k name path/`"
+description = "pytest against the compose Postgres (needs `mise run up`). Args: `mise run test -- -k name path/`"
 env = { DJANGO_SETTINGS_MODULE = "config.settings.test" }
-run = "uv run pytest"
-
-[tasks.test-pg]
-description = "pytest against the compose Postgres (needs `mise run up`)"
-env = { DJANGO_SETTINGS_MODULE = "config.settings.test", TEST_DATABASE_URL = "postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub" }
 run = "uv run pytest"
 
 [tasks.check]

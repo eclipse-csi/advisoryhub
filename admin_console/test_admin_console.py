@@ -23,8 +23,8 @@ def _backdate(entry, when):
     """Set an audit entry's created_at for the date-filter tests.
 
     The append-only Postgres trigger forbids UPDATE on audit_auditlogentry, so
-    lower session_replication_role for this one write (no-op on SQLite). Same
-    escape hatch production code uses (audit.retention).
+    lower session_replication_role for this one write. Same escape hatch
+    production code uses (audit.retention).
     """
     with _audit_trigger_bypass():
         AuditLogEntry.objects.filter(pk=entry.pk).update(created_at=when)

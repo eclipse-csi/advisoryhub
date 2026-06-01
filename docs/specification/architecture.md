@@ -28,8 +28,7 @@ Cross-references point at the deep-dive documents in this folder.
 |---|---|---|
 | Language | Python 3.12+ | Project pins ≥3.12 (see `pyproject.toml`). |
 | Web framework | Django 5.2 LTS | Server-rendered, HTMX-augmented. No SPA. |
-| Database (production) | PostgreSQL | Required in prod — audit append-only triggers and JSON queries are Postgres-specific. |
-| Database (fast tests) | SQLite | Default in `config.settings.test`; CI also runs Postgres via `TEST_DATABASE_URL` to exercise the triggers. |
+| Database | PostgreSQL | The only supported backend — prod, dev, demo, and tests. Append-only audit triggers, the advisory no-delete trigger, `pg_trgm` indexes, and JSONB queries are Postgres-specific. |
 | Async broker | Valkey (Redis-wire-compatible) | `redis://` URLs work unchanged. |
 | Async runtime | Celery | Workers + beat scheduler. JSON serialiser only. |
 | Authentication | `mozilla-django-oidc` | All authentication via OIDC. PKCE on by default. |
@@ -545,7 +544,7 @@ overrides:
 | `base.py` | Authoritative env-var schema (via `django-environ`); INSTALLED_APPS; MIDDLEWARE; logging; security defaults; OIDC; Celery; publication repo defaults; GHSA + PMI; rate limits; Celery beat. |
 | `dev.py` | DEBUG-on convenience for the docker-compose dev environment. |
 | `prod.py` | Production hardening (no DEBUG, secure cookies enforced). |
-| `test.py` | Forces SQLite by default (or Postgres via `TEST_DATABASE_URL`); drops `mozilla_django_oidc` middleware; sets `CELERY_TASK_ALWAYS_EAGER=True`; sets `RATELIMIT_ENABLE=False`; sets `STEP_UP_REQUIRED=False`; uses `MD5PasswordHasher` for speed; in-memory email backend. |
+| `test.py` | Points `DATABASE_URL` at the local Postgres (override host/port via `TEST_DATABASE_URL`); drops `mozilla_django_oidc` middleware; sets `CELERY_TASK_ALWAYS_EAGER=True`; sets `RATELIMIT_ENABLE=False`; sets `STEP_UP_REQUIRED=False`; uses `MD5PasswordHasher` for speed; in-memory email backend. |
 
 ### 7.2 Docker-compose dev environment
 
@@ -720,20 +719,21 @@ publication repository. The command uses the dev-only
 
 ## 9. Testing strategy
 
-### 9.1 Dual database
+### 9.1 Database
 
-The default test database is SQLite (`config.settings.test`
-forces `DATABASE_URL=sqlite:///./test_advisoryhub.sqlite3` on
-startup), which is fast and adequate for the bulk of the suite.
-CI also runs the suite against Postgres by setting
-`TEST_DATABASE_URL=postgres://…`; this exercises the append-only
-audit triggers, the advisory non-deletion trigger, and the JSON
-query paths that SQLite cannot exercise.
+Tests run against PostgreSQL — the same engine as prod, dev, and demo —
+so the append-only audit triggers, the advisory non-deletion trigger,
+the `pg_trgm` indexes, and the JSONB query paths are all exercised.
+`config.settings.test` defaults `DATABASE_URL` to the local compose
+Postgres; set `TEST_DATABASE_URL` to target a different host/port (CI
+points it at its service container). Start Postgres before running the
+suite (`docker compose up -d postgres` or `mise run up`). `--reuse-db`
+(in pytest `addopts`) keeps the test database between runs; pass
+`--create-db` after changing a migration.
 
 ```sh
-DJANGO_SETTINGS_MODULE=config.settings.test pytest          # SQLite
-TEST_DATABASE_URL=postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub \
-    DJANGO_SETTINGS_MODULE=config.settings.test pytest      # Postgres
+docker compose up -d postgres
+DJANGO_SETTINGS_MODULE=config.settings.test pytest
 ```
 
 ### 9.2 Test settings overrides

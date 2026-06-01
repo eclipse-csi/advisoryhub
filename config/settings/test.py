@@ -1,15 +1,17 @@
 """Test settings.
 
-Defaults to SQLite for fast local iteration. Set ``TEST_DATABASE_URL`` to
-a Postgres URL in CI to exercise the append-only triggers and JSON
-queries against the production target.
+Runs against PostgreSQL — the same engine as prod, dev, and demo — so the
+append-only audit triggers, the advisory no-delete trigger, the ``pg_trgm``
+indexes, and JSONB queries are all exercised. Defaults to the local
+compose Postgres; set ``TEST_DATABASE_URL`` to point at a different
+host/port (CI sets it to its service container).
 """
 
 import os
 
-# Force SQLite by default. CI overrides via TEST_DATABASE_URL.
+# Default to the local compose Postgres; override host/port via TEST_DATABASE_URL.
 os.environ["DATABASE_URL"] = os.environ.get(
-    "TEST_DATABASE_URL", "sqlite:///./test_advisoryhub.sqlite3"
+    "TEST_DATABASE_URL", "postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub"
 )
 os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "True")
 os.environ.setdefault("OIDC_RP_CLIENT_ID", "test-client")

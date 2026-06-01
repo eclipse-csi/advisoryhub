@@ -1,15 +1,10 @@
 """Database-level deletion guard for advisories_advisory.
 
-On Postgres (the production target), DELETE against the advisory table —
-from the ORM, the admin, the shell, or psql — raises an exception. The
-only documented escape is :func:`advisories.models._unsafe_dev_reset_bypass`
-(used by ``seed_demo --reset``), which lowers ``session_replication_role``
-to ``replica`` for its transaction; that path is dev-only.
-
-On other backends (SQLite for fast local tests), this migration is a
-no-op: application-layer enforcement in
-:meth:`advisories.models.Advisory.delete` and
-:meth:`advisories.models.AdvisoryQuerySet.delete` still applies.
+DELETE against the advisory table — from the ORM, the admin, the shell, or
+psql — raises an exception. The only documented escape is
+:func:`advisories.models._unsafe_dev_reset_bypass` (used by
+``seed_demo --reset``), which lowers ``session_replication_role`` to
+``replica`` for its transaction; that path is dev-only.
 """
 
 from django.db import migrations
@@ -36,15 +31,11 @@ DROP FUNCTION IF EXISTS advisory_no_delete();
 
 
 def _apply(apps, schema_editor):
-    if schema_editor.connection.vendor != "postgresql":
-        return
     with schema_editor.connection.cursor() as cur:
         cur.execute(CREATE_SQL)
 
 
 def _reverse(apps, schema_editor):
-    if schema_editor.connection.vendor != "postgresql":
-        return
     with schema_editor.connection.cursor() as cur:
         cur.execute(DROP_SQL)
 

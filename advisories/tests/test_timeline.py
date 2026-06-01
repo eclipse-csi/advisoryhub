@@ -802,8 +802,8 @@ def test_timeline_view_rejects_outsider(client, setup, make_user):
 
 def _backdate_audit(entry, when):
     # The append-only Postgres trigger forbids UPDATE on audit_auditlogentry;
-    # lower session_replication_role for this one backdating write (no-op on
-    # SQLite). Same escape hatch production code uses (audit.retention).
+    # lower session_replication_role for this one backdating write. Same
+    # escape hatch production code uses (audit.retention).
     with _audit_trigger_bypass():
         AuditLogEntry.objects.filter(pk=entry.pk).update(created_at=when)
 

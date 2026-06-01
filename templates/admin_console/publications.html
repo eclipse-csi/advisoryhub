@@ -8,7 +8,8 @@
   <section>
     <h2>{% translate "Publication queue" %}</h2>
     <table>
-      <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Attempts" %}</th><th>{% translate "Started" %}</th></tr></thead>
+      <caption class="visually-hidden">{% translate "Publication queue" %}</caption>
+      <thead><tr><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Attempts" %}</th><th scope="col">{% translate "Started" %}</th></tr></thead>
       <tbody>
         {% for t in open_publications %}
           <tr data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
@@ -27,7 +28,8 @@
   <section>
     <h2>{% translate "Failed publication exports" %}</h2>
     <table>
-      <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Failed" %}</th><th>{% translate "Last error" %}</th><th></th></tr></thead>
+      <caption class="visually-hidden">{% translate "Failed publication exports" %}</caption>
+      <thead><tr><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "Failed" %}</th><th scope="col">{% translate "Last error" %}</th><th></th></tr></thead>
       <tbody>
         {% for t in failed_publications %}
           <tr id="pub-task-{{ t.pk }}" data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">

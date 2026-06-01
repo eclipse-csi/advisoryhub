@@ -396,15 +396,12 @@ tbody td {
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: var(--surface-alt); }
 
-/* Whole-row links: <tr data-href> is made interactive by
- * static/advisoryhub-row-link.js. Click anywhere on the row to navigate,
- * except on nested controls (links, buttons, form fields, details, …). */
+/* Whole-row links: <tr data-href> is a pointer convenience added by
+ * static/advisoryhub-row-link.js (click anywhere except on nested controls).
+ * Keyboard users use the real <a> in the first cell, so the row is not a
+ * focus stop — no :focus-visible style needed here. */
 tbody tr[data-href] { cursor: pointer; }
 tbody tr[data-href]:hover td { background: var(--surface-alt); }
-tbody tr[data-href]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
 
 /* Round corners on the outer table cells */
 thead tr:first-child th:first-child { border-top-left-radius: var(--radius-sm); }
@@ -1122,17 +1119,6 @@ p.state strong { color: var(--text); }
   border-radius: 6px;
   background: var(--surface-alt);
 }
-.notif-custom legend.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
 .notif-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1357,6 +1343,21 @@ p.state strong { color: var(--text); }
 }
 .access-row--dragging { opacity: 0.4; }
 
+/* Per-row permission menu — the keyboard/SR-operable equivalent of dragging a
+   row between buckets. Compact and muted so it doesn't crowd the dense list,
+   but always present (never hover-only) so keyboard users can reach it. */
+.access-row__permission {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 0;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.76rem;
+  color: var(--text-soft);
+  background: var(--surface);
+  border-color: var(--border);
+}
+.access-row__permission:hover { border-color: var(--brand); }
+
 /* icon buttons (used in access panel rows + add control) */
 .icon-btn {
   padding: 0.3rem !important;
@@ -1438,6 +1439,52 @@ p.state strong { color: var(--text); }
 /* ------------------------------------------------------------ utility */
 
 .inline { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+/* Visually hidden but available to assistive tech (skip-link target labels,
+   <caption>s, off-screen legends). Reveals when focused so a skip-link becomes
+   visible on Tab. */
+.visually-hidden,
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip-to-content link: off-screen until focused, then pinned top-left. */
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 200;
+  padding: 0.5rem 0.9rem;
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  transition: top 0.12s ease;
+}
+.skip-link:focus {
+  top: 0.5rem;
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Respect a reduced-motion preference: neutralise the UI's transitions and the
+   one transform nudge. Mirrors the app's existing prefers-color-scheme support. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* Plain UL/LI lists inside cards: a bit more breathing room */
 main.container section ul:not(.messages):not(.counts ul):not(.access-bucket__rows) {

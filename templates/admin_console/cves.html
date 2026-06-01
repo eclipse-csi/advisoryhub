@@ -8,7 +8,8 @@
   <section>
     <h2>{% translate "Advisories awaiting CVE reservation" %}</h2>
     <table>
-      <thead><tr><th>{% translate "Advisory" %}</th><th>{% translate "Project" %}</th><th>{% translate "Status" %}</th><th>{% translate "Requested" %}</th><th></th></tr></thead>
+      <caption class="visually-hidden">{% translate "Advisories awaiting CVE reservation" %}</caption>
+      <thead><tr><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "Project" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Requested" %}</th><th></th></tr></thead>
       <tbody>
         {% for task in cve_open %}
           {% include "admin_console/_cve_row.html" with task=task %}
@@ -22,7 +23,8 @@
   <section>
     <h2>{% translate "Orphan CVEs (awaiting cve.org rejection)" %}</h2>
     <table>
-      <thead><tr><th>{% translate "CVE" %}</th><th>{% translate "Previous advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Unassigned" %}</th><th></th></tr></thead>
+      <caption class="visually-hidden">{% translate "Orphan CVEs (awaiting cve.org rejection)" %}</caption>
+      <thead><tr><th scope="col">{% translate "CVE" %}</th><th scope="col">{% translate "Previous advisory" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Unassigned" %}</th><th></th></tr></thead>
       <tbody>
         {% for orphan in orphan_open %}
           {% include "admin_console/_orphan_row.html" with orphan=orphan %}
@@ -36,7 +38,8 @@
   <section>
     <h2>{% translate "CVE reassignments after reopen" %}</h2>
     <table>
-      <thead><tr><th>{% translate "CVE" %}</th><th>{% translate "Advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Requested" %}</th><th></th></tr></thead>
+      <caption class="visually-hidden">{% translate "CVE reassignments after reopen" %}</caption>
+      <thead><tr><th scope="col">{% translate "CVE" %}</th><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Requested" %}</th><th></th></tr></thead>
       <tbody>
         {% for task in reassignment_open %}
           {% include "admin_console/_reassignment_row.html" with task=task %}
@@ -51,7 +54,8 @@
     <section>
       <h2>{% translate "Recently resolved orphans" %}</h2>
       <table>
-        <thead><tr><th>{% translate "CVE" %}</th><th>{% translate "Previous advisory" %}</th><th>{% translate "Status" %}</th><th>{% translate "Unassigned" %}</th><th>{% translate "Marked rejected" %}</th></tr></thead>
+        <caption class="visually-hidden">{% translate "Recently resolved orphans" %}</caption>
+        <thead><tr><th scope="col">{% translate "CVE" %}</th><th scope="col">{% translate "Previous advisory" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Unassigned" %}</th><th scope="col">{% translate "Marked rejected" %}</th></tr></thead>
         <tbody>
           {% for orphan in orphan_resolved %}
             {% include "admin_console/_orphan_row.html" with orphan=orphan %}

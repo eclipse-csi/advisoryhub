@@ -33,6 +33,7 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body{% if maintenance_mode.paused %} data-maintenance-paused{% endif %}>
+<a class="skip-link" href="#content">{% translate "Skip to content" %}</a>
 <header class="topbar">
   <a class="brand" href="{% url 'advisories:list' %}">AdvisoryHub</a>
   <nav>
@@ -78,7 +79,7 @@
     </div>
   </div>
 {% endif %}
-<main class="container">
+<main class="container" id="content" tabindex="-1">
   {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
   {% block content %}{% endblock %}
 </main>

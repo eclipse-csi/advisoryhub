@@ -336,6 +336,27 @@
     if (panel) handleAdd(panel);
   });
 
+  // Keyboard/screen-reader-operable permission change: the per-row <select> is
+  // the accessible equivalent of dragging a row between buckets. Routes through
+  // the same postPermissionUpdate path the drop handler uses.
+  document.addEventListener("change", function (ev) {
+    const select = ev.target.closest("[data-row-permission]");
+    if (!select) return;
+    const row = select.closest(".access-row");
+    if (!row) return;
+    const panel = panelFor(row);
+    if (!panel) return;
+    const current = row.getAttribute("data-permission");
+    if (isBusy(panel)) {
+      select.value = current; // ignore while a save is in flight
+      return;
+    }
+    const next = select.value;
+    if (next === current) return;
+    row.setAttribute("data-permission", next); // optimistic; re-render reconciles
+    postPermissionUpdate(panel, row, next);
+  });
+
   document.addEventListener("dragstart", function (ev) {
     if (!ev.target.closest(".access-panel")) return;
     handleDragStart(ev);

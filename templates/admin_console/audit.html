@@ -85,7 +85,8 @@
   </form>
 
   <table class="audit">
-    <thead><tr><th>{% translate "When" %}</th><th>{% translate "Actor" %}</th><th>{% translate "Action" %}</th><th>{% translate "Advisory" %}</th></tr></thead>
+    <caption class="visually-hidden">{% translate "Audit log" %}</caption>
+    <thead><tr><th scope="col">{% translate "When" %}</th><th scope="col">{% translate "Actor" %}</th><th scope="col">{% translate "Action" %}</th><th scope="col">{% translate "Advisory" %}</th></tr></thead>
     <tbody>
       {% for entry in page.object_list %}
         <tr{% if entry.advisory %} data-href="{% url 'advisories:detail' entry.advisory.advisory_id %}"{% endif %}>

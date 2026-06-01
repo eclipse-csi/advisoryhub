@@ -67,6 +67,14 @@
   function initInput(input) {
     if (input.dataset.cweInit === "1") return;
     input.dataset.cweInit = "1";
+    // WAI-ARIA editable-combobox semantics so assistive tech sees the listbox,
+    // its expanded state, and the active option (the visual is-active highlight
+    // alone is invisible to screen readers).
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-haspopup", "listbox");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", PANEL_ID);
     var h = hiddenFor(input);
     if (!h) return;
     var id = (h.value || "").trim().toUpperCase();
@@ -79,14 +87,22 @@
     document.querySelectorAll("[data-cwe-input]").forEach(initInput);
   }
 
+  var PANEL_ID = "cwe-combobox-panel";
+
   function ensurePanel() {
     if (panel) return panel;
     panel = document.createElement("div");
+    panel.id = PANEL_ID;
     panel.className = "cwe-combobox-panel";
     panel.setAttribute("role", "listbox");
+    panel.setAttribute("aria-label", "CWE suggestions");
     panel.hidden = true;
     document.body.appendChild(panel);
     return panel;
+  }
+
+  function optionId(i) {
+    return "cwe-opt-" + i;
   }
 
   function positionPanel(input) {
@@ -142,20 +158,32 @@
       var html = "";
       for (var i = 0; i < matches.length; i++) {
         var w = matches[i];
+        var on = i === activeIndex;
         html +=
-          '<div class="cwe-combobox-option' + (i === activeIndex ? " is-active" : "") +
-          '" role="option" data-cwe-id="' + w.id + '">' +
+          '<div class="cwe-combobox-option' + (on ? " is-active" : "") +
+          '" id="' + optionId(i) + '" role="option" aria-selected="' + (on ? "true" : "false") +
+          '" data-cwe-id="' + w.id + '">' +
           '<strong>' + w.id + '</strong> <span>' + escapeHtml(w.name) + '</span>' +
           '</div>';
       }
       p.innerHTML = html;
     }
     p.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    if (activeIndex >= 0) {
+      input.setAttribute("aria-activedescendant", optionId(activeIndex));
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
     positionPanel(input);
   }
 
   function hide() {
     if (panel) panel.hidden = true;
+    if (activeInput) {
+      activeInput.setAttribute("aria-expanded", "false");
+      activeInput.removeAttribute("aria-activedescendant");
+    }
     activeInput = null;
     matches = [];
     activeIndex = -1;
@@ -181,8 +209,10 @@
     for (var i = 0; i < nodes.length; i++) {
       var on = i === activeIndex;
       nodes[i].classList.toggle("is-active", on);
+      nodes[i].setAttribute("aria-selected", on ? "true" : "false");
       if (on && nodes[i].scrollIntoView) nodes[i].scrollIntoView({ block: "nearest" });
     }
+    if (activeInput) activeInput.setAttribute("aria-activedescendant", optionId(activeIndex));
   }
 
   function resolveOnBlur(input) {

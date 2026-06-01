@@ -1,7 +1,12 @@
 // Makes <tr data-href="..."> rows clickable anywhere except on nested
-// interactive elements (links, buttons, form controls, details/summary,
-// or anything marked [data-no-row-click]). Honours modifier keys for
-// open-in-new-tab and supports Enter/Space keyboard activation.
+// interactive elements (links, buttons, form controls, details/summary, or
+// anything marked [data-no-row-click]). Honours modifier keys / middle-click
+// for open-in-new-tab.
+//
+// This is a POINTER convenience only. Keyboard and screen-reader users use the
+// real <a> in the row's first cell (the canonical affordance) — the row itself
+// is intentionally NOT a focus stop, since a focusable <tr> with no role/name
+// is announced as concatenated cell text and duplicates that link.
 (function () {
   "use strict";
 
@@ -37,34 +42,5 @@
     if (!row) return;
     e.preventDefault();
     navigate(row, true);
-  });
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    if (!(e.target instanceof Element)) return;
-    if (e.target.closest(INTERACTIVE)) return;
-    var row = e.target.closest("tr[data-href]");
-    if (!row || row !== e.target) return;
-    e.preventDefault();
-    navigate(row, e.metaKey || e.ctrlKey);
-  });
-
-  // Make rows focusable so keyboard users can reach them.
-  function makeFocusable(root) {
-    var rows = (root || document).querySelectorAll("tr[data-href]:not([tabindex])");
-    for (var i = 0; i < rows.length; i++) {
-      rows[i].setAttribute("tabindex", "0");
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () { makeFocusable(); });
-  } else {
-    makeFocusable();
-  }
-
-  // Pick up rows swapped in by HTMX.
-  document.addEventListener("htmx:afterSwap", function (e) {
-    makeFocusable(e.target);
   });
 })();

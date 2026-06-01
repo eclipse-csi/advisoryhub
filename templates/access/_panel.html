@@ -12,7 +12,7 @@
 
   <div class="access-panel__section">
     <h3>Current access</h3>
-    <p class="access-panel__hint">Drag to change its permissions</p>
+    <p class="access-panel__hint">Drag a row between groups, or use its permission menu, to change access.</p>
     <div class="access-buckets" data-access-list>
       {% for section in sections %}
         <div class="access-bucket" data-permission-bucket="{{ section.permission }}">
@@ -41,6 +41,14 @@
                 <span class="access-row__principal"{% if row.pending %} title="{{ row.label }} — invited, expires {{ row.expires_at|date:'Y-m-d' }}"{% elif row.kind != 'user' %} title="{{ row.label }}"{% endif %}>
                   {% if row.pending %}<em>{{ row.label }}</em><span class="access-row__tag">invited</span>{% elif row.kind == 'user' and row.user %}{% user_chip row.user %}{% else %}{{ row.label }}{% endif %}
                 </span>
+                {# Keyboard/screen-reader-operable equivalent of the drag-and-drop
+                   permission change (advisoryhub-access.js wires the change). #}
+                <select class="access-row__permission" data-row-permission
+                        aria-label="Permission for {{ row.label }}">
+                  {% for value, label in permission_choices %}
+                    <option value="{{ value }}"{% if value == row.permission %} selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
                 <button type="button" class="icon-btn access-row__remove"
                         {% if row.type == 'grant' %}data-remove-grant{% else %}data-remove-invitation{% endif %}
                         aria-label="Remove {{ row.label }}">

@@ -73,10 +73,10 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
           Mark this advisory as not a real vulnerability (false positive, duplicate, …). Requires a reason. Cannot be undone by a project member.
         {% endif %}
       </p>
-      <dialog id="advisory-dismiss-dialog" class="confirm-dialog">
+      <dialog id="advisory-dismiss-dialog" class="confirm-dialog" aria-labelledby="advisory-dismiss-title">
         <form method="post" action="{% url 'advisories:dismiss' advisory.advisory_id %}">
           {% csrf_token %}
-          <h3>Dismiss advisory</h3>
+          <h3 id="advisory-dismiss-title">Dismiss advisory</h3>
           <p>
             Provide a reason for dismissing this advisory. It will be recorded in the audit log{% if advisory.assigned_cve_id %} and the assigned CVE (<code>{{ advisory.assigned_cve_id }}</code>) will be unassigned for the security team to mark rejected at cve.org{% endif %}.
           </p>

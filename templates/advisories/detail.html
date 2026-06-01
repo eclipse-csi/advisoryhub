@@ -95,12 +95,12 @@
                   aria-label="Remove CVE assignment"
                   title="Remove CVE assignment"
                   data-dialog-open="cve-unassign-dialog">×</button>
-          <dialog id="cve-unassign-dialog" class="confirm-dialog">
+          <dialog id="cve-unassign-dialog" class="confirm-dialog" aria-labelledby="cve-unassign-title">
             <form method="post"
                   action="{% url 'advisories:unassign_cve' advisory.advisory_id %}"
                   class="cve-unassign-form">
               {% csrf_token %}
-              <h3>Remove CVE assignment</h3>
+              <h3 id="cve-unassign-title">Remove CVE assignment</h3>
               <p>
                 This will detach <code>{{ advisory.assigned_cve_id }}</code> from the advisory
                 and create an orphan record for the security team to mark rejected on cve.org.

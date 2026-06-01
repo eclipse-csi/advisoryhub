@@ -40,7 +40,8 @@
   <p class="muted">{{ total }} advisor{{ total|pluralize:"y,ies" }} match{{ total|pluralize:"es," }}.</p>
 
   <table class="advisories">
-    <thead><tr><th>ID</th><th>Project</th><th>State</th><th>Review</th><th>Summary</th><th>Modified</th></tr></thead>
+    <caption class="visually-hidden">Advisories</caption>
+    <thead><tr><th scope="col">ID</th><th scope="col">Project</th><th scope="col">State</th><th scope="col">Review</th><th scope="col">Summary</th><th scope="col">Modified</th></tr></thead>
     <tbody>
     {% for a in advisories %}
       <tr data-href="{% url 'advisories:detail' a.advisory_id %}">

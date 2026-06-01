@@ -1,10 +1,10 @@
-<dialog class="confirm-dialog">
+<dialog class="confirm-dialog" aria-labelledby="cve-reject-modal-title">
   <form hx-post="{% url 'admin_console:cve_transition' task.pk %}"
         hx-target="#cve-task-{{ task.pk }}"
         hx-swap="outerHTML">
     {% csrf_token %}
     <input type="hidden" name="status" value="rejected">
-    <h3>Reject CVE request for {{ task.advisory.advisory_id }}</h3>
+    <h3 id="cve-reject-modal-title">Reject CVE request for {{ task.advisory.advisory_id }}</h3>
     <p>The reason below will be posted as a public comment on the advisory.</p>
     <label>Reason (required)
       <textarea name="notes" required rows="4"></textarea>

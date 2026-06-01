@@ -407,13 +407,17 @@ table.advisories td a { font-weight: 600; }
 
 /* ------------------------------------------------------------ filters bar */
 
-.advisory-filters {
+/* Scoped above the broad `main.container > form` panel rule (which is more
+   specific than a bare `.advisory-filters`) so this filter bar's own padding +
+   background win WITHOUT !important. It is always a direct child of
+   main.container — see advisories/list.html. */
+main.container > form.advisory-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
   align-items: center;
-  padding: 0.9rem 1rem !important;
-  background: var(--surface) !important;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
 }
 .advisory-filters label {
   display: inline-flex;
@@ -789,9 +793,11 @@ p.state strong { color: var(--text); }
   font-size: 0.82rem;
   padding: 0.3rem 0.6rem;
 }
+/* No !important needed: nothing else sets .comment-form's background/margin at a
+   higher specificity (the panel rule matches the .comments section, not this form). */
 .comment-form {
-  background: var(--surface-alt) !important;
-  margin-top: 1rem !important;
+  background: var(--surface-alt);
+  margin-top: 1rem;
 }
 .comment-form textarea { min-height: 5em; }
 .comments .empty { color: var(--text-muted); font-style: italic; }
@@ -1354,7 +1360,7 @@ p.state strong { color: var(--text); }
   flex: 0 0 auto;
   width: 1.4rem;
   height: 1.4rem;
-  padding: 0.15rem !important;
+  padding: 0.15rem;
 }
 .access-row .icon-btn .adv-icon {
   width: 0.85rem;
@@ -1389,9 +1395,11 @@ p.state strong { color: var(--text); }
 }
 .access-row__permission:hover { border-color: var(--brand); }
 
-/* icon buttons (used in access panel rows + add control) */
+/* icon buttons (used in access panel rows + add control). No !important: .icon-btn
+   (0,1,0) already beats the generic button base (0,0,1); the ghost-button rules set
+   colour/border, not padding. */
 .icon-btn {
-  padding: 0.3rem !important;
+  padding: 0.3rem;
   width: 1.85rem;
   height: 1.85rem;
   line-height: 1;

@@ -33,6 +33,8 @@
           </label>
           {# Enabled only while "replaced" is selected — see advisoryhub-forms.js #}
           <input type="text" name="replacement_cve_id" placeholder="e.g. CVE-2026-12345"
+                 pattern="CVE-\d{4}-\d{4,19}"
+                 title="Format: CVE-YYYY-NNNN, where NNNN is a 4 to 19 digit number (e.g. CVE-2026-12345)."
                  data-enabled-by="outcome:replaced" disabled>
         </fieldset>
         <textarea name="notes" placeholder="Notes (optional — e.g. MITRE ticket id)"></textarea>

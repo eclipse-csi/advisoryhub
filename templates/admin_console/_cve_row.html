@@ -15,7 +15,9 @@
             hx-target="#cve-task-{{ task.pk }}" hx-swap="outerHTML">
         {% csrf_token %}
         <input type="hidden" name="status" value="reserved">
-        <input type="text" name="cve_id" placeholder="CVE-2026-12345" required pattern="CVE-\d{4}-\d{1,10}">
+        <input type="text" name="cve_id" placeholder="CVE-2026-12345" required
+               pattern="CVE-\d{4}-\d{4,19}"
+               title="Format: CVE-YYYY-NNNN, where NNNN is a 4 to 19 digit number (e.g. CVE-2026-12345).">
         <button type="submit">Assign</button>
         <button type="button"
                 hx-get="{% url 'admin_console:cve_reject_modal' task.pk %}"

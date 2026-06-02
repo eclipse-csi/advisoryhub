@@ -89,6 +89,7 @@ def advisory_list(request):
             "total": total,
             "page": page,
             "page_size": page_size,
+            "num_pages": max(1, (total + page_size - 1) // page_size),
             "has_next": offset + page_size < total,
             "has_prev": page > 1,
         },

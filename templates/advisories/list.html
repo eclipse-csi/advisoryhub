@@ -68,7 +68,8 @@
   {% if has_prev or has_next %}
     <p class="pager">
       {% if has_prev %}<a href="?{% for k, v in filters.items %}{{ k }}={{ v }}&{% endfor %}page={{ page|add:'-1' }}">‹ Prev</a>{% endif %}
-      <span>page {{ page }}</span>
+      {# `total` inside this block is the page count (num_pages); reuses the admin paginator's msgid. #}
+      <span>{% blocktranslate with current=page total=num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>
       {% if has_next %}<a href="?{% for k, v in filters.items %}{{ k }}={{ v }}&{% endfor %}page={{ page|add:'1' }}">Next ›</a>{% endif %}
     </p>
   {% endif %}

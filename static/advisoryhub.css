@@ -47,6 +47,16 @@
   --brand-soft:   light-dark(#E2F4FF, #0e1c5c);
   --brand-ring:   light-dark(rgba(44, 28, 216, 0.60), rgba(159, 180, 255, 0.65));
 
+  /* Single opaque focus-visible ring for the whole UI. One token, two techniques:
+     a box-shadow ring where it can't be clipped (buttons, inputs) and an outline
+     ring where a box-shadow would be (chips, presets, drawer close, link buttons).
+     Chosen to clear WCAG 1.4.11 (≥3:1) against every surface a ring lands on —
+     white / surface-alt, the navy topbar, and the brand/status-soft tints — in
+     BOTH themes: the light value is a mid blue that still reads on navy, the dark
+     value a light blue on dark surfaces. Opaque, so it never composites below 3:1
+     the way the semi-transparent --brand-ring did over darker backgrounds. */
+  --focus-ring:   light-dark(#5a7be0, #9fb4ff);
+
   /* Eclipse-Foundation orange — used as a focused accent (logo, "republish"). */
   --accent:       #F06C02;
   --accent-soft:  light-dark(#ffe4cc, #3a1f08);
@@ -82,6 +92,10 @@
   --radius:       10px;
   --radius-sm:    6px;
   --radius-md:    8px;
+  /* Small-corner steps that extend the scale (10/8/6/4/2). Fold the scattered
+     literal 4px/3px/2px radii onto these so the rounding stays consistent. */
+  --radius-xs:    4px;
+  --radius-2xs:   2px;
   --shadow-sm:    0 1px 2px rgba(0, 9, 102, 0.06), 0 1px 1px rgba(0, 9, 102, 0.04);
   --shadow-md:    0 4px 14px rgba(0, 9, 102, 0.10), 0 1px 3px rgba(0, 9, 102, 0.06);
 
@@ -147,7 +161,7 @@ a:hover { color: var(--brand-fg-hover); text-decoration: underline; }
 .htmx-request.htmx-indicator { opacity: 1; }
 
 code, pre, kbd, samp { font-family: var(--font-mono); font-size: 0.9em; font-size-adjust: none; }
-code { background: var(--surface-alt); padding: 0.1em 0.35em; border-radius: 4px; border: 1px solid var(--border); }
+code { background: var(--surface-alt); padding: 0.1em 0.35em; border-radius: var(--radius-xs); border: 1px solid var(--border); }
 pre {
   background: var(--surface-alt);
   color: var(--text);
@@ -334,7 +348,21 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--brand-ring);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+/* Forced-colors (Windows High Contrast) strips box-shadow, which would leave
+   these spots with no focus indicator at all. Fall back to a system-coloured
+   outline; the outline-based rings elsewhere already survive forced colors. */
+@media (forced-colors: active) {
+  button:focus-visible,
+  .btn:focus-visible,
+  .actions a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
 }
 button:active,
 .actions a:active { transform: translateY(1px); }
@@ -528,11 +556,10 @@ select:user-invalid,
 textarea:user-invalid {
   border-color: var(--danger);
 }
-input:user-invalid:focus-visible,
-select:user-invalid:focus-visible,
-textarea:user-invalid:focus-visible {
-  box-shadow: 0 0 0 3px var(--danger-soft);
-}
+/* Invalid fields keep the danger border but share the one --focus-ring on focus
+   (inherited from the base :focus-visible rule). The old danger-soft ring barely
+   cleared 1:1 against white, and a separate error ring was the only thing left
+   diverging from the unified focus treatment. */
 input:required:user-valid,
 select:required:user-valid,
 textarea:required:user-valid {
@@ -925,7 +952,7 @@ p.state strong { color: var(--text); }
   text-decoration: none;
 }
 .inbox-counts__chip:hover { filter: brightness(0.97); }
-.inbox-counts__chip:focus-visible { outline: 2px solid var(--brand-fg); outline-offset: 2px; }
+.inbox-counts__chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .inbox-counts__chip strong { color: var(--text); margin-inline-end: 0.25rem; }
 .inbox-counts__chip--warn { background: var(--warn-soft); border-color: var(--warn-soft); }
 .inbox-counts__chip--danger { background: var(--danger-soft); border-color: var(--danger-soft); color: var(--danger); }
@@ -1005,9 +1032,9 @@ p.state strong { color: var(--text); }
   color: var(--brand-fg);
 }
 .pref-row:focus-within {
-  outline: 2px solid var(--accent-text);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* Segmented control — used for the comments-level two-option toggle.
@@ -1059,7 +1086,7 @@ p.state strong { color: var(--text); }
   color: #fff;
 }
 .pref-toggle:focus-within {
-  outline: 2px solid var(--accent-text);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1168,7 +1195,7 @@ p.state strong { color: var(--text); }
     radial-gradient(circle, var(--accent) 38%, transparent 42%);
 }
 .notif-preset:focus-within {
-  outline: 2px solid var(--accent-text);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 .notif-preset__title {
@@ -1346,7 +1373,7 @@ p.state strong { color: var(--text); }
   border: 1px solid currentColor;
   background: transparent;
   color: inherit;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
 }
 .advisory-banner__dismiss:hover { background: rgba(0, 0, 0, 0.04); }
@@ -1414,7 +1441,7 @@ p.state strong { color: var(--text); }
   letter-spacing: 0.05em;
   color: var(--text-muted);
   border: 1px solid var(--border-strong);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   padding: 0 0.25rem;
 }
 .access-row--dragging { opacity: 0.4; }
@@ -2237,7 +2264,7 @@ main.container .adv-affected-card ul.ranges li {
   border: 0;
   padding: 0.25rem 0.4rem;
   min-height: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -2342,7 +2369,7 @@ main.container .adv-affected-card ul.ranges li {
   text-underline-offset: 2px;
 }
 .link-button:hover { color: var(--accent-text-hover); }
-.link-button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
+.link-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-2xs); }
 
 .history-drawer-trigger { font-weight: 500; }
 
@@ -2385,7 +2412,7 @@ dialog.drawer--right {
 .drawer__close {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 0.1rem 0.55rem;
   font-size: 1.2rem;
   line-height: 1;
@@ -2393,7 +2420,7 @@ dialog.drawer--right {
   color: var(--text-soft);
 }
 .drawer__close:hover { background: var(--surface); border-color: var(--border-strong); }
-.drawer__close:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.drawer__close:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 .drawer__body {
   overflow-y: auto;
@@ -2407,7 +2434,7 @@ dialog.drawer--right {
   margin: 0.75rem auto 0;
   padding: 0.4rem 0.9rem;
   border: 1px dashed var(--border-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
 }
 .history-load-more:hover { background: var(--surface-alt); text-decoration: none; }
@@ -2460,7 +2487,7 @@ dialog.drawer--right {
   font-size: var(--text-sm);
   line-height: 1.45;
 }
-.diff-block { border-radius: 4px; }
+.diff-block { border-radius: var(--radius-xs); }
 .diff-block + .diff-block { margin-top: 0.15rem; }
 .diff-block--equal { color: var(--text-soft); opacity: 0.85; }
 
@@ -2490,14 +2517,14 @@ dialog.drawer--right {
   background: #b9efcb;
   color: inherit;
   text-decoration: none;
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   padding: 0 1px;
 }
 .history-diff del {
   background: #f8c6c1;
   color: inherit;
   text-decoration: none;
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   padding: 0 1px;
 }
 
@@ -2529,7 +2556,7 @@ dialog.drawer--right {
   cursor: help;
 }
 .user-chip:focus { outline: none; }
-.user-chip:focus-visible { outline: 2px solid var(--brand-ring); outline-offset: 2px; border-radius: 2px; }
+.user-chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-2xs); }
 .user-chip__name { color: inherit; }
 .user-chip--missing {
   color: var(--text-muted);

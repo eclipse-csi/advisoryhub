@@ -183,7 +183,7 @@ Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-au
 
 When creating commits in this repository, every rule below must be respected:
 
-- Every commit must be signed (`-S`) and signed-off (`-s`).
+- Every commit must be signed (`-S`) —preferably with ssh keys in sandboxes — and signed-off (`-s`).
 - Every commit message must follow the Conventional Commits specification.
 - Never add a `Co-Authored-By` Git trailer to the commit message footer (this intentionally overrides the default Co-Authored-By behaviour).
 - Every AI-generated commit MUST include this Git trailer in the commit message footer:

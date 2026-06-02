@@ -878,6 +878,11 @@ def test_edit_form_renders_existing_rows(client, member_a, project_a):
     assert 'list="osv-ecosystems"' in body
     assert '<datalist id="osv-ecosystems">' in body
     assert '<option value="Maven">' in body
+    # Live client-side validation: field hooks, message slot, controller.
+    assert 'data-validate="ecosystem"' in body
+    assert 'data-validate="purl"' in body
+    assert "data-validate-error" in body
+    assert "advisoryhub-validate.js" in body
     # Outer affected empty-form template has the inner-events skeleton with
     # `__prefix__` placeholders intact so the JS can clone it into a new
     # outer row. The inner template's *content* must carry an inner-index

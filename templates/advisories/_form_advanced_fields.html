@@ -74,8 +74,8 @@ render context — see advisories.form_assembly.advanced_form_context.
       <div class="formset-row affected-row{% if outer.DELETE.value %} is-deleted{% endif %}" data-outer-index="{{ forloop.counter0 }}">
         <div class="affected-package">
           <p>{{ outer.package_name.label_tag }} {{ outer.package_name }} {{ outer.package_name.errors }}</p>
-          <p>{{ outer.package_ecosystem.label_tag }} {{ outer.package_ecosystem }} {{ outer.package_ecosystem.errors }}</p>
-          <p>{{ outer.package_purl.label_tag }} {{ outer.package_purl }} <small>{{ outer.package_purl.help_text }}</small> {{ outer.package_purl.errors }}</p>
+          <p>{{ outer.package_ecosystem.label_tag }} {{ outer.package_ecosystem }} {{ outer.package_ecosystem.errors }}<small class="field-error" data-validate-error aria-live="polite"></small></p>
+          <p>{{ outer.package_purl.label_tag }} {{ outer.package_purl }} <small>{{ outer.package_purl.help_text }}</small> {{ outer.package_purl.errors }}<small class="field-error" data-validate-error aria-live="polite"></small></p>
           <p data-describing-row>{{ outer.range_type.label_tag }} {{ outer.range_type }} <small data-describing-help></small> {{ outer.range_type.errors }}</p>
           <p>{{ outer.versions.label_tag }} {{ outer.versions }} <small>{{ outer.versions.help_text }}</small> {{ outer.versions.errors }}</p>
         </div>
@@ -117,8 +117,8 @@ render context — see advisories.form_assembly.advanced_form_context.
     <div class="formset-row affected-row" data-outer-index="__prefix__">
       <div class="affected-package">
         <p>{{ formsets.affected.empty_form.package_name.label_tag }} {{ formsets.affected.empty_form.package_name }}</p>
-        <p>{{ formsets.affected.empty_form.package_ecosystem.label_tag }} {{ formsets.affected.empty_form.package_ecosystem }}</p>
-        <p>{{ formsets.affected.empty_form.package_purl.label_tag }} {{ formsets.affected.empty_form.package_purl }} <small>{{ formsets.affected.empty_form.package_purl.help_text }}</small></p>
+        <p>{{ formsets.affected.empty_form.package_ecosystem.label_tag }} {{ formsets.affected.empty_form.package_ecosystem }}<small class="field-error" data-validate-error aria-live="polite"></small></p>
+        <p>{{ formsets.affected.empty_form.package_purl.label_tag }} {{ formsets.affected.empty_form.package_purl }} <small>{{ formsets.affected.empty_form.package_purl.help_text }}</small><small class="field-error" data-validate-error aria-live="polite"></small></p>
         <p data-describing-row>{{ formsets.affected.empty_form.range_type.label_tag }} {{ formsets.affected.empty_form.range_type }} <small data-describing-help></small></p>
         <p>{{ formsets.affected.empty_form.versions.label_tag }} {{ formsets.affected.empty_form.versions }} <small>{{ formsets.affected.empty_form.versions.help_text }}</small></p>
       </div>

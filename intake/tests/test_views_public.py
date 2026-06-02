@@ -55,6 +55,19 @@ def _post(client, **overrides):
     return client.post(reverse("intake:report"), data=data, follow=False)
 
 
+def test_report_form_renders_ecosystem_live_validation(db, client, unsorted_project):
+    resp = client.get(reverse("intake:report"))
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    # The shared affected-package partial wires the live ecosystem validation:
+    # the controller, the input hook, the message slot, and the datalist it reads.
+    assert "advisoryhub-validate.js" in body
+    assert 'data-validate="ecosystem"' in body
+    assert 'data-validate="project"' in body
+    assert "data-validate-error" in body
+    assert '<datalist id="osv-ecosystems">' in body
+
+
 def test_anonymous_submission_creates_triage_advisory(db, client, unsorted_project):
     resp = _post(client, reporter_display_name="Anon Researcher")
     assert resp.status_code == 302

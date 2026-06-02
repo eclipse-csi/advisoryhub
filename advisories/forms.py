@@ -340,8 +340,10 @@ class AffectedForm(forms.Form):
         # to a known set (optionally with a ``:suffix`` like ``Debian:11``). We
         # keep a free-text input + <datalist> for the suffix variants, and check
         # the value in ``clean_package_ecosystem`` so a bad one is caught here
-        # rather than failing late against the schema at publish time.
-        widget=forms.TextInput(attrs={"list": ECOSYSTEM_DATALIST_ID}),
+        # rather than failing late against the schema at publish time. The
+        # ``data-validate="ecosystem"`` hook drives live client-side validation in
+        # static/advisoryhub-validate.js (mirrors advisories/ecosystems.py).
+        widget=forms.TextInput(attrs={"list": ECOSYSTEM_DATALIST_ID, "data-validate": "ecosystem"}),
     )
     package_purl = forms.CharField(
         label="Package URL (purl)",
@@ -349,6 +351,9 @@ class AffectedForm(forms.Form):
         required=False,
         strip=True,
         help_text="Optional purl, without the @version component, e.g. pkg:maven/org.example/lib",
+        # ``data-validate="purl"`` drives the live shape check in
+        # static/advisoryhub-validate.js (mirrors advisories.validators.is_valid_purl).
+        widget=forms.TextInput(attrs={"data-validate": "purl"}),
     )
     range_type = forms.ChoiceField(
         label="Range type",

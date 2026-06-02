@@ -566,6 +566,24 @@ textarea:required:user-valid {
   border-color: var(--ok);
 }
 
+/* Live per-field error message (e.g. the affected-package ecosystem). JS writes
+   the text into the <small> and drives :user-invalid via setCustomValidity, so
+   the message shows only once the field is :user-invalid (after interaction), in
+   lock-step with the danger border above. The ⚠ is a non-colour cue. The general
+   sibling combinator is used (not +) because Django's {{ field.errors }} list may
+   sit between the input and the <small>. */
+.field-error {
+  display: none;
+  flex: 0 0 100%;
+  margin-top: 0.2rem;
+  color: var(--danger-fg);
+  font-size: var(--text-xs);
+}
+.field-error::before { content: "⚠"; margin-inline-end: 0.3em; }
+:is(input, select, textarea):user-invalid ~ .field-error:not(:empty) {
+  display: block;
+}
+
 /* Required-field marker (e.g. the intake form labels). The control's own
    `required` attribute is what assistive tech announces; this asterisk is a
    purely visual cue, hence aria-hidden in the markup. */

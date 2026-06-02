@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block title %}{% translate "Report a vulnerability" %} — AdvisoryHub{% endblock %}
-{% block extra_head %}<script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-validate.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 
 {% block content %}
 <section class="intake-form">
@@ -42,6 +42,7 @@
           value="{{ form.project_slug.value|default_if_none:'' }}"
           autocomplete="off"
           required
+          data-validate="project"
         >
         <datalist id="intake-projects">
           <option value="__unsorted__" label="{% translate 'I do not know — route to admins' %}"></option>
@@ -50,6 +51,7 @@
           {% endfor %}
         </datalist>
         {{ form.project_slug.errors }}
+        <small class="field-error" data-validate-error aria-live="polite"></small>
       </div>
 
       <div class="field">

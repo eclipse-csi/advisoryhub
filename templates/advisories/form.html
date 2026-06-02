@@ -5,6 +5,7 @@
   <script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-cvss.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-validate.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   {# load last: the unsaved-guard baseline must be captured after the above scripts normalise fields on load #}
   <script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
 {% endblock %}

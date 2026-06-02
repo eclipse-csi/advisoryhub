@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Sign in" %} — AdvisoryHub{% endblock %}
+{% block content %}
+  <section class="landing">
+    <span class="landing__logo" aria-hidden="true"></span>
+    <h1 class="landing__title">AdvisoryHub</h1>
+    <p class="landing__lead">
+      {% translate "Author, review, publish, and audit security advisories for Eclipse Foundation projects." %}
+    </p>
+    <div class="landing__actions">
+      <a class="btn landing__signin" href="{% url 'oidc_authentication_init' %}">{% translate "Sign in" %}</a>
+      <a class="landing__report" href="{% url 'intake:report' %}">{% translate "Report a vulnerability" %}</a>
+    </div>
+    <p class="landing__hint muted">
+      {% translate "Sign in with your Eclipse Foundation account to continue." %}
+    </p>
+  </section>
+{% endblock %}

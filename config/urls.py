@@ -1,15 +1,15 @@
 from django.contrib import admin
 from django.urls import include, path, register_converter
-from django.views.generic import RedirectView
 
 from accounts.step_up import StepUpAuthRequestView
 from advisories.path_converters import AdvisoryIdConverter
 from common.health import healthz, readyz
+from common.views import home
 
 register_converter(AdvisoryIdConverter, "advid")
 
 urlpatterns = [
-    path("", RedirectView.as_view(url="/advisories/", permanent=False)),
+    path("", home, name="home"),
     path("healthz", healthz, name="healthz"),
     path("readyz", readyz, name="readyz"),
     # Prometheus /metrics. Authentication is intentionally left to the

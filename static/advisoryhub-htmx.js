@@ -1,6 +1,6 @@
 /* AdvisoryHub — global HTMX configuration, CSRF, and error surfacing.
  *
- * Loaded once (base.html) after htmx.min.js. Three jobs:
+ * Loaded once (base.html) after htmx.min.js. Five jobs:
  *  1. Harden the swap surface: disable htmx's eval-based features. We use no
  *     `hx-on`/`hx-vals="js:"`/event filters and no swapped response carries a
  *     <script>, so turning these off shrinks the XSS blast radius (defence in
@@ -15,6 +15,9 @@
  *     `aria-busy` while the request is in flight, and announce a quiet,
  *     polite confirmation when a mutation (non-GET) succeeds — so a partial
  *     swap that updates the page in place isn't silent to screen readers.
+ *  5. Move focus into a region that opts in with `data-focus-on-swap` after a
+ *     mutating swap, so keyboard / screen-reader users aren't stranded when the
+ *     control they activated is replaced. Strictly opt-in + non-GET.
  */
 (function () {
   "use strict";
@@ -103,5 +106,36 @@
     var cfg = event.detail.requestConfig;
     var verb = cfg && cfg.verb ? String(cfg.verb).toLowerCase() : "get";
     if (event.detail.successful && verb !== "get") announce("Done.");
+  });
+
+  // After a mutating swap, move focus into a region that opts in with
+  // `data-focus-on-swap` (e.g. #comments, which an outerHTML swap fully
+  // replaces when a comment is posted — detaching the submit button and
+  // stranding focus on <body>). Focus lands on the region's first heading
+  // (made programmatically focusable) so keyboard / screen-reader users are
+  // carried to the fresh content. Deliberately opt-in and non-GET so panels
+  // loaded on `hx-trigger="load"`, timelines, and inline edits never grab
+  // focus. The polite "Done." announce above still fires alongside this.
+  document.body.addEventListener("htmx:afterSettle", function (event) {
+    var detail = event.detail || {};
+    if (detail.successful === false) return;
+    var cfg = detail.requestConfig;
+    var verb = cfg && cfg.verb ? String(cfg.verb).toLowerCase() : "get";
+    if (verb === "get") return;
+
+    var target = detail.target;
+    if (!target) return;
+    // An outerHTML swap replaces the target node, so the event's target may be
+    // the now-detached original. Re-resolve by id to get the fresh, attached
+    // element before deciding whether it opted in.
+    var region = (target.id && document.getElementById(target.id)) || target;
+    if (!region.matches || !region.matches("[data-focus-on-swap]")) {
+      region = region.querySelector ? region.querySelector("[data-focus-on-swap]") : null;
+    }
+    if (!region || !document.contains(region)) return;
+
+    var heading = region.querySelector("h1, h2, h3, [data-focus-heading]") || region;
+    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    if (typeof heading.focus === "function") heading.focus();
   });
 })();

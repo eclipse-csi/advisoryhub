@@ -1,5 +1,6 @@
-<section id="comments" class="comments timeline">
-  <h2>Activity</h2>
+<section id="comments" class="comments timeline" data-focus-on-swap>
+  {# tabindex=-1 so focus can land here after a comment-post swap (advisoryhub-htmx.js). #}
+  <h2 tabindex="-1">Activity</h2>
   <div class="comment-list">
     {% for item in timeline %}
       {% if item.kind == "comment" %}

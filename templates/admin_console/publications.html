@@ -54,16 +54,25 @@
 
   <section>
     <h2>{% translate "Recently published" %}</h2>
-    <ul>
-      {% for a in recently_published %}
-        <li>
-          <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
-          — {{ a.summary|default:"—"|truncatechars:100 }}
-          <span class="muted">({{ a.published_at|date:"Y-m-d"|default:"—" }})</span>
-        </li>
-      {% empty %}
-        <li>{% translate "None yet." %}</li>
-      {% endfor %}
-    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Advisory" %}</th>
+          <th scope="col">{% translate "Summary" %}</th>
+          <th scope="col">{% translate "Published" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in recently_published %}
+          <tr data-href="{% url 'advisories:detail' a.advisory_id %}">
+            <td><a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a></td>
+            <td>{{ a.summary|default:"—"|truncatechars:100 }}</td>
+            <td>{{ a.published_at|date:"Y-m-d"|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">{% translate "None yet." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </section>
 {% endblock %}

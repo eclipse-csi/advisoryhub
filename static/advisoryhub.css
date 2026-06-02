@@ -2838,7 +2838,11 @@ dialog.drawer--right {
        an unreadable sliver-column grid. A <table> set to display:block still
        lays its rows out in an anonymous table box, so the tabular structure is
        preserved while the block itself becomes the horizontal scroll area;
-       nowrap keeps each column at its natural width. */
+       nowrap keeps each column at its natural width.
+   The advisory list is the exception: it's the screen users hit most on a
+   phone, so it reads far better as stacked "label: value" cards than as a
+   horizontal scroll. The rules below override the generic fallback for
+   table.advisories only (every other table keeps horizontal scroll). */
 @media (max-width: 640px) {
   .topbar {
     flex-wrap: wrap;
@@ -2852,5 +2856,59 @@ dialog.drawer--right {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+
+  /* Advisory list → one card per row. The <thead> labels move onto each cell
+     via data-label/::before; the real <a> in the ID cell stays the keyboard
+     target and the whole card stays a tr[data-href] pointer target. More
+     specific than `main table` (0,1,1 > 0,0,2), so it wins without !important. */
+  table.advisories,
+  table.advisories tbody,
+  table.advisories tr,
+  table.advisories td {
+    display: block;
+    width: auto;
+  }
+  table.advisories {
+    white-space: normal;
+    overflow-x: visible;
+  }
+  table.advisories thead {
+    /* Visually hidden; per-cell data-label carries the column name instead.
+       (Stacking via display changes already drops table semantics on a phone,
+       so the labels live on the cells, not in a hidden header row.) */
+    display: none;
+  }
+  table.advisories tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    margin-bottom: 0.7rem;
+    overflow: hidden;
+  }
+  table.advisories td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 0.8rem;
+  }
+  table.advisories tbody tr td:last-child {
+    border-bottom: 0;
+  }
+  table.advisories td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.1rem;
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* The empty-state row spans all columns and carries no data-label. */
+  table.advisories td[colspan] {
+    text-align: center;
+    color: var(--text-muted);
+  }
+  table.advisories td[colspan]::before {
+    content: none;
   }
 }

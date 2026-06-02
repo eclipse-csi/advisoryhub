@@ -45,19 +45,19 @@
     <tbody>
     {% for a in advisories %}
       <tr data-href="{% url 'advisories:detail' a.advisory_id %}">
-        <td>
+        <td data-label="{% translate 'ID' %}">
           <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
           {% if a.kind == 'ghsa_linked' %}<span class="badge ghsa-linked" title="Synced from a GitHub Security Advisory">GHSA</span>{% endif %}
         </td>
-        <td>{{ a.project.name }}</td>
-        <td>
+        <td data-label="{% translate 'Project' %}">{{ a.project.name }}</td>
+        <td data-label="{% translate 'State' %}">
           <span class="badge state-{{ a.state }}{% if a.republish_required %} needs-republish{% endif %}"{% if a.republish_required %} title="{% translate 'Edited since publication — re-publish required' %}"{% endif %}>{{ a.get_state_display }}</span>
         </td>
-        <td>
+        <td data-label="{% translate 'Review' %}">
           {% if a.review_status != 'none' %}<span class="badge review-{{ a.review_status }}">{{ a.get_review_status_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
         </td>
-        <td>{{ a.summary|default:"—" }}</td>
-        <td>{{ a.modified_at|date:"Y-m-d H:i" }}</td>
+        <td data-label="{% translate 'Summary' %}">{{ a.summary|default:"—" }}</td>
+        <td data-label="{% translate 'Modified' %}">{{ a.modified_at|date:"Y-m-d H:i" }}</td>
       </tr>
     {% empty %}
       <tr><td colspan="6">No advisories match the current filters.</td></tr>

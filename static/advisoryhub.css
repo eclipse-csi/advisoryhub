@@ -1546,7 +1546,11 @@ p.state strong { color: var(--text); }
 .diff pre {
   font-size: var(--text-sm);
   line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
+.version-diff__summary { margin-top: 0; }
+.version-diff__switcher .is-active { font-weight: 600; color: var(--text); }
 
 /* ------------------------------------------------------------ utility */
 

@@ -1,0 +1,73 @@
+{% comment %}
+Drawer body for the version diff.
+
+Rendered as the inner content of #version-diff-body — both inside the
+_version_diff.html drawer shell (initial open) and on its own as the
+?fragment=1 response, so the comparison switcher can swap just this
+fragment in place without closing the drawer.
+
+Context: advisory, version (the pinned version), diff (list of field
+rows), comparison_label, against (resolved comparison version or None),
+versions (recent versions for the switcher).
+{% endcomment %}
+<p class="version-diff__summary">
+  Comparing version
+  <strong>v{{ version.version }}</strong>
+  (recorded {{ version.created_at|date:"Y-m-d H:i" }})
+  against {{ comparison_label }}.
+</p>
+
+{% if versions %}
+  <p class="version-diff__switcher muted">
+    Compare against:
+    {% if against %}
+      <a hx-get="{% url 'advisories:version_diff' advisory.advisory_id version.pk %}?fragment=1"
+         hx-target="#version-diff-body" hx-swap="innerHTML" href="#">live record</a>
+    {% else %}
+      <span class="is-active" aria-current="true">live record</span>
+    {% endif %}
+    {% for v in versions %}{% if v.pk != version.pk %}
+      |
+      {% if against and against.pk == v.pk %}
+        <span class="is-active" aria-current="true">v{{ v.version }} {{ v.created_at|date:"Y-m-d" }}</span>
+      {% else %}
+        <a hx-get="{% url 'advisories:version_diff' advisory.advisory_id version.pk %}?fragment=1&against={{ v.pk }}"
+           hx-target="#version-diff-body" hx-swap="innerHTML" href="#">v{{ v.version }} {{ v.created_at|date:"Y-m-d" }}</a>
+      {% endif %}
+    {% endif %}{% endfor %}
+  </p>
+{% endif %}
+
+{% if not diff %}
+  <p class="empty">No differences.</p>
+{% else %}
+  <table class="diff">
+    <thead><tr><th>Field</th><th>Before (v{{ version.version }})</th><th>After ({{ comparison_label }})</th></tr></thead>
+    <tbody>
+      {% for row in diff %}
+        <tr>
+          <th>{{ row.field }}</th>
+          {% if row.kind == 'scalar' %}
+            <td><pre>{{ row.before|default:"(empty)" }}</pre></td>
+            <td><pre>{{ row.after|default:"(empty)" }}</pre></td>
+          {% else %}
+            <td>
+              <pre>{{ row.before }}</pre>
+              {% if row.removed %}
+                <p class="muted">Removed:</p>
+                <pre>{{ row.removed }}</pre>
+              {% endif %}
+            </td>
+            <td>
+              <pre>{{ row.after }}</pre>
+              {% if row.added %}
+                <p class="muted">Added:</p>
+                <pre>{{ row.added }}</pre>
+              {% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}

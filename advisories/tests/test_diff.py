@@ -125,7 +125,28 @@ def test_diff_view_404_for_other_advisorys_version(client, setup, make_project):
 
 
 @pytest.mark.django_db
-def test_diff_view_renders_for_member(client, setup):
+def test_diff_view_renders_drawer_for_member(client, setup):
+    setup["advisory"].summary = "moved on"
+    setup["advisory"].save(update_fields=["summary"])
+    client.force_login(setup["member"])
+    response = client.get(
+        reverse(
+            "advisories:version_diff",
+            args=[setup["advisory"].advisory_id, setup["version"].pk],
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'id="version-diff-drawer"' in body
+    assert "initial" in body
+    assert "moved on" in body
+
+
+@pytest.mark.django_db
+def test_diff_view_fragment_omits_dialog_shell(client, setup):
+    """The ?fragment=1 response is body-only (no <dialog>), safe to swap
+    into #version-diff-body without nesting a second drawer."""
     setup["advisory"].summary = "moved on"
     setup["advisory"].save(update_fields=["summary"])
     client.force_login(setup["member"])
@@ -134,10 +155,28 @@ def test_diff_view_renders_for_member(client, setup):
             "advisories:version_diff",
             args=[setup["advisory"].advisory_id, setup["version"].pk],
         )
+        + "?fragment=1",
+        HTTP_HX_REQUEST="true",
     )
     assert response.status_code == 200
-    assert b"initial" in response.content
-    assert b"moved on" in response.content
+    body = response.content.decode()
+    assert "<dialog" not in body
+    assert 'class="diff"' in body
+    assert "moved on" in body
+
+
+@pytest.mark.django_db
+def test_diff_view_non_htmx_redirects_to_detail(client, setup):
+    """A direct (non-HTMX) hit has no standalone page — it redirects back."""
+    client.force_login(setup["member"])
+    response = client.get(
+        reverse(
+            "advisories:version_diff",
+            args=[setup["advisory"].advisory_id, setup["version"].pk],
+        )
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("advisories:detail", args=[setup["advisory"].advisory_id])
 
 
 @pytest.mark.django_db
@@ -151,7 +190,8 @@ def test_diff_view_against_other_version(client, setup):
             "advisories:version_diff",
             args=[setup["advisory"].advisory_id, v2.pk],
         )
-        + f"?against={setup['version'].pk}"
+        + f"?against={setup['version'].pk}&fragment=1",
+        HTTP_HX_REQUEST="true",
     )
     assert response.status_code == 200
     body = response.content.decode()

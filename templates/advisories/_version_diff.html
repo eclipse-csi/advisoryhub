@@ -1,0 +1,13 @@
+<dialog id="version-diff-drawer" class="drawer drawer--right" aria-label="Version diff">
+  <header class="drawer__header">
+    <h2>Diff &middot; {{ advisory.advisory_id }}</h2>
+    <form method="dialog">
+      <button class="drawer__close" type="submit" aria-label="Close diff">&times;</button>
+    </form>
+  </header>
+
+  <div id="version-diff-body" class="drawer__body">
+    {% include "advisories/_version_diff_body.html" %}
+  </div>
+</dialog>
+{# Opened + light-dismiss + host-cleared by the delegated controller in advisoryhub-dialogs.js #}

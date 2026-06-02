@@ -273,7 +273,9 @@
 
   {% if open_review_task %}
     <p class="actions">
-      <a href="{% url 'advisories:version_diff' advisory.advisory_id open_review_task.version_id %}">View diff against submitted version</a>
+      <button type="button" class="link-button"
+              hx-get="{% url 'advisories:version_diff' advisory.advisory_id open_review_task.version_id %}"
+              hx-target="#version-diff-host" hx-swap="innerHTML">View diff against submitted version</button>
     </p>
   {% endif %}
 
@@ -298,6 +300,7 @@
 </div>{# /.advisory-detail #}
 
 <div id="details-history-host" data-dialog-host></div>
+<div id="version-diff-host" data-dialog-host></div>
 
 {% if can_flag_routing %}
   <div id="modal" data-dialog-host></div>

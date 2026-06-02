@@ -63,7 +63,9 @@ Context required: advisory, can_publish, last_publication_task.
       {% endif %}
       {% if last_publication_task.version_id %}
         <p class="sidebar-card__meta">
-          <a href="{% url 'advisories:version_diff' advisory.advisory_id last_publication_task.version_id %}">Diff against current</a>
+          <button type="button" class="link-button"
+                  hx-get="{% url 'advisories:version_diff' advisory.advisory_id last_publication_task.version_id %}"
+                  hx-target="#version-diff-host" hx-swap="innerHTML">Diff against current</button>
         </p>
       {% endif %}
     </div>

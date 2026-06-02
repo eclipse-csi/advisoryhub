@@ -53,7 +53,9 @@ can_withdraw_review, can_review, can_revoke_approval, open_review_task.
   {% if can_review and open_review_task %}
     <div class="sidebar-card__row">
       <p class="sidebar-card__meta">
-        <a href="{% url 'advisories:version_diff' advisory.advisory_id open_review_task.version_id %}">View diff against the submitted version</a>
+        <button type="button" class="link-button"
+                hx-get="{% url 'advisories:version_diff' advisory.advisory_id open_review_task.version_id %}"
+                hx-target="#version-diff-host" hx-swap="innerHTML">View diff against the submitted version</button>
       </p>
       <form method="post" action="{% url 'advisories:review_decide' advisory.advisory_id %}" class="advisory-review-decide">
         {% csrf_token %}

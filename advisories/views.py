@@ -971,7 +971,12 @@ def advisory_details_history(request, advisory_id: str):
 @login_required
 @require_http_methods(["GET"])
 def advisory_version_diff(request, advisory_id: str, version_id: int):
-    """Render a diff for one version of an advisory.
+    """Render the version-diff drawer for one version of an advisory.
+
+    HTMX endpoint. The initial GET returns the ``<dialog>`` drawer shell;
+    a ``?fragment=1`` GET returns just the body partial so the in-drawer
+    "compare against" switcher can swap in place. A non-HTMX hit has no
+    standalone page and redirects to the advisory detail.
 
     Default comparison is against the *current live* advisory — what's
     changed since this version was recorded. Pass ``?against=<other_version_id>``
@@ -988,15 +993,28 @@ def advisory_version_diff(request, advisory_id: str, version_id: int):
         diff = version_diff(against, version)
         comparison_label = f"v{against.version}"
     else:
+        against = None
         diff = live_vs_version(advisory, version)
         comparison_label = "current live record"
 
+    # The diff is an in-page drawer (advisoryhub-dialogs.js), reached only via
+    # HTMX from the detail/sidebar triggers. A direct (non-HTMX) hit on the URL
+    # has no standalone page to render — send it back to the advisory.
+    if not getattr(request, "htmx", False):
+        return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+    template = (
+        "advisories/_version_diff_body.html"
+        if request.GET.get("fragment")
+        else "advisories/_version_diff.html"
+    )
     return render(
         request,
-        "advisories/diff.html",
+        template,
         {
             "advisory": advisory,
             "version": version,
+            "against": against,
             "diff": diff,
             "comparison_label": comparison_label,
             "versions": list(advisory.versions.order_by("-version")[:10]),

@@ -25,7 +25,8 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 
-from .forms import ECOSYSTEM_DATALIST_ID, LIST_FORMSETS, OSV_ECOSYSTEMS, EventFormSet
+from .ecosystems import OSV_ECOSYSTEMS
+from .forms import ECOSYSTEM_DATALIST_ID, LIST_FORMSETS, EventFormSet
 
 # ---------------------------------------------------------------------------
 # Initial-data transforms (DB → formset ``initial``)

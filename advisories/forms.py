@@ -18,7 +18,9 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import BaseFormSet, formset_factory
 
+from .ecosystems import is_valid_ecosystem
 from .models import Advisory
+from .validators import is_valid_purl
 
 # Choice constants — mirror the enums in advisories/validators.py and the
 # vendored OSV schema at publication/schemas/osv.upstream.json.
@@ -170,60 +172,11 @@ CREDIT_TYPES = [
     ("OTHER", "Other"),
 ]
 
-# Canonical OSV ecosystem list (from the schema's pattern). Used to power
-# a <datalist> on the package_ecosystem input — authors get autocomplete
-# but can still type free text for variants like ``Debian:11``.
-OSV_ECOSYSTEMS = [
-    "AlmaLinux",
-    "Alpaquita",
-    "Alpine",
-    "Android",
-    "Azure Linux",
-    "BellSoft Hardened Containers",
-    "Bioconductor",
-    "Bitnami",
-    "Chainguard",
-    "CleanStart",
-    "ConanCenter",
-    "CRAN",
-    "crates.io",
-    "Debian",
-    "Docker Hardened Images",
-    "Echo",
-    "FreeBSD",
-    "GHC",
-    "GitHub Actions",
-    "Go",
-    "Hackage",
-    "Hex",
-    "Julia",
-    "Kubernetes",
-    "Linux",
-    "Mageia",
-    "Maven",
-    "MinimOS",
-    "npm",
-    "NuGet",
-    "opam",
-    "openEuler",
-    "openSUSE",
-    "OSS-Fuzz",
-    "Packagist",
-    "Photon OS",
-    "Pub",
-    "PyPI",
-    "Red Hat",
-    "Rocky Linux",
-    "Root",
-    "RubyGems",
-    "SUSE",
-    "SwiftURL",
-    "TuxCare",
-    "Ubuntu",
-    "VSCode",
-    "Wolfi",
-    "GIT",
-]
+# The OSV ecosystem list (``advisories.ecosystems.OSV_ECOSYSTEMS``, fed to the
+# template by ``form_assembly.advanced_form_context``) powers a <datalist> on the
+# package_ecosystem input — authors get autocomplete but can still type the
+# ``:suffix`` variants like ``Debian:11``. The DOM id wiring the input to that
+# datalist:
 ECOSYSTEM_DATALIST_ID = "osv-ecosystems"
 
 
@@ -376,11 +329,18 @@ class AffectedForm(forms.Form):
     package_ecosystem = forms.CharField(
         label="Ecosystem",
         max_length=64,
-        required=False,
+        required=True,
         strip=True,
-        # The list of supported OSV ecosystems is open-ended (variants like
-        # ``Debian:11`` are valid). Free text with a <datalist> for
-        # autocomplete keeps both common picks and extensions easy.
+        # Clearer than Django's default "This field is required." — the affected
+        # formset stacks several fields per row, so name the field in the message.
+        error_messages={
+            "required": "Ecosystem is required — choose one from the list (e.g. Maven, npm, PyPI)."
+        },
+        # OSV requires an ecosystem on every affected package and constrains it
+        # to a known set (optionally with a ``:suffix`` like ``Debian:11``). We
+        # keep a free-text input + <datalist> for the suffix variants, and check
+        # the value in ``clean_package_ecosystem`` so a bad one is caught here
+        # rather than failing late against the schema at publish time.
         widget=forms.TextInput(attrs={"list": ECOSYSTEM_DATALIST_ID}),
     )
     package_purl = forms.CharField(
@@ -403,6 +363,30 @@ class AffectedForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 2}),
         help_text="Optional explicit versions, one per line.",
     )
+
+    def clean_package_ecosystem(self) -> str:
+        # ``required=True`` already rejects a blank value with Django's default
+        # message; here we reject a non-empty value that isn't a recognised OSV
+        # ecosystem, so the publish step can't fail later on the schema's set.
+        value = (self.cleaned_data.get("package_ecosystem") or "").strip()
+        if value and not is_valid_ecosystem(value):
+            raise forms.ValidationError(
+                "Unknown ecosystem — pick one from the list (optionally with a "
+                "':' suffix, e.g. Debian:11).",
+                code="invalid_ecosystem",
+            )
+        return value
+
+    def clean_package_purl(self) -> str:
+        # Optional, but if given it must look like a purl, so a typo is caught
+        # here rather than producing a malformed OSV/CSAF package identifier.
+        value = (self.cleaned_data.get("package_purl") or "").strip()
+        if value and not is_valid_purl(value):
+            raise forms.ValidationError(
+                "Not a valid package URL — expected pkg:type/name, e.g. pkg:maven/org.example/lib.",
+                code="invalid_purl",
+            )
+        return value
 
 
 # ---------------------------------------------------------------------------

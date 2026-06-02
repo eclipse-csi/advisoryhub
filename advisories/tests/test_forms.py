@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from advisories.form_assembly import assemble_json
 from advisories.forms import (
+    AffectedForm,
     AffectedFormSet,
     AliasFormSet,
     CreditForm,
@@ -348,7 +349,7 @@ def test_assemble_affected_purl_omitted_when_blank():
         **_mgmt("credits", 0),
         **_mgmt("affected", 1),
         "affected-0-package_name": "lib",
-        "affected-0-package_ecosystem": "",
+        "affected-0-package_ecosystem": "npm",
         "affected-0-package_purl": "",
         "affected-0-range_type": "",
         "affected-0-versions": "1.0.0",
@@ -356,7 +357,9 @@ def test_assemble_affected_purl_omitted_when_blank():
     }
     out = _build_assembled(payload)
     # purl key is absent (not "" — keeps the JSON minimal).
-    assert out["affected"] == [{"package": {"name": "lib"}, "versions": ["1.0.0"]}]
+    assert out["affected"] == [
+        {"package": {"name": "lib", "ecosystem": "npm"}, "versions": ["1.0.0"]}
+    ]
 
 
 def test_assemble_versions_only_affected():
@@ -368,13 +371,65 @@ def test_assemble_versions_only_affected():
         **_mgmt("credits", 0),
         **_mgmt("affected", 1),
         "affected-0-package_name": "lib",
-        "affected-0-package_ecosystem": "",
+        "affected-0-package_ecosystem": "npm",
         "affected-0-range_type": "",
         "affected-0-versions": "1.0.0\n1.0.1\n",
         **_mgmt("affected-0-events", 0),
     }
     out = _build_assembled(payload)
-    assert out["affected"] == [{"package": {"name": "lib"}, "versions": ["1.0.0", "1.0.1"]}]
+    assert out["affected"] == [
+        {"package": {"name": "lib", "ecosystem": "npm"}, "versions": ["1.0.0", "1.0.1"]}
+    ]
+
+
+def test_affected_form_rejects_unknown_ecosystem():
+    form = AffectedForm(data={"package_name": "lib", "package_ecosystem": "Maven Central"})
+    assert not form.is_valid()
+    assert "package_ecosystem" in form.errors
+
+
+def test_affected_form_rejects_blank_ecosystem():
+    # ecosystem is required now — OSV mandates it on every affected package.
+    form = AffectedForm(data={"package_name": "lib", "package_ecosystem": ""})
+    assert not form.is_valid()
+    assert "package_ecosystem" in form.errors
+
+
+def test_affected_form_required_message_is_clear():
+    # The default "This field is required." is ambiguous in a multi-field row;
+    # the message must name the ecosystem.
+    form = AffectedForm(data={"package_name": "lib", "package_ecosystem": ""})
+    assert not form.is_valid()
+    assert "Ecosystem is required" in str(form.errors["package_ecosystem"])
+
+
+def test_affected_form_accepts_known_ecosystem():
+    form = AffectedForm(data={"package_name": "lib", "package_ecosystem": "Maven"})
+    assert form.is_valid(), form.errors
+
+
+def test_affected_form_accepts_ecosystem_with_suffix():
+    form = AffectedForm(data={"package_name": "lib", "package_ecosystem": "Debian:11"})
+    assert form.is_valid(), form.errors
+
+
+def test_affected_form_rejects_malformed_purl():
+    form = AffectedForm(
+        data={"package_name": "lib", "package_ecosystem": "Maven", "package_purl": "not-a-purl"}
+    )
+    assert not form.is_valid()
+    assert "package_purl" in form.errors
+
+
+def test_affected_form_accepts_valid_purl():
+    form = AffectedForm(
+        data={
+            "package_name": "lib",
+            "package_ecosystem": "Maven",
+            "package_purl": "pkg:maven/org.example/lib",
+        }
+    )
+    assert form.is_valid(), form.errors
 
 
 def test_assemble_deletes_skipped():

@@ -130,3 +130,25 @@ def test_build_osv_deduplicates_assigned_cve_when_also_in_aliases(make_project):
     v = advisory.versions.get(version=1)
     doc = osv_mod.build_osv(v)
     assert doc["aliases"] == ["CVE-2026-0001"]
+
+
+def test_python_ecosystem_set_matches_vendored_schema():
+    """Guard against drift between ``advisories.ecosystems.OSV_ECOSYSTEMS`` and the
+    vendored schema's ``ecosystemWithSuffix`` pattern.
+
+    Compares against ``ecosystemWithSuffix`` (which includes ``GIT``), NOT
+    ``ecosystemName`` (which omits it). If a schema sync changes the pattern,
+    update ``OSV_ECOSYSTEMS`` to match (or vice versa).
+    """
+    import re
+
+    from advisories.ecosystems import OSV_ECOSYSTEMS
+
+    schema = json.loads(osv_mod._SCHEMA_PATH.read_text())
+    pattern = schema["$defs"]["ecosystemWithSuffix"]["pattern"]
+    # pattern is ^(<alt>|<alt>|...)(:.+)?$ — pull the alternation group out and
+    # un-escape names like ``crates\.io``.
+    m = re.fullmatch(r"\^\((.*)\)\(:\.\+\)\?\$", pattern)
+    assert m, f"unexpected ecosystemWithSuffix shape: {pattern}"
+    schema_names = [re.sub(r"\\(.)", r"\1", alt) for alt in m.group(1).split("|")]
+    assert list(OSV_ECOSYSTEMS) == schema_names

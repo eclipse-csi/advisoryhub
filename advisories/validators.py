@@ -12,6 +12,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 
+from .ecosystems import is_valid_ecosystem
 from .identifiers import ADVISORY_ID_RE
 
 # The CVE program (and the CVE 5.x record schema's ``cveId`` pattern) require a
@@ -121,6 +122,17 @@ def validate_references(value: Any) -> None:
 
 EVENT_KINDS_ALLOWED = frozenset({"introduced", "fixed", "last_affected", "limit"})
 
+# Package URL (purl) — a loose *shape* check, not a full purl parse: it catches
+# the common mistakes (missing ``pkg:`` prefix or type) without rejecting the
+# qualifiers/``@version`` some advisories legitimately carry. Kept in lock-step
+# with the client pattern in static/advisoryhub-validate.js (KINDS.purl.pattern).
+PURL_RE = re.compile(r"^pkg:[A-Za-z0-9.+-]+/\S+$")
+
+
+def is_valid_purl(value: Any) -> bool:
+    """True iff ``value`` looks like a ``pkg:type/name…`` package URL."""
+    return isinstance(value, str) and PURL_RE.match(value) is not None
+
 
 def validate_affected(value: Any) -> None:
     """OSV-style ``affected`` block: list of objects with package + ranges/versions."""
@@ -128,12 +140,31 @@ def validate_affected(value: Any) -> None:
         return
     if not isinstance(value, list):
         raise ValidationError("affected must be a list.", code="invalid_affected")
-    for entry in value:
+    for index, entry in enumerate(value):
         if not isinstance(entry, dict):
             raise ValidationError("each affected entry must be an object.", code="invalid_affected")
         pkg = entry.get("package")
         if not isinstance(pkg, dict) or not pkg.get("name"):
             raise ValidationError("each affected entry needs package.name", code="invalid_affected")
+        ecosystem = pkg.get("ecosystem")
+        if not ecosystem:
+            raise ValidationError(
+                f"affected[{index}]: package.ecosystem is required",
+                code="invalid_affected",
+            )
+        if not is_valid_ecosystem(ecosystem):
+            raise ValidationError(
+                f"affected[{index}]: ecosystem {ecosystem!r} is not a recognised OSV "
+                "ecosystem (e.g. Maven, npm, PyPI — optionally with a ':' suffix like Debian:11)",
+                code="invalid_affected",
+            )
+        purl = pkg.get("purl")
+        if purl and not is_valid_purl(purl):
+            raise ValidationError(
+                f"affected[{index}]: purl {purl!r} is not a valid package URL "
+                "(expected pkg:type/name, e.g. pkg:maven/org.example/lib)",
+                code="invalid_affected",
+            )
         ranges = entry.get("ranges") or []
         versions = entry.get("versions") or []
         if not ranges and not versions:

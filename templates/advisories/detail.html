@@ -277,10 +277,6 @@
     </p>
   {% endif %}
 
-  <p class="actions">
-    <a href="{% url 'advisories:history' advisory.advisory_id %}">View edit history</a>
-  </p>
-
   <div hx-get="{% url 'comments:timeline' advisory.advisory_id %}" hx-trigger="load"></div>
 </div>{# /.advisory-detail__main #}
 

@@ -920,14 +920,16 @@ def _detail_with_error(request, advisory: Advisory, message: str):
 @login_required
 @require_http_methods(["GET"])
 def advisory_history(request, advisory_id: str):
-    """Render the full edit-history log for an advisory."""
+    """Legacy standalone edit-history page — now consolidated into the inline
+    description-history drawer on the detail page (the "history · N edits"
+    trigger by the Details heading). Redirect bookmarked/legacy links there,
+    keeping the same view-permission gate so outsiders still get a 403 rather
+    than a redirect that would leak the advisory's existence.
+    """
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
-    versions = services.history_for_advisory(advisory, viewer=request.user)
-    return render(
-        request,
-        "advisories/history.html",
-        {"advisory": advisory, "versions": versions},
-    )
+    if not perms.can_view(request.user, advisory):
+        raise PermissionDenied("You do not have access to this advisory.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
 @login_required

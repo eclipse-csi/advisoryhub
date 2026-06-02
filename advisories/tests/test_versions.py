@@ -6,7 +6,8 @@ on the higher-level invariants observable from views and workflows:
 
 * Editing through the form appends a version.
 * Workflow-only saves (publish, dismiss, GHSA timestamp heartbeat) don't.
-* The history endpoint enforces permissions and returns the right rows.
+* The legacy history endpoint enforces permissions and redirects to detail
+  (the history UI is now the inline description-history drawer).
 """
 
 from __future__ import annotations
@@ -110,15 +111,19 @@ def test_republish_required_flag_does_not_append_version(setup):
 
 
 @pytest.mark.django_db
-def test_history_endpoint_returns_versions_for_member(client, setup):
+def test_history_endpoint_redirects_to_detail_for_member(client, setup):
+    # The standalone history page was consolidated into the inline
+    # description-history drawer; the legacy route now redirects to detail.
     client.force_login(setup["member"])
     response = client.get(reverse("advisories:history", args=[setup["advisory"].advisory_id]))
-    assert response.status_code == 200
-    assert b"v1" in response.content
+    assert response.status_code == 302
+    assert response.url == reverse("advisories:detail", args=[setup["advisory"].advisory_id])
 
 
 @pytest.mark.django_db
 def test_history_endpoint_403_for_outsider(client, setup):
+    # Permission parity is preserved across the redirect so the route doesn't
+    # leak the advisory's existence to someone who can't view it.
     client.force_login(setup["outsider"])
     response = client.get(reverse("advisories:history", args=[setup["advisory"].advisory_id]))
     assert response.status_code == 403

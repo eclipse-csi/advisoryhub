@@ -20,6 +20,13 @@
         </span>
         {{ form.on_advisory_created }}
       </label>
+      <label class="pref-row" for="{{ form.on_triage_event.id_for_label }}">
+        <span class="pref-row__copy">
+          <span class="pref-row__title">{{ form.on_triage_event.label }}</span>
+          <span class="pref-row__desc">{{ form.on_triage_event.help_text }}</span>
+        </span>
+        {{ form.on_triage_event }}
+      </label>
       <label class="pref-row" for="{{ form.on_advisory_submitted_for_review.id_for_label }}">
         <span class="pref-row__copy">
           <span class="pref-row__title">{{ form.on_advisory_submitted_for_review.label }}</span>

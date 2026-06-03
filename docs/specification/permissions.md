@@ -126,8 +126,11 @@ pre-provisions a *shadow* `User` (`is_provisioned=True`) per member.
 A shadow user is **notify-only**: it is not a member of any group, resolves to
 no permission, and cannot act. Its sole effect is notification reach — it
 receives the security-team member's *default* notification set **for its own
-project only**, and is always dropped from internal comments
-([INV-ROSTER-1]). On first OIDC login the shadow is linked by email,
+project only** (advisory-created, lifecycle events, triage-queue events, and
+`@`-mentions), and is always dropped from internal comments ([INV-ROSTER-1]).
+Triage notifications are gated by the global `on_triage_event` preference
+(default on), which authenticated members may turn off. On first OIDC login the
+shadow is linked by email,
 `is_provisioned` clears, and access then comes entirely from the OIDC group
 claim ([INV-OIDC-5]) — the roster never grants access.
 

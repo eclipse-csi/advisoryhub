@@ -127,6 +127,14 @@ class NotificationPreference(models.Model):
             "the security team. Global only — no per-advisory override."
         ),
     )
+    on_triage_event = models.BooleanField(
+        default=True,
+        help_text=(
+            "Triage-queue activity for projects where you're on the security team — a "
+            "report is submitted, promoted, dismissed, reassigned, reopened, or flagged "
+            "for re-routing. Global only — no per-advisory override."
+        ),
+    )
     on_advisory_submitted_for_review = models.BooleanField(
         default=True,
         help_text="When an advisory you have access to is submitted for review.",

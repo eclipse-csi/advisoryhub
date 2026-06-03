@@ -219,14 +219,23 @@ def _advisory_triage_recipients(advisory, *, admins_only: bool = False) -> list:
     advisories — no special case is needed here. The ``admins_only`` shortcut
     is for events that should always reach admins regardless of the
     advisory's current project (e.g. ``advisory_flagged_for_routing``).
+
+    For the project-team path, active **shadow** roster members of the project
+    are unioned in (notification-only reach; INV-ROSTER-1). They are *not*
+    added to the ``admins_only`` path — shadows are project-team members, not
+    admins.
     """
     from accounts.models import User
 
     if admins_only:
         group_name = settings.OIDC_ADMIN_GROUP
-    else:
-        group_name = advisory.project.security_team.name
-    return list(User.objects.filter(is_active=True, groups__name=group_name).distinct())
+        return list(User.objects.filter(is_active=True, groups__name=group_name).distinct())
+
+    from .recipients import _dedup_users, _roster_shadow_members
+
+    group_name = advisory.project.security_team.name
+    team = list(User.objects.filter(is_active=True, groups__name=group_name).distinct())
+    return _dedup_users(team, _roster_shadow_members(advisory))
 
 
 @shared_task(name="notifications.send_advisory_triage_event_email")
@@ -246,8 +255,14 @@ def send_advisory_triage_event_email(advisory_pk: int, event: str) -> int:
     except Advisory.DoesNotExist:
         return 0
 
+    from .recipients import get_pref
+
     admins_only = event == "advisory_flagged_for_routing"
     recipients = _advisory_triage_recipients(advisory, admins_only=admins_only)
+    # Honour the global opt-out. Shadow users carry a default preference
+    # (on_triage_event=True), so they are reached unless the member later logs
+    # in and opts out — same gating as advisory_created.
+    recipients = [u for u in recipients if get_pref(u).on_triage_event]
     subject_map = {
         "advisory_triage_submitted": "[AdvisoryHub] new vulnerability report (triage)",
         "advisory_triage_promoted": "[AdvisoryHub] triage advisory promoted to draft",

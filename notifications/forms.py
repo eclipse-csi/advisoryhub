@@ -20,6 +20,7 @@ class NotificationPreferenceForm(forms.ModelForm):
         model = NotificationPreference
         fields = [
             "on_advisory_created",
+            "on_triage_event",
             "on_advisory_submitted_for_review",
             "on_advisory_published",
             "on_publication_export_status",

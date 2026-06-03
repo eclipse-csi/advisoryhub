@@ -723,3 +723,57 @@ def test_no_double_send_after_shadow_logs_in(setup):
     out = recipients.filter_for_event(setup["advisory"], event="advisory_published")
     pks = [u.pk for u in out]
     assert pks.count(user.pk) == 1
+
+
+# ---- Triage events reach shadows + global on_triage_event opt-out ---------
+
+
+@pytest.mark.django_db
+def test_shadow_reached_by_triage_event(setup):
+    from notifications.tasks import send_advisory_triage_event_email
+
+    shadow = _shadow_member(setup["project"])
+    mail.outbox.clear()
+    send_advisory_triage_event_email(setup["advisory"].pk, "advisory_triage_submitted")
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert shadow.email in emailed
+
+
+@pytest.mark.django_db
+def test_triage_event_respects_global_opt_out(setup):
+    from notifications.tasks import send_advisory_triage_event_email
+
+    # member opts out; other keeps the default (on).
+    NotificationPreference.objects.create(user=setup["member"], on_triage_event=False)
+    mail.outbox.clear()
+    send_advisory_triage_event_email(setup["advisory"].pk, "advisory_triage_promoted")
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert setup["member"].email not in emailed
+    assert setup["other"].email in emailed
+
+
+@pytest.mark.django_db
+def test_flagged_for_routing_excludes_project_shadows(setup):
+    """The admins-only routing-flag event never reaches project shadows."""
+    from notifications.tasks import send_advisory_triage_event_email
+
+    shadow = _shadow_member(setup["project"])
+    mail.outbox.clear()
+    send_advisory_triage_event_email(setup["advisory"].pk, "advisory_flagged_for_routing")
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert shadow.email not in emailed
+
+
+@pytest.mark.django_db
+def test_soft_removed_shadow_not_reached_by_triage_event(setup):
+    from django.utils import timezone
+
+    from notifications.tasks import send_advisory_triage_event_email
+    from projects.models import SecurityTeamRosterEntry
+
+    shadow = _shadow_member(setup["project"])
+    SecurityTeamRosterEntry.objects.filter(user=shadow).update(soft_removed_at=timezone.now())
+    mail.outbox.clear()
+    send_advisory_triage_event_email(setup["advisory"].pk, "advisory_triage_submitted")
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert shadow.email not in emailed

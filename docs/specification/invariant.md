@@ -1136,11 +1136,15 @@ access; or the login full-replace silently wipes roster-driven membership.
 (`SecurityTeamRosterEntry`, `soft_removed_at IS NULL`, linked user
 `is_provisioned=True`) are eligible notification recipients **only for their own
 project's advisories**, with the *default*-preference set of a security-team member
-— `advisory_created`, the lifecycle events, and `@`-mentions (including a `@team`
+— `advisory_created`, the lifecycle events, the project-team **triage events**
+(submitted/promoted/dismissed/reassigned/reopened; gated by
+`NotificationPreference.on_triage_event`), and `@`-mentions (including a `@team`
 mention of the project's security group). They are always dropped from **internal**
 comments by the `can_see_internal_comment` floor, and (with default preferences) do
-not receive every ordinary comment. Roster membership authorizes only this email
-channel; it confers no in-app view/owner access ([INV-OIDC-5](#inv-oidc-5)).
+not receive every ordinary comment. The admins-only routing-flag event is never
+sent to shadows (they are project-team members, not admins). Roster membership
+authorizes only this email channel; it confers no in-app view/owner access
+([INV-OIDC-5](#inv-oidc-5)).
 
 **Rationale.** Reaching the full security team — including members who have never
 logged in — is the whole point of the roster ([TODO/INV-OIDC-5](#inv-oidc-5)). The

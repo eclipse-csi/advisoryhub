@@ -96,7 +96,7 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
     comment_mode (handled by ``filter_for_event``'s 'mention' branch).
     """
     from comments.models import AdvisoryComment
-    from comments.services import resolve_mentioned_users
+    from comments.services import resolve_mention_recipient_ids
 
     try:
         advisory = Advisory.objects.get(pk=advisory_id)
@@ -104,8 +104,8 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
     except (Advisory.DoesNotExist, AdvisoryComment.DoesNotExist):
         return 0
 
-    mentioned = resolve_mentioned_users(comment.body)
-    mentioned_ids = [u.pk for u in mentioned]
+    # Includes direct @user mentions and the members of any @group mention.
+    mentioned_ids = sorted(resolve_mention_recipient_ids(comment.body))
     internal = comment.is_internal
 
     # Two-pass: first send "mention" notifications (override the comment_mode),
@@ -148,6 +148,48 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
             sent += 1
         except Exception:  # pragma: no cover
             log.exception("Failed to send comment notification to %s", user.email)
+    return sent
+
+
+@shared_task(name="notifications.send_comment_mention_email")
+def send_comment_mention_email(advisory_id: int, comment_id: int, recipient_ids: list[int]) -> int:
+    """Notify a *specific* set of users newly @-mentioned by a comment **edit**.
+
+    The edit view computes the delta (mentions added by this edit) and passes
+    those user ids here. They are still routed through
+    ``filter_for_event(event="mention", …)`` so visibility is re-checked at
+    send time (INV-AUTH-1): a passed id whose access was revoked since the
+    edit — or who cannot see an internal comment — is dropped. Only the
+    ``comment_mention`` template is sent (no second "comment" pass): unchanged
+    watchers were already told about the comment when it was first posted.
+    """
+    from comments.models import AdvisoryComment
+
+    if not recipient_ids:
+        return 0
+    try:
+        advisory = Advisory.objects.get(pk=advisory_id)
+        comment = AdvisoryComment.objects.get(pk=comment_id)
+    except (Advisory.DoesNotExist, AdvisoryComment.DoesNotExist):
+        return 0
+
+    sent = 0
+    for user in filter_for_event(
+        advisory,
+        event="mention",
+        mentioned_user_ids=list(recipient_ids),
+        internal=comment.is_internal,
+    ):
+        try:
+            _send_one(
+                recipient=user,
+                subject=f"[{advisory.advisory_id}] you were mentioned",
+                template="comment_mention",
+                context={"advisory": advisory, "comment": comment, "url": _advisory_url(advisory)},
+            )
+            sent += 1
+        except Exception:  # pragma: no cover
+            log.exception("Failed to send mention notification to %s", user.email)
     return sent
 
 

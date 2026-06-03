@@ -12,8 +12,10 @@ import re
 from collections.abc import Iterable
 
 import bleach
+from django.conf import settings
+from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Count, Max, Q
 from django.utils import timezone
 from markdown_it import MarkdownIt
 
@@ -78,6 +80,7 @@ def render_markdown(body: str) -> str:
         lambda m: _augment_anchor(m.group(1)),
         cleaned,
     )
+    cleaned = _highlight_mentions(cleaned)
     return cleaned
 
 
@@ -85,6 +88,50 @@ def _augment_anchor(attrs: str) -> str:
     if "rel=" in attrs.lower():
         return f"<a {attrs}>"
     return f'<a {attrs} rel="nofollow noopener">'
+
+
+# Matches the opening of a <code>/<pre> run and its close, so the mention
+# highlighter can leave verbatim code untouched.
+_CODE_OPEN_RE = re.compile(r"<(?:code|pre)\b", re.IGNORECASE)
+_CODE_CLOSE_RE = re.compile(r"</(?:code|pre)\s*>", re.IGNORECASE)
+
+
+def _highlight_mentions(html: str) -> str:
+    """Wrap syntactic ``@handle`` tokens in ``<span class="mention">``.
+
+    Runs *after* sanitisation on the already-cleaned, HTML-escaped fragment,
+    so the only ``<span>`` present is the fixed-class one we emit here — we
+    never have to widen the bleach allowlist (strictly safer than letting the
+    body author write spans). Highlighting is **syntactic**: it does not hit
+    the DB to check whether a handle resolves, because the timeline renders
+    many comments and a per-comment lookup would be N queries. Tokens inside
+    ``<code>``/``<pre>`` runs and inside tag markup are left alone. The handle
+    character class contains no HTML-special characters, so inserting it raw is
+    safe. (A full-email mention that ``linkify`` already turned into a mailto
+    link won't chip — an accepted cosmetic edge; the completion menu inserts
+    the local-part form, which chips cleanly.)
+    """
+    if "@" not in html:
+        return html
+    parts = re.split(r"(<[^>]+>)", html)
+    depth = 0
+    out: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        if part.startswith("<"):
+            if _CODE_OPEN_RE.match(part):
+                depth += 1
+            elif _CODE_CLOSE_RE.match(part):
+                depth = max(0, depth - 1)
+            out.append(part)
+        elif depth == 0:
+            out.append(
+                _MENTION_RE.sub(lambda m: f'<span class="mention">@{m.group(1)}</span>', part)
+            )
+        else:
+            out.append(part)
+    return "".join(out)
 
 
 # ---------------------------------------------------------------------------
@@ -112,8 +159,6 @@ def resolve_mentioned_users(body: str) -> list[User]:
     handles = extract_mentions(body)
     if not handles:
         return []
-    from django.db.models import Q
-
     full = {h for h in handles if "@" in h}
     locals_ = {h for h in handles if "@" not in h}
     q = Q()
@@ -124,6 +169,104 @@ def resolve_mentioned_users(body: str) -> list[User]:
     if not q.children:
         return []
     return list(User.objects.filter(q).distinct())
+
+
+def resolve_mentioned_groups(body: str) -> list[Group]:
+    """Resolve ``@group`` mentions in body to :class:`Group` instances.
+
+    A group is matched by exact, case-insensitive name. OIDC sync strips the
+    ``@domain`` suffix from group names (``accounts.auth``), so a group name
+    never contains ``@`` — only handles without ``@`` are candidates here.
+    Duplicates and unresolvable handles are dropped silently.
+    """
+    handles = {h for h in extract_mentions(body) if "@" not in h}
+    if not handles:
+        return []
+    q = Q()
+    for handle in handles:
+        q |= Q(name__iexact=handle)
+    return list(Group.objects.filter(q).distinct())
+
+
+def resolve_mention_recipient_ids(body: str) -> set[int]:
+    """All user ids mentioned in ``body`` — directly (``@user``) or via a
+    mentioned group (``@group`` expands to its *current* members).
+
+    Group expansion goes strictly through Django group membership
+    (``user.groups``); the comment layer never consults an external roster, so
+    the day a roster sync populates those groups this Just Works. Visibility is
+    deliberately **not** enforced here — callers route the result through
+    :func:`notifications.recipients.filter_for_event`, which re-checks
+    ``can_view`` at send time (INV-AUTH-1). A bare local-part that matches more
+    than one user is fine: every match is a candidate, and the send-time floor
+    keeps only those who can actually see the advisory.
+    """
+    ids = {u.pk for u in resolve_mentioned_users(body)}
+    groups = resolve_mentioned_groups(body)
+    if groups:
+        ids.update(User.objects.filter(groups__in=groups).values_list("pk", flat=True))
+    return ids
+
+
+def mention_candidates(advisory: Advisory) -> list[dict]:
+    """Build the ``@``-completion payload for ``advisory``.
+
+    Scope is deliberately narrow (the explicit "not everyone in the DB"
+    requirement): only the groups that grant visibility on *this* advisory —
+    the project security team, any group with an access grant, and the global
+    admin group — plus the users who currently pass ``can_view`` (direct
+    grantees, team & admin members). Reuses
+    :func:`notifications.recipients.candidate_users_for_advisory` so the user
+    set is exactly the notification candidate set.
+
+    Each item is ``{"kind": "group"|"user", "handle": str, "label": str}``. A
+    user handle is the email local-part (chips cleanly and resolves via
+    :func:`resolve_mentioned_users`); a group handle is its bare name.
+    """
+    from access.models import AdvisoryAccessGrant, PrincipalType
+    from notifications.recipients import candidate_users_for_advisory
+
+    grantee_group_ids = list(
+        AdvisoryAccessGrant.objects.filter(
+            advisory=advisory, principal_type=PrincipalType.GROUP
+        ).values_list("principal_id", flat=True)
+    )
+    group_q = Q(pk=advisory.project.security_team_id) | Q(name=settings.OIDC_ADMIN_GROUP)
+    if grantee_group_ids:
+        group_q |= Q(pk__in=grantee_group_ids)
+    groups = (
+        Group.objects.filter(group_q)
+        .distinct()
+        .annotate(member_count=Count("user", filter=Q(user__is_active=True)))
+        .order_by("name")
+    )
+
+    items: list[dict] = []
+    for group in groups:
+        plural = "" if group.member_count == 1 else "s"
+        items.append(
+            {
+                "kind": "group",
+                "handle": group.name,
+                "label": f"@{group.name} ({group.member_count} member{plural})",
+            }
+        )
+
+    users = sorted(
+        candidate_users_for_advisory(advisory),
+        key=lambda u: u.display_label().lower(),
+    )
+    for user in users:
+        local_part = (user.email or "").split("@", 1)[0]
+        has_name = bool((user.display_name or "").strip())
+        items.append(
+            {
+                "kind": "user",
+                "handle": local_part,
+                "label": f"{user.display_label()} ({user.email})" if has_name else user.email,
+            }
+        )
+    return items
 
 
 # ---------------------------------------------------------------------------

@@ -117,6 +117,14 @@ def _queue_comment_email(advisory_id: int, comment_id: int) -> None:
     safe_enqueue(send_comment_email, advisory_id, comment_id)
 
 
+def _queue_comment_mention_email(
+    advisory_id: int, comment_id: int, recipient_ids: list[int]
+) -> None:
+    from notifications.tasks import send_comment_mention_email
+
+    safe_enqueue(send_comment_mention_email, advisory_id, comment_id, recipient_ids)
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def comment_edit(request, advisory_id: str, comment_id: int):
@@ -137,7 +145,25 @@ def comment_edit(request, advisory_id: str, comment_id: int):
     if request.method == "POST":
         form = CommentEditForm(request.POST, instance=comment)
         if form.is_valid():
-            services.edit_comment(comment, by=request.user, new_body=form.cleaned_data["body"])
+            new_body = form.cleaned_data["body"]
+            # The pre-edit body must come from the DB: validating the ModelForm
+            # may have already mutated ``comment.body`` in memory, so it is no
+            # longer a reliable source of the previous text.
+            old_body = AdvisoryComment.objects.values_list("body", flat=True).get(pk=comment.pk)
+            with transaction.atomic():
+                services.edit_comment(comment, by=request.user, new_body=new_body)
+                # Notify only the recipients this edit *adds* — unchanged
+                # mentions were already told when the comment was first posted.
+                added = services.resolve_mention_recipient_ids(
+                    new_body
+                ) - services.resolve_mention_recipient_ids(old_body)
+                if added:
+                    advisory_pk = comment.advisory.pk
+                    comment_pk = comment.pk
+                    ids = sorted(added)
+                    transaction.on_commit(
+                        lambda: _queue_comment_mention_email(advisory_pk, comment_pk, ids)
+                    )
             return render(
                 request,
                 "comments/_comment.html",

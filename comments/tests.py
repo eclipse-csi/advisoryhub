@@ -92,6 +92,98 @@ def test_resolve_mentioned_users_by_full_email(make_user):
     assert services.resolve_mentioned_users("hi @alice@example.org") == [alice]
 
 
+# ---- Group mentions + recipient ids ---------------------------------------
+
+
+@pytest.mark.django_db
+def test_resolve_mentioned_groups_by_name():
+    from django.contrib.auth.models import Group
+
+    group = Group.objects.create(name="sec-team")
+    Group.objects.create(name="other-team")
+    assert services.resolve_mentioned_groups("ping @sec-team please") == [group]
+
+
+@pytest.mark.django_db
+def test_resolve_mentioned_groups_ignores_full_email_handle():
+    from django.contrib.auth.models import Group
+
+    Group.objects.create(name="sec-team")
+    # A handle containing "@" is a user email, never a group name.
+    assert services.resolve_mentioned_groups("ping @alice@example.org") == []
+
+
+@pytest.mark.django_db
+def test_resolve_mention_recipient_ids_unions_users_and_group_members(make_user):
+    from django.contrib.auth.models import Group
+
+    group = Group.objects.create(name="sec-team")
+    gm1 = make_user(email="gm1@example.org")
+    gm2 = make_user(email="gm2@example.org")
+    gm1.groups.add(group)
+    gm2.groups.add(group)
+    alice = make_user(email="alice@example.org")
+    ids = services.resolve_mention_recipient_ids("hi @alice and @sec-team")
+    assert ids == {alice.pk, gm1.pk, gm2.pk}
+
+
+@pytest.mark.django_db
+def test_resolve_mention_recipient_ids_dedupes_named_group_member(make_user):
+    from django.contrib.auth.models import Group
+
+    group = Group.objects.create(name="sec-team")
+    alice = make_user(email="alice@example.org")
+    alice.groups.add(group)
+    # Mentioned both directly and via the group — still one id.
+    assert services.resolve_mention_recipient_ids("@alice @sec-team") == {alice.pk}
+
+
+# ---- Mention completion candidates ----------------------------------------
+
+
+@pytest.mark.django_db
+def test_mention_candidates_scoped_to_advisory_visibility(setup, make_user):
+    grantee = make_user(email="grantee@example.org")
+    grant_to_user(setup["advisory"], grantee, AccessPermission.VIEWER, by=setup["member"])
+    make_user(email="stranger@example.org")  # no access of any kind
+
+    items = services.mention_candidates(setup["advisory"])
+    user_handles = {i["handle"] for i in items if i["kind"] == "user"}
+    group_handles = {i["handle"] for i in items if i["kind"] == "group"}
+
+    assert "m" in user_handles  # security-team member (m@example.org)
+    assert "grantee" in user_handles  # direct grantee
+    assert "stranger" not in user_handles  # never offered — no visibility
+    # The project's security team group is offered for @group completion.
+    assert setup["advisory"].project.security_team.name in group_handles
+
+
+# ---- Mention chip rendering -----------------------------------------------
+
+
+def test_render_markdown_wraps_mentions_in_chips():
+    out = services.render_markdown("hi @alice and @sec-team")
+    assert '<span class="mention">@alice</span>' in out
+    assert '<span class="mention">@sec-team</span>' in out
+
+
+def test_render_markdown_leaves_emails_unwrapped():
+    # An e-mail address in prose must not be turned into a mention chip.
+    out = services.render_markdown("contact alice@example.org for info")
+    assert '<span class="mention">' not in out
+
+
+def test_render_markdown_does_not_chip_inside_code():
+    out = services.render_markdown("use `@alice` literally")
+    assert "<code>@alice</code>" in out
+    assert '<span class="mention">@alice</span>' not in out
+
+
+def test_render_markdown_mention_chip_is_xss_safe():
+    out = services.render_markdown("@<script>alert(1)</script>")
+    assert "<script" not in out.lower()
+
+
 # ---- Comment writes -------------------------------------------------------
 
 
@@ -120,6 +212,48 @@ def test_edit_own_comment_records_audit(setup):
     assert c.body == "edited"
     assert c.edited_at is not None
     assert AuditLogEntry.objects.filter(action=Action.COMMENT_EDITED).exists()
+
+
+# ---- Edit-adds-mention notification (view wiring) -------------------------
+
+
+# ``transaction=True``: the edit view enqueues the mention email via
+# ``transaction.on_commit``, which only fires on a *real* commit — under the
+# default (savepoint-wrapped) test transaction it would never run.
+@pytest.mark.django_db(transaction=True)
+def test_comment_edit_adding_mention_notifies_only_new(setup, make_user, client):
+    from django.core import mail
+
+    alice = make_user(email="alicia@example.org")
+    bob = make_user(email="bob@example.org")
+    grant_to_user(setup["advisory"], alice, AccessPermission.VIEWER, by=setup["member"])
+    grant_to_user(setup["advisory"], bob, AccessPermission.VIEWER, by=setup["member"])
+    comment = services.add_comment(setup["advisory"], author=setup["member"], body="hi @alicia")
+
+    client.force_login(setup["member"])
+    mail.outbox.clear()
+    url = reverse("comments:edit", args=[setup["advisory"].advisory_id, comment.pk])
+    resp = client.post(url, {"body": "hi @alicia and @bob"})
+    assert resp.status_code == 200
+
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert "bob@example.org" in emailed  # newly added mention is notified
+    assert "alicia@example.org" not in emailed  # unchanged mention is not
+
+
+@pytest.mark.django_db(transaction=True)
+def test_comment_edit_without_new_mention_sends_nothing(setup, make_user, client):
+    from django.core import mail
+
+    alice = make_user(email="alicia@example.org")
+    grant_to_user(setup["advisory"], alice, AccessPermission.VIEWER, by=setup["member"])
+    comment = services.add_comment(setup["advisory"], author=setup["member"], body="hi @alicia")
+
+    client.force_login(setup["member"])
+    mail.outbox.clear()
+    url = reverse("comments:edit", args=[setup["advisory"].advisory_id, comment.pk])
+    client.post(url, {"body": "hi @alicia, updated wording"})
+    assert mail.outbox == []
 
 
 # ---- Edit history (CommentVersion) ----------------------------------------

@@ -13,11 +13,19 @@ class CommentForm(forms.ModelForm):
     class Meta:
         model = AdvisoryComment
         fields = ["body"]
-        widgets = {"body": forms.Textarea(attrs={"rows": 4, "placeholder": "Write a comment…"})}
+        widgets = {
+            "body": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "placeholder": "Write a comment…",
+                    "data-mention-input": "1",
+                }
+            )
+        }
 
 
 class CommentEditForm(forms.ModelForm):
     class Meta:
         model = AdvisoryComment
         fields = ["body"]
-        widgets = {"body": forms.Textarea(attrs={"rows": 4})}
+        widgets = {"body": forms.Textarea(attrs={"rows": 4, "data-mention-input": "1"})}

@@ -171,11 +171,20 @@ def advisory_detail(request, advisory_id: str):
         0,
     )
 
+    # @-mention completion payload — only built for users who can comment (the
+    # menu reveals the advisory's roster, which a commenter can already see).
+    from comments.services import mention_candidates as _mention_candidates
+
+    mention_candidates = (
+        _mention_candidates(advisory) if perms.can_comment(request.user, advisory) else []
+    )
+
     return render(
         request,
         "advisories/detail.html",
         {
             "advisory": advisory,
+            "mention_candidates": mention_candidates,
             "can_edit": perms.can_edit(request.user, advisory),
             "can_dismiss": perms.can_dismiss(request.user, advisory),
             "can_reopen": perms.can_reopen(request.user, advisory),

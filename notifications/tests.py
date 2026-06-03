@@ -286,6 +286,83 @@ def test_revoked_user_does_not_get_notified_even_with_override(setup, make_user)
 
 
 @pytest.mark.django_db
+def test_group_mention_emails_visible_members(setup, make_user):
+    """@group expands to its members; those with visibility get a mention."""
+    from django.contrib.auth.models import Group
+
+    from access.services import grant_to_group
+
+    group = Group.objects.create(name="responders")
+    m1 = make_user(email="m1@example.org")
+    m2 = make_user(email="m2@example.org")
+    m1.groups.add(group)
+    m2.groups.add(group)
+    grant_to_group(setup["advisory"], group, AccessPermission.VIEWER, by=setup["member"])
+
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="ping @responders please look"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert "m1@example.org" in emailed
+    assert "m2@example.org" in emailed
+
+
+@pytest.mark.django_db
+def test_group_mention_skips_member_without_visibility(setup, make_user):
+    """Membership alone grants nothing — a group with no access path to the
+    advisory does not get its members notified (mention can't elevate)."""
+    from django.contrib.auth.models import Group
+
+    group = Group.objects.create(name="randoms")
+    outsider = make_user(email="outsider@example.org")
+    outsider.groups.add(group)
+
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="ping @randoms"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    assert not any("outsider@example.org" in m.to for m in mail.outbox)
+
+
+@pytest.mark.django_db
+def test_send_comment_mention_email_restricts_and_rechecks(setup, make_user):
+    """The edit-path task emails only the passed recipient ids, and still
+    re-checks ``can_view`` at send time (INV-AUTH-1)."""
+    from notifications.tasks import send_comment_mention_email
+
+    alice = make_user(email="alice@example.org")
+    revoked = make_user(email="revoked@example.org")
+    grant_to_user(setup["advisory"], alice, AccessPermission.VIEWER, by=setup["member"])
+    grant = grant_to_user(setup["advisory"], revoked, AccessPermission.VIEWER, by=setup["member"])
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="hi @alice @revoked"
+    )
+    grant.delete()  # revoked loses access between the edit and the send
+
+    mail.outbox.clear()
+    sent = send_comment_mention_email(setup["advisory"].pk, comment.pk, [alice.pk, revoked.pk])
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert "alice@example.org" in emailed
+    assert "revoked@example.org" not in emailed
+    assert sent == 1
+
+
+@pytest.mark.django_db
+def test_send_comment_mention_email_noop_for_empty_recipients(setup):
+    from notifications.tasks import send_comment_mention_email
+
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="no mentions here"
+    )
+    mail.outbox.clear()
+    assert send_comment_mention_email(setup["advisory"].pk, comment.pk, []) == 0
+    assert mail.outbox == []
+
+
+@pytest.mark.django_db
 def test_send_invitation_email_sends_to_invited_address(setup):
     from access.models import PendingInvitation, Permission
 

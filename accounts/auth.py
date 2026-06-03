@@ -74,7 +74,16 @@ class AdvisoryHubOIDCBackend(OIDCAuthenticationBackend):
         user.last_name = claims.get("family_name", "") or user.last_name
         if not user.email and claims.get("email"):
             user.email = claims["email"]
+        # First login of a pre-provisioned shadow user (security-team roster
+        # sync): clear the flag so it is no longer treated as notification-only.
+        # Authorization now comes entirely from the OIDC group claim synced
+        # below — roster membership never confers access (INV-OIDC-5).
+        was_provisioned = user.is_provisioned
+        if was_provisioned:
+            user.is_provisioned = False
         user.save()
+        if was_provisioned:
+            self._link_security_roster(user)
         sync_groups_from_claims(user, claims)
         # OIDC admin group is the source of truth for Django admin access.
         # Re-evaluate on every login so a demotion in the IdP cleanly revokes
@@ -84,6 +93,36 @@ class AdvisoryHubOIDCBackend(OIDCAuthenticationBackend):
             user.is_staff = desired
             user.is_superuser = desired
             user.save(update_fields=["is_staff", "is_superuser"])
+
+    def _link_security_roster(self, user: User) -> None:
+        """Promote a shadow user to a real one on their first login.
+
+        The roster sync already points the member's ``SecurityTeamRosterEntry``
+        rows at this (formerly shadow) user, so there is usually nothing to
+        re-link; we additionally adopt any *orphaned* active rows for this email
+        (``user=None`` after a prior hard-delete) for robustness, then audit the
+        one-time promotion. Emits a durable ``SHADOW_USER_LINKED`` entry so the
+        shadow→real transition is in the ledger; no PII beyond the actor FK.
+        """
+        from audit.models import Action
+        from audit.services import record
+        from projects.models import SecurityTeamRosterEntry
+
+        SecurityTeamRosterEntry.objects.filter(
+            user__isnull=True, email__iexact=user.email, soft_removed_at__isnull=True
+        ).update(user=user)
+        projects = sorted(
+            set(
+                SecurityTeamRosterEntry.objects.filter(
+                    user=user, soft_removed_at__isnull=True
+                ).values_list("project__slug", flat=True)
+            )
+        )
+        record(
+            action=Action.SHADOW_USER_LINKED,
+            actor=user,
+            metadata={"projects": projects},
+        )
 
     def _post_login_hooks(self, user: User, claims: dict[str, Any]) -> None:
         # Redeem any pending invitations addressed to this user's email.

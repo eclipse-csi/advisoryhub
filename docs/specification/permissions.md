@@ -62,6 +62,7 @@ happens in the IdP and propagates at next login.
 | **Triage reporter (authenticated)** | OIDC session at submission time | Auto-granted `viewer` on the advisory they filed ([INV-INTAKE-3]). |
 | **Triage reporter (anonymous)** | None retained | No link is recorded; the report cannot later be claimed ([INV-INTAKE-2]). |
 | **Project security-team member** | Member of `Project.security_team` (a Django `Group`) | Derived `owner` on every advisory under that project. |
+| **Shadow roster member (pre-login)** | `User.is_provisioned=True`, linked to an active `SecurityTeamRosterEntry` | **No authority at all.** Notification-only: reachable by their project's default notifications/`@team` mentions; not a member of any group; cannot act. Promoted to a real user on first login ([INV-OIDC-5], [INV-ROSTER-1]). |
 | **Global admin / reviewer** | Member of `OIDC_ADMIN_GROUP` | Derived `owner` on every advisory and exclusive reviewer; sole holder of CNA-side and integration-admin powers. |
 | **Celery worker** | Runs publication / notification / GHSA / CVE tasks | No ambient authority — every task acts on behalf of a stored `created_by` user and re-checks the relevant predicate at execution time. |
 
@@ -113,6 +114,29 @@ or project-security-team membership — both managed in the IdP.
   ([INV-ACCESS-3]; default lifetime 14 days).
 - Every create / update / revoke / invite / redeem emits an audit entry
   ([INV-ACCESS-5]).
+
+### Shadow (pre-login) security-team members
+
+To make `@team` mentions and team notifications reach security-team members
+who have **never logged in**, a scheduled sync mirrors each project's Eclipse
+security team (`projects.services.sync_security_team_roster`, from the
+authenticated Eclipse API) into `SecurityTeamRosterEntry` rows and
+pre-provisions a *shadow* `User` (`is_provisioned=True`) per member.
+
+A shadow user is **notify-only**: it is not a member of any group, resolves to
+no permission, and cannot act. Its sole effect is notification reach — it
+receives the security-team member's *default* notification set **for its own
+project only**, and is always dropped from internal comments
+([INV-ROSTER-1]). On first OIDC login the shadow is linked by email,
+`is_provisioned` clears, and access then comes entirely from the OIDC group
+claim ([INV-OIDC-5]) — the roster never grants access.
+
+Because notification emails embed advisory/comment content, this is a
+deliberate decision to disclose that content to an email sourced from the
+authenticated Eclipse security-team roster before the recipient has logged in.
+That trust boundary is the project's own security team (the same audience a
+private security mailing list would reach); internal comments stay
+collaborator+ only.
 
 ---
 

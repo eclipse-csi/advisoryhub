@@ -219,12 +219,18 @@ def mention_candidates(advisory: Advisory) -> list[dict]:
     :func:`notifications.recipients.candidate_users_for_advisory` so the user
     set is exactly the notification candidate set.
 
+    Active roster **shadow** members (security-team members who have never
+    logged in) are included as user candidates too, so a not-yet-logged-in
+    responder is discoverable — not only via ``@team``. They are absent from
+    ``candidate_users_for_advisory`` (no in-app access), so they are added
+    explicitly and deduped.
+
     Each item is ``{"kind": "group"|"user", "handle": str, "label": str}``. A
     user handle is the email local-part (chips cleanly and resolves via
     :func:`resolve_mentioned_users`); a group handle is its bare name.
     """
     from access.models import AdvisoryAccessGrant, PrincipalType
-    from notifications.recipients import candidate_users_for_advisory
+    from notifications.recipients import _roster_shadow_members, candidate_users_for_advisory
 
     grantee_group_ids = list(
         AdvisoryAccessGrant.objects.filter(
@@ -252,10 +258,10 @@ def mention_candidates(advisory: Advisory) -> list[dict]:
             }
         )
 
-    users = sorted(
-        candidate_users_for_advisory(advisory),
-        key=lambda u: u.display_label().lower(),
-    )
+    by_pk = {u.pk: u for u in candidate_users_for_advisory(advisory)}
+    for shadow in _roster_shadow_members(advisory):
+        by_pk.setdefault(shadow.pk, shadow)
+    users = sorted(by_pk.values(), key=lambda u: u.display_label().lower())
     for user in users:
         local_part = (user.email or "").split("@", 1)[0]
         has_name = bool((user.display_name or "").strip())

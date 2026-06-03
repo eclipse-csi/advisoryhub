@@ -80,6 +80,8 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-OIDC-2](#inv-oidc-2) | Authorization always reads from the DB groups mirror, never from request input. | Identity | Critical |
 | [INV-OIDC-3](#inv-oidc-3) | `is_staff` / `is_superuser` track admin-group membership on each login. | Identity | High |
 | [INV-OIDC-4](#inv-oidc-4) | OIDC group claim values are filtered to SPN form before mirroring. | Identity | Medium |
+| [INV-OIDC-5](#inv-oidc-5) | Provisioned (shadow) roster users hold no authorization; roster sync never writes `user.groups`. | Identity | High |
+| [INV-ROSTER-1](#inv-roster-1) | Shadow roster members get the team's default notifications for their project only, never internal comments; reach is not access. | Notifications | Medium |
 | [INV-PUB-1](#inv-pub-1) | Each publication clone uses a fresh `TemporaryDirectory`. | Publication | Critical |
 | [INV-PUB-2](#inv-pub-2) | SSH and token authentication are mutually exclusive. | Publication | Medium |
 | [INV-PUB-3](#inv-pub-3) | Publication clones are shallow (`depth=1`). | Publication | Medium |
@@ -425,7 +427,9 @@ a function with a single answer.
 
 **Statement.** The `owner` role is not stored. It derives from (a) global admin-group
 membership, or (b) project security-team membership. No `AdvisoryAccessGrant` row may
-carry `permission="owner"`.
+carry `permission="owner"`. A pre-provisioned shadow roster user
+([INV-OIDC-5](#inv-oidc-5)) is explicitly *not* an owner — its notification reach
+([INV-ROSTER-1](#inv-roster-1)) is not an authorization grant.
 
 **Rationale.** Owner is the most privileged role; if it were grantable, any user with
 grant rights could escalate themselves or others, defeating the admin/security-team
@@ -1006,7 +1010,9 @@ land with admins for re-routing, not in some default team's queue.
 
 **Statement.** `AdvisoryHubOIDCBackend.update_user` calls `sync_groups_from_claims`
 on every successful login, **replacing** `user.groups` with the set derived from
-the configured OIDC claim. There is no group caching across logins.
+the configured OIDC claim. There is no group caching across logins. The login
+full-replace is the *sole* writer of `user.groups`; the security-team roster sync
+([INV-OIDC-5](#inv-oidc-5)) deliberately never touches it, so the two never collide.
 
 **Rationale.** If a user is removed from a group in the IdP, the local mirror must
 reflect that on the very next login. Cached or sticky group membership is a
@@ -1085,6 +1091,75 @@ filter prevents duplicate `Group` rows that would never match
 **Tests.** Accounts test suite.
 
 **Related.** [INV-OIDC-1](#inv-oidc-1).
+
+---
+
+<a id="inv-oidc-5"></a>
+### INV-OIDC-5 — Provisioned (shadow) users carry no authorization   [High]
+
+**Statement.** A `User` with `is_provisioned=True` is a *shadow* account
+pre-provisioned by the security-team roster sync
+(`projects.services.sync_security_team_roster`) for a member who has never logged
+in. A shadow user is **never** added to any `auth.Group`, never resolves to any
+advisory permission, and is excluded from owner/member displays. The roster sync
+never writes `user.groups`. The flag is cleared exactly once, on the member's first
+OIDC login (`accounts.auth.AdvisoryHubOIDCBackend._apply_claims`), after which
+authorization is governed entirely by the OIDC group claim
+([INV-OIDC-1](#inv-oidc-1)) — never by the roster.
+
+**Rationale.** The roster exists so security-team members are reachable by
+notification before their first login (see [INV-ROSTER-1](#inv-roster-1)). Coupling
+that reach to group membership would silently grant `owner` to people who never
+authenticated, violating "owner is derived" ([INV-AUTH-3](#inv-auth-3)). Keeping
+shadows out of every group makes "no access" true by construction and sidesteps the
+login full-replace ([INV-OIDC-1](#inv-oidc-1)) ever fighting the sync.
+
+**Enforced in.**
+- `projects/services.py` — `sync_security_team_roster` / `_provision_or_link_shadow`
+  (creates shadows with no group membership).
+- `accounts/auth.py` — `_apply_claims` clears `is_provisioned` on first login.
+
+**Violation impact.** A never-authenticated identity gains `owner`/`collaborator`
+access; or the login full-replace silently wipes roster-driven membership.
+
+**Tests.** `projects/test_roster_sync.py`, `accounts/test_roster_linking.py`.
+
+**Related.** [INV-OIDC-1](#inv-oidc-1), [INV-AUTH-3](#inv-auth-3),
+[INV-ROSTER-1](#inv-roster-1).
+
+---
+
+<a id="inv-roster-1"></a>
+### INV-ROSTER-1 — Roster notification reach is default-set, per-project, never internal   [Medium]
+
+**Statement.** Active roster shadow members of a project
+(`SecurityTeamRosterEntry`, `soft_removed_at IS NULL`, linked user
+`is_provisioned=True`) are eligible notification recipients **only for their own
+project's advisories**, with the *default*-preference set of a security-team member
+— `advisory_created`, the lifecycle events, and `@`-mentions (including a `@team`
+mention of the project's security group). They are always dropped from **internal**
+comments by the `can_see_internal_comment` floor, and (with default preferences) do
+not receive every ordinary comment. Roster membership authorizes only this email
+channel; it confers no in-app view/owner access ([INV-OIDC-5](#inv-oidc-5)).
+
+**Rationale.** Reaching the full security team — including members who have never
+logged in — is the whole point of the roster ([TODO/INV-OIDC-5](#inv-oidc-5)). The
+mention/notification email contains advisory content, so reach is deliberately a
+disclosure to a rostered Eclipse-security-team email; it is bounded to that team's
+own project and excludes internal comments, which remain collaborator+ only.
+
+**Enforced in.**
+- `notifications/recipients.py` — `_roster_shadow_members` + the `filter_for_event`
+  branches (mention path gated on `mentioned_group_ids`; internal floor applies).
+- `notifications/tasks.py` / `comments/views.py` — thread `mentioned_group_ids`.
+
+**Violation impact.** Internal-comment content leaks to a never-logged-in email, or
+a shadow is notified about another project's advisory.
+
+**Tests.** `notifications/tests.py` (shadow-reach + leak guards).
+
+**Related.** [INV-OIDC-5](#inv-oidc-5), [INV-AUTH-1](#inv-auth-1),
+[INV-PRIVACY-2](#inv-privacy-2).
 
 ---
 

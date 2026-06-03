@@ -12,7 +12,7 @@ from .cves import (
 from .groups import group_detail, group_list
 from .inbox import inbox
 from .maintenance import maintenance
-from .projects import project_create, project_edit, project_list
+from .projects import project_create, project_edit, project_list, project_sync_roster
 from .publications import publications
 from .users import user_detail, user_list
 
@@ -36,6 +36,7 @@ __all__ = [
     "project_create",
     "project_edit",
     "project_list",
+    "project_sync_roster",
     "publications",
     "user_detail",
     "user_list",

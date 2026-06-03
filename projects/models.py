@@ -60,6 +60,13 @@ class Project(models.Model):
     last_pmi_sync_at = models.DateTimeField(null=True, blank=True)
     last_pmi_sync_error = models.TextField(blank=True)
 
+    # Security-team roster sync state (see ``SecurityTeamRosterEntry`` and
+    # ``projects.services.sync_security_team_roster``). Same "stale banner"
+    # semantics as the PMI repo-mirror pair above, but for the roster sync
+    # that pre-provisions shadow users from the authenticated Eclipse API.
+    last_roster_sync_at = models.DateTimeField(null=True, blank=True)
+    last_roster_sync_error = models.TextField(blank=True)
+
     class Meta:
         ordering = ["name"]
 
@@ -107,6 +114,70 @@ class ProjectGitHubRepository(models.Model):
 
     def __str__(self) -> str:
         return f"{self.owner}/{self.name}"
+
+    @property
+    def is_active(self) -> bool:
+        return self.soft_removed_at is None
+
+
+class SecurityTeamRosterEntry(models.Model):
+    """A member of a Project's Eclipse security team, mirrored from PMI.
+
+    The authenticated Eclipse Foundation API is the source-of-truth for who
+    is on a project's security team (``individual_members ∪ committers/leads``);
+    AdvisoryHub mirrors that roster locally — exactly as
+    :class:`ProjectGitHubRepository` mirrors the repo list — so notifications
+    can reach members who have **never logged in** to AdvisoryHub.
+
+    Each entry links to a ``User`` row (its ``user`` FK). For a member who has
+    never logged in, that row is a *shadow* account (``User.is_provisioned`` =
+    True, unusable password, **not** a member of any group → no authorization).
+    On the member's first OIDC login the existing email fallback links them to
+    this shadow user and clears ``is_provisioned``; from then on their access
+    is governed entirely by their OIDC group claim (see ``accounts.auth`` and
+    INV-OIDC-5). Roster membership therefore confers **notification reach
+    only**, never in-app access (INV-NOTIFY-x).
+
+    Rows that disappear from PMI are *soft-removed* (``soft_removed_at`` set)
+    rather than deleted, so a re-appearing member reactivates cleanly and a
+    departed-but-already-logged-in member is never affected (their access was
+    claim-driven, not roster-driven).
+    """
+
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name="security_roster")
+    # The Eclipse account handle (PMI ``username``); stable across email changes
+    # and the natural per-project uniqueness key.
+    eclipse_username = models.CharField(max_length=100)
+    email = models.EmailField()
+    display_name = models.CharField(max_length=200, blank=True)
+    # The (shadow or, post-login, real) user. SET_NULL — never block a user
+    # hard-delete; the scrubbed row survives as PII-free history.
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="roster_entries",
+    )
+    last_seen_in_pmi_at = models.DateTimeField()
+    soft_removed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "eclipse_username"],
+                name="security_roster_unique",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project", "soft_removed_at"]),
+            models.Index(fields=["email"]),
+        ]
+        ordering = ["eclipse_username"]
+
+    def __str__(self) -> str:
+        return f"{self.eclipse_username} @ {self.project.slug}"
 
     @property
     def is_active(self) -> bool:

@@ -598,3 +598,128 @@ def test_detect_preset_round_trip(setup):
         set_advisory_preference(setup["member"], setup["advisory"], **form.materialize())
         row = get_advisory_preference(setup["member"], setup["advisory"])
         assert AdvisoryNotificationPreferenceForm.detect_preset(row) == preset
+
+
+# ---- Shadow roster members (notification reach, no access) ----------------
+# A shadow user is a pre-provisioned, never-logged-in security-team member
+# (projects.SecurityTeamRosterEntry + User.is_provisioned). They receive the
+# default notification set of a team member but hold no in-app access. See
+# INV-OIDC-5 / INV-NOTIFY-x.
+
+
+def _shadow_member(project, email="shadow@eclipse.org"):
+    from django.utils import timezone
+
+    from accounts.models import User
+    from projects.models import SecurityTeamRosterEntry
+
+    user = User.objects.create_user(email=email, is_provisioned=True)
+    SecurityTeamRosterEntry.objects.create(
+        project=project,
+        eclipse_username=email.split("@", 1)[0],
+        email=email,
+        user=user,
+        last_seen_in_pmi_at=timezone.now(),
+    )
+    return user
+
+
+@pytest.mark.django_db
+def test_shadow_reached_by_team_mention(setup):
+    shadow = _shadow_member(setup["project"])
+    # The project's security team group is "p-security" (make_project fixture).
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="ping @p-security please"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert shadow.email in emailed
+
+
+@pytest.mark.django_db
+def test_shadow_reached_by_advisory_created(setup):
+    shadow = _shadow_member(setup["project"])
+    out = recipients.filter_for_event(setup["advisory"], event="advisory_created")
+    assert shadow.pk in {u.pk for u in out}
+
+
+@pytest.mark.django_db
+def test_shadow_reached_by_lifecycle_event(setup):
+    shadow = _shadow_member(setup["project"])
+    out = recipients.filter_for_event(setup["advisory"], event="advisory_published")
+    assert shadow.pk in {u.pk for u in out}
+
+
+@pytest.mark.django_db
+def test_shadow_not_reached_by_plain_comment(setup):
+    """Default comments_level is MENTIONED → a shadow does not get every
+    comment, only mentions (same as a default-pref logged-in member)."""
+    shadow = _shadow_member(setup["project"])
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="just a plain comment, nobody mentioned"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert shadow.email not in emailed
+
+
+@pytest.mark.django_db
+def test_shadow_not_reached_by_internal_comment_mention(setup):
+    """The internal-comment floor drops shadows even when the team is @-mentioned."""
+    shadow = _shadow_member(setup["project"])
+    comment = comment_services.add_comment(
+        setup["advisory"],
+        author=setup["member"],
+        body="internal: @p-security look",
+        internal=True,
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    emailed = {addr for m in mail.outbox for addr in m.to}
+    assert shadow.email not in emailed
+
+
+@pytest.mark.django_db
+def test_shadow_on_other_project_not_reached(setup, make_project):
+    other_project = make_project("q")
+    shadow = _shadow_member(other_project, email="elsewhere@eclipse.org")
+    # advisory belongs to setup["project"], not other_project.
+    out = recipients.filter_for_event(setup["advisory"], event="advisory_created")
+    assert shadow.pk not in {u.pk for u in out}
+
+
+@pytest.mark.django_db
+def test_soft_removed_shadow_not_reached(setup):
+    from django.utils import timezone
+
+    from projects.models import SecurityTeamRosterEntry
+
+    shadow = _shadow_member(setup["project"])
+    SecurityTeamRosterEntry.objects.filter(user=shadow).update(soft_removed_at=timezone.now())
+    out = recipients.filter_for_event(setup["advisory"], event="advisory_published")
+    assert shadow.pk not in {u.pk for u in out}
+
+
+@pytest.mark.django_db
+def test_no_double_send_after_shadow_logs_in(setup):
+    """A formerly-shadow user who has logged in (is_provisioned=False, in the
+    team group) is a normal candidate and is not double-counted."""
+    from django.utils import timezone
+
+    from accounts.models import User
+    from projects.models import SecurityTeamRosterEntry
+
+    user = User.objects.create_user(email="grown@eclipse.org", is_provisioned=False)
+    user.groups.add(setup["project"].security_team)  # real membership via claim
+    SecurityTeamRosterEntry.objects.create(
+        project=setup["project"],
+        eclipse_username="grown",
+        email="grown@eclipse.org",
+        user=user,
+        last_seen_in_pmi_at=timezone.now(),
+    )
+    out = recipients.filter_for_event(setup["advisory"], event="advisory_published")
+    pks = [u.pk for u in out]
+    assert pks.count(user.pk) == 1

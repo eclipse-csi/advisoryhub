@@ -88,6 +88,15 @@ x-django-env: &django-env
   PMI_API_BASE_URL: https://projects.eclipse.org/api
   PMI_API_TOKEN: ""
   PMI_SYNC_INTERVAL_HOURS: "6"
+  # Security-team roster sync — off in dev (no Eclipse API creds). Flip
+  # PMI_ROSTER_SYNC_ENABLED to "True" and fill the ECLIPSE_API_* creds to try it.
+  PMI_ROSTER_SYNC_ENABLED: "False"
+  PMI_ROSTER_SYNC_INTERVAL_HOURS: "24"
+  ECLIPSE_API_BASE_URL: https://api.eclipse.org
+  ECLIPSE_API_TOKEN_URL: https://auth.eclipse.org/auth/realms/eclipse/protocol/openid-connect/token
+  ECLIPSE_API_CLIENT_ID: ""
+  ECLIPSE_API_CLIENT_SECRET: ""
+  ECLIPSE_API_SCOPE: ""
 
 services:
   postgres:

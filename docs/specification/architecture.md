@@ -498,7 +498,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-Two periodic jobs are registered in `config/settings/base.py`:
+Three periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -510,6 +510,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "audit.tasks.maintain_access_log_partitions",
         "schedule": timedelta(days=1),
     },
+    "security-roster-sync": {
+        "task": "projects.tasks.run_roster_sync",
+        "schedule": timedelta(hours=PMI_ROSTER_SYNC_INTERVAL_HOURS),
+    },
 }
 ```
 
@@ -517,6 +521,15 @@ CELERY_BEAT_SCHEDULE = {
 `AccessLogEntry` partition and drops months older than
 `AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90); it no-ops when
 `AUDIT_ACCESS_LOG_RETENTION_ENABLED` is False (see §8.6, INV-AUDIT-5).
+
+`security-roster-sync` mirrors each project's Eclipse security team into
+`SecurityTeamRosterEntry` rows and pre-provisions notification-only shadow
+users (`User.is_provisioned=True`) so `@team` mentions and team notifications
+reach members who have never logged in. It uses the **authenticated** Eclipse
+API (`projects/eclipse_api.py`, OAuth2 client-credentials) to resolve member
+emails the public PMI feed hides, and **no-ops unless `PMI_ROSTER_SYNC_ENABLED`
+is set** (default off). Shadow users hold no authorization (INV-OIDC-5); reach
+is notification-only (INV-ROSTER-1).
 
 GHSA *discovery* is intentionally not on beat — it is
 user-triggered, scoped (project or all), and recorded as a
@@ -537,6 +550,7 @@ user-triggered, scoped (project or all), and recorded as a
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
 | `audit` | `maintain_access_log_partitions` | Beat-scheduled `AccessLogEntry` partition create-ahead + drop-expired. |
+| `projects` | `run_roster_sync` | Beat-scheduled security-team roster sync (shadow-user provisioning); no-op unless `PMI_ROSTER_SYNC_ENABLED`. |
 
 Idempotency story:
 
@@ -648,6 +662,15 @@ publication; the advisory id carries no year of its own).
 `GITHUB_APP_API_BASE_URL` (default `https://api.github.com`),
 `PMI_API_BASE_URL`, `PMI_API_TOKEN` (PMI is public; blank by
 default), `PMI_SYNC_INTERVAL_HOURS` (default 6).
+
+**Security-team roster sync (authenticated Eclipse API).**
+`PMI_ROSTER_SYNC_ENABLED` (default False — gates the beat task and the
+Admin Console button), `PMI_ROSTER_SYNC_INTERVAL_HOURS` (default 24),
+`ECLIPSE_API_BASE_URL` (default `https://api.eclipse.org`),
+`ECLIPSE_API_TOKEN_URL` (OAuth2 client-credentials token endpoint),
+`ECLIPSE_API_CLIENT_ID` / `ECLIPSE_API_CLIENT_SECRET` (secret),
+`ECLIPSE_API_SCOPE` (optional). The token and client secret are cached and
+never logged; errors run through `redact_secrets` (INV-SECRET-*).
 
 **Intake.** `HCAPTCHA_SITE_KEY`, `HCAPTCHA_SECRET_KEY` (both must
 be set for hCaptcha to engage — otherwise silently bypassed),

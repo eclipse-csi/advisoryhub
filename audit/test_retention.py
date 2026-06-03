@@ -228,3 +228,23 @@ def test_prune_audit_command(setup, capsys):
 
     call_command("prune_audit", "--older-than-days=365")
     assert AuditLogEntry.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_forget_user_deletes_roster_rows(setup):
+    """A forgotten user's security-team roster rows are deleted so their
+    Eclipse email/name don't survive (INV-OIDC-5)."""
+    from django.utils import timezone
+
+    from projects.models import SecurityTeamRosterEntry
+
+    SecurityTeamRosterEntry.objects.create(
+        project=setup["project"],
+        eclipse_username="alice",
+        email=setup["member"].email,
+        user=setup["member"],
+        last_seen_in_pmi_at=timezone.now(),
+    )
+    counters = forget_user(setup["member"])
+    assert counters["roster_entries"] == 1
+    assert not SecurityTeamRosterEntry.objects.filter(user=setup["member"]).exists()

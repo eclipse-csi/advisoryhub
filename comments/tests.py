@@ -707,3 +707,30 @@ def test_history_drawer_invalid_cursor_falls_back_to_initial(client, setup):
     )
     assert response.status_code == 200
     assert b"comment-history-drawer" in response.content
+
+
+# ---- @mention completion includes shadow roster members -------------------
+
+
+@pytest.mark.django_db
+def test_mention_candidates_include_shadow_roster_members(setup):
+    """A never-logged-in security-team member is discoverable in the @-completion
+    payload so they can be mentioned directly, not only via @team."""
+    from django.utils import timezone
+
+    from accounts.models import User
+    from projects.models import SecurityTeamRosterEntry
+
+    advisory = setup["advisory"]
+    shadow = User.objects.create_user(email="never@eclipse.org", is_provisioned=True)
+    SecurityTeamRosterEntry.objects.create(
+        project=advisory.project,
+        eclipse_username="never",
+        email="never@eclipse.org",
+        user=shadow,
+        last_seen_in_pmi_at=timezone.now(),
+    )
+    handles = {
+        item["handle"] for item in services.mention_candidates(advisory) if item["kind"] == "user"
+    }
+    assert "never" in handles

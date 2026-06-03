@@ -74,6 +74,12 @@ class Action(models.TextChoices):
     GHSA_WEBHOOK_RECEIVED = "ghsa.webhook_received"
     GHSA_WEBHOOK_REJECTED = "ghsa.webhook_rejected"
     PMI_PROJECT_REPOS_SYNCED = "pmi.project_repos_synced"
+    # Security-team roster sync (authenticated Eclipse API → shadow users).
+    # SECURITY_ROSTER_SYNCED is per-sync-run machine chatter (ephemeral, below);
+    # SHADOW_USER_LINKED records the one-time shadow→real promotion at first
+    # login and stays in the durable ledger.
+    SECURITY_ROSTER_SYNCED = "roster.synced"
+    SHADOW_USER_LINKED = "roster.shadow_linked"
     # Site-wide maintenance mode toggle (admin console). See INV-MAINT-1.
     MAINTENANCE_ENABLED = "maintenance.enabled"
     MAINTENANCE_DISABLED = "maintenance.disabled"
@@ -114,6 +120,7 @@ EPHEMERAL_ACTIONS: frozenset[str] = frozenset(
         Action.GHSA_SYNC_RUN_FINISHED,
         Action.GHSA_METADATA_FETCHED,
         Action.PMI_PROJECT_REPOS_SYNCED,
+        Action.SECURITY_ROSTER_SYNCED,
     }
 )
 

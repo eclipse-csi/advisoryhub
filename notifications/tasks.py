@@ -96,7 +96,7 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
     comment_mode (handled by ``filter_for_event``'s 'mention' branch).
     """
     from comments.models import AdvisoryComment
-    from comments.services import resolve_mention_recipient_ids
+    from comments.services import resolve_mention_recipient_ids, resolve_mentioned_groups
 
     try:
         advisory = Advisory.objects.get(pk=advisory_id)
@@ -106,6 +106,9 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
 
     # Includes direct @user mentions and the members of any @group mention.
     mentioned_ids = sorted(resolve_mention_recipient_ids(comment.body))
+    # Group ids let an @team mention also reach the project's shadow roster
+    # members (who are not in ``user.groups``); see filter_for_event.
+    mentioned_group_ids = [g.pk for g in resolve_mentioned_groups(comment.body)]
     internal = comment.is_internal
 
     # Two-pass: first send "mention" notifications (override the comment_mode),
@@ -118,7 +121,11 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
     sent = 0
 
     for user in filter_for_event(
-        advisory, event="mention", mentioned_user_ids=mentioned_ids, internal=internal
+        advisory,
+        event="mention",
+        mentioned_user_ids=mentioned_ids,
+        mentioned_group_ids=mentioned_group_ids,
+        internal=internal,
     ):
         try:
             _send_one(
@@ -152,11 +159,20 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
 
 
 @shared_task(name="notifications.send_comment_mention_email")
-def send_comment_mention_email(advisory_id: int, comment_id: int, recipient_ids: list[int]) -> int:
+def send_comment_mention_email(
+    advisory_id: int,
+    comment_id: int,
+    recipient_ids: list[int],
+    mentioned_group_ids: list[int] | None = None,
+) -> int:
     """Notify a *specific* set of users newly @-mentioned by a comment **edit**.
 
     The edit view computes the delta (mentions added by this edit) and passes
-    those user ids here. They are still routed through
+    those user ids here. ``mentioned_group_ids`` carries the *newly*-mentioned
+    group ids so an edit that adds a ``@team`` mention reaches the project's
+    shadow roster members (who are not in ``user.groups`` and so never appear
+    in ``recipient_ids``); a team mention that was already present is not in the
+    delta, so its shadows are not re-notified. They are still routed through
     ``filter_for_event(event="mention", …)`` so visibility is re-checked at
     send time (INV-AUTH-1): a passed id whose access was revoked since the
     edit — or who cannot see an internal comment — is dropped. Only the
@@ -165,7 +181,7 @@ def send_comment_mention_email(advisory_id: int, comment_id: int, recipient_ids:
     """
     from comments.models import AdvisoryComment
 
-    if not recipient_ids:
+    if not recipient_ids and not mentioned_group_ids:
         return 0
     try:
         advisory = Advisory.objects.get(pk=advisory_id)
@@ -178,6 +194,7 @@ def send_comment_mention_email(advisory_id: int, comment_id: int, recipient_ids:
         advisory,
         event="mention",
         mentioned_user_ids=list(recipient_ids),
+        mentioned_group_ids=list(mentioned_group_ids or []),
         internal=comment.is_internal,
     ):
         try:

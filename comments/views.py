@@ -118,11 +118,16 @@ def _queue_comment_email(advisory_id: int, comment_id: int) -> None:
 
 
 def _queue_comment_mention_email(
-    advisory_id: int, comment_id: int, recipient_ids: list[int]
+    advisory_id: int,
+    comment_id: int,
+    recipient_ids: list[int],
+    group_ids: list[int] | None = None,
 ) -> None:
     from notifications.tasks import send_comment_mention_email
 
-    safe_enqueue(send_comment_mention_email, advisory_id, comment_id, recipient_ids)
+    safe_enqueue(
+        send_comment_mention_email, advisory_id, comment_id, recipient_ids, group_ids or []
+    )
 
 
 @login_required
@@ -157,12 +162,23 @@ def comment_edit(request, advisory_id: str, comment_id: int):
                 added = services.resolve_mention_recipient_ids(
                     new_body
                 ) - services.resolve_mention_recipient_ids(old_body)
-                if added:
+                # Newly-mentioned group ids let an edit that adds a @team
+                # mention reach that team's shadow roster members (absent from
+                # user.groups, so never in ``added``). A team mention that was
+                # already present is not in the delta → its shadows aren't
+                # re-notified.
+                added_group_ids = {g.pk for g in services.resolve_mentioned_groups(new_body)} - {
+                    g.pk for g in services.resolve_mentioned_groups(old_body)
+                }
+                if added or added_group_ids:
                     advisory_pk = comment.advisory.pk
                     comment_pk = comment.pk
                     ids = sorted(added)
+                    group_ids = sorted(added_group_ids)
                     transaction.on_commit(
-                        lambda: _queue_comment_mention_email(advisory_pk, comment_pk, ids)
+                        lambda: _queue_comment_mention_email(
+                            advisory_pk, comment_pk, ids, group_ids
+                        )
                     )
             return render(
                 request,

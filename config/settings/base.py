@@ -74,6 +74,21 @@ env = environ.Env(
     PMI_API_BASE_URL=(str, "https://projects.eclipse.org/api"),
     PMI_API_TOKEN=(str, ""),  # blank by default; PMI is public
     PMI_SYNC_INTERVAL_HOURS=(int, 6),
+    # Security-team roster sync. Pre-provisions notification-only "shadow"
+    # users for Eclipse project security-team members so @group mentions and
+    # team notifications reach members who have never logged in. Off by
+    # default — requires the authenticated Eclipse API (OAuth2 client
+    # credentials) to resolve member emails the public PMI feed hides.
+    PMI_ROSTER_SYNC_ENABLED=(bool, False),
+    PMI_ROSTER_SYNC_INTERVAL_HOURS=(int, 24),
+    ECLIPSE_API_BASE_URL=(str, "https://api.eclipse.org"),
+    ECLIPSE_API_TOKEN_URL=(
+        str,
+        "https://auth.eclipse.org/auth/realms/eclipse/protocol/openid-connect/token",
+    ),
+    ECLIPSE_API_CLIENT_ID=(str, ""),  # SECRET — OAuth2 client id
+    ECLIPSE_API_CLIENT_SECRET=(str, ""),  # SECRET — OAuth2 client secret
+    ECLIPSE_API_SCOPE=(str, ""),  # optional OAuth2 scope(s)
     # Public vulnerability report intake. hCaptcha keys default to empty;
     # the form silently bypasses captcha verification when either is unset
     # (natural dev/test mode).
@@ -363,6 +378,13 @@ GITHUB_APP_API_BASE_URL = env("GITHUB_APP_API_BASE_URL")
 PMI_API_BASE_URL = env("PMI_API_BASE_URL")
 PMI_API_TOKEN = env("PMI_API_TOKEN")
 PMI_SYNC_INTERVAL_HOURS = env("PMI_SYNC_INTERVAL_HOURS")
+PMI_ROSTER_SYNC_ENABLED = env("PMI_ROSTER_SYNC_ENABLED")
+PMI_ROSTER_SYNC_INTERVAL_HOURS = env("PMI_ROSTER_SYNC_INTERVAL_HOURS")
+ECLIPSE_API_BASE_URL = env("ECLIPSE_API_BASE_URL")
+ECLIPSE_API_TOKEN_URL = env("ECLIPSE_API_TOKEN_URL")
+ECLIPSE_API_CLIENT_ID = env("ECLIPSE_API_CLIENT_ID")
+ECLIPSE_API_CLIENT_SECRET = env("ECLIPSE_API_CLIENT_SECRET")
+ECLIPSE_API_SCOPE = env("ECLIPSE_API_SCOPE")
 
 # Public vulnerability report intake
 HCAPTCHA_SITE_KEY = env("HCAPTCHA_SITE_KEY")
@@ -394,6 +416,13 @@ CELERY_BEAT_SCHEDULE = {
     "access-log-partition-maintenance": {
         "task": "audit.tasks.maintain_access_log_partitions",
         "schedule": timedelta(days=1),
+    },
+    # Refresh project security-team rosters from the authenticated Eclipse API
+    # every PMI_ROSTER_SYNC_INTERVAL_HOURS. The task itself no-ops unless
+    # PMI_ROSTER_SYNC_ENABLED is set, so this entry is harmless when off.
+    "security-roster-sync": {
+        "task": "projects.tasks.run_roster_sync",
+        "schedule": timedelta(hours=PMI_ROSTER_SYNC_INTERVAL_HOURS),
     },
 }
 

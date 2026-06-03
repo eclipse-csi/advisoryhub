@@ -173,6 +173,22 @@ def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
         # them here — they're scrubbed by the time-based ``prune_honeypots``
         # job, which is what retention SLAs target anyway.
 
+        # 4c. Security-team roster rows mirror the member's Eclipse email and
+        # name from PMI. Unlike comments/audit (kept for coherence), the roster
+        # is a disposable mirror, so delete the user's rows outright — that
+        # removes the email/name without risking the ``(project,
+        # eclipse_username)`` unique constraint a blank-out would hit. If the
+        # member is still on the PMI team a future sync re-mirrors them (their
+        # email is legitimately processed while they serve); forget_user purges
+        # current data, it doesn't block lawful re-collection. See INV-OIDC-5.
+        try:
+            from projects.models import SecurityTeamRosterEntry
+
+            deleted_roster, _ = SecurityTeamRosterEntry.objects.filter(user=user).delete()
+            counters["roster_entries"] = deleted_roster
+        except Exception:
+            log.exception("security roster scrub failed during forget_user(%s)", user.pk)
+
         # 5. Mutate the User row last so the queries above can still find it.
         user.email = pseudo
         user.display_name = ""

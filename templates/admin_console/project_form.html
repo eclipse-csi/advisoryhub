@@ -22,4 +22,26 @@
     </table>
     <button type="submit">{% if project %}Save{% else %}Create{% endif %}</button>
   </form>
+
+  {% if project %}
+    <section class="roster-sync">
+      <h2>Security-team roster</h2>
+      {% if roster_sync_enabled %}
+        <p class="muted">
+          {{ active_roster_count }} active member{{ active_roster_count|pluralize }} mirrored from the Eclipse security team.
+          {% if project.last_roster_sync_at %}Last synced {{ project.last_roster_sync_at }}.{% else %}Never synced.{% endif %}
+        </p>
+        {% if project.last_roster_sync_error %}
+          <p class="error">Last sync error: {{ project.last_roster_sync_error }}</p>
+        {% endif %}
+        <form method="post" action="{% url 'admin_console:project_sync_roster' project.id %}">
+          {% csrf_token %}
+          <button type="submit" class="btn">Sync security team</button>
+        </form>
+        <p class="help">Pre-provisions notification-only accounts for security-team members who haven't logged in yet. Confers no in-app access (see INV-OIDC-5).</p>
+      {% else %}
+        <p class="muted">Roster sync is disabled. Set <code>PMI_ROSTER_SYNC_ENABLED</code> and the <code>ECLIPSE_API_*</code> credentials to enable it.</p>
+      {% endif %}
+    </section>
+  {% endif %}
 {% endblock %}

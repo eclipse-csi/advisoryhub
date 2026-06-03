@@ -117,6 +117,7 @@ Full catalog with stable IDs, severity tiers, and enforcement file paths in [`do
 - **`INV-AUDIT-1`** — audit log is append-only at both the application layer and a Postgres trigger.
 - **`INV-AUDIT-2`** / **`INV-SECRET-1..3`** — funnel all user/CI-supplied strings through `audit.services.redact_secrets`; secrets never reach logs, audit metadata, task errors, artifact rows, or notification bodies. The publication git layer adds `publication.git_service._redact` for token-rewritten URLs.
 - **`INV-OIDC-1`/`-2`** — OIDC groups are DB-mirrored on every login (`accounts.auth.AdvisoryHubOIDCBackend`); authorization always re-reads the DB mirror, never client-submitted group data. "Mature publisher" lives on the `Project` row, not on group membership.
+- **`INV-OIDC-5`/`INV-ROSTER-1`** — the security-team roster sync (`projects.services.sync_security_team_roster`, off unless `PMI_ROSTER_SYNC_ENABLED`) pre-provisions notification-only *shadow* users (`User.is_provisioned=True`) so `@team` mentions reach members who've never logged in. Shadows are in **no** group, hold **no** authorization, and are cleared to real users on first login; the roster sync never writes `user.groups`.
 - **`INV-INTAKE-1`/`-2`** — honeypot trips create `HoneypotSubmission`, never an `Advisory`. The public intake form has no `reporter_email` field; anonymous reports cannot be re-associated later.
 - **`INV-MAINT-1`** — while maintenance mode is on, only global admins may mutate state; every other user's writes are paused server-side (`common.middleware.MaintenanceModeMiddleware`), toggled from the Admin Console's Maintenance page.
 
@@ -171,7 +172,7 @@ Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css
 
 `docker-compose.yml`'s `x-django-env` anchor is the canonical dev configuration (reused by `web` and `worker`); **don't edit env files for dev**. `.env.example` documents every prod knob and is reference-only — it is *not* loaded by docker-compose. `dev/kanidm/.env.kanidm` is the only file compose actually loads at runtime (for the OIDC client secret minted by the bootstrap script).
 
-Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP is enforced by default; set `True` for Report-Only) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`.
+Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP is enforced by default; set `True` for Report-Only) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`, `PMI_ROSTER_SYNC_ENABLED` (+ `ECLIPSE_API_*` OAuth2 creds — security-team roster sync, off by default).
 
 ## Deferred / out of scope
 

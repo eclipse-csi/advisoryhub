@@ -45,6 +45,18 @@ class User(AbstractUser):
     email = models.EmailField("email address", unique=True)
     display_name = models.CharField(max_length=200, blank=True)
     oidc_subject = models.CharField(max_length=255, blank=True, db_index=True)
+    is_provisioned = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            "True for a 'shadow' account pre-provisioned from the Eclipse project "
+            "security-team roster (see projects.SecurityTeamRosterEntry). Such a user has "
+            "never logged in and holds NO authorization — it exists only so security-team "
+            "members are reachable by notifications before their first login. Cleared on "
+            "first OIDC login, after which group membership (and therefore access) comes "
+            "from the OIDC claim. See INV-OIDC-5."
+        ),
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: ClassVar[list[str]] = []

@@ -103,6 +103,43 @@ def _security_team_members(advisory: Advisory) -> Iterable[User]:
     return [u for u in qs if perms.can_view(u, advisory)]
 
 
+def _roster_shadow_members(advisory: Advisory) -> list[User]:
+    """Shadow (never-logged-in) security-team members of the advisory's project.
+
+    Active roster entries (``soft_removed_at IS NULL``) whose linked user is
+    still a shadow (``is_provisioned=True``, ``is_active=True``). These users
+    hold no in-app access, so ``candidate_users_for_advisory`` /
+    ``_security_team_members`` drop them at the ``can_view`` gate. They are
+    added back explicitly — authorized by **roster membership**, not access —
+    purely for notification reach (INV-NOTIFY-x). Once a member logs in they
+    cease to be a shadow (``accounts.auth`` clears ``is_provisioned``) and flow
+    through the normal access-backed candidate path instead, so the two sources
+    never overlap.
+    """
+    from projects.models import SecurityTeamRosterEntry
+
+    user_ids = SecurityTeamRosterEntry.objects.filter(
+        project_id=advisory.project_id,
+        soft_removed_at__isnull=True,
+        user__isnull=False,
+    ).values_list("user_id", flat=True)
+    if not user_ids:
+        return []
+    return list(User.objects.filter(pk__in=user_ids, is_provisioned=True, is_active=True))
+
+
+def _dedup_users(*user_lists: Iterable[User]) -> list[User]:
+    """Concatenate user iterables, dropping pk duplicates, order-preserving."""
+    seen: set[int] = set()
+    out: list[User] = []
+    for lst in user_lists:
+        for user in lst:
+            if user.pk not in seen:
+                seen.add(user.pk)
+                out.append(user)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Preference lookup
 # ---------------------------------------------------------------------------
@@ -157,6 +194,7 @@ def filter_for_event(
     *,
     event: str,
     mentioned_user_ids: list[int] | None = None,
+    mentioned_group_ids: list[int] | None = None,
     internal: bool = False,
 ) -> list[User]:
     """Filter candidates by their notification settings for ``event``.
@@ -166,20 +204,37 @@ def filter_for_event(
       ``advisory_submitted_for_review``, ``advisory_published``,
       ``publication_export_status``, ``comment``, ``mention``.
 
+    Active roster **shadow** members of the project (pre-provisioned,
+    never-logged-in security-team members) are unioned into the candidate set
+    and run through the *same* per-event gating with their default
+    preferences, so they receive the same default notification set as a
+    logged-in team member (INV-NOTIFY-x). The internal-comment floor below
+    still drops them from internal comments (a shadow has no ``can_view``).
+
+    ``mentioned_group_ids`` lets a ``@group`` mention of the project's security
+    team reach its shadow members: a shadow is never in ``user.groups`` so it
+    is never in ``mentioned_user_ids`` (which expands groups via group
+    membership) — instead it is kept on the ``mention`` path when the
+    advisory's ``security_team`` group id is among the mentioned groups.
+
     ``internal=True`` (only meaningful for ``comment``/``mention``) is the
     visibility floor: recipients who cannot see internal comments are
     dropped, even if they were @-mentioned. Mention is not allowed to
-    elevate a viewer past the cut.
+    elevate a viewer (or a shadow) past the cut.
     """
     mentioned = set(mentioned_user_ids or [])
+    mentioned_groups = set(mentioned_group_ids or [])
+    team_mentioned = advisory.project.security_team_id in mentioned_groups
 
     if event == "advisory_created":
-        # Special-cased: only the project's security team is eligible,
-        # and we consult the global preference exclusively. No
-        # per-advisory override applies — the user has not had a chance
-        # to express one yet at creation time.
+        # Special-cased: only the project's security team is eligible (real
+        # members ∪ shadow roster members), and we consult the global
+        # preference exclusively. No per-advisory override applies — the user
+        # has not had a chance to express one yet at creation time.
         out: list[User] = []
-        for user in _security_team_members(advisory):
+        for user in _dedup_users(
+            _security_team_members(advisory), _roster_shadow_members(advisory)
+        ):
             pref = get_pref(user)
             if pref.on_advisory_created:
                 out.append(user)
@@ -187,7 +242,9 @@ def filter_for_event(
 
     out = []
     lifecycle_field = _LIFECYCLE_EVENT_FIELDS.get(event)
-    for user in candidate_users_for_advisory(advisory):
+    for user in _dedup_users(
+        candidate_users_for_advisory(advisory), _roster_shadow_members(advisory)
+    ):
         if internal and not perms.can_see_internal_comment(user, advisory):
             continue
         if lifecycle_field is not None:
@@ -198,9 +255,11 @@ def filter_for_event(
             if level == CommentLevel.MENTIONED and user.pk not in mentioned:
                 continue
         elif event == "mention":
-            # Mentions are the floor — always deliver to mentioned users
-            # who still have view access.
-            if user.pk not in mentioned:
+            # Mentions are the floor — always deliver to mentioned users who
+            # still have view access. A shadow is reached when the team group
+            # itself was @-mentioned (it can't be in ``mentioned`` directly,
+            # being absent from ``user.groups``).
+            if user.pk not in mentioned and not (team_mentioned and user.is_provisioned):
                 continue
         else:
             # Unknown event — be conservative and skip.

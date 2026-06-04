@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 from django.urls import reverse
 
@@ -92,19 +94,86 @@ def test_filter_by_state(client, setup):
 
 
 @pytest.mark.django_db
-def test_filter_by_review_status(client, setup):
+def test_state_tabs_render_with_counts(client, setup):
+    """The state tab strip renders All + the four states, each with the count of
+    matching advisories. Fixture: 2 draft (a, c), 2 published (b, d)."""
     client.force_login(setup["admin"])
-    r = client.get(reverse("advisories:list"), {"review_status": "submitted"})
-    ids = _ids_in_response(r)
-    assert ids == {setup["c"].advisory_id}
+    body = client.get(reverse("advisories:list")).content.decode()
+    # Label immediately precedes its count span (see list.html).
+    assert 'All<span class="state-tabs__count">4</span>' in body
+    assert 'Triage<span class="state-tabs__count">0</span>' in body
+    assert 'Draft<span class="state-tabs__count">2</span>' in body
+    assert 'Published<span class="state-tabs__count">2</span>' in body
+    assert 'Dismissed<span class="state-tabs__count">0</span>' in body
 
 
 @pytest.mark.django_db
-def test_filter_republish_required(client, setup):
+def test_active_state_tab_marked(client, setup):
+    """Exactly one tab is active; ?state=draft marks the Draft tab, default marks All."""
     client.force_login(setup["admin"])
-    r = client.get(reverse("advisories:list"), {"republish_required": "1"})
+
+    body = client.get(reverse("advisories:list"), {"state": "draft"}).content.decode()
+    assert body.count('aria-current="page"') == 1
+    active = re.search(r"<a[^>]*is-active[^>]*>(.*?)</a>", body, re.S)
+    assert active and "Draft" in active.group(1)
+
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert body.count('aria-current="page"') == 1
+    active = re.search(r"<a[^>]*is-active[^>]*>(.*?)</a>", body, re.S)
+    assert active and "All" in active.group(1)
+
+
+@pytest.mark.django_db
+def test_tab_href_preserves_other_filters(client, setup):
+    """A tab link carries the current search/project filters and resets paging."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list"), {"q": "smuggling"}).content.decode()
+    m = re.search(r'href="([^"]*state=draft[^"]*)"', body)
+    assert m, "no Draft tab href found"
+    href = m.group(1)
+    assert "q=smuggling" in href
+    assert "page=" not in href
+
+
+@pytest.mark.django_db
+def test_search_form_preserves_active_state(client, setup):
+    """The active tab survives a search submit (hidden state input in the form);
+    on the All tab there is no such hidden input."""
+    client.force_login(setup["admin"])
+
+    body = client.get(reverse("advisories:list"), {"state": "draft"}).content.decode()
+    assert '<input type="hidden" name="state" value="draft">' in body
+
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert 'type="hidden" name="state"' not in body
+
+
+@pytest.mark.django_db
+def test_state_tab_does_not_show_clear_link(client, setup):
+    """Selecting a state tab must not surface the form's Clear link — the All tab
+    is the clear-state affordance. Clear belongs to the search/project filters
+    only."""
+    client.force_login(setup["admin"])
+
+    body = client.get(reverse("advisories:list"), {"state": "draft"}).content.decode()
+    assert ">Clear<" not in body
+
+    body = client.get(reverse("advisories:list"), {"q": "smuggling"}).content.decode()
+    assert ">Clear<" in body
+
+
+@pytest.mark.django_db
+def test_review_status_param_ignored(client, setup):
+    """The review-status filter was removed; the param no longer narrows."""
+    client.force_login(setup["admin"])
+    r = client.get(reverse("advisories:list"), {"review_status": "submitted"})
     ids = _ids_in_response(r)
-    assert ids == {setup["d"].advisory_id}
+    assert {
+        setup["a"].advisory_id,
+        setup["b"].advisory_id,
+        setup["c"].advisory_id,
+        setup["d"].advisory_id,
+    }.issubset(ids)
 
 
 @pytest.mark.django_db

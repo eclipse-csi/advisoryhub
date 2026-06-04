@@ -4,9 +4,27 @@
 {% block title %}{% translate "Advisories" %}{% endblock %}
 {% block content %}
   <h1>{% translate "Advisories" %}</h1>
-  <p><a class="btn" href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a></p>
+
+  <nav class="state-tabs" aria-label="{% translate 'Filter by state' %}">
+    <a href="{{ state_hrefs.all }}" class="state-tabs__tab{% if not current_state %} is-active{% endif %}"{% if not current_state %} aria-current="page"{% endif %}>
+      {% translate "All" %}<span class="state-tabs__count">{{ state_total }}</span>
+    </a>
+    <a href="{{ state_hrefs.triage }}" class="state-tabs__tab{% if current_state == 'triage' %} is-active{% endif %}"{% if current_state == 'triage' %} aria-current="page"{% endif %}>
+      {% include "advisories/_icons.html" with icon="magnifying-glass" %}{% translate "Triage" %}<span class="state-tabs__count">{{ state_counts.triage|default:0 }}</span>
+    </a>
+    <a href="{{ state_hrefs.draft }}" class="state-tabs__tab{% if current_state == 'draft' %} is-active{% endif %}"{% if current_state == 'draft' %} aria-current="page"{% endif %}>
+      {% include "advisories/_icons.html" with icon="document" %}{% translate "Draft" %}<span class="state-tabs__count">{{ state_counts.draft|default:0 }}</span>
+    </a>
+    <a href="{{ state_hrefs.published }}" class="state-tabs__tab{% if current_state == 'published' %} is-active{% endif %}"{% if current_state == 'published' %} aria-current="page"{% endif %}>
+      {% include "advisories/_icons.html" with icon="globe" %}{% translate "Published" %}<span class="state-tabs__count">{{ state_counts.published|default:0 }}</span>
+    </a>
+    <a href="{{ state_hrefs.dismissed }}" class="state-tabs__tab{% if current_state == 'dismissed' %} is-active{% endif %}"{% if current_state == 'dismissed' %} aria-current="page"{% endif %}>
+      {% include "advisories/_icons.html" with icon="x-circle" %}{% translate "Dismissed" %}<span class="state-tabs__count">{{ state_counts.dismissed|default:0 }}</span>
+    </a>
+  </nav>
 
   <form method="get" class="advisory-filters">
+    {% if current_state %}<input type="hidden" name="state" value="{{ current_state }}">{% endif %}
     <input type="search" name="q" value="{{ filters.q|default:'' }}" placeholder="{% translate 'Search summary / details / aliases…' %}">
     <select name="project" data-combobox aria-label="{% translate 'Project' %}">
       <option value="">{% translate "All projects" %}</option>
@@ -14,24 +32,6 @@
         <option value="{{ p.id }}" data-combobox-detail="{{ p.slug }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
     </select>
-    <select name="state">
-      <option value="">{% translate "Any state" %}</option>
-      <option value="draft" {% if filters.state == 'draft' %}selected{% endif %}>{% translate "Draft" %}</option>
-      <option value="published" {% if filters.state == 'published' %}selected{% endif %}>{% translate "Published" %}</option>
-      <option value="dismissed" {% if filters.state == 'dismissed' %}selected{% endif %}>{% translate "Dismissed" %}</option>
-    </select>
-    <select name="review_status">
-      <option value="">{% translate "Any review status" %}</option>
-      <option value="none" {% if filters.review_status == 'none' %}selected{% endif %}>{% translate "Not submitted" %}</option>
-      <option value="submitted" {% if filters.review_status == 'submitted' %}selected{% endif %}>{% translate "Submitted" %}</option>
-      <option value="changes_requested" {% if filters.review_status == 'changes_requested' %}selected{% endif %}>{% translate "Changes requested" %}</option>
-      <option value="approved" {% if filters.review_status == 'approved' %}selected{% endif %}>{% translate "Approved" %}</option>
-      <option value="rejected" {% if filters.review_status == 'rejected' %}selected{% endif %}>{% translate "Rejected" %}</option>
-    </select>
-    <label>
-      <input type="checkbox" name="republish_required" value="1" {% if filters.republish_required %}checked{% endif %}>
-      {% translate "Re-publish required" %}
-    </label>
     <button type="submit">{% translate "Filter" %}</button>
     {% if filters %}
       <a href="{% url 'advisories:list' %}">{% translate "Clear" %}</a>
@@ -50,7 +50,7 @@
           <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
           {% if a.kind == 'ghsa_linked' %}<span class="badge ghsa-linked" title="Synced from a GitHub Security Advisory">GHSA</span>{% endif %}
         </td>
-        <td data-label="{% translate 'Project' %}">{{ a.project.name }}</td>
+        <td data-label="{% translate 'Project' %}"><a href="?project={{ a.project.id }}" title="{% blocktranslate with name=a.project.name %}Show only {{ name }} advisories{% endblocktranslate %}">{{ a.project.name }}</a></td>
         <td data-label="{% translate 'State' %}">
           <span class="badge state-{{ a.state }}{% if a.republish_required %} needs-republish{% endif %}"{% if a.republish_required %} title="{% translate 'Edited since publication — re-publish required' %}"{% endif %}>{{ a.get_state_display }}</span>
         </td>
@@ -68,10 +68,10 @@
 
   {% if has_prev or has_next %}
     <p class="pager">
-      {% if has_prev %}<a href="?{% for k, v in filters.items %}{{ k }}={{ v }}&{% endfor %}page={{ page|add:'-1' }}">‹ Prev</a>{% endif %}
+      {% if has_prev %}<a href="?{{ querystring }}{% if querystring %}&{% endif %}page={{ page|add:'-1' }}">‹ Prev</a>{% endif %}
       {# `total` inside this block is the page count (num_pages); reuses the admin paginator's msgid. #}
       <span>{% blocktranslate with current=page total=num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>
-      {% if has_next %}<a href="?{% for k, v in filters.items %}{{ k }}={{ v }}&{% endfor %}page={{ page|add:'1' }}">Next ›</a>{% endif %}
+      {% if has_next %}<a href="?{{ querystring }}{% if querystring %}&{% endif %}page={{ page|add:'1' }}">Next ›</a>{% endif %}
     </p>
   {% endif %}
 {% endblock %}

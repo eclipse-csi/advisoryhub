@@ -546,6 +546,67 @@ main.container > form.advisory-filters {
   font-size: var(--text-sm);
 }
 
+/* State filter — single-select tab strip (All / Triage / Draft / Published /
+   Dismissed). Each tab is a GET link; the active one carries .is-active +
+   aria-current, mirroring the admin sidebar nav convention. A bottom border on
+   the strip plus a coloured under-border on the active tab give the underline. */
+.state-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.state-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  margin-bottom: -1px; /* overlap the strip's border so the active under-border sits on it */
+  border-bottom: 2px solid transparent;
+  color: var(--text-soft);
+  font-size: var(--text-base);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 80ms ease, border-color 80ms ease, background 80ms ease;
+}
+.state-tabs__tab .adv-icon { width: 1.05rem; height: 1.05rem; vertical-align: 0; }
+/* A background fill is an invisible hover cue on light surfaces yet a prominent
+   box on dark ones (--surface-alt diverges hard between themes), so skip the fill
+   and lean on a brand-blue text shift + a visible under-border preview of the
+   active state — both read consistently in light and dark. */
+.state-tabs__tab:hover {
+  color: var(--brand-fg-hover);
+  border-bottom-color: var(--border-strong);
+}
+.state-tabs__tab.is-active {
+  color: var(--brand-fg);
+  border-bottom-color: var(--brand-fg);
+  font-weight: 600;
+}
+.state-tabs__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+/* A border (not just the --surface-alt fill, which vanishes on light surfaces)
+   keeps the count a defined chip in both themes. */
+.state-tabs__count {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  min-width: 1.4em;
+  text-align: center;
+}
+.state-tabs__tab.is-active .state-tabs__count {
+  color: var(--brand-fg);
+  background: var(--brand-soft);
+  border-color: var(--brand-bd);
+}
+
 /* ------------------------------------------------------------ forms */
 
 input[type="text"],

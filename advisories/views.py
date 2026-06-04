@@ -13,7 +13,7 @@ from typing import cast
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.forms import ModelChoiceField
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -58,15 +58,59 @@ def advisory_list(request):
     Supported query params (all optional):
       ``q``                full-text on summary/details/advisory_id/aliases
       ``project``          project UUID
-      ``state``            draft|published|dismissed
-      ``review_status``    none|submitted|changes_requested|approved|rejected
-      ``republish_required`` "1" → only advisories with the flag set
+      ``state``            single value; one of triage|draft|published|dismissed.
+                           Surfaced as the state tab strip — absent/invalid means
+                           the "All" tab (no state filter).
     """
     user = request.user
     qs = perms.visible_advisories(user)
 
+    # q/project/republish are applied here; ``state`` is applied below so the
+    # per-tab counts can be taken on the pre-state queryset.
     qs, applied = _apply_advisory_filters(qs, request)
+
+    # Per-state counts for the tab strip — one GROUP BY over the queryset as
+    # narrowed by the *other* filters, so each tab shows how many rows it'd yield
+    # (and the counts move with the search box). ``state_total`` backs the "All" tab.
+    state_counts = {row["state"]: row["n"] for row in qs.values("state").annotate(n=Count("pk"))}
+    state_total = sum(state_counts.values())
+
+    # The active tab. An absent or unknown state is the "All" tab (no filter).
+    # State is deliberately kept out of ``applied`` — the tab strip (its "All"
+    # tab) is the clear-state affordance, so it must not drive the form's Clear
+    # link, which is only for the search/project/republish filters.
+    current_state = request.GET.get("state", "")
+    if current_state in dict(State.choices):
+        qs = qs.filter(state=current_state)
+    else:
+        current_state = ""
+
     qs = qs.select_related("project").order_by("-modified_at")
+
+    # Hrefs for each tab: the current query string minus ``page`` and ``state``,
+    # with the tab's own state re-appended. Building them here keeps query-string
+    # assembly out of the template. urlencode escapes values throughout.
+    tab_params = request.GET.copy()
+    tab_params.pop("page", None)
+    tab_params.pop("state", None)
+
+    def _state_href(value: str) -> str:
+        params = tab_params.copy()
+        if value:
+            params["state"] = value
+        encoded = params.urlencode()
+        return f"?{encoded}" if encoded else request.path
+
+    # Keyed by state value, plus "all" for the no-filter tab ("" is not a usable
+    # Django-template dict key).
+    state_hrefs = {"all": _state_href("")}
+    state_hrefs.update({value: _state_href(value) for value in dict(State.choices)})
+
+    # Query string carried into the pager links, sans ``page`` so it can be
+    # re-appended. ``urlencode`` escapes values (the old manual loop did neither).
+    pager_params = request.GET.copy()
+    pager_params.pop("page", None)
+    querystring = pager_params.urlencode()
 
     # Cap the page at a reasonable size so a careless filter doesn't
     # render a million rows. Use the same param name as the API.
@@ -85,6 +129,11 @@ def advisory_list(request):
         {
             "advisories": advisories,
             "filters": applied,
+            "current_state": current_state,
+            "state_counts": state_counts,
+            "state_total": state_total,
+            "state_hrefs": state_hrefs,
+            "querystring": querystring,
             "projects_for_filter": _projects_for_filter(user),
             "total": total,
             "page": page,
@@ -97,12 +146,15 @@ def advisory_list(request):
 
 
 def _apply_advisory_filters(qs, request):
-    """Translate ?q/?project/?state/?review_status/?republish_required into a queryset.
+    """Translate ?q/?project into a queryset.
 
-    Returns (filtered_qs, applied_filters_dict) — the latter is a flat
-    dict the template uses to repopulate the filter form.
+    ``state`` is intentionally *not* handled here — ``advisory_list`` applies it
+    after taking the per-tab counts, and deliberately keeps it out of the returned
+    dict so the active tab doesn't trigger the form's Clear link. Returns
+    (filtered_qs, applied_filters_dict); the latter is a flat dict the template uses
+    to repopulate the search/project form and to show the Clear link.
     """
-    applied: dict[str, str] = {}
+    applied: dict[str, object] = {}
     q = (request.GET.get("q") or "").strip()
     if q:
         applied["q"] = q
@@ -121,17 +173,6 @@ def _apply_advisory_filters(qs, request):
         if project_uuid is not None:
             applied["project"] = project
             qs = qs.filter(project_id=project_uuid)
-    state = (request.GET.get("state") or "").strip()
-    if state and state in dict(State.choices):
-        applied["state"] = state
-        qs = qs.filter(state=state)
-    review_status = (request.GET.get("review_status") or "").strip()
-    if review_status:
-        applied["review_status"] = review_status
-        qs = qs.filter(review_status=review_status)
-    if request.GET.get("republish_required") == "1":
-        applied["republish_required"] = "1"
-        qs = qs.filter(republish_required=True)
     return qs, applied
 
 

@@ -85,13 +85,21 @@ def test_sidebar_marks_users_section_active(client, base):
 
 
 @pytest.mark.django_db
-def test_sidebar_marks_users_section_active_on_group_pages(client, base):
+def test_sidebar_marks_groups_section_active_on_group_pages(client, base):
     client.force_login(base["admin"])
     body = client.get(reverse("admin_console:group_list")).content.decode()
-    users_idx = body.find(f'href="{reverse("admin_console:user_list")}"')
-    assert users_idx != -1
-    window = body[users_idx : users_idx + 200]
-    assert 'aria-current="page"' in window
+
+    def open_tag(url: str) -> str:
+        # Slice just the opening <a …> tag so the aria-current of an adjacent
+        # nav entry can't leak into the window (the inactive links are short).
+        idx = body.find(f'href="{url}"')
+        assert idx != -1, url
+        return body[idx : body.find(">", idx)]
+
+    # Groups is now its own top-level nav entry and lights up on group pages…
+    assert 'aria-current="page"' in open_tag(reverse("admin_console:group_list"))
+    # …and Users is no longer marked active on group pages.
+    assert 'aria-current="page"' not in open_tag(reverse("admin_console:user_list"))
 
 
 # ----- User list ---------------------------------------------------------

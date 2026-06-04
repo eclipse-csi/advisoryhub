@@ -467,6 +467,30 @@ def test_project_create_form_renders(client, setup):
 
 
 @pytest.mark.django_db
+def test_project_edit_shows_security_team_members(client, setup):
+    """The project edit page surfaces the live OIDC-group member list (read-only)."""
+    from projects.models import Project
+
+    project = Project.objects.get(pk=setup["advisory"].project_id)
+    member = setup["member"]  # placed on project `p`'s security team by `setup`
+    client.force_login(setup["admin"])
+    body = client.get(reverse("admin_console:project_edit", args=[project.id])).content.decode()
+    assert "Security team" in body
+    assert member.email in body
+    assert reverse("admin_console:user_detail", args=[member.pk]) in body
+
+
+@pytest.mark.django_db
+def test_project_edit_security_team_empty_state(client, setup, make_project):
+    """A project whose security-team group has no members shows the empty state."""
+    project = make_project("empty-team")  # no team_members
+    client.force_login(setup["admin"])
+    body = client.get(reverse("admin_console:project_edit", args=[project.id])).content.decode()
+    assert "Security team" in body
+    assert "No members." in body
+
+
+@pytest.mark.django_db
 def test_reopen_review_endpoint(client, setup):
     task = wf.submit_for_review(setup["advisory"], by=setup["member"])
     wf.request_changes(task, by=setup["admin"], notes="fix it")

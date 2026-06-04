@@ -7,8 +7,9 @@
     <aside class="admin-console__sidebar" aria-label="{% translate 'Admin Console navigation' %}">
       <nav>
         <a href="{% url 'admin_console:index' %}"        {% if section == "inbox" %}aria-current="page" class="is-active"{% endif %}>{% translate "Inbox" %}</a>
-        <a href="{% url 'admin_console:project_list' %}" {% if section == "projects" %}aria-current="page" class="is-active"{% endif %}>{% translate "Projects & OIDC groups" %}</a>
-        <a href="{% url 'admin_console:user_list' %}"    {% if section == "users" or section == "groups" %}aria-current="page" class="is-active"{% endif %}>{% translate "Users & groups" %}</a>
+        <a href="{% url 'admin_console:project_list' %}" {% if section == "projects" %}aria-current="page" class="is-active"{% endif %}>{% translate "Projects" %}</a>
+        <a href="{% url 'admin_console:user_list' %}"    {% if section == "users" %}aria-current="page" class="is-active"{% endif %}>{% translate "Users" %}</a>
+        <a href="{% url 'admin_console:group_list' %}"   {% if section == "groups" %}aria-current="page" class="is-active"{% endif %}>{% translate "Groups" %}</a>
         <a href="{% url 'admin_console:cves' %}"         {% if section == "cves" %}aria-current="page" class="is-active"{% endif %}>{% translate "CVE Assignment" %}</a>
         <a href="{% url 'admin_console:publications' %}" {% if section == "publications" %}aria-current="page" class="is-active"{% endif %}>{% translate "Publication" %}</a>
         <a href="{% url 'admin_console:audit' %}"        {% if section == "audit" %}aria-current="page" class="is-active"{% endif %}>{% translate "Audit logs" %}</a>

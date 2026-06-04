@@ -1,4 +1,4 @@
-"""Projects & OIDC groups CRUD for the admin console."""
+"""Project CRUD for the admin console (incl. the OIDC security-team group binding)."""
 
 from __future__ import annotations
 
@@ -23,7 +23,11 @@ def project_list(request):
         .annotate(advisory_count=Count("advisories"))
         .order_by("name")
     )
-    return render(request, "admin_console/project_list.html", {"projects": projects})
+    return render(
+        request,
+        "admin_console/project_list.html",
+        {"projects": projects, "admin_section": "projects"},
+    )
 
 
 @admin_required
@@ -39,7 +43,7 @@ def project_create(request):
     return render(
         request,
         "admin_console/project_form.html",
-        {"form": form, "project": None},
+        {"form": form, "project": None, "admin_section": "projects"},
     )
 
 
@@ -60,6 +64,8 @@ def project_edit(request, project_id):
         {
             "form": form,
             "project": project,
+            "admin_section": "projects",
+            "security_team_members": project.security_team.user_set.order_by("email"),
             "roster_sync_enabled": getattr(settings, "PMI_ROSTER_SYNC_ENABLED", False),
             "active_roster_count": project.security_roster.filter(
                 soft_removed_at__isnull=True

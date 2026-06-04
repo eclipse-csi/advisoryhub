@@ -5,7 +5,6 @@
 {% block admin_content %}
   <header class="advisory-detail__header">
     <h1>{{ target_user.display_name|default:target_user.email }}</h1>
-    <p><a href="{% url 'admin_console:user_list' %}">&larr; {% translate "All users" %}</a></p>
   </header>
 
   <section>

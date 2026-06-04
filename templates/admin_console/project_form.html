@@ -2,8 +2,9 @@
 {% block title %}Admin Console — {% if project %}Edit project{% else %}New project{% endif %}{% endblock %}
 {% block admin_section %}projects{% endblock %}
 {% block admin_content %}
-  <h1>{% if project %}Edit project: {{ project.name }}{% else %}New project{% endif %}</h1>
-  <p><a href="{% url 'admin_console:project_list' %}">&larr; Projects</a></p>
+  <header class="advisory-detail__header">
+    <h1>{% if project %}Edit project: {{ project.name }}{% else %}New project{% endif %}</h1>
+  </header>
 
   <form method="post">
     {% csrf_token %}
@@ -24,6 +25,35 @@
   </form>
 
   {% if project %}
+    <section>
+      <h2>Security team</h2>
+      <p class="muted">
+        Members of the OIDC group <code>{{ project.security_team.name }}</code> are this
+        project's security team — they hold owner on every advisory of this project
+        (INV-AUTH-3 — owner is derived from membership, never assigned). Membership is
+        mirrored from OIDC on login and is read-only here — members appear here only
+        after they first sign in. For everyone on the Eclipse security team, including
+        those who have never logged in, see the <strong>Security-team roster</strong>
+        below (notification reach only, no access).
+      </p>
+      {% if security_team_members %}
+        <table>
+          <thead><tr><th>Email</th><th>Display name</th><th>Last login</th></tr></thead>
+          <tbody>
+            {% for m in security_team_members %}
+              <tr data-href="{% url 'admin_console:user_detail' m.pk %}">
+                <td><a href="{% url 'admin_console:user_detail' m.pk %}">{{ m.email }}</a></td>
+                <td>{{ m.display_name|default:"—" }}</td>
+                <td>{% if m.last_login %}{{ m.last_login|date:"Y-m-d H:i" }}{% else %}never{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>No members.</p>
+      {% endif %}
+    </section>
+
     <section class="roster-sync">
       <h2>Security-team roster</h2>
       {% if roster_sync_enabled %}
@@ -38,7 +68,7 @@
           {% csrf_token %}
           <button type="submit" class="btn">Sync security team</button>
         </form>
-        <p class="help">Pre-provisions notification-only accounts for security-team members who haven't logged in yet. Confers no in-app access (see INV-OIDC-5).</p>
+        <p class="help">Pre-provisions notification-only accounts for security-team members who haven't logged in yet. Confers no in-app access (see INV-OIDC-5) — for who holds owner/edit access, see <strong>Security team</strong> above.</p>
       {% else %}
         <p class="muted">Roster sync is disabled. Set <code>PMI_ROSTER_SYNC_ENABLED</code> and the <code>ECLIPSE_API_*</code> credentials to enable it.</p>
       {% endif %}

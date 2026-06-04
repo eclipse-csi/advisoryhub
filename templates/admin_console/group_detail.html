@@ -5,7 +5,6 @@
 {% block admin_content %}
   <header class="advisory-detail__header">
     <h1><code>{{ group.name }}</code>{% if is_admin_group %} <strong>({% translate "admin group" %})</strong>{% endif %}</h1>
-    <p><a href="{% url 'admin_console:group_list' %}">&larr; {% translate "All groups" %}</a></p>
   </header>
 
   {% if is_admin_group %}

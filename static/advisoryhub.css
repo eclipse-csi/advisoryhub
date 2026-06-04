@@ -251,6 +251,7 @@ main.container > form,
 .advisory-detail__main > form,
 .advisory-detail__sidebar > div > .access-panel,
 .advisory-detail__sidebar > .notifications-panel,
+.admin-console__main > section,
 .comments {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -262,6 +263,37 @@ main.container > form,
 
 main.container > h1,
 .advisory-detail__main > h1 { margin-top: 0.3rem; }
+
+/* Carded <section>/<form>: visible padding == CSS padding regardless of which
+   flow element leads/trails. Without this a trailing <dl>/<p> adds its margin to
+   padding-bottom (~2.1rem vs ~1.1rem top). .error-page / .landing manage their own
+   heading spacing, so they are excluded. */
+main.container > section:not(.error-page):not(.landing) > :first-child,
+main.container > form > :first-child,
+.advisory-detail__main > section > :first-child,
+.advisory-detail__main > form > :first-child,
+.admin-console__main > section > :first-child { margin-top: 0; }
+
+main.container > section:not(.error-page):not(.landing) > :last-child,
+main.container > form > :last-child,
+.advisory-detail__main > section > :last-child,
+.advisory-detail__main > form > :last-child,
+.admin-console__main > section > :last-child { margin-bottom: 0; }
+
+/* Progressive enhancement: trim a leading heading's top line-box leading so its
+   cap-height meets the card's top padding edge (kills the top-heavy look, strongest
+   on the 1.7rem h1). Chrome/Edge 133, Safari 18.2; no-op in Firefox/older engines.
+   Scoped to each section's OWN leading h1/h2 — never reaches .adv-prose headings
+   (nested, not :first-child) nor the self-managed .error-page / .landing heroes. */
+main.container > section:not(.error-page):not(.landing) > h1:first-child,
+main.container > section:not(.error-page):not(.landing) > h2:first-child,
+.advisory-detail__main > section > h1:first-child,
+.advisory-detail__main > section > h2:first-child,
+.admin-console__main > section > h1:first-child,
+.admin-console__main > section > h2:first-child {
+  text-box-trim: trim-start;
+  text-box-edge: cap alphabetic;
+}
 
 /* ------------------------------------------------------------ messages */
 

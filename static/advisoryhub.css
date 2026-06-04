@@ -712,9 +712,24 @@ fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
   color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.2rem 0.6rem;
+  padding: 0.3rem 0.55rem;
   cursor: pointer;
   font-size: var(--text-base);
+  line-height: 1;
+}
+/* Icon-only removers (aliases, CWE, events, severity, references, credits):
+   square so the trash glyph centers, matching the access-panel .icon-btn. The
+   labelled "Remove package" button lives in .row-actions.outer and keeps the
+   wider padding + the base button's icon/text gap. */
+.formset-row .row-actions:not(.outer) button {
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0.3rem;
+}
+.formset-row .row-actions button .adv-icon {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: 0;
 }
 .formset-row .row-actions button:hover {
   color: var(--danger);
@@ -2025,6 +2040,11 @@ main.container section > p.empty {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
+}
+.advisory-cve .cve-unassign-icon .adv-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  vertical-align: 0;
 }
 .advisory-cve .cve-unassign-icon:hover {
   color: #fff;

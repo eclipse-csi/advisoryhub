@@ -19,7 +19,7 @@ render context — see advisories.form_assembly.advanced_form_context.
     {% for sub in formsets.aliases.forms %}
       <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}">
         {{ sub.value }} {{ sub.value.errors }}
-        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
         <span class="hidden-delete">{{ sub.DELETE }}</span>
       </div>
     {% endfor %}
@@ -27,7 +27,7 @@ render context — see advisories.form_assembly.advanced_form_context.
   <template class="empty-form-template" data-prefix="aliases">
     <div class="formset-row">
       {{ formsets.aliases.empty_form.value }}
-      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
       <span class="hidden-delete">{{ formsets.aliases.empty_form.DELETE }}</span>
     </div>
   </template>
@@ -47,7 +47,7 @@ render context — see advisories.form_assembly.advanced_form_context.
                placeholder="e.g. 79 or Cross-site Scripting"
                value="{{ sub.value.value|default_if_none:'' }}">
         {{ sub.value.errors }}
-        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
         <span class="hidden-delete">{{ sub.DELETE }}</span>
       </div>
     {% endfor %}
@@ -58,7 +58,7 @@ render context — see advisories.form_assembly.advanced_form_context.
       <input type="text" data-cwe-input data-cwe-target="cwe_ids-__prefix__-value"
              autocomplete="off" inputmode="search"
              placeholder="e.g. 79 or Cross-site Scripting">
-      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
       <span class="hidden-delete">{{ formsets.cwe_ids.empty_form.DELETE }}</span>
     </div>
   </template>
@@ -88,7 +88,7 @@ render context — see advisories.form_assembly.advanced_form_context.
               <div class="formset-row event-row{% if ev.DELETE.value %} is-deleted{% endif %}" data-describing-row>
                 {{ ev.kind }} {{ ev.kind.errors }}
                 {{ ev.value }} {{ ev.value.errors }}
-                <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">−</button></span>
+                <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
                 <small data-describing-help></small>
                 <span class="hidden-delete">{{ ev.DELETE }}</span>
               </div>
@@ -98,7 +98,7 @@ render context — see advisories.form_assembly.advanced_form_context.
             <div class="formset-row event-row" data-describing-row>
               {{ inner.empty_form.kind }}
               {{ inner.empty_form.value }}
-              <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">−</button></span>
+              <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
               <small data-describing-help></small>
               <span class="hidden-delete">{{ inner.empty_form.DELETE }}</span>
             </div>
@@ -107,7 +107,7 @@ render context — see advisories.form_assembly.advanced_form_context.
           <small class="event-status" data-event-status aria-live="polite"></small>
         </fieldset>
         <span class="row-actions outer">
-          <button type="button" class="remove-row-btn" aria-label="Remove package">− {% translate "Remove package" %}</button>
+          <button type="button" class="remove-row-btn" aria-label="Remove package">{% include "advisories/_icons.html" with icon="trash" %} {% translate "Remove package" %}</button>
         </span>
         <span class="hidden-delete">{{ outer.DELETE }}</span>
       </div>
@@ -133,7 +133,7 @@ render context — see advisories.form_assembly.advanced_form_context.
           <div class="formset-row event-row" data-describing-row>
             {{ empty_event_form.kind }}
             {{ empty_event_form.value }}
-            <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">−</button></span>
+            <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove event">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
             <small data-describing-help></small>
             <span class="hidden-delete">{{ empty_event_form.DELETE }}</span>
           </div>
@@ -142,7 +142,7 @@ render context — see advisories.form_assembly.advanced_form_context.
         <small class="event-status" data-event-status aria-live="polite"></small>
       </fieldset>
       <span class="row-actions outer">
-        <button type="button" class="remove-row-btn" aria-label="Remove package">− {% translate "Remove package" %}</button>
+        <button type="button" class="remove-row-btn" aria-label="Remove package">{% include "advisories/_icons.html" with icon="trash" %} {% translate "Remove package" %}</button>
       </span>
       <span class="hidden-delete">{{ formsets.affected.empty_form.DELETE }}</span>
     </div>
@@ -161,7 +161,7 @@ render context — see advisories.form_assembly.advanced_form_context.
         {{ sub.score }} {{ sub.score.errors }}
         {{ sub.score_ubuntu }} {{ sub.score_ubuntu.errors }}
         <output data-cvss-score class="cvss-score" aria-live="polite">—</output>
-        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
         <small data-describing-help></small>
         <details class="cvss-calculator" data-cvss-calculator>
           <summary>{% translate "CVSS calculator" %}</summary>
@@ -176,7 +176,7 @@ render context — see advisories.form_assembly.advanced_form_context.
       {{ formsets.severity.empty_form.score }}
       {{ formsets.severity.empty_form.score_ubuntu }}
       <output data-cvss-score class="cvss-score" aria-live="polite">—</output>
-      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
       <small data-describing-help></small>
       <details class="cvss-calculator" data-cvss-calculator>
         <summary>{% translate "CVSS calculator" %}</summary>
@@ -196,7 +196,7 @@ render context — see advisories.form_assembly.advanced_form_context.
       <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}" data-describing-row>
         {{ sub.type }} {{ sub.type.errors }}
         {{ sub.url }} {{ sub.url.errors }}
-        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
         <small data-describing-help></small>
         <span class="hidden-delete">{{ sub.DELETE }}</span>
       </div>
@@ -206,7 +206,7 @@ render context — see advisories.form_assembly.advanced_form_context.
     <div class="formset-row" data-describing-row>
       {{ formsets.references.empty_form.type }}
       {{ formsets.references.empty_form.url }}
-      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
       <small data-describing-help></small>
       <span class="hidden-delete">{{ formsets.references.empty_form.DELETE }}</span>
     </div>
@@ -223,7 +223,7 @@ render context — see advisories.form_assembly.advanced_form_context.
       <div class="formset-row{% if sub.DELETE.value %} is-deleted{% endif %}" data-describing-row>
         {{ sub.type }} {{ sub.type.errors }}
         {{ sub.name }} {{ sub.name.errors }}
-        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+        <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
         <small data-describing-help></small>
         <span class="hidden-delete">{{ sub.DELETE }}</span>
       </div>
@@ -233,7 +233,7 @@ render context — see advisories.form_assembly.advanced_form_context.
     <div class="formset-row" data-describing-row>
       {{ formsets.credits.empty_form.type }}
       {{ formsets.credits.empty_form.name }}
-      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">−</button></span>
+      <span class="row-actions"><button type="button" class="remove-row-btn" aria-label="Remove">{% include "advisories/_icons.html" with icon="trash" %}</button></span>
       <small data-describing-help></small>
       <span class="hidden-delete">{{ formsets.credits.empty_form.DELETE }}</span>
     </div>

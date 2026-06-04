@@ -95,7 +95,7 @@
                   class="cve-unassign-icon"
                   aria-label="Remove CVE assignment"
                   title="Remove CVE assignment"
-                  data-dialog-open="cve-unassign-dialog">×</button>
+                  data-dialog-open="cve-unassign-dialog">{% include "advisories/_icons.html" with icon="trash" %}</button>
           <dialog id="cve-unassign-dialog" class="confirm-dialog" aria-labelledby="cve-unassign-title">
             <form method="post"
                   action="{% url 'advisories:unassign_cve' advisory.advisory_id %}"

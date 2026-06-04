@@ -99,6 +99,14 @@
   --shadow-sm:    0 1px 2px rgba(0, 9, 102, 0.06), 0 1px 1px rgba(0, 9, 102, 0.04);
   --shadow-md:    0 4px 14px rgba(0, 9, 102, 0.10), 0 1px 3px rgba(0, 9, 102, 0.06);
 
+  /* Page width tiers. Reading/form pages keep a comfortable measure; genuine
+     multi-column / table / dashboard pages opt into the wide tier via
+     `main.container--wide` (set per-template through {% block main_modifier %}).
+     clamp(): never narrower than the old 1180 cap, grows with the viewport,
+     caps at 1560 on very large monitors. */
+  --content-max:      1180px;
+  --content-max-wide: clamp(1180px, 94vw, 1560px);
+
   --font-sans:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono:    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
@@ -240,10 +248,11 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 /* ------------------------------------------------------------ layout */
 
 main.container {
-  max-width: 1180px;
+  max-width: var(--content-max);
   margin: 1.8rem auto 3rem;
   padding: 0 1.4rem;
 }
+main.container--wide { max-width: var(--content-max-wide); }
 
 main.container > section,
 main.container > form,
@@ -2274,6 +2283,9 @@ button.info:hover, .btn.info:hover {
   color: var(--text);
   line-height: 1.6;
 }
+/* On the wide detail layout, keep description paragraphs at a readable measure;
+   the surrounding data sections still use the full column width. */
+.advisory-detail__main .adv-prose { max-width: 78ch; }
 .adv-prose p { margin: 0 0 0.8rem; }
 .adv-prose p:last-child { margin-bottom: 0; }
 .adv-prose h1, .adv-prose h2, .adv-prose h3,

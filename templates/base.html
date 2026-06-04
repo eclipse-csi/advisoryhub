@@ -78,7 +78,7 @@
     </div>
   </div>
 {% endif %}
-<main class="container" id="content" tabindex="-1">
+<main class="container {% block main_modifier %}{% endblock %}" id="content" tabindex="-1">
   {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
   {% block content %}{% endblock %}
 </main>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load i18n %}
+{% block main_modifier %}container--wide{% endblock %}
 {% block content %}
   {% with section=admin_section|default:"" %}
   <div class="admin-console">

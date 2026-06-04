@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load i18n %}
+{% load i18n advisory_display %}
 {% block title %}Admin Console — Inbox{% endblock %}
 {% block admin_section %}inbox{% endblock %}
 {% block admin_content %}
@@ -33,7 +33,7 @@
             <span class="inbox__title"><a href="{{ item.url }}">{{ item.title }}</a></span>
             {% if item.subtitle %}<br><span class="inbox__subtitle">{{ item.subtitle }}</span>{% endif %}
           </td>
-          <td class="inbox__age" title="{{ item.age_dt|date:'Y-m-d H:i' }}">{{ item.age_dt|timesince }} ago</td>
+          <td class="inbox__age" title="{{ item.age_dt|date:'Y-m-d H:i' }}">{{ item.age_dt|coarse_timesince }} ago</td>
         </tr>
       {% empty %}
         <tr><td colspan="3" class="inbox__empty">{% translate "Nothing waiting — you're all caught up." %}</td></tr>

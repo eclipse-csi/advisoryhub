@@ -12,6 +12,7 @@ import re
 from typing import Any
 
 from django import template
+from django.utils.timesince import timesince as django_timesince
 
 from advisories.cwes import name_for as cwe_name_for
 
@@ -179,6 +180,24 @@ def humanize_type(value: Any) -> str:
     if not value:
         return ""
     return str(value).replace("_", " ").capitalize()
+
+
+@register.filter(name="coarse_timesince")
+def coarse_timesince(value: Any) -> str:
+    """Time since ``value`` to the single largest unit, e.g. ``"3 days"``.
+
+    Django's built-in ``timesince`` shows two units (``"3 days, 4 hours"``);
+    we pin ``depth=1`` so the list/inbox age columns stay scannable — minutes
+    drop once it's been an hour, hours drop once it's been a day, and so on.
+    Callers append " ago" in the template; the exact datetime stays in a
+    ``title`` tooltip. Returns "" for a falsy value, matching the built-in.
+    """
+    if not value:
+        return ""
+    try:
+        return django_timesince(value, depth=1)
+    except (ValueError, TypeError):
+        return ""
 
 
 # ---------------------------------------------------------------------------

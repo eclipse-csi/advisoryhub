@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n advisory_display %}
 {% block main_modifier %}container--wide{% endblock %}
 {% block title %}{% translate "Advisories" %}{% endblock %}
 {% block content %}
@@ -42,7 +42,7 @@
 
   <table class="advisories">
     <caption class="visually-hidden">Advisories</caption>
-    <thead><tr><th scope="col">ID</th><th scope="col">Project</th><th scope="col">State</th><th scope="col">Review</th><th scope="col">Summary</th><th scope="col">Modified</th></tr></thead>
+    <thead><tr><th scope="col">ID</th><th scope="col">Project</th><th scope="col">State</th><th scope="col">Review</th><th scope="col">Summary</th><th scope="col" class="advisories__age">Modified</th></tr></thead>
     <tbody>
     {% for a in advisories %}
       <tr data-href="{% url 'advisories:detail' a.advisory_id %}">
@@ -58,7 +58,7 @@
           {% if a.review_status != 'none' %}<span class="badge review-{{ a.review_status }}">{{ a.get_review_status_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
         </td>
         <td data-label="{% translate 'Summary' %}">{{ a.summary|default:"—" }}</td>
-        <td data-label="{% translate 'Modified' %}">{{ a.modified_at|date:"Y-m-d H:i" }}</td>
+        <td data-label="{% translate 'Modified' %}" title="{{ a.modified_at|date:'Y-m-d H:i' }}" class="advisories__age">{{ a.modified_at|coarse_timesince }} ago</td>
       </tr>
     {% empty %}
       <tr><td colspan="6">No advisories match the current filters.</td></tr>

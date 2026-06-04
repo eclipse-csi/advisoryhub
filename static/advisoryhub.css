@@ -523,7 +523,8 @@ textarea {
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 .advisory-filters input[type="search"],
-.advisory-filters select {
+.advisory-filters select,
+.advisory-filters .combobox__input {
   width: auto;
 }
 input[type="checkbox"] {
@@ -542,6 +543,33 @@ input[type="checkbox"] {
 input:hover,
 select:hover,
 textarea:hover { border-color: var(--brand); }
+
+/* Native single-selects otherwise render their own OS chrome: WebKit (Safari)
+   ignores the surface/border/radius tokens on a `menulist` <select>, most
+   visibly in dark mode where the control stays light and clashes with the
+   inputs beside it. Resetting `appearance` lets the <select> share the exact
+   box styling of text inputs; a background SVG then draws the dropdown arrow —
+   CSP-safe (no inline style, and no pseudo-element, which <select> can't host).
+   The same treatment styles the smart-combobox text input (advisoryhub-select.js)
+   so it reads as a dropdown too. A data: SVG can't read currentColor / custom
+   properties, so the arrow colour follows the theme via a dark-mode override. */
+/* `input.combobox__input` (not the bare class) so the arrow survives the
+   `input[type="text"] { background: … }` shorthand above, which would otherwise
+   win on specificity and reset background-image to none. */
+select,
+input.combobox__input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%235f6b83' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.75 4.5 6 7.75 9.25 4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.7rem;
+}
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] input.combobox__input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23818ea8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.75 4.5 6 7.75 9.25 4.5'/%3E%3C/svg%3E");
+}
 
 textarea { min-height: 6em; resize: vertical; }
 
@@ -759,6 +787,62 @@ fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
   background: var(--brand-soft);
 }
 .mention-combobox-empty {
+  padding: 0.5rem 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Smart <select> combobox (advisoryhub-select.js) — floating listbox sourced
+   from a native <select>'s own options. Same visual language as the CWE and
+   @-mention comboboxes above, sized to the widest option but capped so a long
+   project name can't run off-screen (the label ellipsises instead). */
+.combobox-panel {
+  z-index: 200;
+  max-height: 18rem;
+  max-width: min(92vw, 30rem);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-base);
+  padding: 0.2rem 0;
+}
+.combobox-option {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  color: var(--text);
+}
+.combobox-option__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.combobox-option__label,
+.combobox-option__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Secondary line (e.g. the project id/slug) — smaller and muted. */
+.combobox-option__detail {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.combobox-option.is-current::after {
+  content: "✓";
+  flex: 0 0 auto;
+  color: var(--brand-fg);
+}
+.combobox-option.is-active,
+.combobox-option:hover {
+  background: var(--brand-soft);
+}
+.combobox-empty {
   padding: 0.5rem 0.7rem;
   color: var(--text-muted);
   font-style: italic;

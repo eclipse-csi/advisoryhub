@@ -7,10 +7,10 @@
 
   <form method="get" class="advisory-filters">
     <input type="search" name="q" value="{{ filters.q|default:'' }}" placeholder="{% translate 'Search summary / details / aliases…' %}">
-    <select name="project">
+    <select name="project" data-combobox aria-label="{% translate 'Project' %}">
       <option value="">{% translate "All projects" %}</option>
       {% for p in projects_for_filter %}
-        <option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }} ({{ p.slug }})</option>
+        <option value="{{ p.id }}" data-combobox-detail="{{ p.slug }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
     </select>
     <select name="state">

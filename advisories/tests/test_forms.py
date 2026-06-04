@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from advisories.form_assembly import assemble_json
 from advisories.forms import (
+    AdvisoryForm,
     AffectedForm,
     AffectedFormSet,
     AliasFormSet,
@@ -27,6 +28,20 @@ def _mgmt(prefix: str, total: int, initial: int = 0) -> dict[str, str]:
         f"{prefix}-MIN_NUM_FORMS": "0",
         f"{prefix}-MAX_NUM_FORMS": "1000",
     }
+
+
+def test_advisory_form_project_options_carry_slug_detail(make_project):
+    """The project picker is a ProjectChoiceSelect: each <option> exposes the
+    project slug via data-combobox-detail so the smart combobox shows it as a
+    second line and matches it while typing (static/advisoryhub-select.js)."""
+    from projects.models import Project
+
+    project = make_project("zlib")  # slug "zlib"
+    form = AdvisoryForm()
+    form.fields["project"].queryset = Project.objects.all()
+    html = str(form["project"])
+    assert "data-combobox" in html
+    assert f'data-combobox-detail="{project.slug}"' in html
 
 
 # ---- sub-form validation ---------------------------------------------------

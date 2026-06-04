@@ -70,6 +70,18 @@ def test_filter_by_project_slug(client, setup):
 
 
 @pytest.mark.django_db
+def test_project_filter_options_show_slug_as_detail(client, setup):
+    """The project filter is a smart combobox: the slug rides on
+    data-combobox-detail (shown as a second line + matched), not inline in the
+    option label."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    p = setup["project_b"]
+    assert f'data-combobox-detail="{p.slug}"' in body
+    assert f"{p.name} ({p.slug})" not in body
+
+
+@pytest.mark.django_db
 def test_filter_by_state(client, setup):
     client.force_login(setup["admin"])
     r = client.get(reverse("advisories:list"), {"state": "published"})

@@ -18,7 +18,7 @@
 
       <label class="audit-filter__field">
         <span>{% translate "Group" %}</span>
-        <select name="group">
+        <select name="group" data-combobox>
           <option value="">{% translate "Any group" %}</option>
           {% for g in group_choices %}
             <option value="{{ g.pk }}" {% if selected_group == g.pk|stringformat:'s' %}selected{% endif %}>{{ g.name }}</option>

@@ -88,6 +88,26 @@ class DescribingSelect(forms.Select):
         return option
 
 
+class ProjectChoiceSelect(forms.Select):
+    """Select for a Project ``ModelChoiceField`` that surfaces each project's
+    slug as a ``data-combobox-detail`` attribute, so the smart combobox
+    (``static/advisoryhub-select.js``) shows it as a smaller second line and
+    folds it into the type-ahead match. Mirrors :class:`DescribingSelect`'s
+    ``create_option`` hook.
+    """
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(
+            name, value, label, selected, index, subindex=subindex, attrs=attrs
+        )
+        # ``value`` is a ModelChoiceIteratorValue (carrying ``.instance``) for real
+        # choices; the empty "----" label passes a plain "" — so guard with getattr.
+        slug = getattr(getattr(value, "instance", None), "slug", None)
+        if slug:
+            option["attrs"]["data-combobox-detail"] = slug
+        return option
+
+
 RANGE_TYPE_DESCRIPTIONS: dict[str, str] = {
     "SEMVER": "Versions follow SemVer 2.0 ordering (e.g. 1.2.3, 2.0.0-rc.1).",
     "ECOSYSTEM": "Versions are ordered by the package ecosystem's native scheme (npm, PyPI, Maven, …).",
@@ -443,6 +463,7 @@ class AdvisoryForm(forms.ModelForm):
         model = Advisory
         fields = ["project", "summary", "details"]
         widgets = {
+            "project": ProjectChoiceSelect(attrs={"data-combobox": True}),
             "summary": forms.TextInput(attrs={"size": 80}),
             "details": forms.Textarea(attrs={"rows": 10}),
         }
@@ -466,3 +487,4 @@ class GhsaLinkedAdvisoryEditForm(forms.ModelForm):
     class Meta:
         model = Advisory
         fields = ["project"]
+        widgets = {"project": ProjectChoiceSelect(attrs={"data-combobox": True})}

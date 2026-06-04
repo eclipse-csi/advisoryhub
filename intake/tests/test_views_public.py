@@ -63,9 +63,23 @@ def test_report_form_renders_ecosystem_live_validation(db, client, unsorted_proj
     # the controller, the input hook, the message slot, and the datalist it reads.
     assert "advisoryhub-validate.js" in body
     assert 'data-validate="ecosystem"' in body
-    assert 'data-validate="project"' in body
     assert "data-validate-error" in body
     assert '<datalist id="osv-ecosystems">' in body
+
+
+def test_report_form_project_is_smart_select(db, client, unsorted_project, make_project):
+    """The project picker is a smart <select> combobox (advisoryhub-select.js),
+    matching the authoring forms — constrained to known projects + the
+    "I don't know" (__unsorted__) option, so there's no free-text slug to
+    client-validate anymore. Each project option also carries its slug on
+    data-combobox-detail (shown as a second line and matched while typing)."""
+    make_project("zlib")  # slug "zlib"
+    body = client.get(reverse("intake:report")).content.decode()
+    assert 'data-validate="project"' not in body
+    assert 'name="project_slug"' in body
+    assert "data-combobox" in body
+    assert 'value="__unsorted__"' in body
+    assert 'data-combobox-detail="zlib"' in body
 
 
 def test_anonymous_submission_creates_triage_advisory(db, client, unsorted_project):

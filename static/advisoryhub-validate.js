@@ -33,14 +33,9 @@
       pattern: /^pkg:[A-Za-z0-9.+-]+\/\S+$/,
       invalidMsg: "Not a valid package URL — expected pkg:type/name, e.g. pkg:maven/org.example/lib.",
     },
-    // intake.forms.clean_project_slug (a known project slug, or the __unsorted__
-    // sentinel — both are <option>s in the #intake-projects datalist).
-    project: {
-      datalist: true,
-      requiredAlways: true,
-      requiredMsg: "Select a project from the list (or the “I do not know” option).",
-      invalidMsg: "Unknown project — pick one from the list.",
-    },
+    // NOTE: the intake project field is now a smart <select> combobox
+    // (advisoryhub-select.js) with choices constrained to known projects, so it
+    // no longer needs a `data-validate` slug check here.
   };
 
   var listCache = {};

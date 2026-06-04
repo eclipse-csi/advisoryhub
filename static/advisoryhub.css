@@ -485,7 +485,7 @@ thead th {
 tbody td {
   padding: 0.6rem 0.8rem;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  vertical-align: middle;
 }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: var(--surface-alt); }
@@ -502,6 +502,13 @@ thead tr:first-child th:first-child { border-top-left-radius: var(--radius-sm); 
 thead tr:first-child th:last-child  { border-top-right-radius: var(--radius-sm); }
 
 table.advisories td a { font-weight: 600; }
+
+/* Forms and diffs have intentionally tall cells (field + help/errors,
+   <pre> before/after blocks); keep their label/field-name top-aligned. */
+table.form td, table.form th,
+table.diff td, table.diff th {
+  vertical-align: top;
+}
 
 /* ------------------------------------------------------------ filters bar */
 

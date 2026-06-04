@@ -1,0 +1,26 @@
+{# Dense left-hand navigation rail; rendered by the {% advisory_rail %} inclusion tag on the detail and edit pages. #}
+<aside class="advisory-rail" aria-label="Advisories you can access">
+  <a class="advisory-rail__back" href="{% url 'advisories:list' %}">← All advisories</a>
+  <input type="search" class="advisory-rail__filter" placeholder="Filter advisories…"
+         aria-label="Filter advisories" autocomplete="off" data-advisory-rail-filter>
+  <nav class="advisory-rail__list" data-advisory-rail-list>
+    {% for a in rail_advisories %}
+      <a class="advisory-rail__item{% if a.advisory_id == rail_current_id %} is-active{% endif %}"
+         href="{% url 'advisories:detail' a.advisory_id %}"
+         {% if a.advisory_id == rail_current_id %}aria-current="page"{% endif %}
+         data-rail-text="{{ a.advisory_id|lower }} {{ a.summary|lower }}">
+        <span class="advisory-rail__top">
+          <span class="advisory-rail__dot state-{{ a.state }}{% if a.review_status != 'none' %} in-review{% endif %}" aria-hidden="true"></span>
+          <span class="advisory-rail__id">{{ a.advisory_id }}</span>
+          {% if a.kind == 'ghsa_linked' %}<span class="advisory-rail__tag" title="GHSA-linked advisory">GHSA</span>{% endif %}
+        </span>
+        <span class="advisory-rail__summary">{{ a.summary|default:"—" }}</span>
+        <span class="visually-hidden"> — {{ a.get_state_display }}{% if a.review_status != 'none' %}, review {{ a.get_review_status_display }}{% endif %}</span>
+      </a>
+    {% empty %}
+      <p class="advisory-rail__empty">No advisories you can access yet.</p>
+    {% endfor %}
+  </nav>
+  <p class="advisory-rail__empty" data-advisory-rail-empty hidden>No matches.</p>
+  {% if rail_remaining %}<a class="advisory-rail__more" href="{% url 'advisories:list' %}">+{{ rail_remaining }} more in the full list</a>{% endif %}
+</aside>

@@ -1,8 +1,12 @@
 {% extends "base.html" %}
+{% load static advisory_display %}
 {% block title %}Edit GHSA-linked advisory {{ advisory.advisory_id }} · AdvisoryHub{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 
 {% block content %}
-<main class="container">
+<div class="advisory-edit advisory-edit--with-rail">
+{% advisory_rail %}
+<div class="advisory-edit__main">
   <h1>Edit {{ advisory.advisory_id }} (GHSA-linked)</h1>
   <p class="help">
     This advisory's content is synced from the upstream GitHub Security
@@ -51,5 +55,6 @@
       </ul>
     </dd>
   </dl>
-</main>
+</div>
+</div>
 {% endblock %}

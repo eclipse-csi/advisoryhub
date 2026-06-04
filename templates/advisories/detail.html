@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% load comment_filters advisory_display user_display static %}
 {% block title %}{{ advisory.advisory_id }} — AdvisoryHub{% endblock %}
-{% block extra_head %}<script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-mentions.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-mentions.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 {% block content %}
-<div class="advisory-detail advisory-detail--with-sidebar">
+<div class="advisory-detail advisory-detail--with-sidebar advisory-detail--with-rail">
+{% advisory_rail %}
 <div class="advisory-detail__main">
   <div class="advisory-detail__header">
     <h1>{{ advisory.advisory_id }}</h1>

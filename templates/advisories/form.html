@@ -1,15 +1,19 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static advisory_display %}
 {% block title %}{% if mode == 'edit' %}Edit {{ advisory.advisory_id }}{% else %}New advisory{% endif %}{% endblock %}
 {% block extra_head %}
   <script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-cvss.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-validate.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   {# load last: the unsaved-guard baseline must be captured after the above scripts normalise fields on load #}
   <script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
 {% endblock %}
 {% block content %}
+<div class="advisory-edit advisory-edit--with-rail">
+{% advisory_rail %}
+<div class="advisory-edit__main">
   <h1>{% if mode == 'edit' %}Edit {{ advisory.advisory_id }}{% else %}New advisory{% endif %}</h1>
   {# novalidate kept: hidden/extra formset fields would let native validation wrongly block submit; the server validates and data-unsaved-guard warns on nav-away. #}
   <form method="post" novalidate data-unsaved-guard>
@@ -34,4 +38,6 @@
       {% if mode == 'edit' %}<a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>{% endif %}
     </p>
   </form>
+</div>
+</div>
 {% endblock %}

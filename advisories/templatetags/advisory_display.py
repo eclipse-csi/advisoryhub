@@ -179,3 +179,66 @@ def humanize_type(value: Any) -> str:
     if not value:
         return ""
     return str(value).replace("_", " ").capitalize()
+
+
+# ---------------------------------------------------------------------------
+# Advisory navigation rail
+# ---------------------------------------------------------------------------
+
+# Cap the dense left rail so a user reachable to thousands of advisories (an
+# admin) doesn't render thousands of rows on every detail/edit page. The full
+# set is always one click away on /advisories; mirror its max page_size.
+_RAIL_LIMIT = 200
+
+
+@register.inclusion_tag("advisories/_rail.html", takes_context=True)
+def advisory_rail(context: Any, current: Any = None) -> dict[str, Any]:
+    """Render the dense left-hand rail of advisories the viewer can reach.
+
+    Shared by the advisory detail and edit pages so a user can jump between
+    advisories without going back to the list. Visibility uses the same
+    server-side source of truth as the list view
+    (``advisories.permissions.visible_advisories``), so the rail can never
+    surface an advisory the viewer couldn't already reach (INV-AUTH-1).
+
+    Published advisories are omitted — they accumulate and drown the active
+    working set (triage/draft/dismissed) the rail is for; the full set stays one
+    click away on /advisories. The advisory being viewed/edited is always pinned
+    (and highlighted) even when it is published, so the rail never hides the page
+    you're on.
+
+    ``current`` defaults to the page's ``advisory`` context variable (absent on
+    the new-advisory form, where nothing is highlighted).
+    """
+    from advisories.models import State
+    from advisories.permissions import visible_advisories
+
+    request = context.get("request")
+    user = getattr(request, "user", None)
+    current = current or context.get("advisory")
+
+    if user is None or not user.is_authenticated:
+        return {"rail_advisories": [], "rail_current_id": None, "rail_remaining": 0}
+
+    qs = (
+        visible_advisories(user)
+        .exclude(state=State.PUBLISHED)
+        .only("advisory_id", "summary", "state", "review_status", "kind", "modified_at")
+        .order_by("-modified_at")
+    )
+    total = qs.count()
+    advisories = list(qs[:_RAIL_LIMIT])
+    remaining = max(0, total - len(advisories))
+
+    # Pin the current advisory if it isn't already shown (it's published, or
+    # beyond the cap). It's safe to surface — the viewer reached its page, so the
+    # access check already passed.
+    current_pk = getattr(current, "pk", None)
+    if current_pk is not None and not any(a.pk == current_pk for a in advisories):
+        advisories.insert(0, current)
+
+    return {
+        "rail_advisories": advisories,
+        "rail_current_id": getattr(current, "advisory_id", None),
+        "rail_remaining": remaining,
+    }

@@ -201,11 +201,11 @@ def advisory_rail(context: Any, current: Any = None) -> dict[str, Any]:
     (``advisories.permissions.visible_advisories``), so the rail can never
     surface an advisory the viewer couldn't already reach (INV-AUTH-1).
 
-    Published advisories are omitted — they accumulate and drown the active
-    working set (triage/draft/dismissed) the rail is for; the full set stays one
+    Published and dismissed advisories are omitted — they accumulate and drown
+    the active working set (triage/draft) the rail is for; the full set stays one
     click away on /advisories. The advisory being viewed/edited is always pinned
-    (and highlighted) even when it is published, so the rail never hides the page
-    you're on.
+    (and highlighted) even when it is published or dismissed, so the rail never
+    hides the page you're on.
 
     ``current`` defaults to the page's ``advisory`` context variable (absent on
     the new-advisory form, where nothing is highlighted).
@@ -222,7 +222,7 @@ def advisory_rail(context: Any, current: Any = None) -> dict[str, Any]:
 
     qs = (
         visible_advisories(user)
-        .exclude(state=State.PUBLISHED)
+        .exclude(state__in=[State.PUBLISHED, State.DISMISSED])
         .only("advisory_id", "summary", "state", "review_status", "kind", "modified_at")
         .order_by("-modified_at")
     )
@@ -230,9 +230,9 @@ def advisory_rail(context: Any, current: Any = None) -> dict[str, Any]:
     advisories = list(qs[:_RAIL_LIMIT])
     remaining = max(0, total - len(advisories))
 
-    # Pin the current advisory if it isn't already shown (it's published, or
-    # beyond the cap). It's safe to surface — the viewer reached its page, so the
-    # access check already passed.
+    # Pin the current advisory if it isn't already shown (it's published or
+    # dismissed, or beyond the cap). It's safe to surface — the viewer reached
+    # its page, so the access check already passed.
     current_pk = getattr(current, "pk", None)
     if current_pk is not None and not any(a.pk == current_pk for a in advisories):
         advisories.insert(0, current)

@@ -29,6 +29,9 @@ def setup(make_user, make_project, settings):
     published = Advisory.objects.create(
         project=mine, summary="Old published bug", state=State.PUBLISHED
     )
+    dismissed = Advisory.objects.create(
+        project=mine, summary="Dismissed duplicate", state=State.DISMISSED
+    )
     hidden = Advisory.objects.create(project=other, summary="Not visible to member")
     return {
         "member": member,
@@ -36,6 +39,7 @@ def setup(make_user, make_project, settings):
         "a1": a1,
         "a2": a2,
         "published": published,
+        "dismissed": dismissed,
         "hidden": hidden,
     }
 
@@ -105,6 +109,26 @@ def test_rail_pins_current_advisory_even_when_published(client, setup):
     match = re.search(r'class="advisory-rail__item is-active"\s+href="([^"]+)"', body)
     assert match, "current published advisory should be pinned + active in the rail"
     assert match.group(1) == reverse("advisories:detail", args=[pub.advisory_id])
+
+
+@pytest.mark.django_db
+def test_rail_excludes_dismissed_advisories(client, setup):
+    """Dismissed advisories leave the active working set; the rail drops them."""
+    client.force_login(setup["member"])
+    r = client.get(reverse("advisories:detail", args=[setup["a1"].advisory_id]))
+    assert setup["dismissed"].advisory_id not in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_rail_pins_current_advisory_even_when_dismissed(client, setup):
+    """The advisory being viewed is always shown + active, even if dismissed."""
+    client.force_login(setup["member"])
+    dismissed = setup["dismissed"]
+    r = client.get(reverse("advisories:detail", args=[dismissed.advisory_id]))
+    body = r.content.decode()
+    match = re.search(r'class="advisory-rail__item is-active"\s+href="([^"]+)"', body)
+    assert match, "current dismissed advisory should be pinned + active in the rail"
+    assert match.group(1) == reverse("advisories:detail", args=[dismissed.advisory_id])
 
 
 @pytest.mark.django_db

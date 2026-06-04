@@ -1106,11 +1106,11 @@ p.state strong { color: var(--text); }
    column (rail | main | actions sidebar); the edit page gains a second
    (rail | form). Both collapse below 1200px, where the topbar nav covers
    navigation. */
-.advisory-detail--with-rail { grid-template-columns: 220px minmax(0, 1fr) 320px; }
+.advisory-detail--with-rail { grid-template-columns: 320px minmax(0, 1fr) 320px; }
 
 .advisory-edit {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 1.3rem;
   align-items: start;
 }

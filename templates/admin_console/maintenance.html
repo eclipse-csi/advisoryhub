@@ -24,7 +24,7 @@
   </p>
 
   {# This form is itself a write, but admins are exempt from the maintenance gate, so it stays usable precisely when needed — to turn the pause off. #}
-  <form method="post">
+  <form method="post" id="maintenance-form">
     {% csrf_token %}
     {{ form.non_field_errors }}
     <table class="form">
@@ -39,8 +39,16 @@
         </tr>
       {% endfor %}
     </table>
-    <button type="submit" class="{% if maintenance.is_enabled %}danger{% else %}warning{% endif %}">
-      {% if maintenance.is_enabled %}{% translate "Update / turn off" %}{% else %}{% translate "Save" %}{% endif %}
-    </button>
   </form>
+  {% translate "Cancel" as mm_cancel %}
+  {% blocktranslate asvar mm_body %}Apply these maintenance-mode settings? While maintenance mode is on, only admins can act — every other user is paused and their writes are refused server-side. This takes effect immediately.{% endblocktranslate %}
+  {% if maintenance.is_enabled %}
+    {% translate "Update / turn off" as mm_label %}
+    {% translate "Update maintenance mode" as mm_title %}
+    {% include "_confirm_action.html" with submit_form="maintenance-form" dialog_id="maintenance-confirm" trigger_label=mm_label trigger_class="danger" confirm_label=mm_label confirm_class="danger" title=mm_title body=mm_body cancel_label=mm_cancel %}
+  {% else %}
+    {% translate "Save" as mm_label %}
+    {% translate "Turn on maintenance mode" as mm_title %}
+    {% include "_confirm_action.html" with submit_form="maintenance-form" dialog_id="maintenance-confirm" trigger_label=mm_label trigger_class="warning" confirm_label=mm_label confirm_class="warning" title=mm_title body=mm_body cancel_label=mm_cancel %}
+  {% endif %}
 {% endblock %}

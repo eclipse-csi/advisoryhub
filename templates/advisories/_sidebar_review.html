@@ -30,9 +30,8 @@ can_withdraw_review, can_review, can_revoke_approval, open_review_task.
 
   {% if can_submit_for_review and advisory.state == 'draft' and advisory.review_status == 'none' %}
     <div class="sidebar-card__row">
-      <form method="post" action="{% url 'advisories:submit_review' advisory.advisory_id %}" class="inline">
-        {% csrf_token %}<button type="submit" class="success">Submit for review</button>
-      </form>
+      {% url 'advisories:submit_review' advisory.advisory_id as submit_review_url %}
+      {% include "_confirm_action.html" with action=submit_review_url dialog_id="advisory-submit-review" trigger_label="Submit for review" trigger_class="success" title="Submit for review" body="Freeze the current content into an immutable snapshot and queue it for review by the global security team. You won't be able to edit it again until the review concludes or you withdraw it." confirm_label="Submit for review" confirm_class="success" %}
       <p class="sidebar-card__action-hint">
         Freeze the current content into an immutable snapshot and queue it for review by the global security team.
       </p>

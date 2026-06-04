@@ -29,10 +29,12 @@ Context required: advisory, can_publish, last_publication_task.
 
   {% if can_publish and advisory.state == 'draft' or can_publish and advisory.republish_required %}
     <div class="sidebar-card__row">
-      <form method="post" action="{% url 'publication:publish' advisory.advisory_id %}" class="inline">
-        {% csrf_token %}
-        <button type="submit" class="warning">{% if advisory.republish_required %}Re-publish{% else %}Publish{% endif %}</button>
-      </form>
+      {% url 'publication:publish' advisory.advisory_id as publish_url %}
+      {% if advisory.republish_required %}
+        {% include "_confirm_action.html" with action=publish_url dialog_id="advisory-publish" trigger_label="Re-publish" trigger_class="warning" title="Re-publish advisory" body="Re-export the OSV and CSAF documents (plus the CVE record, if one is assigned) after your edits and push an updated commit to the publication repository. The public feed will be updated." confirm_label="Re-publish" confirm_class="warning" %}
+      {% else %}
+        {% include "_confirm_action.html" with action=publish_url dialog_id="advisory-publish" trigger_label="Publish" trigger_class="warning" title="Publish advisory" body="Generate the OSV and CSAF documents (plus the CVE record, if one is assigned) and push them to the publication repository. This makes the advisory public." confirm_label="Publish" confirm_class="warning" %}
+      {% endif %}
       <p class="sidebar-card__action-hint">
         {% if advisory.republish_required %}
           Re-export OSV, CSAF{% if advisory.assigned_cve_id %} and CVE{% endif %} after edits and push an updated commit to the publication repository.

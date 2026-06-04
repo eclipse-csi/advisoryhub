@@ -1,0 +1,55 @@
+{% comment %}
+Reusable confirmation dialog — CSP-clean, no inline JS.
+
+Renders a trigger button that opens a native <dialog class="confirm-dialog">
+asking the user to confirm before a consequential / hard-to-undo action runs.
+Opening and closing are handled by the delegated controller in
+static/advisoryhub-dialogs.js (data-dialog-open / data-dialog-close); this
+partial only supplies the markup, factoring out the shape of the hand-written
+dismiss and CVE-unassign dialogs.
+
+Two modes:
+  • Self-contained (default): owns a <form method="post" action="{{ action }}">
+    carrying only CSRF + the confirm button. Use for bare action POSTs whose
+    form is just a button (publish, promote, reopen, submit-for-review, retry).
+  • External form (pass submit_form="<form-id>"): renders NO form of its own;
+    the confirm button submits an existing on-page <form> by id via the HTML
+    `form` attribute. Use when the action's form carries its own fields (e.g.
+    the maintenance settings form). Omit `action` in this mode.
+
+Params:
+  dialog_id      required — unique per page; also seeds the heading id.
+  trigger_label  required — text on the opening button.
+  confirm_label  required — text on the confirming submit button.
+  title          required — dialog heading.
+  body           required — one-line explanation of the consequence.
+  action         POST target (self-contained mode only).
+  submit_form    id of an on-page <form> to submit (external mode; omit action).
+  trigger_class  optional — semantic variant for the trigger button.
+  confirm_class  optional — semantic variant for the confirm button.
+  cancel_label   optional — defaults to "Cancel".
+  disabled       optional — render the trigger disabled (the dialog is omitted).
+{% endcomment %}
+<button type="button" class="{{ trigger_class }}" data-dialog-open="{{ dialog_id }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>{{ trigger_label }}</button>
+{% if not disabled %}
+  <dialog id="{{ dialog_id }}" class="confirm-dialog" aria-labelledby="{{ dialog_id }}-title" aria-describedby="{{ dialog_id }}-desc">
+    {% if submit_form %}
+      <h3 id="{{ dialog_id }}-title">{{ title }}</h3>
+      <p id="{{ dialog_id }}-desc">{{ body }}</p>
+      <div class="dialog-actions">
+        <button type="button" data-dialog-close>{{ cancel_label|default:"Cancel" }}</button>
+        <button type="submit" form="{{ submit_form }}" class="{{ confirm_class }}">{{ confirm_label }}</button>
+      </div>
+    {% else %}
+      <form method="post" action="{{ action }}">
+        {% csrf_token %}
+        <h3 id="{{ dialog_id }}-title">{{ title }}</h3>
+        <p id="{{ dialog_id }}-desc">{{ body }}</p>
+        <div class="dialog-actions">
+          <button type="button" data-dialog-close>{{ cancel_label|default:"Cancel" }}</button>
+          <button type="submit" class="{{ confirm_class }}">{{ confirm_label }}</button>
+        </div>
+      </form>
+    {% endif %}
+  </dialog>
+{% endif %}

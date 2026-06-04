@@ -37,9 +37,14 @@
             <td>{{ t.finished_at|date:"Y-m-d H:i" }}</td>
             <td><code>{{ t.last_error|truncatechars:120 }}</code></td>
             <td>
-              <form method="post" action="{% url 'publication:retry' t.pk %}" class="inline">
-                {% csrf_token %}<button type="submit">{% translate "Retry" %}</button>
-              </form>
+              {% url 'publication:retry' t.pk as retry_url %}
+              {% with rid=t.pk|stringformat:"s" %}
+              {% translate "Retry" as retry_label %}
+              {% translate "Retry publication" as retry_title %}
+              {% translate "Cancel" as retry_cancel %}
+              {% blocktranslate asvar retry_body with adv=t.advisory.advisory_id %}Re-attempt the OSV and CSAF export and push it to the publication repository for {{ adv }}.{% endblocktranslate %}
+              {% include "_confirm_action.html" with action=retry_url dialog_id="publication-retry-"|add:rid trigger_label=retry_label confirm_label=retry_label confirm_class="warning" title=retry_title body=retry_body cancel_label=retry_cancel %}
+              {% endwith %}
               {% for artifact in t.artifacts.all %}
                 <a href="{% url 'publication:artifact' t.pk artifact.kind %}">{{ artifact.get_kind_display }}</a>{% if not forloop.last %} · {% endif %}
               {% endfor %}

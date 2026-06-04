@@ -33,12 +33,8 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
 
   {% if can_triage %}
     <div class="sidebar-card__row">
-      <form method="post" action="{% url 'advisories:promote' advisory.advisory_id %}" class="inline">
-        {% csrf_token %}
-        <button type="submit" class="success" {% if is_unsorted %}disabled aria-disabled="true"{% endif %}>
-          Promote to draft
-        </button>
-      </form>
+      {% url 'advisories:promote' advisory.advisory_id as promote_url %}
+      {% include "_confirm_action.html" with action=promote_url dialog_id="advisory-promote" trigger_label="Promote to draft" trigger_class="success" disabled=is_unsorted title="Promote to draft" body="Move this report from triage to draft. Comments open up, the project security team is notified, and the standard advisory workflow takes over." confirm_label="Promote to draft" confirm_class="success" %}
       <p class="sidebar-card__action-hint">
         {% if is_unsorted %}
           Set a target project via the edit form first — unrouted reports can't be promoted as-is.
@@ -103,10 +99,8 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
 
   {% if can_reopen %}
     <div class="sidebar-card__row">
-      <form method="post" action="{% url 'advisories:reopen' advisory.advisory_id %}" class="inline">
-        {% csrf_token %}
-        <button type="submit" class="success">Reopen</button>
-      </form>
+      {% url 'advisories:reopen' advisory.advisory_id as reopen_url %}
+      {% include "_confirm_action.html" with action=reopen_url dialog_id="advisory-reopen" trigger_label="Reopen" trigger_class="success" title="Reopen advisory" body="Move this advisory out of the dismissed state and back into the workflow. The dismissal reason stays in the audit log." confirm_label="Reopen" confirm_class="success" %}
       <p class="sidebar-card__action-hint">
         Move this advisory back to {% if advisory.dismissed_from_state == 'triage' %}triage{% else %}draft{% endif %}. The dismissal reason stays in the audit log. {% if advisory.orphaned_cves.all %}If the previous CVE wasn't yet rejected at cve.org it will be reattached automatically; if it was, an admin task will be queued.{% endif %}
       </p>

@@ -9,6 +9,14 @@
  * style/font-src can stay 'self'. font-display:swap avoids FOIT. Provenance +
  * checksums in static/fonts/Inter.VERSION (verified by dev/check_vendored_assets.sh).
  */
+
+/* Cascade layers — migration in progress (chore/css-layer-migration).
+   Everything currently lives in the last, highest-priority `legacy` layer, which
+   behaves identically to being unlayered. Rules are extracted into the earlier,
+   ordered layers (reset → base → theme → components → utilities) one verified
+   chunk at a time; until a chunk moves, nothing about the cascade changes. */
+@layer reset, base, theme, components, utilities;
+@layer base { /* @font-face is layer-neutral; parked in base */
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -23,7 +31,9 @@
   font-display: swap;
   src: url("fonts/InterVariable-Italic.woff2") format("woff2");
 }
+} /* @layer base — fonts */
 
+@layer theme {
 :root {
   /* Colour tokens that differ by theme are light-dark() pairs, resolved via
      `color-scheme` (light here; the :root[data-theme="dark"] block flips it to
@@ -122,13 +132,17 @@
   --text-h2:    1.2rem;
   --text-h1:    1.7rem;
 }
+} /* @layer theme */
 
+@layer reset {
 /* ------------------------------------------------------------ reset/base */
 
 *, *::before, *::after { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
+}
 
+@layer base {
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -165,7 +179,9 @@ p { margin: 0 0 0.8em; text-wrap: pretty; }
 
 a { color: var(--brand-fg); text-decoration: none; }
 a:hover { color: var(--brand-fg-hover); text-decoration: underline; }
+} /* @layer base */
 
+@layer components {
 /* htmx progress indicators. htmx's built-in <style> injection is disabled
    (advisoryhub-htmx.js sets includeIndicatorStyles=false) so the enforced CSP
    style-src 'self' needs no inline-style allowance; these replicate htmx's
@@ -3425,3 +3441,4 @@ dialog.drawer--right {
     content: none;
   }
 }
+} /* @layer components */

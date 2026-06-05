@@ -4,14 +4,18 @@
 * :class:`PermissionsPolicyMiddleware` — restrictive ``Permissions-Policy`` header.
 * :class:`MaintenanceModeMiddleware` — server-side enforcement of the
   admin-toggled site-wide maintenance pause (``INV-MAINT-1``).
+* :class:`HtmxMessagesMiddleware` — surface ``django.contrib.messages`` on HTMX
+  responses as a client-side toast (``HX-Trigger``).
 """
 
 from __future__ import annotations
 
 import uuid
 
+from django.contrib.messages import get_messages
 from django.http import JsonResponse
 from django.shortcuts import render
+from django_htmx.http import trigger_client_event
 
 from common.logging import reset_request_id, set_request_id
 
@@ -140,3 +144,53 @@ class MaintenanceModeMiddleware:
                 response["HX-Refresh"] = "true"
         response["Retry-After"] = "3600"
         return response
+
+
+class HtmxMessagesMiddleware:
+    """Deliver ``django.contrib.messages`` to HTMX responses as toasts.
+
+    Full-page responses already render pending messages through the
+    ``#toast-data`` island in ``base.html``. An HTMX partial swap never
+    re-renders ``base.html``, so a message added during such a request would sit
+    in storage unseen until the next full page load. For an HTMX request whose
+    response is a normal swap, we drain the message storage into an
+    ``HX-Trigger: advisoryhub:messages`` header that ``advisoryhub-toast.js``
+    renders (via :func:`django_htmx.http.trigger_client_event`, which safely
+    merges with any pre-existing ``HX-Trigger`` value).
+
+    Iterating the storage here marks it consumed, so ``MessageMiddleware`` —
+    whose response phase runs *after* this one, since this middleware sits below
+    it in ``MIDDLEWARE`` — re-stores an empty queue and the message never shows
+    twice. This placement also requires ``request.htmx`` (set by
+    ``HtmxMiddleware``, immediately above) to already be present.
+
+    Responses that cause a *full reload* are deliberately left untouched so the
+    message survives in storage and the reloaded page's island renders it: a 3xx
+    redirect (htmx follows it), or an ``HX-Redirect`` / ``HX-Refresh`` /
+    ``HX-Location`` directive (e.g. ``advisory_flag``'s 204 + ``HX-Refresh`` and
+    the maintenance 503 + ``HX-Refresh``).
+    """
+
+    _FULL_RELOAD_HEADERS = ("HX-Redirect", "HX-Refresh", "HX-Location")
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if not getattr(request, "htmx", False):
+            return response
+        if self._causes_full_reload(response):
+            return response
+        payload = [
+            {"level": message.level_tag, "message": str(message.message)}
+            for message in get_messages(request)
+        ]
+        if payload:
+            trigger_client_event(response, "advisoryhub:messages", {"messages": payload})
+        return response
+
+    def _causes_full_reload(self, response) -> bool:
+        if 300 <= response.status_code < 400:
+            return True
+        return any(header in response for header in self._FULL_RELOAD_HEADERS)

@@ -10,6 +10,7 @@ import uuid
 from functools import partial
 from typing import cast
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -399,6 +400,7 @@ def advisory_create(request):
                     },
                 )
                 transaction.on_commit(partial(_queue_advisory_created, advisory.pk))
+                messages.success(request, "Advisory created.")
                 return redirect("advisories:detail", advisory_id=advisory.advisory_id)
     else:
         form = AdvisoryForm()
@@ -554,6 +556,7 @@ def advisory_edit(request, advisory_id: str):
                         new_value=new_value["project"],
                     )
                     transaction.on_commit(partial(_queue_advisory_created, updated.pk))
+                messages.success(request, "Advisory saved.")
                 return redirect("advisories:detail", advisory_id=updated.advisory_id)
     else:
         form = AdvisoryForm(instance=advisory)
@@ -645,6 +648,7 @@ def _advisory_edit_ghsa_linked(request, advisory, creatable_projects):
                     previous_value=previous["project"],
                     new_value=new_value["project"],
                 )
+            messages.success(request, "Advisory saved.")
             return redirect("advisories:detail", advisory_id=updated.advisory_id)
     else:
         form = GhsaLinkedAdvisoryEditForm(instance=advisory)
@@ -701,6 +705,7 @@ def advisory_dismiss(request, advisory_id: str):
                     return render(
                         request, "advisories/dismiss.html", {"form": form, "advisory": advisory}
                     )
+                messages.success(request, "Advisory dismissed.")
                 return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
             from workflows.services import (
@@ -751,6 +756,7 @@ def advisory_dismiss(request, advisory_id: str):
                         by=request.user,
                         reason=f"Advisory dismissed: {reason}",
                     )
+            messages.success(request, "Advisory dismissed.")
             return redirect("advisories:detail", advisory_id=advisory.advisory_id)
     else:
         form = AdvisoryDismissForm()
@@ -774,6 +780,7 @@ def advisory_reopen(request, advisory_id: str):
         # The service raises ValueError only when the advisory is no longer
         # in DISMISSED state — surface as a 400 rather than crashing.
         raise PermissionDenied(str(exc)) from exc
+    messages.success(request, "Advisory reopened.")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
@@ -857,6 +864,7 @@ def advisory_promote(request, advisory_id: str):
         services.promote_triage_to_draft(advisory, by=request.user, project=target_project)
     except ValueError as exc:
         return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Advisory promoted to draft.")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
@@ -885,6 +893,7 @@ def advisory_flag(request, advisory_id: str):
                 status=400,
             )
         return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Flagged for admin routing.")
     if is_htmx:
         from django.http import HttpResponse
 
@@ -918,6 +927,7 @@ def advisory_clear_routing_flag(request, advisory_id: str):
         services.clear_admin_routing_flag(advisory, by=request.user, note=note)
     except ValueError as exc:
         return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Routing flag cleared.")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 

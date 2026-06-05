@@ -3171,9 +3171,9 @@ dialog.drawer--right {
   overflow: hidden;
 }
 
-/* Transient client-side notifications (e.g. a failed HTMX request) injected by
-   advisoryhub-htmx.js. Reuses the .messages list styling, pinned to the corner
-   and stacked. */
+/* Unified feedback stack injected by advisoryhub-toast.js (success = transient,
+   error/warning = persistent). Reuses the .messages list styling, pinned to the
+   corner and stacked. */
 .toast-region {
   position: fixed;
   inset-inline-end: 1rem;
@@ -3190,7 +3190,15 @@ dialog.drawer--right {
   align-items: flex-start;
   gap: 0.6rem;
   box-shadow: var(--shadow-md);
+  transition: opacity 180ms ease, translate 180ms ease;
 }
+/* Enter from / leave to slightly down + transparent. Under the global
+   prefers-reduced-motion rule the transition is neutralised, so the toast just
+   appears/disappears; advisoryhub-toast.js removes it on a timeout regardless. */
+@starting-style {
+  .toast-region li { opacity: 0; translate: 0 0.5rem; }
+}
+.toast-region li.toast--leaving { opacity: 0; translate: 0 0.5rem; }
 .toast-region li > span { flex: 1 1 auto; }
 .toast__dismiss {
   flex: 0 0 auto;

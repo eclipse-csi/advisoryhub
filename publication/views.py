@@ -34,6 +34,8 @@ def publish(request, advisory_id: str):
         services.publish(advisory, by=request.user)
     except services.PublicationInProgress as exc:
         messages.warning(request, str(exc))
+    else:
+        messages.success(request, "Publication started.")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
@@ -50,6 +52,7 @@ def retry(request, task_id: int):
     if redirect_resp is not None:
         return redirect_resp
     services.retry(task, by=request.user)
+    messages.success(request, "Publication retry started.")
     return redirect("admin_console:index")
 
 

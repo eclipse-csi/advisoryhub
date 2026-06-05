@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
@@ -58,6 +59,7 @@ def preferences(request):
                 previous_value=previous,
                 new_value=_global_snapshot(updated),
             )
+            messages.success(request, "Notification preferences saved.")
             return redirect("notifications:preferences")
     else:
         form = NotificationPreferenceForm(instance=pref)

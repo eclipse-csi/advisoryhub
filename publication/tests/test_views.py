@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 
 import pytest
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from advisories.models import Advisory
@@ -68,6 +69,24 @@ def test_publish_endpoint_creates_task_for_admin(client, setup, monkeypatch):
     response = client.post(reverse("publication:publish", args=[setup["advisory"].advisory_id]))
     assert response.status_code == 302
     assert PublicationTask.objects.filter(advisory=setup["advisory"]).exists()
+    tags = [(m.level_tag, str(m)) for m in get_messages(response.wsgi_request)]
+    assert ("success", "Publication started.") in tags
+
+
+@pytest.mark.django_db
+def test_publish_in_progress_warns(client, setup):
+    # A queued task already exists → services.publish raises PublicationInProgress,
+    # surfaced as a persistent warning message (no new task, no success).
+    version = setup["advisory"].versions.get(version=1)
+    PublicationTask.objects.create(
+        advisory=setup["advisory"], version=version, status=PublicationTaskStatus.QUEUED
+    )
+    client.force_login(setup["admin"])
+    response = client.post(reverse("publication:publish", args=[setup["advisory"].advisory_id]))
+    assert response.status_code == 302
+    levels = [m.level_tag for m in get_messages(response.wsgi_request)]
+    assert "warning" in levels
+    assert "success" not in levels
 
 
 # ---- Retry endpoint ------------------------------------------------------

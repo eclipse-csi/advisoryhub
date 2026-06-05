@@ -180,6 +180,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    # Needs request.htmx (set just above) on the request phase, and must run its
+    # response phase *before* MessageMiddleware's (so draining the message
+    # storage marks it consumed and nothing shows twice) — hence below
+    # MessageMiddleware and HtmxMiddleware here.
+    "common.middleware.HtmxMessagesMiddleware",
     # After auth (needs request.user) and htmx (needs request.htmx) so the
     # maintenance gate can identify admins and answer HTMX writes cleanly.
     "common.middleware.MaintenanceModeMiddleware",
@@ -212,6 +217,12 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "common.context_processors.maintenance_mode",
             ],
+            # `common` is a helper module, not an installed app, so its
+            # templatetags package is not auto-discovered — register it
+            # explicitly. Provides the `toast_payload` filter used by base.html.
+            "libraries": {
+                "advisoryhub": "common.templatetags.advisoryhub_tags",
+            },
         },
     }
 ]

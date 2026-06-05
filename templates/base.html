@@ -19,6 +19,8 @@
       } catch (e) { /* localStorage disabled — fall back to light */ }
     })();
   </script>
+  {# Body text is the LCP element; preload the upright variable face (not italic) so first text paint isn't gated on CSS parse. crossorigin is required even same-origin so this matches the @font-face CORS fetch and is reused. #}
+  <link rel="preload" href="{% static 'fonts/InterVariable.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'advisoryhub.css' %}">
   <script src="{% static 'htmx.min.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
   <script src="{% static 'advisoryhub-htmx.js' %}" defer nonce="{{ request.csp_nonce }}"></script>
@@ -37,15 +39,16 @@
 <header class="topbar">
   <a class="brand" href="{% url 'advisories:list' %}">AdvisoryHub</a>
   <nav>
-    <div class="theme-toggle" role="group" aria-label="{% translate 'Color theme' %}">
-      <button type="button" data-theme-pref-btn="light" aria-pressed="false" title="{% translate 'Light theme' %}" aria-label="{% translate 'Light theme' %}">
-        <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-      </button>
-      <button type="button" data-theme-pref-btn="auto" aria-pressed="false" title="{% translate 'Auto (match system)' %}" aria-label="{% translate 'Auto (match system)' %}">
-        <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
-      </button>
-      <button type="button" data-theme-pref-btn="dark" aria-pressed="false" title="{% translate 'Dark theme' %}" aria-label="{% translate 'Dark theme' %}">
-        <svg class="adv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    {# Two-state color-theme control (System ↔ override). Default "auto" follows the OS; activating pins the opposite scheme; activating again returns to auto. advisoryhub-theme.js sets aria-pressed + the active aria-label from data-label-*; CSS shows the icon matching data-theme-pref. #}
+    <div class="theme-toggle">
+      <button type="button" data-theme-toggle aria-pressed="false"
+              data-label-auto="{% translate 'Color theme: following system — activate to override' %}"
+              data-label-light="{% translate 'Color theme: light — activate to follow system' %}"
+              data-label-dark="{% translate 'Color theme: dark — activate to follow system' %}"
+              aria-label="{% translate 'Color theme' %}" title="{% translate 'Color theme' %}">
+        <svg class="adv-icon theme-icon theme-icon--auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
+        <svg class="adv-icon theme-icon theme-icon--light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="adv-icon theme-icon theme-icon--dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
     </div>
     <a href="{% url 'intake:report' %}">{% translate "Report a vulnerability" %}</a>
@@ -88,5 +91,25 @@
 <ul id="toast-region" class="messages toast-region" aria-live="polite" aria-relevant="additions" aria-atomic="false"></ul>
 {# Screen-reader-only confirmation of successful HTMX actions. Populated by advisoryhub-htmx.js. #}
 <div id="htmx-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+{# Speculative prefetch — progressive enhancement (Chromium honours it; other engines ignore it). Prefetches same-origin GET pages on ~hover / pointer-down (moderate eagerness), excluding OIDC auth flows, the JSON API, file downloads, and any [data-no-prefetch] / [rel=nofollow] link. Sign-out is a POST <form>, so it is never matched. Nonced for CSP; if a violation shows up, add 'inline-speculation-rules' to script-src. #}
+<script type="speculationrules" nonce="{{ request.csp_nonce }}">
+{
+  "prefetch": [
+    {
+      "where": {
+        "and": [
+          { "href_matches": "/*" },
+          { "not": { "href_matches": "/oidc/*" } },
+          { "not": { "href_matches": "/api/*" } },
+          { "not": { "selector_matches": "[data-no-prefetch]" } },
+          { "not": { "selector_matches": "[rel~=nofollow]" } },
+          { "not": { "selector_matches": "[download]" } }
+        ]
+      },
+      "eagerness": "moderate"
+    }
+  ]
+}
+</script>
 </body>
 </html>

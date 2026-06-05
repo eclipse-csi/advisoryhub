@@ -30,6 +30,16 @@
   function open(dialog) {
     if (!dialog) return;
     // Light-dismiss for drawers (and anything opting in) — wired once.
+    //
+    // TODO(closedby): replace this manual backdrop handler with the native
+    // declarative `<dialog closedby="any">` once it's supported across all target
+    // browsers. Safari is the holdout (Chrome/Edge 134+ and Firefox 141+ already
+    // ship it). When it lands: add `closedby="any"` to the `.drawer` /
+    // `[data-light-dismiss]` <dialog>s in the templates and DELETE this block —
+    // do NOT run both at once (native + manual would double-handle the click).
+    // Keep it scoped to those dialogs only; confirm dialogs for consequential
+    // actions intentionally have no light-dismiss. Ref: modern-web-guidance
+    // "light-dismiss-a-dialog".
     if (!dialog.dataset.ahWired) {
       dialog.dataset.ahWired = "1";
       if (dialog.matches(".drawer, [data-light-dismiss]")) {

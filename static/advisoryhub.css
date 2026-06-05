@@ -150,12 +150,18 @@ h1, h2, h3, h4 {
   line-height: 1.25;
   margin: 0 0 0.6em;
   letter-spacing: -0.01em;
+  /* Balance short heading lines; no-op past the engine line limit and on
+     single-line headings. Headings here carry no box, so balance won't leave
+     awkward trailing gaps. */
+  text-wrap: balance;
 }
 h1 { font-size: var(--text-h1); font-weight: 700; }
 h2 { font-size: var(--text-h2); font-weight: 650; }
 h3 { font-size: var(--text-h3); font-weight: 600; color: var(--text-soft); }
 
-p { margin: 0 0 0.8em; }
+/* `pretty` avoids orphaned last-line words in body copy; kicks in only at 3+
+   lines, so short label/metadata <p>s are unaffected. */
+p { margin: 0 0 0.8em; text-wrap: pretty; }
 
 a { color: var(--brand-fg); text-decoration: none; }
 a:hover { color: var(--brand-fg-hover); text-decoration: underline; }
@@ -1245,7 +1251,7 @@ p.state strong { color: var(--text); }
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   min-width: 0;
   padding: 0.5rem;
   border: 1px solid var(--border);
@@ -2420,7 +2426,7 @@ button.info:hover, .btn.info:hover {
 .adv-prose h2 { font-size: 1.15rem; }
 .adv-prose h3 { font-size: 1.02rem; }
 .adv-prose ul, .adv-prose ol { padding-left: 1.4rem; margin: 0 0 0.8rem; }
-.adv-prose li { margin-bottom: 0.2rem; }
+.adv-prose li { margin-bottom: 0.2rem; text-wrap: pretty; }
 .adv-prose code {
   font-size: 0.88em;
   padding: 0.05em 0.35em;
@@ -2435,6 +2441,7 @@ button.info:hover, .btn.info:hover {
   color: var(--text-soft);
   background: var(--surface-alt);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  text-wrap: pretty;
 }
 .adv-prose table {
   border-collapse: collapse;
@@ -2735,6 +2742,14 @@ main.container .adv-affected-card ul.ranges li {
   color: #fff;
 }
 .topbar .theme-toggle .adv-icon { width: 1rem; height: 1rem; vertical-align: 0; }
+/* Single System↔override toggle holds all three icons; show only the one for the
+   active preference. data-theme-pref is set by the early bootstrap (and the JS);
+   the :not([data-theme-pref]) fallback shows the auto icon if JS never runs. */
+.topbar .theme-toggle .theme-icon { display: none; }
+:root:not([data-theme-pref]) .topbar .theme-toggle .theme-icon--auto,
+:root[data-theme-pref="auto"]  .topbar .theme-toggle .theme-icon--auto,
+:root[data-theme-pref="light"] .topbar .theme-toggle .theme-icon--light,
+:root[data-theme-pref="dark"]  .topbar .theme-toggle .theme-icon--dark { display: inline-block; }
 
 /* ------------------------------------------------------------ dark mode
  *
@@ -2750,6 +2765,14 @@ main.container .adv-affected-card ul.ranges li {
   color-scheme: dark;
   --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md:    0 4px 14px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+/* No-JS / no-localStorage fallback: if the early bootstrap never ran,
+   data-theme-pref is absent — honour a dark OS so every light-dark() token
+   resolves dark. (Shadow tokens stay light and the JS-only surfaces above —
+   drawers, diffs, popovers — can't open without JS anyway.) JS users always
+   have data-theme-pref set pre-paint, so this rule is inert for them. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-pref]) { color-scheme: dark; }
 }
 :root[data-theme="dark"] .comment.internal {
   background: var(--warn-soft);
@@ -2844,8 +2867,8 @@ dialog.drawer--right {
   margin: 0;
   width: min(90vw, 720px);
   max-width: 720px;
-  height: 100vh;
-  max-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
 }

@@ -823,7 +823,7 @@ fieldset {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin: 1rem 0;
-  padding: 1rem 1.2rem 0.6rem;
+  padding: 0.5rem 1.2rem 0.6rem;
   background: var(--surface-alt);
 }
 fieldset legend {

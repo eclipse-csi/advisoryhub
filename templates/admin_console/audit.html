@@ -9,7 +9,7 @@
     <div class="audit-filter__row">
       <fieldset class="audit-filter__actions">
         <legend>{% translate "Actions" %}</legend>
-        <details {% if selected_actions %}open{% endif %}>
+        <details class="disclosure disclosure--filter" {% if selected_actions %}open{% endif %}>
           <summary>
             {% if selected_actions %}
               {% blocktranslate count counter=selected_actions|length %}{{ counter }} selected{% plural %}{{ counter }} selected{% endblocktranslate %}

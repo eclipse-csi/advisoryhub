@@ -42,6 +42,11 @@
      their dark variants stay in the dark block. */
   color-scheme: light;
 
+  /* Allow height:0 -> auto interpolation so native <details> can animate their
+     open/close (the .disclosure component). Chrome/Edge 131+; ignored elsewhere
+     (those engines just toggle instantly). */
+  interpolate-size: allow-keywords;
+
   --bg:           light-dark(#f5f7fb, #04081f);
   --surface:      light-dark(#ffffff, #0a1240);
   --surface-alt:  light-dark(#f4f9fe, #0d1858);
@@ -108,6 +113,10 @@
   --radius-2xs:   2px;
   --shadow-sm:    0 1px 2px rgba(0, 9, 102, 0.06), 0 1px 1px rgba(0, 9, 102, 0.04);
   --shadow-md:    0 4px 14px rgba(0, 9, 102, 0.10), 0 1px 3px rgba(0, 9, 102, 0.06);
+
+  /* Down-chevron drawn by .disclosure summaries via mask-image; the visible
+     colour comes from `background: currentColor`, so the SVG stroke is arbitrary. */
+  --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
 
   /* Page width tiers. Reading/form pages keep a comfortable measure; genuine
      multi-column / table / dashboard pages opt into the wide tier via
@@ -3440,5 +3449,93 @@ dialog.drawer--right {
   table.advisories td[colspan]::before {
     content: none;
   }
+}
+
+/* ---------------------------------------------------------- disclosure
+   Reusable expandable-section card for native <details>. Opt in with
+   class="disclosure". Default triangle removed; chevron rotates; body height
+   animates open/close via ::details-content (Chrome/Edge 131+; other engines
+   toggle instantly). prefers-reduced-motion handled globally (see ~line 2060). */
+.disclosure {
+  margin: 1.25rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--text-soft);
+  border-radius: var(--radius);
+  list-style: none;                                /* Firefox: drop default marker */
+  user-select: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }  /* Safari/Chrome marker */
+.disclosure > summary:hover { background: var(--surface-alt); color: var(--text); }
+.disclosure > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+
+/* Custom chevron: a square masked with the chevron SVG, painted via currentColor.
+   Points right when collapsed, rotates to point down when open. */
+.disclosure > summary::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: currentColor;
+  -webkit-mask: var(--icon-chevron) center / contain no-repeat;
+          mask: var(--icon-chevron) center / contain no-repeat;
+  transform: rotate(-90deg);
+  transition: transform 200ms ease;
+}
+.disclosure[open] > summary::before { transform: rotate(0deg); }
+
+/* Divider between header and body when open; square the summary's bottom corners. */
+.disclosure[open] > summary {
+  border-bottom: 1px solid var(--border);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Open/close height animation. ::details-content wraps everything after <summary>;
+   keep it padding-free (padding goes on the children) so the height doesn't jump. */
+.disclosure::details-content {
+  height: 0;
+  overflow: hidden;
+  transition: height 200ms ease, content-visibility 200ms allow-discrete;
+}
+.disclosure[open]::details-content { height: auto; }
+
+/* Body padding applied to the children rather than the animated box. */
+.disclosure > :not(summary) { margin-left: 1rem; margin-right: 1rem; }
+.disclosure > :not(summary):last-child { margin-bottom: 1rem; }
+.disclosure > p.muted:first-of-type { margin-top: 0.8rem; margin-bottom: 0.5rem; }
+
+/* ---- compact dropdown variant: admin Audit / Access-log action filters ---- */
+.disclosure--filter { margin: 0; border-radius: var(--radius-sm); box-shadow: none; }
+.disclosure--filter > summary {
+  padding: 0.4rem 0.6rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+.disclosure--filter[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.disclosure--filter > :not(summary) { margin-left: 0; margin-right: 0; }
+.disclosure--filter .audit-filter__action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+}
+.disclosure--filter .audit-filter__action-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--text-sm);
 }
 } /* @layer components */

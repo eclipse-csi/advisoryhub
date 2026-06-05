@@ -216,6 +216,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "common.context_processors.maintenance_mode",
+                "notifications.context_processors.unread_notifications",
             ],
             # `common` is a helper module, not an installed app, so its
             # templatetags package is not auto-discovered — register it

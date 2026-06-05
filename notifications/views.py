@@ -1,7 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from accounts.models import NotificationPreference
@@ -12,6 +14,7 @@ from audit.services import record_from_request
 
 from . import services
 from .forms import AdvisoryNotificationPreferenceForm, NotificationPreferenceForm
+from .models import Notification
 from .recipients import resolved_comments_level, resolved_lifecycle_flag
 
 _GLOBAL_FIELDS = (
@@ -43,6 +46,64 @@ def _override_snapshot(pref) -> dict | None:
         "on_publication_export_status": pref.on_publication_export_status,
         "comments_level": pref.comments_level,
     }
+
+
+# ---------------------------------------------------------------------------
+# Inbox: the notifications a user received by email, with read/unread state
+# ---------------------------------------------------------------------------
+
+_INBOX_PER_PAGE = 30
+
+
+@login_required
+@require_http_methods(["GET"])
+def inbox(request):
+    """List the notifications the current user received, newest first.
+
+    Visibility is re-checked at *display* time (INV-AUTH-1): a notification
+    whose advisory the user can no longer see is still listed (the email was
+    already delivered) but renders without a link.
+    """
+    qs = Notification.objects.filter(recipient=request.user).select_related("advisory")
+    page = Paginator(qs, _INBOX_PER_PAGE).get_page(request.GET.get("page"))
+    visible_ids = set(perms.visible_advisories(request.user).values_list("pk", flat=True))
+    for n in page.object_list:
+        n.visible = n.advisory_id is None or n.advisory_id in visible_ids
+    return render(
+        request,
+        "notifications/inbox.html",
+        {"page": page, "unread_total": services.unread_count(request.user)},
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def mark_read(request, pk: int):
+    """Mark one notification read. Scoped to the caller's own rows (a row owned
+    by another user 404s). Returns the re-rendered row for an HTMX swap; falls
+    back to a redirect for a no-JS POST.
+    """
+    notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
+    if notification.read_at is None:
+        notification.read_at = timezone.now()
+        notification.save(update_fields=["read_at"])
+    if request.htmx:
+        adv = notification.advisory
+        notification.visible = adv is None or perms.can_view(request.user, adv)
+        return render(request, "notifications/_inbox_row.html", {"n": notification})
+    return redirect("notifications:inbox")
+
+
+@login_required
+@require_http_methods(["POST"])
+def mark_all_read(request):
+    """Mark all of the caller's unread notifications read, then reload the inbox
+    (a fresh render zeroes the nav badge)."""
+    count = services.mark_all_read(request.user)
+    if count:
+        plural = "" if count == 1 else "s"
+        messages.success(request, f"Marked {count} notification{plural} as read.")
+    return redirect("notifications:inbox")
 
 
 @login_required

@@ -231,6 +231,7 @@ def advisory_rail(context: Any, current: Any = None) -> dict[str, Any]:
     """
     from advisories.models import State
     from advisories.permissions import visible_advisories
+    from advisories.visit_markers import annotate_visit_markers, set_visit_markers
 
     request = context.get("request")
     user = getattr(request, "user", None)
@@ -246,14 +247,18 @@ def advisory_rail(context: Any, current: Any = None) -> dict[str, Any]:
         .order_by("-modified_at")
     )
     total = qs.count()
-    advisories = list(qs[:_RAIL_LIMIT])
+    advisories = list(annotate_visit_markers(qs, user)[:_RAIL_LIMIT])
+    set_visit_markers(advisories)
     remaining = max(0, total - len(advisories))
 
     # Pin the current advisory if it isn't already shown (it's published or
     # dismissed, or beyond the cap). It's safe to surface — the viewer reached
-    # its page, so the access check already passed.
+    # its page, so the access check already passed. The page you're on never
+    # carries a marker (the visit was just stamped), and the pinned instance
+    # has no annotation, so clear it explicitly.
     current_pk = getattr(current, "pk", None)
     if current_pk is not None and not any(a.pk == current_pk for a in advisories):
+        current.changed_marker = ""
         advisories.insert(0, current)
 
     return {

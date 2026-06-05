@@ -13,9 +13,10 @@
           <span class="advisory-rail__dot state-{{ a.state }}{% if a.review_status != 'none' %} in-review{% endif %}" aria-hidden="true"></span>
           <span class="advisory-rail__id">{{ a.advisory_id }}</span>
           {% if a.kind == 'ghsa_linked' %}<span class="advisory-rail__tag" title="GHSA-linked advisory">GHSA</span>{% endif %}
+          {% if a.changed_marker %}<span class="advisory-rail__changed advisory-rail__changed--{{ a.changed_marker }}" aria-hidden="true"></span>{% endif %}
         </span>
         <span class="advisory-rail__summary">{{ a.summary|default:"—" }}</span>
-        <span class="visually-hidden"> — {{ a.get_state_display }}{% if a.review_status != 'none' %}, review {{ a.get_review_status_display }}{% endif %}</span>
+        <span class="visually-hidden"> — {{ a.get_state_display }}{% if a.review_status != 'none' %}, review {{ a.get_review_status_display }}{% endif %}{% if a.changed_marker == 'changed' %}, changed since last visit{% elif a.changed_marker == 'new' %}, not viewed yet{% endif %}</span>
       </a>
     {% empty %}
       <p class="advisory-rail__empty">No advisories you can access yet.</p>

@@ -1,0 +1,22 @@
+{% load i18n advisory_display %}
+<li class="notif-row{% if not n.read_at %} is-unread{% endif %}" id="notif-{{ n.pk }}">
+  <div class="notif-row__main">
+    <span class="badge notif-kind">{{ n.get_kind_display }}</span>
+    {% if n.visible and n.advisory_id %}
+      <a class="notif-row__subject" href="{% url 'advisories:detail' n.advisory.advisory_id %}">{{ n.subject }}</a>
+    {% else %}
+      <span class="notif-row__subject">{{ n.subject }}</span>
+    {% endif %}
+    {% if n.summary %}<span class="notif-row__summary">{{ n.summary }}</span>{% endif %}
+  </div>
+  <div class="notif-row__meta">
+    <time class="notif-row__age" datetime="{{ n.created_at|date:'c' }}" title="{{ n.created_at|date:'Y-m-d H:i' }}">{{ n.created_at|coarse_timesince }} {% translate "ago" %}</time>
+    {% if not n.read_at %}
+      <form method="post" action="{% url 'notifications:mark_read' n.pk %}"
+            hx-post="{% url 'notifications:mark_read' n.pk %}"
+            hx-target="#notif-{{ n.pk }}" hx-swap="outerHTML" class="inline notif-row__mark">{% csrf_token %}
+        <button type="submit">{% translate "Mark read" %}</button>
+      </form>
+    {% endif %}
+  </div>
+</li>

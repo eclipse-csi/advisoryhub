@@ -44,8 +44,9 @@ from .forms import (
     AdvisoryForm,
     GhsaLinkedAdvisoryEditForm,
 )
-from .models import Advisory, AdvisoryVersion, Kind, ReviewStatus, State
+from .models import Advisory, AdvisoryVersion, AdvisoryVisit, Kind, ReviewStatus, State
 from .permissions import UNSORTED_PROJECT_SLUG
+from .visit_markers import annotate_visit_markers, set_visit_markers
 
 # ---------------------------------------------------------------------------
 # Listing & detail
@@ -122,7 +123,10 @@ def advisory_list(request):
         page, page_size = 1, 50
     total = qs.count()
     offset = (page - 1) * page_size
-    advisories = list(qs[offset : offset + page_size])
+    # Annotate the page slice only (count() above runs on the un-annotated qs):
+    # the "Changed since last visit" / "New" subqueries evaluate per fetched row.
+    advisories = list(annotate_visit_markers(qs, user)[offset : offset + page_size])
+    set_visit_markers(advisories)
 
     return render(
         request,
@@ -196,6 +200,23 @@ def advisory_detail(request, advisory_id: str):
     if not perms.can_view(request.user, advisory):
         raise PermissionDenied("You don't have access to this advisory.")
     record_from_request(request, action=Action.ADVISORY_VIEWED, advisory=advisory)
+
+    # Opening the detail page is the canonical "I've seen the current state":
+    # clear this advisory's inbox notifications for the viewer, and stamp the
+    # visit that drives the "Changed since last visit" / "New" markers. Both
+    # run only after the can_view guard above, and are cheap single statements.
+    # NOTE: pass an explicit ``last_visited_at`` — with ``auto_now=True`` and an
+    # empty ``defaults`` an existing row would not be UPDATEd, so the timestamp
+    # would never advance past the first visit.
+    from notifications.services import mark_advisory_read
+
+    mark_advisory_read(request.user, advisory)
+    AdvisoryVisit.objects.update_or_create(
+        user=request.user,
+        advisory=advisory,
+        defaults={"last_visited_at": timezone.now()},
+    )
+
     last_publication_task = None
     try:
         last_publication_task = advisory.publication_tasks.prefetch_related("artifacts").first()

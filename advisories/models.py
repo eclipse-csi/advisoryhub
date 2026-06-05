@@ -474,3 +474,37 @@ class AdvisoryIntakeMetadata(models.Model):
 
     def __str__(self) -> str:
         return f"intake:{self.advisory.advisory_id}"
+
+
+class AdvisoryVisit(models.Model):
+    """Per-user record of the last time a user opened an advisory's detail page.
+
+    Powers the "Changed since last visit" / "New" markers on the advisory list
+    and the navigation rail: an advisory is *changed* when durable audit
+    activity (edits, comments, state/review/publication events — but **not**
+    plain views, which are ephemeral ``AccessLogEntry`` rows) post-dates the
+    viewer's ``last_visited_at``; it is *new* when the viewer has no row at all.
+
+    Updated via ``update_or_create`` from :func:`advisories.views.advisory_detail`.
+    One row per (user, advisory); mirrors the shape of
+    :class:`access.models.AdvisoryAccessGrant`. The ``unique_together`` index
+    also serves the per-row visit lookup in the list/rail subqueries.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="advisory_visits",
+    )
+    advisory = models.ForeignKey(
+        Advisory,
+        on_delete=models.CASCADE,
+        related_name="visits",
+    )
+    last_visited_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("user", "advisory")]
+
+    def __str__(self) -> str:
+        return f"{self.user.email} visited {self.advisory.advisory_id}"

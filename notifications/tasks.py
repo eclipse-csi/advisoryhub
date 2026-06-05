@@ -23,6 +23,8 @@ from django.urls import reverse
 
 from advisories.models import Advisory
 
+from . import services
+from .models import NotificationKind
 from .recipients import filter_for_event
 
 log = logging.getLogger(__name__)
@@ -34,7 +36,17 @@ def _advisory_url(advisory: Advisory) -> str:
     return f"{base}{path}" if base else path
 
 
-def _send_one(*, recipient, subject: str, template: str, context: dict) -> None:
+def _send_one(
+    *,
+    recipient,
+    subject: str,
+    template: str,
+    context: dict,
+    kind: str,
+    advisory: Advisory,
+    comment_id: int | None = None,
+    summary: str = "",
+) -> None:
     text_body = render_to_string(f"notifications/{template}.txt", context)
     html_body = render_to_string(f"notifications/{template}.html", context)
     send_mail(
@@ -44,6 +56,20 @@ def _send_one(*, recipient, subject: str, template: str, context: dict) -> None:
         recipient_list=[recipient.email],
         html_message=html_body,
     )
+    # Record the in-app inbox row only after a successful send. A DB hiccup
+    # here must never suppress an email that already went out, so it is
+    # swallowed — the email is the source of truth; the inbox merely mirrors it.
+    try:
+        services.record_delivery(
+            recipient=recipient,
+            advisory=advisory,
+            kind=kind,
+            subject=subject,
+            summary=summary,
+            comment_id=comment_id,
+        )
+    except Exception:  # pragma: no cover — inbox persistence is best-effort
+        log.exception("Failed to record notification delivery for %s", recipient.email)
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +107,8 @@ def send_advisory_event_email(advisory_id: int, event: str) -> int:
                     "event": event,
                     "url": _advisory_url(advisory),
                 },
+                kind=event,
+                advisory=advisory,
             )
             sent += 1
         except Exception:  # pragma: no cover — never let email errors crash workflows
@@ -133,6 +161,9 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
                 subject=f"[{advisory.advisory_id}] you were mentioned",
                 template="comment_mention",
                 context={"advisory": advisory, "comment": comment, "url": _advisory_url(advisory)},
+                kind=NotificationKind.MENTION,
+                advisory=advisory,
+                comment_id=comment.pk,
             )
             sent_to_ids.add(user.pk)
             sent += 1
@@ -150,6 +181,9 @@ def send_comment_email(advisory_id: int, comment_id: int) -> int:
                 subject=f"[{advisory.advisory_id}] new comment",
                 template="comment",
                 context={"advisory": advisory, "comment": comment, "url": _advisory_url(advisory)},
+                kind=NotificationKind.COMMENT,
+                advisory=advisory,
+                comment_id=comment.pk,
             )
             sent_to_ids.add(user.pk)
             sent += 1
@@ -203,6 +237,9 @@ def send_comment_mention_email(
                 subject=f"[{advisory.advisory_id}] you were mentioned",
                 template="comment_mention",
                 context={"advisory": advisory, "comment": comment, "url": _advisory_url(advisory)},
+                kind=NotificationKind.MENTION,
+                advisory=advisory,
+                comment_id=comment.pk,
             )
             sent += 1
         except Exception:  # pragma: no cover
@@ -288,6 +325,8 @@ def send_advisory_triage_event_email(advisory_pk: int, event: str) -> int:
                 subject=subject,
                 template="advisory_triage_event",
                 context=context,
+                kind=NotificationKind.TRIAGE,
+                advisory=advisory,
             )
             sent += 1
         except Exception:  # pragma: no cover
@@ -315,6 +354,9 @@ def send_intake_event_email(report_id: str, event: str) -> int:
 
 @shared_task(name="notifications.send_invitation_email")
 def send_invitation_email(invitation_id: int) -> int:
+    # No inbox row is recorded here: invitations are addressed to a bare email
+    # that may have no ``User`` row yet, and the inbox is per-``User``. By the
+    # time the invitee logs in and gains access they already hold the grant.
     from access.models import PendingInvitation
 
     try:

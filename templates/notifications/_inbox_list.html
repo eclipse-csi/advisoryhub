@@ -1,0 +1,19 @@
+{% load i18n %}
+<div id="inbox-list">
+  {% if page.object_list %}
+    <ul class="notif-list">
+      {% for n in page.object_list %}
+        {% include "notifications/_inbox_row.html" %}
+      {% endfor %}
+    </ul>
+    {% if page.has_other_pages %}
+      <p class="pager">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹ {% translate "Prev" %}</a>{% endif %}
+        <span>{% blocktranslate with current=page.number total=page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">{% translate "Next" %} ›</a>{% endif %}
+      </p>
+    {% endif %}
+  {% else %}
+    <p class="muted">{% translate "No notifications yet." %}</p>
+  {% endif %}
+</div>

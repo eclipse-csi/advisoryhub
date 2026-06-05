@@ -56,7 +56,8 @@
       <a href="{% url 'advisories:list' %}">{% translate "Advisories" %}</a>
       <a href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a>
       {% if user.is_global_admin %}<a href="{% url 'admin_console:index' %}">{% translate "Admin Console" %}</a>{% endif %}
-      <a href="{% url 'notifications:preferences' %}">{% translate "Notifications" %}</a>
+      <a href="{% url 'notifications:inbox' %}">{% translate "Inbox" %}{% if unread_notification_count %}<span class="notif-unread-badge">{{ unread_notification_count }}</span>{% endif %}</a>
+      <a href="{% url 'notifications:preferences' %}">{% translate "Notification settings" %}</a>
       <a href="{% url 'accounts:profile' %}">{% user_chip user %}</a>
       <form method="post" action="{% url 'oidc_logout' %}" class="inline" data-maintenance-allow>{% csrf_token %}<button type="submit">{% translate "Sign out" %}</button></form>
     {% else %}

@@ -49,6 +49,7 @@
         <td data-label="{% translate 'ID' %}">
           <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
           {% if a.kind == 'ghsa_linked' %}<span class="badge ghsa-linked" title="Synced from a GitHub Security Advisory">GHSA</span>{% endif %}
+          {% if a.changed_marker == 'changed' %}<span class="badge changed-since-visit" title="{% translate 'Changed since you last viewed this' %}">{% translate 'Changed' %}</span>{% elif a.changed_marker == 'new' %}<span class="badge new-since-visit" title="{% translate 'You have not viewed this yet' %}">{% translate 'New' %}</span>{% endif %}
         </td>
         <td data-label="{% translate 'Project' %}"><a href="?project={{ a.project.id }}" title="{% blocktranslate with name=a.project.name %}Show only {{ name }} advisories{% endblocktranslate %}">{{ a.project.name }}</a></td>
         <td data-label="{% translate 'State' %}">

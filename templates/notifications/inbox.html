@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Inbox" %}{% endblock %}
+{% block content %}
+  <div class="inbox-header">
+    <h1>{% translate "Inbox" %}</h1>
+    {% if unread_total %}
+      <form method="post" action="{% url 'notifications:mark_all_read' %}" class="inline">{% csrf_token %}
+        <button type="submit">{% translate "Mark all as read" %}</button>
+      </form>
+    {% endif %}
+  </div>
+  <p class="muted">{% blocktranslate count counter=unread_total %}{{ counter }} unread notification.{% plural %}{{ counter }} unread notifications.{% endblocktranslate %}</p>
+
+  {% include "notifications/_inbox_list.html" %}
+{% endblock %}

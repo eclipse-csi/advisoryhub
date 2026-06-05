@@ -1125,6 +1125,40 @@ dd { margin: 0; color: var(--text); }
 .badge.status-succeeded  { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
 .badge.status-failed     { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
 
+/* "Changed since last visit" markers on advisory lists. */
+.badge.changed-since-visit { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-border); }
+.badge.new-since-visit     { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+
+/* ------------------------------------------------------------ notification inbox */
+.inbox-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.notif-list { list-style: none; margin: 1rem 0 0; padding: 0; }
+.notif-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 0.6rem;
+  border-block-end: 1px solid var(--border);
+  border-inline-start: 3px solid transparent;
+}
+.notif-row.is-unread { border-inline-start-color: var(--brand-fg); background: var(--surface-alt); }
+.notif-row__main { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.45rem; min-width: 0; }
+.notif-row__subject { color: var(--text); }
+.notif-row.is-unread .notif-row__subject { font-weight: 600; }
+.notif-row__summary { color: var(--text-muted); font-size: var(--text-sm); }
+.notif-row__meta { display: flex; align-items: center; gap: 0.7rem; flex: none; }
+.notif-row__age { color: var(--text-muted); font-size: var(--text-sm); white-space: nowrap; }
+.badge.notif-kind { color: var(--text-soft); background: var(--surface-alt); border-color: var(--border); }
+.notif-row__mark button {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer; color: var(--brand);
+}
+.notif-row__mark button:hover { text-decoration: underline; }
+
+/* Unread-count pill on the top-nav Inbox link. */
+.notif-unread-badge {
+  display: inline-block; min-width: 1.25em; margin-inline-start: 0.3em; padding: 0 0.4em;
+  border-radius: 999px; background: var(--brand-soft); color: var(--brand-fg);
+  border: 1px solid var(--brand-bd); font-size: var(--text-2xs); font-weight: 700;
+  line-height: 1.5; text-align: center;
+}
+
 p.state { font-size: var(--text-base); color: var(--text-soft); margin-top: -0.3em; }
 p.state strong { color: var(--text); }
 
@@ -1349,6 +1383,10 @@ p.state strong { color: var(--text); }
 .advisory-rail__dot.state-published { background: var(--ok-fg); }
 .advisory-rail__dot.state-dismissed { background: var(--text-muted); }
 .advisory-rail__dot.in-review { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--brand-fg); }
+/* "Changed since last visit" / "New" pip, pushed to the right edge of the row. */
+.advisory-rail__changed { flex: none; width: 0.45rem; height: 0.45rem; border-radius: 50%; margin-inline-start: auto; }
+.advisory-rail__changed--changed { background: var(--accent-fg); }
+.advisory-rail__changed--new { background: var(--info-fg); }
 .advisory-rail__tag {
   flex-shrink: 0;
   padding: 0 0.25rem;

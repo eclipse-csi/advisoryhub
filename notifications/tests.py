@@ -381,14 +381,21 @@ def test_send_invitation_email_sends_to_invited_address(setup):
 
 
 @pytest.mark.django_db
-def test_preferences_form_is_marked_dirty_tracking(client, setup):
-    """The form should opt into the shared dirty-tracking JS via
-    ``data-dirty-form``, which disables the Save button until the user
-    has actually changed something."""
+def test_preferences_form_wires_save_feedback(client, setup):
+    """The form opts into the shared save-feedback JS: an "Unsaved changes"
+    marker (``data-unsaved-indicator``) and the double-submit guard
+    (``data-submit-once``). Per the forms guide we no longer disable Save to
+    gate state, so the old ``data-dirty-form`` attribute is gone and the Save
+    button is never rendered ``disabled`` server-side (no-JS keeps it usable)."""
     client.force_login(setup["member"])
     response = client.get(reverse("notifications:preferences"))
     body = response.content.decode()
-    assert "data-dirty-form" in body
+    assert "data-submit-once" in body
+    assert "data-unsaved-indicator" in body
+    assert "Unsaved changes" in body
+    assert "advisoryhub-form-dirty.js" in body
+    assert "data-dirty-form" not in body
+    assert '<button type="submit">Save</button>' in body
 
 
 @pytest.mark.django_db

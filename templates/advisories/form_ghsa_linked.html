@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static advisory_display %}
 {% block title %}Edit GHSA-linked advisory {{ advisory.advisory_id }} · AdvisoryHub{% endblock %}
-{% block extra_head %}<script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 
 {% block content %}
 <div class="advisory-edit advisory-edit--with-rail">
@@ -18,7 +18,7 @@
   {% include "advisories/_ghsa_panel.html" with advisory=advisory can_sync_ghsa=True %}
 
   <h2>Editable fields</h2>
-  <form method="post">
+  <form method="post" data-submit-once>
     {% csrf_token %}
     {{ form.non_field_errors }}
     <p>
@@ -26,8 +26,11 @@
       {{ form.project }}
       {{ form.project.errors }}
     </p>
-    <button type="submit">Save</button>
-    <a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>
+    <div class="actions form-actions">
+      <span class="form-actions__dirty" data-unsaved-indicator hidden aria-live="polite">Unsaved changes</span>
+      <a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>
+      <button type="submit">Save</button>
+    </div>
   </form>
 
   <h2>Synced from GHSA (read-only)</h2>

@@ -9,7 +9,7 @@
     further customize notifications from each advisory's page. Mentions
     are always delivered — there is no fully-silent option.
   </p>
-  <form method="post" data-dirty-form>
+  <form method="post" data-submit-once>
     {% csrf_token %}
     <fieldset>
       <legend>Advisory events</legend>
@@ -66,6 +66,6 @@
         </div>
       </div>
     </fieldset>
-    <p class="actions"><button type="submit">Save</button></p>
+    <div class="actions form-actions"><span class="form-actions__dirty" data-unsaved-indicator hidden aria-live="polite">Unsaved changes</span><button type="submit">Save</button></div>
   </form>
 {% endblock %}

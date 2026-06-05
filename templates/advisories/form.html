@@ -16,7 +16,7 @@
 <div class="advisory-edit__main">
   <h1>{% if mode == 'edit' %}Edit {{ advisory.advisory_id }}{% else %}New advisory{% endif %}</h1>
   {# novalidate kept: hidden/extra formset fields would let native validation wrongly block submit; the server validates and data-unsaved-guard warns on nav-away. #}
-  <form method="post" novalidate data-unsaved-guard>
+  <form method="post" novalidate data-unsaved-guard data-submit-once>
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}
 
@@ -33,10 +33,11 @@
 
     {% include "advisories/_form_advanced_fields.html" %}
 
-    <p class="actions">
-      <button type="submit">{% if mode == 'edit' %}Save{% else %}Create{% endif %}</button>
+    <div class="actions form-actions">
+      <span class="form-actions__dirty" data-unsaved-indicator hidden aria-live="polite">Unsaved changes</span>
       {% if mode == 'edit' %}<a href="{% url 'advisories:detail' advisory.advisory_id %}">Cancel</a>{% endif %}
-    </p>
+      <button type="submit">{% if mode == 'edit' %}Save{% else %}Create{% endif %}</button>
+    </div>
   </form>
 </div>
 </div>

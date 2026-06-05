@@ -1,22 +1,33 @@
-// Two form-protection behaviours, both keyed off a FormData snapshot (sorted
+// Form-edit feedback + submit hygiene, all keyed off a FormData snapshot (sorted
 // and CSRF-token-stripped so token rotation doesn't read as a change):
 //
-//   <form data-dirty-form>     Disable the submit button until something
-//                              changes. Used on the notification-preferences
-//                              form, which has no native validation constraints
-//                              for a disabled submit to gate (so it does not
-//                              suppress error feedback — see the forms guide).
+//   <span data-unsaved-indicator hidden>  An "unsaved changes" marker placed
+//                              inside a form. Shown whenever the form is dirty
+//                              (differs from its loaded snapshot), hidden when
+//                              pristine. Pure feedback — it NEVER gates submit.
+//                              Opt-in is simply the element's presence in a form.
+//
+//   <form data-submit-once>    After a submit the browser actually lets through
+//                              (native validation passed, or the form is
+//                              novalidate), disable the submit control so an
+//                              impatient double-click can't double-post. We do
+//                              NOT disable to *block* submission — the forms guide
+//                              (§4) says let users submit and surface errors — only
+//                              AFTER a valid click, which is the guide's endorsed
+//                              double-post guard.
 //
 //   <form data-unsaved-guard>  Warn via `beforeunload` if the user navigates
 //                              away with unsaved edits. Used on the advisory
-//                              authoring form. Re-baselines on formset add/remove
-//                              (advisoryhub-formsets.js dispatches the event) so a
-//                              structural change isn't counted as unsaved content.
+//                              authoring form.
 //
-// NOTE: load this AFTER advisoryhub-formsets.js (and cvss/cwe) on a page so the
-// unsaved-guard baseline is captured once those scripts have finished their
-// on-load DOM/field normalisation — otherwise that normalisation would read as
-// an immediate (false) "unsaved change".
+// The indicator and the unsaved-guard both re-baseline on formset add/remove
+// (advisoryhub-formsets.js dispatches `advisoryhub:formset-changed`) so a
+// structural row change isn't itself counted as unsaved content.
+//
+// NOTE: load this AFTER advisoryhub-formsets.js (and cvss/cwe/validate) on a page
+// so the baselines are captured once those scripts have finished their on-load
+// DOM/field normalisation — otherwise that normalisation would read as an
+// immediate (false) "unsaved change".
 (function () {
   "use strict";
 
@@ -33,16 +44,39 @@
     return pairs.join("&");
   }
 
-  function initDirtyDisable(form) {
-    const button = form.querySelector('button[type="submit"]');
-    if (!button) return;
-    const initial = snapshot(form);
+  function initIndicator(form, indicator) {
+    let baseline = snapshot(form);
     const sync = () => {
-      button.disabled = snapshot(form) === initial;
+      indicator.hidden = snapshot(form) === baseline;
     };
     sync();
-    form.addEventListener("change", sync);
     form.addEventListener("input", sync);
+    form.addEventListener("change", sync);
+    document.addEventListener("advisoryhub:formset-changed", () => {
+      baseline = snapshot(form);
+      sync();
+    });
+  }
+
+  function initSubmitOnce(form) {
+    let submitted = false;
+    form.addEventListener("submit", (e) => {
+      // A second submit gesture while the first is still in flight: drop it.
+      if (submitted) {
+        e.preventDefault();
+        return;
+      }
+      submitted = true;
+      const button = form.querySelector('button[type="submit"], input[type="submit"]');
+      if (!button) return;
+      // Defer the disable so the control is still serialised into THIS POST (a
+      // disabled control is excluded from submission). The `submitted` flag is
+      // the actual re-entrancy guard; the disable is the visible cue. A failed
+      // server-side validation re-renders a fresh page with the button enabled.
+      requestAnimationFrame(() => {
+        button.disabled = true;
+      });
+    });
   }
 
   function initUnsavedGuard(form) {
@@ -63,7 +97,11 @@
   }
 
   function start() {
-    document.querySelectorAll("form[data-dirty-form]").forEach(initDirtyDisable);
+    document.querySelectorAll("[data-unsaved-indicator]").forEach((indicator) => {
+      const form = indicator.closest("form");
+      if (form) initIndicator(form, indicator);
+    });
+    document.querySelectorAll("form[data-submit-once]").forEach(initSubmitOnce);
     document.querySelectorAll("form[data-unsaved-guard]").forEach(initUnsavedGuard);
   }
 

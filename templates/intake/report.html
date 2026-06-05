@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block title %}{% translate "Report a vulnerability" %} — AdvisoryHub{% endblock %}
-{% block extra_head %}<script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-validate.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-formsets.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-cwe.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-validate.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 
 {% block content %}
 <section class="intake-form">
@@ -24,7 +24,7 @@
   </p>
   {% endif %}
 
-  <form method="post">
+  <form method="post" data-submit-once>
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -98,7 +98,10 @@
       </div>
     {% endif %}
 
-    <button type="submit">{% translate "Submit report" %}</button>
+    <div class="actions form-actions">
+      <span class="form-actions__dirty" data-unsaved-indicator hidden aria-live="polite">{% translate "Unsaved changes" %}</span>
+      <button type="submit">{% translate "Submit report" %}</button>
+    </div>
   </form>
 </section>
 {% endblock %}

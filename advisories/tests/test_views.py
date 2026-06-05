@@ -145,6 +145,22 @@ def test_create_form_only_lists_user_projects(client, member_a, project_a, proje
 
 
 @pytest.mark.django_db
+def test_create_form_wires_unsaved_feedback(client, member_a, project_a):
+    """The authoring form shows the "Unsaved changes" marker, guards against a
+    double-submit (data-submit-once), and keeps its beforeunload guard
+    (data-unsaved-guard). Per the forms guide it never disables Create to gate
+    state — no server-side ``disabled`` attribute, so it works without JS."""
+    client.force_login(member_a)
+    body = client.get(reverse("advisories:create")).content.decode()
+    assert "data-unsaved-indicator" in body
+    assert "Unsaved changes" in body
+    assert "data-submit-once" in body
+    assert "data-unsaved-guard" in body
+    assert "advisoryhub-form-dirty.js" in body
+    assert '<button type="submit">Create</button>' in body
+
+
+@pytest.mark.django_db
 def test_create_post_blocks_other_project(client, member_a, project_a, project_b):
     client.force_login(member_a)
     response = client.post(

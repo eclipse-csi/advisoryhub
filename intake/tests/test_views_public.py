@@ -67,6 +67,19 @@ def test_report_form_renders_ecosystem_live_validation(db, client, unsorted_proj
     assert '<datalist id="osv-ecosystems">' in body
 
 
+def test_report_form_wires_save_feedback(db, client, unsorted_project):
+    """The public report form shows an "Unsaved changes" marker and guards a
+    double-submit (data-submit-once), but — per the forms guide and to avoid a
+    reporter abandoning the form — never disables "Submit report" to gate state
+    (no server-side ``disabled`` attribute, so it works even without JS)."""
+    body = client.get(reverse("intake:report")).content.decode()
+    assert "data-unsaved-indicator" in body
+    assert "Unsaved changes" in body
+    assert "data-submit-once" in body
+    assert "advisoryhub-form-dirty.js" in body
+    assert '<button type="submit">Submit report</button>' in body
+
+
 def test_report_form_project_is_smart_select(db, client, unsorted_project, make_project):
     """The project picker is a smart <select> combobox (advisoryhub-select.js),
     matching the authoring forms — constrained to known projects + the

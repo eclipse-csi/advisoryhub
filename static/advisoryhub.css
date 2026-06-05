@@ -461,6 +461,59 @@ button[hx-delete]:hover {
 }
 .actions form.inline { display: inline; margin: 0; }
 
+/* Sticky save bar — the action row of a full-page create/save form (advisory
+   edit/create, intake report, project, notification prefs, GHSA-linked edit).
+   `bottom: 0` pins it to the foot of the viewport while the form is taller than
+   the fold, so the primary action stays in reach and it's always visible that
+   the page is editable/savable; it settles at the form's natural bottom once
+   you scroll all the way down. Composed onto `.actions` (which supplies the
+   flex layout + the secondary-link/ghost-button styling), so it only adds the
+   bar chrome and right-aligns the group. The primary submit is the last child
+   in markup, landing furthest-right — the conventional save-bar order (a
+   secondary Cancel sits to its left). Opaque surface bg covers content that
+   scrolls underneath while stuck; the top border + upward shadow lift it.
+   CSS-only — `position: sticky` is Baseline widely available. */
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  justify-content: flex-end;
+  margin-top: 1.4rem;
+  padding: 0.7rem 1.1rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 16px -12px rgba(0, 9, 102, 0.25);
+}
+:root[data-theme="dark"] .form-actions {
+  box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* "Unsaved changes" marker — first child of the flex-end save bar.
+   margin-inline-end:auto eats the free space so the marker hugs the left while
+   the Save/Cancel group stays flush-right. The accent dot draws the eye; both
+   tokens are theme-aware so no dark override is needed. Shown only while the
+   form is dirty: advisoryhub-form-dirty.js toggles the [hidden] attribute, whose
+   rule must outrank the inline-flex display below (author specificity, so the
+   marker actually disappears when pristine). Feedback only — it never gates
+   submit (forms guide §4). */
+.form-actions__dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-inline-end: auto;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.form-actions__dirty::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.form-actions__dirty[hidden] { display: none; }
+
 /* ------------------------------------------------------------ tables */
 
 table {

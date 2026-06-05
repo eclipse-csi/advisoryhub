@@ -1,12 +1,14 @@
 {% extends "admin_console/_admin_base.html" %}
+{% load static %}
 {% block title %}Admin Console — {% if project %}Edit project{% else %}New project{% endif %}{% endblock %}
 {% block admin_section %}projects{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 {% block admin_content %}
   <header class="advisory-detail__header">
     <h1>{% if project %}Edit project: {{ project.name }}{% else %}New project{% endif %}</h1>
   </header>
 
-  <form method="post">
+  <form method="post" data-submit-once>
     {% csrf_token %}
     {{ form.non_field_errors }}
     <table class="form">
@@ -21,7 +23,10 @@
         </tr>
       {% endfor %}
     </table>
-    <button type="submit">{% if project %}Save{% else %}Create{% endif %}</button>
+    <div class="actions form-actions">
+      <span class="form-actions__dirty" data-unsaved-indicator hidden aria-live="polite">Unsaved changes</span>
+      <button type="submit">{% if project %}Save{% else %}Create{% endif %}</button>
+    </div>
   </form>
 
   {% if project %}

@@ -14,7 +14,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.forms import ModelChoiceField
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -52,6 +52,59 @@ from .visit_markers import annotate_visit_markers, set_visit_markers
 # Listing & detail
 # ---------------------------------------------------------------------------
 
+# Column sorting for the advisory list table. Logical keys (decoupled from DB
+# column names, validated against this allowlist — mirrors how ``state`` is
+# checked against State.choices) map to an ORM ordering and the column's natural
+# first-click direction. An unknown/empty ``?sort`` falls back to _DEFAULT_SORT.
+_SORT_COLUMNS = {
+    "id": {"order": "advisory_id", "default_desc": False},
+    "project": {"order": "project__name", "default_desc": False},
+    "state": {"order": "__state_rank__", "default_desc": False},
+    "review": {"order": "review_status", "default_desc": False},
+    "modified": {"order": "modified_at", "default_desc": True},
+}
+_DEFAULT_SORT = "-modified"  # preserves the historical order_by("-modified_at")
+# Lifecycle rank from State.choices declaration order (triage < draft <
+# published < dismissed) so "ascending State" reads as workflow progression and
+# a future 5th state slots in automatically.
+_STATE_RANK = {value: i for i, (value, _label) in enumerate(State.choices)}
+
+
+def _parse_sort(raw: str) -> tuple[str, bool]:
+    """Resolve a raw ``?sort`` value to ``(logical_key, descending)``.
+
+    A leading ``-`` means descending. Unknown or empty keys fall back to the
+    default sort, mirroring the invalid-state handling in ``advisory_list``.
+    """
+    desc = raw.startswith("-")
+    key = raw[1:] if desc else raw
+    if key not in _SORT_COLUMNS:
+        key = _DEFAULT_SORT.lstrip("-")
+        desc = _DEFAULT_SORT.startswith("-")
+    return key, desc
+
+
+def _sort_order_by(key: str, desc: bool) -> tuple[list[str], dict]:
+    """``order_by`` terms + annotations for a validated ``(key, desc)``.
+
+    Appends ``pk`` as a unique, stable final tiebreaker so the low-cardinality
+    state/review sorts paginate deterministically across LIMIT/OFFSET windows.
+    The state sort orders by a lifecycle-rank ``Case`` rather than the raw stored
+    string; that annotation is only added on the state sort.
+    """
+    field = cast(str, _SORT_COLUMNS[key]["order"])
+    annotations: dict = {}
+    if field == "__state_rank__":
+        annotations["state_rank"] = Case(
+            *[When(state=value, then=Value(rank)) for value, rank in _STATE_RANK.items()],
+            default=Value(len(_STATE_RANK)),
+            output_field=IntegerField(),
+        )
+        field = "state_rank"
+    primary = f"-{field}" if desc else field
+    terms = [primary] if field == "pk" else [primary, "pk"]
+    return terms, annotations
+
 
 @login_required
 def advisory_list(request):
@@ -87,7 +140,12 @@ def advisory_list(request):
     else:
         current_state = ""
 
-    qs = qs.select_related("project").order_by("-modified_at")
+    sort_key, sort_desc = _parse_sort(request.GET.get("sort", ""))
+    order_terms, sort_annotations = _sort_order_by(sort_key, sort_desc)
+    qs = qs.select_related("project")
+    if sort_annotations:
+        qs = qs.annotate(**sort_annotations)  # only paid for on the state sort
+    qs = qs.order_by(*order_terms)
 
     # Hrefs for each tab: the current query string minus ``page`` and ``state``,
     # with the tab's own state re-appended. Building them here keeps query-string
@@ -107,6 +165,33 @@ def advisory_list(request):
     # Django-template dict key).
     state_hrefs = {"all": _state_href("")}
     state_hrefs.update({value: _state_href(value) for value in dict(State.choices)})
+
+    # Sort links for each sortable header. The active column's link points to the
+    # flipped direction (so a click toggles it); every other column points to its
+    # natural default. ``sort`` is not stripped from tab_params/pager_params, so it
+    # rides along across state-tab switches and pagination; here we drop ``page`` so
+    # changing the sort returns to page 1.
+    sort_base = request.GET.copy()
+    sort_base.pop("page", None)
+
+    def _sort_href(key: str) -> str:
+        if key == sort_key:
+            target = key if sort_desc else f"-{key}"
+        else:
+            target = f"-{key}" if _SORT_COLUMNS[key]["default_desc"] else key
+        params = sort_base.copy()
+        params["sort"] = target
+        return f"?{params.urlencode()}"
+
+    sort_hrefs = {key: _sort_href(key) for key in _SORT_COLUMNS}
+    sort_state = {
+        key: {
+            "active": key == sort_key,
+            "aria": ("descending" if sort_desc else "ascending") if key == sort_key else "none",
+            "desc": key == sort_key and sort_desc,
+        }
+        for key in _SORT_COLUMNS
+    }
 
     # Query string carried into the pager links, sans ``page`` so it can be
     # re-appended. ``urlencode`` escapes values (the old manual loop did neither).
@@ -138,6 +223,8 @@ def advisory_list(request):
             "state_counts": state_counts,
             "state_total": state_total,
             "state_hrefs": state_hrefs,
+            "sort_hrefs": sort_hrefs,
+            "sort_state": sort_state,
             "querystring": querystring,
             "projects_for_filter": _projects_for_filter(user),
             "total": total,

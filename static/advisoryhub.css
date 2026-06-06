@@ -566,6 +566,40 @@ thead th {
   border-bottom: 1px solid var(--border);
   position: sticky;
 }
+
+/* Sortable column headers — a GET link filling the header cell (mirrors the
+   state-tab strip + pager: plain links, no JS). The active column gets the
+   brand colour and a direction chevron; non-sortable headers (Summary) stay
+   plain text. Chevron reuses --icon-chevron (a down-chevron) via mask +
+   rotate, exactly like the .disclosure marker. */
+thead th .sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: inherit;
+  text-decoration: none;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+thead th .sort:hover { color: var(--brand-fg-hover); }
+thead th .sort:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+thead th .sort.is-active { color: var(--brand-fg); }
+thead th .sort.is-active::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: currentColor;
+  -webkit-mask: var(--icon-chevron) center / contain no-repeat;
+          mask: var(--icon-chevron) center / contain no-repeat;
+  transform: rotate(180deg); /* ascending → chevron points up */
+  transition: transform 160ms ease;
+}
+thead th .sort.is-active.sort--desc::after { transform: rotate(0deg); } /* descending → points down */
+
 tbody td {
   padding: 0.6rem 0.8rem;
   border-bottom: 1px solid var(--border);

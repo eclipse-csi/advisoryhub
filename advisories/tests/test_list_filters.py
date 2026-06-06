@@ -264,6 +264,88 @@ def test_pagination(client, setup, make_project):
 
 
 # --------------------------------------------------------------------------- #
+# Active search (HTMX fragment)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.django_db
+def test_htmx_request_returns_fragment_not_full_page(client, setup):
+    """An HTMX GET (the active-search form) returns just the results fragment —
+    the table for the main swap, no page chrome (no <form>, no <h1>, no doctype)."""
+    client.force_login(setup["admin"])
+    r = client.get(reverse("advisories:list"), HTTP_HX_REQUEST="true")
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert '<table class="advisories"' in body  # the swapped results
+    assert "<form" not in body  # no filter form re-rendered
+    assert "<h1" not in body
+    assert "<!doctype" not in body.lower()
+
+
+@pytest.mark.django_db
+def test_htmx_search_filters_rows(client, setup):
+    """The fragment honours ?q just like the full page."""
+    client.force_login(setup["admin"])
+    r = client.get(reverse("advisories:list"), {"q": "smuggling"}, HTTP_HX_REQUEST="true")
+    ids = _ids_in_response(r)
+    assert ids == {setup["a"].advisory_id}
+
+
+@pytest.mark.django_db
+def test_htmx_fragment_updates_tab_counts_out_of_band(client, setup):
+    """The fragment carries the tab strip as an out-of-band swap so the per-state
+    counts track the search. ?q=smuggling matches only advisory a (draft)."""
+    client.force_login(setup["admin"])
+    r = client.get(reverse("advisories:list"), {"q": "smuggling"}, HTTP_HX_REQUEST="true")
+    body = r.content.decode()
+    assert 'id="advisory-state-tabs"' in body
+    assert 'hx-swap-oob="true"' in body
+    assert 'All<span class="state-tabs__count">1</span>' in body
+    assert 'Draft<span class="state-tabs__count">1</span>' in body
+    assert 'Published<span class="state-tabs__count">0</span>' in body
+
+
+@pytest.mark.django_db
+def test_htmx_fragment_updates_result_count_out_of_band(client, setup):
+    """The result-count live region is refreshed out-of-band (innerHTML) so its
+    text — and the polite announcement — reflect the search."""
+    client.force_login(setup["admin"])
+    r = client.get(reverse("advisories:list"), {"q": "smuggling"}, HTTP_HX_REQUEST="true")
+    body = r.content.decode()
+    assert 'hx-swap-oob="innerHTML:#advisory-result-summary"' in body
+    assert "1 advisory matches." in body
+
+
+@pytest.mark.django_db
+def test_full_page_has_search_form_and_live_region(client, setup):
+    """The non-HTMX page wires the active-search form (debounced hx-get targeting
+    the results) and the persistent result-count live region."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert 'hx-get="' in body and 'hx-target="#advisory-results"' in body
+    assert "delay:300ms" in body
+    assert 'id="advisory-results"' in body
+    assert 'id="advisory-result-summary"' in body and 'aria-live="polite"' in body
+    assert "4 advisories match." in body
+
+
+@pytest.mark.django_db
+def test_htmx_search_preserves_active_sort_in_pager(client, setup):
+    """A live search submitted with the sort hidden field keeps the sort on the
+    fragment's pager links (the form echoes ?sort into a hidden input)."""
+    client.force_login(setup["admin"])
+    r = client.get(
+        reverse("advisories:list"),
+        {"sort": "state", "page_size": "2"},
+        HTTP_HX_REQUEST="true",
+    )
+    body = r.content.decode()
+    m = re.search(r'href="([^"]*page=2[^"]*)"', body)
+    assert m, "no Next pager link in fragment"
+    assert "sort=state" in m.group(1)
+
+
+# --------------------------------------------------------------------------- #
 # Column sorting
 # --------------------------------------------------------------------------- #
 

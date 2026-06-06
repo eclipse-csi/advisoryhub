@@ -1,0 +1,20 @@
+{% load i18n %}
+{# State-filter tab strip. Counts move with the search/project filters, so the #}
+{# active-search swap re-renders this out-of-band (`tabs_oob`) to keep them fresh. #}
+<nav class="state-tabs" id="advisory-state-tabs" aria-label="{% translate 'Filter by state' %}"{% if tabs_oob %} hx-swap-oob="true"{% endif %}>
+  <a href="{{ state_hrefs.all }}" class="state-tabs__tab{% if not current_state %} is-active{% endif %}"{% if not current_state %} aria-current="page"{% endif %}>
+    {% translate "All" %}<span class="state-tabs__count">{{ state_total }}</span>
+  </a>
+  <a href="{{ state_hrefs.triage }}" class="state-tabs__tab{% if current_state == 'triage' %} is-active{% endif %}"{% if current_state == 'triage' %} aria-current="page"{% endif %}>
+    {% include "advisories/_icons.html" with icon="magnifying-glass" %}{% translate "Triage" %}<span class="state-tabs__count">{{ state_counts.triage|default:0 }}</span>
+  </a>
+  <a href="{{ state_hrefs.draft }}" class="state-tabs__tab{% if current_state == 'draft' %} is-active{% endif %}"{% if current_state == 'draft' %} aria-current="page"{% endif %}>
+    {% include "advisories/_icons.html" with icon="document" %}{% translate "Draft" %}<span class="state-tabs__count">{{ state_counts.draft|default:0 }}</span>
+  </a>
+  <a href="{{ state_hrefs.published }}" class="state-tabs__tab{% if current_state == 'published' %} is-active{% endif %}"{% if current_state == 'published' %} aria-current="page"{% endif %}>
+    {% include "advisories/_icons.html" with icon="globe" %}{% translate "Published" %}<span class="state-tabs__count">{{ state_counts.published|default:0 }}</span>
+  </a>
+  <a href="{{ state_hrefs.dismissed }}" class="state-tabs__tab{% if current_state == 'dismissed' %} is-active{% endif %}"{% if current_state == 'dismissed' %} aria-current="page"{% endif %}>
+    {% include "advisories/_icons.html" with icon="x-circle" %}{% translate "Dismissed" %}<span class="state-tabs__count">{{ state_counts.dismissed|default:0 }}</span>
+  </a>
+</nav>

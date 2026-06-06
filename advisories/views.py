@@ -218,28 +218,37 @@ def advisory_list(request):
     advisories = list(annotate_visit_markers(qs, user)[offset : offset + page_size])
     set_visit_markers(advisories)
 
-    return render(
-        request,
-        "advisories/list.html",
-        {
-            "advisories": advisories,
-            "filters": applied,
-            "current_state": current_state,
-            "state_counts": state_counts,
-            "state_total": state_total,
-            "state_hrefs": state_hrefs,
-            "sort_hrefs": sort_hrefs,
-            "sort_state": sort_state,
-            "querystring": querystring,
-            "projects_for_filter": _projects_for_filter(user),
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "num_pages": max(1, (total + page_size - 1) // page_size),
-            "has_next": offset + page_size < total,
-            "has_prev": page > 1,
-        },
+    context = {
+        "advisories": advisories,
+        "filters": applied,
+        "current_state": current_state,
+        # The active sort, echoed into a hidden form field so the active-search
+        # GET preserves it (and the pushed URL stays canonical). Raw is fine: the
+        # view re-validates ?sort via _parse_sort on every read.
+        "current_sort": request.GET.get("sort", "").strip(),
+        "state_counts": state_counts,
+        "state_total": state_total,
+        "state_hrefs": state_hrefs,
+        "sort_hrefs": sort_hrefs,
+        "sort_state": sort_state,
+        "querystring": querystring,
+        "projects_for_filter": _projects_for_filter(user),
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "num_pages": max(1, (total + page_size - 1) // page_size),
+        "has_next": offset + page_size < total,
+        "has_prev": page > 1,
+    }
+    # Active search: an HTMX GET (from the filter form) gets just the results
+    # table, with the tab strip + result count refreshed out-of-band. A normal
+    # navigation (or JS/HTMX off) renders the full page.
+    template = (
+        "advisories/_list_fragment.html"
+        if getattr(request, "htmx", False)
+        else "advisories/list.html"
     )
+    return render(request, template, context)
 
 
 def _apply_advisory_filters(qs, request):

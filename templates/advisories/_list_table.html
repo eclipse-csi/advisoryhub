@@ -1,0 +1,53 @@
+{% load i18n advisory_display advisoryhub %}
+<table class="advisories">
+  <caption class="visually-hidden">Advisories</caption>
+  <thead><tr>
+    <th scope="col" aria-sort="{{ sort_state.id.aria }}">
+      <a href="{{ sort_hrefs.id }}" class="sort{% if sort_state.id.active %} is-active{% endif %}{% if sort_state.id.desc %} sort--desc{% endif %}">{% translate "ID" %}</a>
+    </th>
+    <th scope="col" aria-sort="{{ sort_state.project.aria }}">
+      <a href="{{ sort_hrefs.project }}" class="sort{% if sort_state.project.active %} is-active{% endif %}{% if sort_state.project.desc %} sort--desc{% endif %}">{% translate "Project" %}</a>
+    </th>
+    <th scope="col" aria-sort="{{ sort_state.state.aria }}">
+      <a href="{{ sort_hrefs.state }}" class="sort{% if sort_state.state.active %} is-active{% endif %}{% if sort_state.state.desc %} sort--desc{% endif %}">{% translate "State" %}</a>
+    </th>
+    <th scope="col" aria-sort="{{ sort_state.review.aria }}">
+      <a href="{{ sort_hrefs.review }}" class="sort{% if sort_state.review.active %} is-active{% endif %}{% if sort_state.review.desc %} sort--desc{% endif %}">{% translate "Review" %}</a>
+    </th>
+    <th scope="col">{% translate "Summary" %}</th>
+    <th scope="col" class="advisories__age" aria-sort="{{ sort_state.modified.aria }}">
+      <a href="{{ sort_hrefs.modified }}" class="sort{% if sort_state.modified.active %} is-active{% endif %}{% if sort_state.modified.desc %} sort--desc{% endif %}">{% translate "Modified" %}</a>
+    </th>
+  </tr></thead>
+  <tbody>
+  {% for a in advisories %}
+    <tr data-href="{% url 'advisories:detail' a.advisory_id %}">
+      <td data-label="{% translate 'ID' %}">
+        <a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a>
+        {% if a.kind == 'ghsa_linked' %}<span class="badge ghsa-linked" title="Synced from a GitHub Security Advisory">GHSA</span>{% endif %}
+        {% if a.changed_marker == 'changed' %}<span class="badge changed-since-visit" title="{% translate 'Changed since you last viewed this' %}">{% translate 'Changed' %}</span>{% elif a.changed_marker == 'new' %}<span class="badge new-since-visit" title="{% translate 'You have not viewed this yet' %}">{% translate 'New' %}</span>{% endif %}
+      </td>
+      <td data-label="{% translate 'Project' %}"><a href="?project={{ a.project.id }}" title="{% blocktranslate with name=a.project.name %}Show only {{ name }} advisories{% endblocktranslate %}">{{ a.project.name }}</a></td>
+      <td data-label="{% translate 'State' %}">
+        <span class="badge state-{{ a.state }}{% if a.republish_required %} needs-republish{% endif %}"{% if a.republish_required %} title="{% translate 'Edited since publication — re-publish required' %}"{% endif %}>{{ a.get_state_display }}</span>
+      </td>
+      <td data-label="{% translate 'Review' %}">
+        {% if a.review_status != 'none' %}<span class="badge review-{{ a.review_status }}">{{ a.get_review_status_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
+      </td>
+      <td data-label="{% translate 'Summary' %}">{{ a.summary|default:"—" }}</td>
+      <td data-label="{% translate 'Modified' %}" class="advisories__age">{% timestamp a.modified_at relative=True %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6">No advisories match the current filters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if has_prev or has_next %}
+  <p class="pager">
+    {% if has_prev %}<a href="?{{ querystring }}{% if querystring %}&{% endif %}page={{ page|add:'-1' }}">‹ Prev</a>{% endif %}
+    {# `total` inside this block is the page count (num_pages); reuses the admin paginator's msgid. #}
+    <span>{% blocktranslate with current=page total=num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>
+    {% if has_next %}<a href="?{{ querystring }}{% if querystring %}&{% endif %}page={{ page|add:'1' }}">Next ›</a>{% endif %}
+  </p>
+{% endif %}

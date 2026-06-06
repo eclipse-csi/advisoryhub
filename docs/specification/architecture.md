@@ -213,6 +213,17 @@ fresh timestamp on the way back. An ordinary sign-in does not
 satisfy the check — the `step_up_pending` flag is only set inside
 the explicit step-up flow.
 
+Authentication events are audited to the access log
+([INV-AUDIT-5](./invariant.md#inv-audit-5)): `record_step_up_on_login`
+(the sole `user_logged_in` receiver) writes `auth.login` for an ordinary
+sign-in and `auth.step_up_completed` for a step-up re-auth; a `user_logged_out`
+receiver in `accounts.signals` writes `auth.logout`; and
+`accounts.auth.AdvisoryHubOIDCCallbackView` — wired ahead of the
+`mozilla_django_oidc` include under the library's own callback URL name, so the
+registered `redirect_uri` is unchanged — records `auth.login_failed` from
+`login_failure()` (covering IdP-returned errors and rejected claims). All carry
+the source IP/user-agent and surface on the Admin Console's Access log page.
+
 ### 3.8 Atomicity boundaries
 
 The codebase uses three Django concurrency primitives:
@@ -754,8 +765,9 @@ user) — picked dynamically in `intake.views`.
 The audit log is split into two tables (see INV-AUDIT-5). The durable,
 append-only **ledger** `AuditLogEntry` holds governance/timeline events. The
 high-volume, retention-managed **access log** `AccessLogEntry` holds the actions
-in `audit.models.EPHEMERAL_ACTIONS` (advisory views + GHSA/PMI chatter);
-`audit.services.record()` routes by action. The access log is monthly
+in `audit.models.EPHEMERAL_ACTIONS` (advisory views, GHSA/PMI chatter,
+authentication events — login/logout/failed-login/step-up — and per-recipient
+notification deliveries); `audit.services.record()` routes by action. The access log is monthly
 range-partitioned on `created_at`, so retention is a `DROP PARTITION` (O(1), no
 per-row DELETE) rather than a sweep — handled by the daily
 `maintain_access_log_partitions` task (§6.2) and the matching command.

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path, register_converter
 
+from accounts.auth import AdvisoryHubOIDCCallbackView
 from accounts.step_up import StepUpAuthRequestView
 from advisories.path_converters import AdvisoryIdConverter
 from common.health import healthz, readyz
@@ -18,9 +19,16 @@ urlpatterns = [
     # on the public ingress.
     path("", include("django_prometheus.urls")),
     path("django-admin/", admin.site.urls),
-    # Step-up flow MUST be declared before the mozilla_django_oidc
-    # include so it wins URL resolution.
+    # Step-up flow and the failed-login-auditing callback override MUST be
+    # declared before the mozilla_django_oidc include so they win URL
+    # resolution. The callback reuses the library's own URL name, so the path
+    # (and the registered redirect_uri) is unchanged.
     path("oidc/step-up/", StepUpAuthRequestView.as_view(), name="step_up_initiate"),
+    path(
+        "oidc/callback/",
+        AdvisoryHubOIDCCallbackView.as_view(),
+        name="oidc_authentication_callback",
+    ),
     path("oidc/", include("mozilla_django_oidc.urls")),
     path("advisories/", include("advisories.urls")),
     path("advisories/", include("comments.urls")),

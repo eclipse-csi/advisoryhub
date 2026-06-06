@@ -97,22 +97,39 @@ def step_up_callback_redirect(request) -> str:
 
 @receiver(user_logged_in)
 def record_step_up_on_login(sender, request, user, **kwargs):  # noqa: ARG001
-    """When OIDC login completes during a step-up flow, stamp the session.
+    """When OIDC login completes, audit it and (if a step-up flow) stamp the session.
 
     The pending flag is set by ``StepUpAuthRequestView`` (or by
     ``require_step_up_or_redirect``) before the redirect; we only flip
     it into a fresh timestamp if it was set, so an ordinary sign-in
     does NOT satisfy the step-up freshness check.
+
+    This is the single ``user_logged_in`` receiver, so it also writes the
+    authentication access-log entry: ``auth.step_up_completed`` for a step-up
+    re-auth, ``auth.login`` for an ordinary sign-in. Reading the pending flag
+    once here (rather than from a second receiver) avoids racing the ``pop``.
+    Routed to the ephemeral access log via ``record_from_request`` (IP +
+    user-agent captured); ``actor`` is passed explicitly because ``request.user``
+    is not populated when the signal is sent manually (as in tests).
     """
     if not request:
         return
-    if request.session.pop(STEP_UP_FLAG_KEY, False):
+    from audit.models import Action
+    from audit.services import record_from_request
+
+    was_step_up = bool(request.session.pop(STEP_UP_FLAG_KEY, False))
+    if was_step_up:
         request.session[STEP_UP_AGE_KEY] = time.time()
         try:
             request.session.modified = True
         except AttributeError:
             # plain dict in tests — `modified` only exists on a real SessionStore
             pass
+    record_from_request(
+        request,
+        action=Action.AUTH_STEP_UP_COMPLETED if was_step_up else Action.AUTH_LOGIN,
+        actor=user,
+    )
 
 
 def step_up_age_query(now: float | None = None) -> str:

@@ -22,6 +22,8 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from advisories.models import Advisory
+from audit.models import Action
+from audit.services import record as audit_record
 
 from . import services
 from .models import NotificationKind
@@ -70,6 +72,27 @@ def _send_one(
         )
     except Exception:  # pragma: no cover — inbox persistence is best-effort
         log.exception("Failed to record notification delivery for %s", recipient.email)
+    # Mirror the delivery into the ephemeral access log so admins get a single
+    # system-wide "what notifications went out" view. Best-effort for the same
+    # reason as the inbox row above: the email already went out and must never
+    # be undone by a logging failure. Actor is the system (no request in the
+    # worker); the recipient lives in metadata (the access log has no recipient
+    # column) — findable via the metadata search, and retention-pruned /
+    # forget_user-erasable like the rest of that table.
+    try:
+        audit_record(
+            action=Action.NOTIFICATION_SENT,
+            actor=None,
+            advisory=advisory,
+            metadata={
+                "kind": str(kind),
+                "recipient_id": recipient.pk,
+                "recipient_email": recipient.email,
+                **({"comment_id": comment_id} if comment_id else {}),
+            },
+        )
+    except Exception:  # pragma: no cover — audit is best-effort
+        log.exception("Failed to audit notification delivery for %s", recipient.email)
 
 
 # ---------------------------------------------------------------------------
@@ -379,6 +402,17 @@ def send_invitation_email(invitation_id: int) -> int:
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[invite.email],
         )
+        # Invitations create no inbox row, so this access-log entry is their
+        # only delivery record. Best-effort — the email already went out.
+        try:
+            audit_record(
+                action=Action.NOTIFICATION_SENT,
+                actor=None,
+                advisory=invite.advisory,
+                metadata={"kind": "invitation", "recipient_email": invite.email},
+            )
+        except Exception:  # pragma: no cover — audit is best-effort
+            log.exception("Failed to audit invitation email to %s", invite.email)
         return 1
     except Exception:  # pragma: no cover
         log.exception("Failed to send invitation email to %s", invite.email)

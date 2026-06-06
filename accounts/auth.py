@@ -17,6 +17,7 @@ from django.http import HttpRequest
 from django.shortcuts import resolve_url
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from mozilla_django_oidc.utils import absolutify
+from mozilla_django_oidc.views import OIDCAuthenticationCallbackView
 
 from .models import User
 
@@ -206,3 +207,36 @@ def provider_logout(request: HttpRequest) -> str:
     if id_token:
         params["id_token_hint"] = id_token
     return f"{end_session}?{urlencode(params)}"
+
+
+class AdvisoryHubOIDCCallbackView(OIDCAuthenticationCallbackView):
+    """OIDC callback that audits failed sign-in attempts.
+
+    ``login_failure`` is mozilla-django-oidc's single choke point for "the
+    callback ran but produced no session" — it covers both IdP-returned errors
+    (``?error=access_denied`` …) and our backend rejecting the claims (e.g. an
+    unverified email with no matching ``sub``). We record one
+    ``auth.login_failed`` access-log entry (actor unknown — that is the point)
+    before deferring to the library's redirect. A few very early failures (e.g.
+    a tampered ``state``) raise ``SuspiciousOperation`` before this runs, so the
+    coverage is best-effort by design.
+
+    Wired ahead of ``mozilla_django_oidc.urls`` in :mod:`config.urls` under the
+    library's own URL name, so it wins resolution without depending on a library
+    setting — the same override pattern as :class:`accounts.step_up.StepUpAuthRequestView`.
+    """
+
+    def login_failure(self):
+        from audit.models import Action
+        from audit.services import record_from_request
+
+        record_from_request(
+            self.request,
+            action=Action.AUTH_LOGIN_FAILED,
+            actor=None,  # no identity on a failed sign-in
+            metadata={
+                "error": self.request.GET.get("error", ""),
+                "error_description": self.request.GET.get("error_description", ""),
+            },
+        )
+        return super().login_failure()

@@ -377,6 +377,64 @@ def test_send_invitation_email_sends_to_invited_address(setup):
     assert mail.outbox[0].to == ["invited@example.org"]
 
 
+# ---- Notification deliveries land in the access log -----------------------
+# Each delivered notification writes one ephemeral AccessLogEntry
+# (action=notification.sent), so admins get a single system-wide view of what
+# went out. The recipient lives in metadata (the access log has no recipient
+# column) and is findable via the metadata search.
+
+
+@pytest.mark.django_db
+def test_lifecycle_send_records_notification_sent_per_recipient(setup):
+    from audit.models import AccessLogEntry, Action, AuditLogEntry
+
+    mail.outbox.clear()
+    sent = send_advisory_event_email(setup["advisory"].pk, "advisory_published")
+    rows = AccessLogEntry.objects.filter(action=Action.NOTIFICATION_SENT)
+    assert sent >= 1
+    assert rows.count() == sent  # one access-log row per delivered email
+    # Ephemeral by design — never the durable ledger.
+    assert not AuditLogEntry.objects.filter(action=Action.NOTIFICATION_SENT).exists()
+    sample = rows.first()
+    assert sample.metadata["kind"] == "advisory_published"
+    assert "recipient_email" in sample.metadata
+    assert sample.advisory_id == setup["advisory"].pk
+    assert sample.actor_id is None  # system delivery (no request in the worker)
+
+
+@pytest.mark.django_db
+def test_comment_send_records_notification_sent_with_comment_id(setup):
+    from audit.models import AccessLogEntry, Action
+
+    NotificationPreference.objects.create(user=setup["other"], comments_level=CommentLevel.ALL)
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="hi @other"
+    )
+    mail.outbox.clear()
+    sent = send_comment_email(setup["advisory"].pk, comment.pk)
+    rows = AccessLogEntry.objects.filter(action=Action.NOTIFICATION_SENT)
+    assert sent >= 1
+    assert rows.count() == sent
+    assert all(r.metadata.get("comment_id") == comment.pk for r in rows)
+
+
+@pytest.mark.django_db
+def test_invitation_send_records_notification_sent(setup):
+    from access.models import PendingInvitation, Permission
+    from audit.models import AccessLogEntry, Action
+
+    invite = PendingInvitation.objects.create(
+        advisory=setup["advisory"],
+        email="invited@example.org",
+        permission=Permission.VIEWER,
+    )
+    mail.outbox.clear()
+    assert send_invitation_email(invite.pk) == 1
+    entry = AccessLogEntry.objects.get(action=Action.NOTIFICATION_SENT, advisory=setup["advisory"])
+    assert entry.metadata["kind"] == "invitation"
+    assert entry.metadata["recipient_email"] == "invited@example.org"
+
+
 # ---- Forms ---------------------------------------------------------------
 
 

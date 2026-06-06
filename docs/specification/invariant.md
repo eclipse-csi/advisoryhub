@@ -693,8 +693,10 @@ account compromise.
 <a id="inv-audit-5"></a>
 ### INV-AUDIT-5 — Access log is retention-bounded, not tamper-proof   [Medium]
 
-**Statement.** The actions in `audit.models.EPHEMERAL_ACTIONS` (advisory views
-plus GHSA/PMI machine chatter) are written to `AccessLogEntry`, **not** the
+**Statement.** The actions in `audit.models.EPHEMERAL_ACTIONS` (advisory views,
+GHSA/PMI machine chatter, authentication events — `auth.login` / `auth.logout` /
+`auth.login_failed` / `auth.step_up_completed` — and per-recipient notification
+deliveries `notification.sent`) are written to `AccessLogEntry`, **not** the
 durable ledger. This table is:
 
 1. **Monthly range-partitioned** on `created_at`; retention is a `DROP PARTITION`
@@ -708,9 +710,12 @@ durable ledger. This table is:
    intersect `advisories.timeline` tiers A/B/C, or dropping a partition would
    erase events shown on advisory pages.
 
-**Rationale.** View pings and integration chatter dominate audit volume but carry
-no long-term compliance value and never appear on a timeline. Isolating them lets
-the ledger stay small and fully tamper-proof while this table is pruned cheaply.
+**Rationale.** View pings, integration chatter, sign-in activity, and
+per-recipient notification fan-out dominate audit volume but carry no long-term
+compliance value and never appear on a timeline. Isolating them lets the ledger
+stay small and fully tamper-proof while this table is pruned cheaply. The source
+IPs and recipient emails captured here are PII, so retention pruning +
+`forget_user` deletion double as the GDPR control for them.
 
 **Enforced in.**
 - `audit/models.py` — `AccessLogEntry`, `EPHEMERAL_ACTIONS`.

@@ -60,6 +60,10 @@ class Action(models.TextChoices):
     PUBLICATION_GIT_PUSH = "publication.git_push"
     PUBLICATION_GIT_PUSH_FAILED = "publication.git_push_failed"
     NOTIFICATION_PREFS_CHANGED = "notification.prefs_changed"
+    # One entry per recipient per delivered notification (incl. invitation
+    # emails, which create no inbox row). High-volume and PII-bearing
+    # (recipient email in metadata) → routed to the ephemeral access log below.
+    NOTIFICATION_SENT = "notification.sent"
     GHSA_METADATA_FETCHED = "ghsa.metadata_fetched"
     GHSA_LINKED_ADVISORY_CREATED = "ghsa.linked_advisory_created"
     GHSA_CVE_PUSH_REQUESTED = "ghsa.cve_push_requested"
@@ -80,6 +84,14 @@ class Action(models.TextChoices):
     # login and stays in the durable ledger.
     SECURITY_ROSTER_SYNCED = "roster.synced"
     SHADOW_USER_LINKED = "roster.shadow_linked"
+    # Authentication events: a successful sign-in, sign-out, a rejected/aborted
+    # attempt (no session created), and the pre-publish step-up re-auth. These
+    # are access telemetry — routed to the ephemeral access log below, where the
+    # source IP is shown and retention pruning + forget_user clear the PII.
+    AUTH_LOGIN = "auth.login"
+    AUTH_LOGOUT = "auth.logout"
+    AUTH_LOGIN_FAILED = "auth.login_failed"
+    AUTH_STEP_UP_COMPLETED = "auth.step_up_completed"
     # Site-wide maintenance mode toggle (admin console). See INV-MAINT-1.
     MAINTENANCE_ENABLED = "maintenance.enabled"
     MAINTENANCE_DISABLED = "maintenance.disabled"
@@ -121,6 +133,11 @@ EPHEMERAL_ACTIONS: frozenset[str] = frozenset(
         Action.GHSA_METADATA_FETCHED,
         Action.PMI_PROJECT_REPOS_SYNCED,
         Action.SECURITY_ROSTER_SYNCED,
+        Action.AUTH_LOGIN,
+        Action.AUTH_LOGOUT,
+        Action.AUTH_LOGIN_FAILED,
+        Action.AUTH_STEP_UP_COMPLETED,
+        Action.NOTIFICATION_SENT,
     }
 )
 

@@ -125,7 +125,14 @@ def advisory_list(request):
     # Per-state counts for the tab strip — one GROUP BY over the queryset as
     # narrowed by the *other* filters, so each tab shows how many rows it'd yield
     # (and the counts move with the search box). ``state_total`` backs the "All" tab.
-    state_counts = {row["state"]: row["n"] for row in qs.values("state").annotate(n=Count("pk"))}
+    # ``.order_by()`` is load-bearing: Advisory's default ``-created_at`` ordering
+    # would otherwise be folded into this GROUP BY (Django appends ordering columns
+    # to the grouping), splitting each state into one row per distinct created_at.
+    # The dict comprehension would then keep only the last such row per state and
+    # silently undercount. Clearing the ordering keeps it GROUP BY state alone.
+    state_counts = {
+        row["state"]: row["n"] for row in qs.order_by().values("state").annotate(n=Count("pk"))
+    }
     state_total = sum(state_counts.values())
 
     # The active tab. An absent or unknown state is the "All" tab (no filter).

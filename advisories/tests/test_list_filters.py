@@ -128,6 +128,38 @@ def test_state_tabs_render_with_counts(client, setup):
 
 
 @pytest.mark.django_db
+def test_state_tab_counts_nonadmin_multiple_per_state(client, make_user, make_project):
+    """Regression: tab counts for a non-admin (security-team) viewer must reflect
+    the true per-state totals even with more than one advisory in a state.
+
+    Advisory's default ``-created_at`` ordering was being folded into the per-tab
+    GROUP BY (Django appends ordering columns to the grouping), splitting each
+    state into one row per distinct ``created_at``; the view's dict comprehension
+    then kept only the last row per state and undercounted. The admin list path
+    (``Advisory.objects.all()``, no ``.distinct()``) doesn't trip the fold, so this
+    regression only bites the team/grant path — hence a non-admin viewer here.
+    """
+    viewer = make_user(email="viewer@example.org")
+    project = make_project("teamed", team_members=[viewer])
+    for i in range(3):
+        Advisory.objects.create(project=project, summary=f"draft-{i}", state=State.DRAFT)
+    for i in range(2):
+        Advisory.objects.create(
+            project=project,
+            summary=f"pub-{i}",
+            state=State.PUBLISHED,
+            published_at=timezone.now(),
+        )
+    client.force_login(viewer)
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert 'All<span class="state-tabs__count">5</span>' in body
+    assert 'Triage<span class="state-tabs__count">0</span>' in body
+    assert 'Draft<span class="state-tabs__count">3</span>' in body
+    assert 'Published<span class="state-tabs__count">2</span>' in body
+    assert 'Dismissed<span class="state-tabs__count">0</span>' in body
+
+
+@pytest.mark.django_db
 def test_active_state_tab_marked(client, setup):
     """Exactly one tab is active; ?state=draft marks the Draft tab, default marks All."""
     client.force_login(setup["admin"])

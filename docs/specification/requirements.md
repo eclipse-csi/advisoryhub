@@ -111,7 +111,9 @@ GHSA-linked advisories are a *bridge* over a GitHub-hosted Security
 Advisory: their OSV content fields are sourced from GHSA and read-only
 in AdvisoryHub; AdvisoryHub initiates CVE-ID allocation and pushes it
 back to GitHub, and publication is gated on the upstream GHSA having
-been published.
+been published. Their owning project is derived from the source
+repository's PMI ownership and follows PMI automatically — it is never
+reassigned by hand ([INV-GHSA-1](./invariant.md#inv-ghsa-1)).
 
 `Advisory.kind` is set at creation and immutable. `Advisory.delete()`
 is blocked at the model and DB layers

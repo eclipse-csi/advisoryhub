@@ -188,7 +188,10 @@ Footnotes:
 
 ¹ Both the source advisory's owner role **and** security-team membership
 on the destination project are required (admins are exempt from the
-destination check). Defined by `can_change_project`.
+destination check). Defined by `can_change_project`. This applies to
+**native** advisories only: a GHSA-linked advisory's project follows its
+source repository in PMI and is never reassigned by hand — it is re-homed
+only by the PMI repo sync ([INV-GHSA-1](./invariant.md#inv-ghsa-1)).
 
 ² Owner-only **and** the advisory must not currently have an
 `assigned_cve_id` (pulling the CVE is a CNA-side action only admins can

@@ -786,3 +786,17 @@ def _enqueue_triage_notification(advisory_pk: int, event: str) -> None:
     from notifications.tasks import send_advisory_triage_event_email
 
     safe_enqueue(send_advisory_triage_event_email, advisory_pk, event)
+
+
+def queue_advisory_created_notification(advisory_pk: int) -> None:
+    """Enqueue the ``advisory_created`` notification for ``advisory_pk``.
+
+    Fired on first create, on a human project reassignment, and on a
+    PMI-driven re-home (``ghsa.services.sync_project_repos_from_pmi``).
+    Recipients are resolved at send time (the advisory's *current* project
+    security team), so a broker outage here is not load-bearing — workers
+    re-read the project. Deferred import avoids a notifications↔models cycle.
+    """
+    from notifications.tasks import send_advisory_event_email
+
+    safe_enqueue(send_advisory_event_email, advisory_pk, "advisory_created")

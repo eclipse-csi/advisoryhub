@@ -24,7 +24,6 @@ from django.views.decorators.http import require_http_methods
 
 from audit.models import Action
 from audit.services import record_from_request
-from common.enqueue import safe_enqueue
 from common.ratelimit import html_ratelimit
 from projects.models import Project
 
@@ -42,7 +41,6 @@ from .form_assembly import (
 from .forms import (
     AdvisoryDismissForm,
     AdvisoryForm,
-    GhsaLinkedAdvisoryEditForm,
 )
 from .models import Advisory, AdvisoryVersion, AdvisoryVisit, Kind, ReviewStatus, State
 from .permissions import UNSORTED_PROJECT_SLUG
@@ -539,6 +537,17 @@ def advisory_edit(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     if not perms.can_edit(request.user, advisory):
         raise PermissionDenied("You cannot edit this advisory.")
+    # GHSA-linked advisories have no AdvisoryHub-editable fields: the OSV
+    # content is synced from the upstream GHSA on GitHub, and the project
+    # follows the source repository in PMI (re-homed only by
+    # ghsa.services.sync_project_repos_from_pmi — never by hand). Refuse here,
+    # before the native form path, so a GHSA row can never reach it.
+    if advisory.kind == Kind.GHSA_LINKED:
+        raise PermissionDenied(
+            "GHSA-linked advisories have no editable fields in AdvisoryHub; "
+            "content is synced from GitHub and the project follows the source "
+            "repository in PMI."
+        )
 
     user = request.user
     # Combine via primary key set instead of `|` because
@@ -547,12 +556,6 @@ def advisory_edit(request, advisory_id: str):
     own_pks = list(_projects_user_can_create_for(user).values_list("pk", flat=True))
     creatable_projects = Project.objects.filter(pk__in=set(own_pks + [advisory.project_id]))
     is_triage = advisory.state == State.TRIAGE
-
-    # GHSA-linked advisories: OSV-shaped fields are read-only (synced from
-    # the upstream GHSA on GitHub). Only project assignment is editable
-    # here; the rest of the metadata flows through ghsa.services.
-    if advisory.kind == Kind.GHSA_LINKED:
-        return _advisory_edit_ghsa_linked(request, advisory, creatable_projects)
 
     if request.method == "POST":
         # Capture pre-edit state *before* binding the form: ModelForm._post_clean
@@ -680,95 +683,6 @@ def advisory_edit(request, advisory_id: str):
             "mode": "edit",
             "advisory": advisory,
             **advanced_form_context(formsets, event_formsets),
-        },
-    )
-
-
-def _advisory_edit_ghsa_linked(request, advisory, creatable_projects):
-    """Edit path for GHSA-linked advisories: only ``project`` is editable.
-
-    The OSV-shaped fields are rendered as a read-only panel on the same
-    template; everything else flows through the GHSA sync workflow.
-    """
-    previous_project_id = advisory.project_id
-    previous = {"project": advisory.project.slug}
-    prior_version = services.latest_version(advisory)
-    prior_payload = prior_version.payload if prior_version else None
-    if request.method == "POST":
-        form = GhsaLinkedAdvisoryEditForm(request.POST, instance=advisory)
-        cast(ModelChoiceField, form.fields["project"]).queryset = creatable_projects
-        if form.is_valid():
-            new_project = form.cleaned_data["project"]
-            project_changed = new_project.pk != previous_project_id
-            if project_changed and not perms.can_change_project(
-                request.user, advisory, new_project
-            ):
-                raise PermissionDenied("You cannot change the project to one you don't belong to.")
-            updated = form.save(commit=False)
-            if updated.state == State.PUBLISHED:
-                updated.republish_required = True
-            invalidated_approval = (
-                updated.review_status == ReviewStatus.APPROVED
-                and not perms.is_global_admin(request.user)
-            )
-            if invalidated_approval:
-                updated.review_status = ReviewStatus.NONE
-            if project_changed:
-                updated.access_review_required_at = timezone.now()
-            updated.save(
-                update_fields=[
-                    "project",
-                    "republish_required",
-                    "review_status",
-                    "access_review_required_at",
-                    "modified_at",
-                ]
-            )
-            new_version = services.record_advisory_version(
-                updated, editor=request.user, if_changed=True
-            )
-            new_value = {
-                "project": updated.project.slug,
-                "version": new_version.version if new_version else None,
-            }
-            changed_fields = services.changed_payload_fields(prior_payload, updated.to_payload())
-            record_from_request(
-                request,
-                action=Action.ADVISORY_EDITED,
-                advisory=updated,
-                previous_value=previous,
-                new_value=new_value,
-                metadata={"changed_fields": changed_fields},
-            )
-            if invalidated_approval:
-                record_from_request(
-                    request,
-                    action=Action.ADVISORY_REVIEW_APPROVAL_INVALIDATED,
-                    advisory=updated,
-                    previous_value={"review_status": ReviewStatus.APPROVED},
-                    new_value={"review_status": ReviewStatus.NONE},
-                )
-            if previous["project"] != new_value["project"]:
-                record_from_request(
-                    request,
-                    action=Action.ADVISORY_PROJECT_CHANGED,
-                    advisory=updated,
-                    previous_value=previous["project"],
-                    new_value=new_value["project"],
-                )
-            messages.success(request, "Advisory saved.")
-            return redirect("advisories:detail", advisory_id=updated.advisory_id)
-    else:
-        form = GhsaLinkedAdvisoryEditForm(instance=advisory)
-        cast(ModelChoiceField, form.fields["project"]).queryset = creatable_projects
-    return render(
-        request,
-        "advisories/form_ghsa_linked.html",
-        {
-            "form": form,
-            "advisory": advisory,
-            "mode": "edit",
-            "is_ghsa_linked": True,
         },
     )
 
@@ -922,15 +836,13 @@ def advisory_access_review_dismiss(request, advisory_id: str):
 
 
 def _queue_advisory_created(advisory_pk: int) -> None:
-    """Enqueue the ``advisory_created`` notification.
+    """Enqueue the ``advisory_created`` notification (thin view-side alias).
 
-    Fired on first create and on project reassignment. Recipients are
-    resolved at send time (project security team only), so a broker
-    outage here is not load-bearing — workers re-read the project.
+    Delegates to :func:`advisories.services.queue_advisory_created_notification`
+    so the same enqueue is reachable from non-view callers (e.g. the
+    PMI-driven re-home in ``ghsa.services``).
     """
-    from notifications.tasks import send_advisory_event_email
-
-    safe_enqueue(send_advisory_event_email, advisory_pk, "advisory_created")
+    services.queue_advisory_created_notification(advisory_pk)
 
 
 def _projects_user_can_create_for(user):

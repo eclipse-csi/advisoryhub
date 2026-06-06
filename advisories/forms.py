@@ -472,19 +472,3 @@ class AdvisoryForm(forms.ModelForm):
 
 class AdvisoryDismissForm(forms.Form):
     reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 4}))
-
-
-class GhsaLinkedAdvisoryEditForm(forms.ModelForm):
-    """Edit form for GHSA-linked advisories.
-
-    OSV-shaped fields (summary, details, aliases, references, affected,
-    severity, cwe_ids, credits) are synced from the upstream GHSA on
-    GitHub and rendered read-only in the detail/edit templates. The only
-    field an AdvisoryHub owner can change here is the project assignment;
-    everything else flows through :func:`ghsa.services.sync_single_ghsa`.
-    """
-
-    class Meta:
-        model = Advisory
-        fields = ["project"]
-        widgets = {"project": ProjectChoiceSelect(attrs={"data-combobox": True})}

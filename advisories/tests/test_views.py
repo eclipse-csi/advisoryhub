@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from advisories.models import Advisory, State
+from advisories.models import Advisory, Kind, State
 from audit.models import AccessLogEntry, Action, AuditLogEntry
 
 FORMSET_SECTIONS = ("aliases", "cwe_ids", "references", "severity", "credits", "affected")
@@ -46,6 +46,63 @@ def project_b(make_project):
 @pytest.fixture
 def outsider(make_user):
     return make_user(email="outsider@example.org")
+
+
+@pytest.fixture
+def ghsa_advisory(project_a):
+    return Advisory.objects.create(
+        project=project_a,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.DRAFT,
+    )
+
+
+# ---- GHSA-linked advisories are not editable (INV-GHSA-1) ------------------
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_edit_get_forbidden(client, member_a, ghsa_advisory):
+    """A GHSA-linked advisory has no editable fields — the edit page 403s."""
+    client.force_login(member_a)
+    resp = client.get(reverse("advisories:edit", args=[ghsa_advisory.advisory_id]))
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_edit_post_project_change_forbidden(client, member_a, ghsa_advisory, project_a):
+    """Even an owner cannot POST a project change for a GHSA-linked advisory."""
+    client.force_login(member_a)
+    resp = client.post(
+        reverse("advisories:edit", args=[ghsa_advisory.advisory_id]),
+        {"project": project_a.pk, **empty_formsets_payload()},
+    )
+    assert resp.status_code == 403
+    ghsa_advisory.refresh_from_db()
+    assert ghsa_advisory.project_id == project_a.pk
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_detail_hides_edit_button(client, member_a, ghsa_advisory):
+    """The Edit affordance is gated by ``not is_ghsa_linked`` on the detail page."""
+    client.force_login(member_a)
+    resp = client.get(reverse("advisories:detail", args=[ghsa_advisory.advisory_id]))
+    assert resp.status_code == 200
+    edit_url = reverse("advisories:edit", args=[ghsa_advisory.advisory_id])
+    assert edit_url not in resp.content.decode()
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_advisory_stays_cve_requestable(member_a, ghsa_advisory):
+    """Regression: ``can_edit`` is unchanged for GHSA-linked rows, so the
+    CVE-request and review UIs (which it gates) keep working — only the
+    project-edit path was removed."""
+    from advisories import permissions as perms
+
+    assert perms.can_edit(member_a, ghsa_advisory) is True
+    assert perms.can_request_cve(member_a, ghsa_advisory) is True
 
 
 # ---- list -----------------------------------------------------------------

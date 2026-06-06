@@ -17,7 +17,7 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
   </header>
   {% if lifecycle_hint %}<p class="sidebar-card__hint">{{ lifecycle_hint }}</p>{% endif %}
 
-  {% if can_edit %}
+  {% if can_edit and not is_ghsa_linked %}
     <div class="sidebar-card__row">
       <a class="btn info" href="{% url 'advisories:edit' advisory.advisory_id %}">Edit</a>
       <p class="sidebar-card__action-hint">

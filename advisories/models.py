@@ -286,15 +286,31 @@ class Advisory(models.Model):
             raise ValidationError({"advisory_id": "Invalid advisory ID format."})
         if self.state == State.DISMISSED and not self.dismissed_reason.strip():
             raise ValidationError({"dismissed_reason": "Required when dismissing an advisory."})
-        # ``kind`` is set at create time and must never flip — flipping it
-        # would either orphan an upstream GHSA (native → ghsa_linked) or
-        # silently strip the bridge metadata (ghsa_linked → native).
+        # Compare against the persisted row to enforce two immutables:
+        #   * ``kind`` is set at create time and must never flip — flipping it
+        #     would either orphan an upstream GHSA (native → ghsa_linked) or
+        #     silently strip the bridge metadata (ghsa_linked → native); and
+        #   * a GHSA-linked advisory's ``project`` is *derived* from its source
+        #     repository in PMI. It is re-homed only by
+        #     ``ghsa.services.sync_project_repos_from_pmi`` (which saves via
+        #     ``update_fields`` and so bypasses ``clean``), never by a human
+        #     edit. This guard fires on every ModelForm/admin save — exactly the
+        #     human surface we mean to block. See INV-GHSA-1.
         if self.pk is not None:
-            existing_kind = (
-                Advisory.objects.filter(pk=self.pk).values_list("kind", flat=True).first()
-            )
-            if existing_kind is not None and existing_kind != self.kind:
-                raise ValidationError({"kind": "Advisory kind is immutable after creation."})
+            existing = Advisory.objects.filter(pk=self.pk).values_list("kind", "project_id").first()
+            if existing is not None:
+                existing_kind, existing_project_id = existing
+                if existing_kind is not None and existing_kind != self.kind:
+                    raise ValidationError({"kind": "Advisory kind is immutable after creation."})
+                if existing_kind == Kind.GHSA_LINKED and self.project_id != existing_project_id:
+                    raise ValidationError(
+                        {
+                            "project": (
+                                "A GHSA-linked advisory's project follows its source "
+                                "repository in PMI and cannot be changed manually."
+                            )
+                        }
+                    )
         if self.kind == Kind.GHSA_LINKED:
             if not self.ghsa_id:
                 raise ValidationError({"ghsa_id": "Required for GHSA-linked advisories."})

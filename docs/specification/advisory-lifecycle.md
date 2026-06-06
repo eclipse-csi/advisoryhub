@@ -462,7 +462,8 @@ into the orthogonal machines and the version log:
 | Edit on a draft with `review_status=approved`, by a **non-admin** | new row appended | reset to `none`, audit `ADVISORY_REVIEW_APPROVAL_INVALIDATED` ([INV-REVIEW-4]) | unchanged | — |
 | Edit on a draft with `review_status=approved`, by an admin | new row appended | unchanged | unchanged | Admin can re-approve at will |
 | Edit on a `published` advisory | new row appended | reset to `none` for non-admin if it was `approved` | set to `True` (re-publish required) | The Publish button becomes "Re-publish" in the UI |
-| Project change | new row appended (project is payload-visible) | reset to `none` if `approved` and editor is non-admin | set to `True` if `published` | `access_review_required_at` stamped — surfaces the access-review banner |
+| Project change (native advisory, human editor) | new row appended (project is payload-visible) | reset to `none` if `approved` and editor is non-admin | set to `True` if `published` | `access_review_required_at` stamped — surfaces the access-review banner |
+| PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1]) | new row appended (`project_slug` is payload-visible) | **unchanged** — approval is preserved | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment` |
 | Non-payload save (state-only flip, heartbeat sync, `republish_required` toggle, `access_review_required_at` stamp) | **no row** ([INV-VERSION-1]) | unchanged | depends on the field | — |
 | GHSA heartbeat sync that returned no payload changes | **no row** | unchanged | unchanged | `ghsa_metadata_synced_at` refreshed |
 | GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | reset to `none` if `approved` and editor is non-admin (system actor is treated as non-admin here) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
@@ -538,6 +539,7 @@ CVE, and publication tables are cited by their section.
 [INV-VERSION-1]: ./invariant.md#inv-version-1
 [INV-VERSION-2]: ./invariant.md#inv-version-2
 [INV-VERSION-3]: ./invariant.md#inv-version-3
+[INV-GHSA-1]: ./invariant.md#inv-ghsa-1
 [INV-AUDIT-1]: ./invariant.md#inv-audit-1
 [INV-AUDIT-3]: ./invariant.md#inv-audit-3
 [INV-SECRET-1]: ./invariant.md#inv-secret-1

@@ -118,6 +118,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PRIVACY-1](#inv-privacy-1) | Advisories without access are not enumerable. | Privacy | High |
 | [INV-PRIVACY-2](#inv-privacy-2) | Notification recipients are re-checked at send time. | Privacy | High |
 | [INV-PRIVACY-3](#inv-privacy-3) | `reporter_display_name` is display-only; never used for authorization. | Privacy | Medium |
+| [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
 
 ---
 
@@ -754,10 +755,13 @@ rather than creating a fresh one.
 - `advisories/apps.py` — `AdvisoriesConfig.ready` registers the signal.
 - `advisories/services.py` — `record_advisory_version` is the only path for
   v(n+1); takes a row lock to serialise concurrent edits.
-- `advisories/views.py` — `advisory_edit` and `_advisory_edit_ghsa_linked` call
-  `record_advisory_version` after a successful form save.
+- `advisories/views.py` — `advisory_edit` calls `record_advisory_version` after a
+  successful form save (native advisories only; GHSA-linked advisories are not
+  editable here — see [INV-GHSA-1](#inv-ghsa-1)).
 - `ghsa/services.py` — `sync_single_ghsa` appends a version only when
-  `result.changed_field_names` is non-empty (filters out heartbeat syncs).
+  `result.changed_field_names` is non-empty (filters out heartbeat syncs);
+  `sync_project_repos_from_pmi` appends one when a PMI re-home moves a GHSA-linked
+  advisory to a different project (`project_slug` is payload-visible).
 
 **Violation impact.** Editorial history either has gaps (missing rows for real
 edits) or noise (rows for non-content saves), in either case losing its value
@@ -1977,6 +1981,55 @@ form; treating it as identity would be a forgery vector.
 **Tests.** `advisories/tests/test_triage.py`.
 
 **Related.** [INV-INTAKE-2](#inv-intake-2).
+
+---
+
+## 19. GHSA integration
+
+<a id="inv-ghsa-1"></a>
+### INV-GHSA-1 — A GHSA-linked advisory's project follows PMI, never a manual edit   [High]
+
+**Statement.** A GHSA-linked advisory's `project` is *derived* from its source
+GitHub repository at creation (`ghsa.services.create_ghsa_linked_advisory`, from
+the `ProjectGitHubRepository` PMI mirror). It is never editable by a human in
+AdvisoryHub: there is no edit form for GHSA-linked advisories, and
+`Advisory.clean` rejects any `project` change on a GHSA-linked row. The **only**
+sanctioned project change is `ghsa.services.sync_project_repos_from_pmi`
+re-homing the advisory when PMI re-maps its repository to a different project;
+that path preserves an existing review approval (the security content is
+unchanged) while stamping the access-review banner and re-flagging
+`republish_required` when published.
+
+**Rationale.** PMI (`projects.eclipse.org`) is the source of truth for the
+repo↔project mapping. A GHSA-linked advisory bridges a specific repository, so
+its owning project must track that repository's PMI ownership — not a human's
+hand-assignment. A manual reassignment would drop the advisory into a project
+that does not own its repo, and the drift would be permanent and invisible:
+`sync_single_ghsa` never overwrites `project`. Removing the manual path and
+letting PMI be the sole driver keeps the mapping coherent and self-healing.
+
+**Enforced in.**
+- `advisories/models.py` — `Advisory.clean` rejects a `project` change on a
+  GHSA-linked advisory. This fires for every ModelForm and Django-admin save;
+  the PMI re-home saves via `update_fields` and so deliberately bypasses `clean`.
+- `advisories/views.py` — `advisory_edit` raises `PermissionDenied` for
+  GHSA-linked advisories (they have no editable fields); the detail sidebar
+  hides the Edit button via `can_edit and not is_ghsa_linked`.
+- `ghsa/services.py` — `sync_project_repos_from_pmi` re-homes GHSA-linked
+  advisories to follow PMI (`_reassign_ghsa_advisories_following_pmi`), appending
+  a version, auditing `ADVISORY_PROJECT_CHANGED` with `reason=pmi_repo_reassignment`,
+  and notifying the destination project's security team.
+
+**Violation impact.** A GHSA-linked advisory sits in a project that does not own
+its repo; its implicit owners (project security team), notification routing, and
+published project name diverge from PMI truth with no reconciliation path.
+
+**Tests.** `advisories/tests/test_models.py`, `advisories/tests/test_views.py`,
+`ghsa/tests/test_pmi_reassignment.py`.
+
+**Related.** [INV-ID-2](#inv-id-2), [INV-PROJECT-2](#inv-project-2),
+[INV-VERSION-1](#inv-version-1), [INV-AUTH-1](#inv-auth-1),
+[INV-REVIEW-4](#inv-review-4).
 
 ---
 

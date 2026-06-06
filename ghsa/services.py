@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from functools import partial
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -99,6 +100,12 @@ def sync_project_repos_from_pmi(project: Project, *, by) -> int:
             row.soft_removed_at = now
             row.save(update_fields=["soft_removed_at"])
 
+    # PMI is authoritative for the repo↔project mapping. Now that the mirror
+    # reflects the current mapping, re-home any GHSA-linked advisory whose repo
+    # PMI now lists under this project but that still sits elsewhere — the only
+    # sanctioned project change for a GHSA-linked advisory (INV-GHSA-1).
+    reassigned = _reassign_ghsa_advisories_following_pmi(project, fresh, by=by, now=now)
+
     project.last_pmi_sync_at = now
     project.last_pmi_sync_error = ""
     project.save(update_fields=["last_pmi_sync_at", "last_pmi_sync_error"])
@@ -110,9 +117,95 @@ def sync_project_repos_from_pmi(project: Project, *, by) -> int:
             "project_slug": project.slug,
             "status": "succeeded",
             "active_repos": len(fresh),
+            "advisories_reassigned": reassigned,
         },
     )
     return project.github_repositories.filter(soft_removed_at__isnull=True).count()
+
+
+def _reassign_ghsa_advisories_following_pmi(
+    project: Project, fresh_keys: set[tuple[str, str]], *, by, now
+) -> int:
+    """Re-home GHSA-linked advisories whose repo PMI now maps to ``project``.
+
+    For each ``(owner, name)`` PMI currently lists under ``project``, move any
+    GHSA-linked advisory bound to that repo whose project differs — *unless*
+    the advisory's current project still actively mirrors the same repo. That
+    last case is a transient mid-move state (the old project's stale row hasn't
+    been soft-removed yet) or a genuine PMI double-listing; either way we defer
+    rather than tug-of-war, and it reconciles on a later tick once the stale
+    claim clears.
+
+    This is the sole sanctioned project change for a GHSA-linked advisory
+    (INV-GHSA-1). It saves via ``update_fields`` so it bypasses the
+    ``Advisory.clean`` guard that blocks human/admin edits, and mirrors the
+    side-effects of :func:`advisories.services.reassign_triage_project`:
+    append a version (``project_slug`` is payload-visible), stamp the
+    access-review banner, and flag ``republish_required`` when published. The
+    review approval is intentionally preserved — the security content is
+    unchanged, only the owning project moved. ``by`` is the system actor
+    (``None``) on the beat path.
+    """
+    reassigned = 0
+    for owner, name in fresh_keys:
+        movers = (
+            Advisory.objects.select_for_update()
+            .filter(kind=Kind.GHSA_LINKED, ghsa_owner=owner, ghsa_repo=name)
+            .exclude(project=project)
+        )
+        for advisory in movers:
+            if ProjectGitHubRepository.objects.filter(
+                project=advisory.project_id,
+                owner=owner,
+                name=name,
+                soft_removed_at__isnull=True,
+            ).exists():
+                logger.info(
+                    "PMI re-home deferred for %s: repo %s/%s still active under %s",
+                    advisory.advisory_id,
+                    owner,
+                    name,
+                    advisory.project.slug,
+                )
+                continue
+            previous_project = advisory.project
+            advisory.project = project
+            if advisory.state == State.PUBLISHED:
+                advisory.republish_required = True
+            advisory.access_review_required_at = now
+            advisory.save(
+                update_fields=[
+                    "project",
+                    "republish_required",
+                    "access_review_required_at",
+                    "modified_at",
+                ]
+            )
+            advisory_services.record_advisory_version(advisory, editor=by, if_changed=True)
+            record(
+                action=Action.ADVISORY_PROJECT_CHANGED,
+                actor=by,
+                advisory=advisory,
+                previous_value={"project_slug": previous_project.slug},
+                new_value={"project_slug": project.slug},
+                metadata={
+                    "advisory_id": advisory.advisory_id,
+                    "reason": "pmi_repo_reassignment",
+                },
+            )
+            transaction.on_commit(
+                partial(advisory_services.queue_advisory_created_notification, advisory.pk)
+            )
+            reassigned += 1
+            logger.info(
+                "PMI re-homed %s from %s to %s (repo %s/%s)",
+                advisory.advisory_id,
+                previous_project.slug,
+                project.slug,
+                owner,
+                name,
+            )
+    return reassigned
 
 
 # ---------------------------------------------------------------------------

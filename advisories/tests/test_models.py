@@ -7,6 +7,7 @@ from django.db import connection, transaction
 from advisories.models import (
     Advisory,
     AdvisoryVersion,
+    Kind,
     ReviewStatus,
     State,
     _unsafe_dev_reset_bypass,
@@ -47,6 +48,48 @@ def test_aliases_validator_rejects_non_list(make_project):
     advisory = Advisory(project=project, aliases={"oops": True})
     with pytest.raises(ValidationError):
         advisory.full_clean()
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_project_change_rejected_by_clean(make_project):
+    """INV-GHSA-1: a human/admin edit cannot move a GHSA-linked advisory's project."""
+    old = make_project("proj-old")
+    new = make_project("proj-new")
+    advisory = Advisory.objects.create(
+        project=old,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+    )
+    advisory.project = new
+    with pytest.raises(ValidationError):
+        advisory.clean()
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_clean_ok_without_project_change(make_project):
+    """The guard only fires on a project change — other edits still validate."""
+    old = make_project("proj-old")
+    advisory = Advisory.objects.create(
+        project=old,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+    )
+    advisory.summary = "edited summary"
+    advisory.clean()  # project unchanged → no INV-GHSA-1 violation
+
+
+@pytest.mark.django_db
+def test_native_advisory_project_change_allowed_by_clean(make_project):
+    """Native advisories may still be reassigned (INV-GHSA-1 is GHSA-only)."""
+    old = make_project("proj-old")
+    new = make_project("proj-new")
+    advisory = Advisory.objects.create(project=old, summary="s")  # kind defaults to native
+    advisory.project = new
+    advisory.clean()  # no project guard for native advisories
 
 
 @pytest.mark.django_db

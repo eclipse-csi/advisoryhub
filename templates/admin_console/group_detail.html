@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load i18n %}
+{% load i18n advisoryhub %}
 {% block title %}Admin Console — {{ group.name }}{% endblock %}
 {% block admin_section %}groups{% endblock %}
 {% block admin_content %}
@@ -24,7 +24,7 @@
             <tr data-href="{% url 'admin_console:user_detail' m.pk %}">
               <td><a href="{% url 'admin_console:user_detail' m.pk %}">{{ m.email }}</a></td>
               <td>{{ m.display_name|default:"—" }}</td>
-              <td>{% if m.last_login %}{{ m.last_login|date:"Y-m-d H:i" }}{% else %}{% translate "never" %}{% endif %}</td>
+              <td>{% if m.last_login %}{% timestamp m.last_login %}{% else %}{% translate "never" %}{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>

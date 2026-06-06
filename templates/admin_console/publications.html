@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load i18n %}
+{% load i18n advisoryhub %}
 {% block title %}Admin Console — Publication{% endblock %}
 {% block admin_section %}publications{% endblock %}
 {% block admin_content %}
@@ -16,7 +16,7 @@
             <td><a href="{% url 'advisories:detail' t.advisory.advisory_id %}">{{ t.advisory.advisory_id }}</a></td>
             <td><span class="badge status-{{ t.status }}">{{ t.get_status_display }}</span></td>
             <td>{{ t.attempts }}</td>
-            <td>{{ t.started_at|date:"Y-m-d H:i"|default:"—" }}</td>
+            <td>{% if t.started_at %}{% timestamp t.started_at %}{% else %}—{% endif %}</td>
           </tr>
         {% empty %}
           <tr><td colspan="4">{% translate "No open publication runs." %}</td></tr>
@@ -34,7 +34,7 @@
         {% for t in failed_publications %}
           <tr id="pub-task-{{ t.pk }}" data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
             <td><a href="{% url 'advisories:detail' t.advisory.advisory_id %}">{{ t.advisory.advisory_id }}</a></td>
-            <td>{{ t.finished_at|date:"Y-m-d H:i" }}</td>
+            <td>{% timestamp t.finished_at %}</td>
             <td><code>{{ t.last_error|truncatechars:120 }}</code></td>
             <td>
               {% url 'publication:retry' t.pk as retry_url %}

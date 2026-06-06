@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load i18n %}
+{% load i18n advisoryhub %}
 {% block title %}Admin Console — {{ target_user.display_name|default:target_user.email }}{% endblock %}
 {% block admin_section %}users{% endblock %}
 {% block admin_content %}
@@ -13,8 +13,8 @@
       <dt>{% translate "Email" %}</dt><dd>{{ target_user.email }}</dd>
       <dt>{% translate "Display name" %}</dt><dd>{{ target_user.display_name|default:"—" }}</dd>
       <dt>{% translate "First / last name" %}</dt><dd>{{ target_user.first_name|default:"—" }} {{ target_user.last_name|default:"" }}</dd>
-      <dt>{% translate "Last login" %}</dt><dd>{% if target_user.last_login %}{{ target_user.last_login|date:"Y-m-d H:i" }}{% else %}{% translate "never" %}{% endif %}</dd>
-      <dt>{% translate "Date joined" %}</dt><dd>{{ target_user.date_joined|date:"Y-m-d H:i" }}</dd>
+      <dt>{% translate "Last login" %}</dt><dd>{% if target_user.last_login %}{% timestamp target_user.last_login %}{% else %}{% translate "never" %}{% endif %}</dd>
+      <dt>{% translate "Date joined" %}</dt><dd>{% timestamp target_user.date_joined %}</dd>
       <dt>{% translate "OIDC subject" %}</dt><dd><code>{{ target_user.oidc_subject|default:"—" }}</code></dd>
       <dt>{% translate "Admin" %}</dt><dd>{% if is_admin %}<strong>{% translate "yes — global admin" %}</strong>{% else %}—{% endif %}</dd>
     </dl>
@@ -117,7 +117,7 @@
               <td><a href="{% url 'advisories:detail' inv.advisory.advisory_id %}">{{ inv.advisory.advisory_id }}</a></td>
               <td>{{ inv.advisory.project.slug }}</td>
               <td>{{ inv.permission }}</td>
-              <td>{{ inv.expires_at|date:"Y-m-d H:i" }}</td>
+              <td>{% timestamp inv.expires_at %}</td>
             </tr>
           {% endfor %}
         </tbody>

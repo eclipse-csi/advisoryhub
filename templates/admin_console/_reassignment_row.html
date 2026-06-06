@@ -1,4 +1,4 @@
-{% load user_display %}
+{% load user_display advisoryhub %}
 <tr id="reassignment-{{ task.pk }}"{% if task.advisory %} data-href="{% url 'advisories:detail' task.advisory.advisory_id %}"{% endif %}>
   <td><code>{{ task.orphan_cve.cve_id }}</code></td>
   <td>
@@ -13,7 +13,7 @@
     {% if error %}<div class="errors">{{ error }}</div>{% endif %}
   </td>
   <td>
-    {{ task.created_at|date:"Y-m-d H:i" }}<br>
+    {% timestamp task.created_at %}<br>
     <small>requested by {% user_chip task.requested_by %}</small>
   </td>
   <td>
@@ -42,7 +42,7 @@
       </form>
     {% else %}
       <small>by {% user_chip task.resolved_by %}<br>
-      {{ task.finished_at|date:"Y-m-d H:i" }}</small>
+      {% timestamp task.finished_at %}</small>
       {% if task.replacement_cve_id %}
         <div>replaced with <code>{{ task.replacement_cve_id }}</code></div>
       {% endif %}

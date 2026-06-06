@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load advisoryhub %}
 {% block title %}GitHub App configuration · AdvisoryHub{% endblock %}
 
 {% block content %}
@@ -49,8 +50,8 @@
             <td>{{ inst.installation_id }}</td>
             <td>{{ inst.get_account_type_display }}</td>
             <td>{{ inst.app_slug|default:"—" }}</td>
-            <td>{% if inst.suspended_at %}<strong>suspended</strong> at {{ inst.suspended_at|date:"Y-m-d H:i" }}{% else %}active{% endif %}</td>
-            <td>{{ inst.last_seen_at|default:"never" }}</td>
+            <td>{% if inst.suspended_at %}<strong>suspended</strong> at {% timestamp inst.suspended_at %}{% else %}active{% endif %}</td>
+            <td>{% if inst.last_seen_at %}{% timestamp inst.last_seen_at %}{% else %}never{% endif %}</td>
           </tr>
         {% endfor %}
       </tbody>

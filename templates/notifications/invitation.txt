@@ -5,6 +5,6 @@ Project: {{ invite.advisory.project.name }}
 
 Sign in at AdvisoryHub with the email address {{ invite.email }} — once
 authenticated, the invitation will attach this permission to your account.
-The invitation expires on {{ invite.expires_at }}.
+The invitation expires on {{ invite.expires_at|date:"Y-m-d H:i T" }}.
 
 Sign-in URL: {{ url }}

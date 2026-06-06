@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n advisory_display %}
+{% load i18n advisory_display advisoryhub %}
 {% block main_modifier %}container--wide{% endblock %}
 {% block title %}{% translate "Advisories" %}{% endblock %}
 {% block content %}
@@ -76,7 +76,7 @@
           {% if a.review_status != 'none' %}<span class="badge review-{{ a.review_status }}">{{ a.get_review_status_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
         </td>
         <td data-label="{% translate 'Summary' %}">{{ a.summary|default:"—" }}</td>
-        <td data-label="{% translate 'Modified' %}" title="{{ a.modified_at|date:'Y-m-d H:i' }}" class="advisories__age">{{ a.modified_at|coarse_timesince }} ago</td>
+        <td data-label="{% translate 'Modified' %}" class="advisories__age">{% timestamp a.modified_at relative=True %}</td>
       </tr>
     {% empty %}
       <tr><td colspan="6">No advisories match the current filters.</td></tr>

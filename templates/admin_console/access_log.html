@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load i18n user_display %}
+{% load i18n user_display advisoryhub %}
 {% block title %}Admin Console — Access log{% endblock %}
 {% block admin_section %}access_log{% endblock %}
 {% block admin_content %}
@@ -93,7 +93,7 @@
     <tbody>
       {% for entry in page.object_list %}
         <tr{% if entry.advisory %} data-href="{% url 'advisories:detail' entry.advisory.advisory_id %}"{% endif %}>
-          <td>{{ entry.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{% timestamp entry.created_at %}</td>
           <td>{% user_chip entry.actor fallback="system" %}</td>
           <td>{{ entry.action }}</td>
           <td>{% if entry.advisory %}<a href="{% url 'advisories:detail' entry.advisory.advisory_id %}">{{ entry.advisory.advisory_id }}</a>{% else %}—{% endif %}</td>

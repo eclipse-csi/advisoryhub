@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load static %}
+{% load static advisoryhub %}
 {% block title %}Admin Console — {% if project %}Edit project{% else %}New project{% endif %}{% endblock %}
 {% block admin_section %}projects{% endblock %}
 {% block extra_head %}<script src="{% static 'advisoryhub-form-dirty.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
@@ -49,7 +49,7 @@
               <tr data-href="{% url 'admin_console:user_detail' m.pk %}">
                 <td><a href="{% url 'admin_console:user_detail' m.pk %}">{{ m.email }}</a></td>
                 <td>{{ m.display_name|default:"—" }}</td>
-                <td>{% if m.last_login %}{{ m.last_login|date:"Y-m-d H:i" }}{% else %}never{% endif %}</td>
+                <td>{% if m.last_login %}{% timestamp m.last_login %}{% else %}never{% endif %}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -64,7 +64,7 @@
       {% if roster_sync_enabled %}
         <p class="muted">
           {{ active_roster_count }} active member{{ active_roster_count|pluralize }} mirrored from the Eclipse security team.
-          {% if project.last_roster_sync_at %}Last synced {{ project.last_roster_sync_at }}.{% else %}Never synced.{% endif %}
+          {% if project.last_roster_sync_at %}Last synced {% timestamp project.last_roster_sync_at %}.{% else %}Never synced.{% endif %}
         </p>
         {% if project.last_roster_sync_error %}
           <p class="error">Last sync error: {{ project.last_roster_sync_error }}</p>

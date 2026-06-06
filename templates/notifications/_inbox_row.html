@@ -1,4 +1,4 @@
-{% load i18n advisory_display %}
+{% load i18n advisory_display advisoryhub %}
 <li class="notif-row{% if not n.read_at %} is-unread{% endif %}" id="notif-{{ n.pk }}">
   <div class="notif-row__main">
     <span class="badge notif-kind">{{ n.get_kind_display }}</span>
@@ -10,7 +10,7 @@
     {% if n.summary %}<span class="notif-row__summary">{{ n.summary }}</span>{% endif %}
   </div>
   <div class="notif-row__meta">
-    <time class="notif-row__age" datetime="{{ n.created_at|date:'c' }}" title="{{ n.created_at|date:'Y-m-d H:i' }}">{{ n.created_at|coarse_timesince }} {% translate "ago" %}</time>
+    {% timestamp n.created_at relative=True css_class="notif-row__age" %}
     {% if not n.read_at %}
       <form method="post" action="{% url 'notifications:mark_read' n.pk %}"
             hx-post="{% url 'notifications:mark_read' n.pk %}"

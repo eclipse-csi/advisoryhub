@@ -1,4 +1,4 @@
-{% load comment_filters user_display %}{% comment %}
+{% load comment_filters user_display advisoryhub %}{% comment %}
 One page of history-drawer cards plus a "Load older edits" button.
 Expects ``entries`` (list of {version, diff_chunks, is_initial,
 full_markdown}), ``next_cursor``, ``load_more_url``, ``is_first_page``.
@@ -7,7 +7,7 @@ full_markdown}), ``next_cursor``, ``load_more_url``, ``is_first_page``.
   <div class="history-version">
     <header>
       <span class="version-tag">v{{ entry.version.version }}{% if is_first_page and forloop.first %} &middot; current{% endif %}</span>
-      <time datetime="{{ entry.version.created_at|date:'c' }}">{{ entry.version.created_at|date:"Y-m-d H:i" }}</time>
+      {% timestamp entry.version.created_at %}
       <span class="version-editor">{% user_chip entry.version.editor fallback="system" %}</span>
     </header>
 

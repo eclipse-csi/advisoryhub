@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load comment_filters advisory_display user_display static %}
+{% load comment_filters advisory_display user_display static advisoryhub %}
 {% block main_modifier %}container--wide{% endblock %}
 {% block title %}{{ advisory.advisory_id }} — AdvisoryHub{% endblock %}
 {% block extra_head %}<script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-mentions.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
@@ -26,7 +26,7 @@
         <strong>Flagged for admin re-routing</strong>
         {% if intake.flagged_for_routing_by %}
           — flagged by {% user_chip intake.flagged_for_routing_by %}
-          on {{ intake.flagged_for_routing_at|date:"Y-m-d H:i" }}
+          on {% timestamp intake.flagged_for_routing_at %}
         {% endif %}
         {% if intake.admin_routing_note %}
           <blockquote>{{ intake.admin_routing_note }}</blockquote>
@@ -146,9 +146,9 @@
         </span>
       {% else %}—{% endif %}
     </dd>
-    <dt>Created</dt><dd>{{ advisory.created_at|date:"Y-m-d H:i" }} by {% user_chip advisory.created_by %}</dd>
-    <dt>Modified</dt><dd>{{ advisory.modified_at|date:"Y-m-d H:i" }}</dd>
-    {% if advisory.published_at %}<dt>Published</dt><dd>{{ advisory.published_at|date:"Y-m-d H:i" }}</dd>{% endif %}
+    <dt>Created</dt><dd>{% timestamp advisory.created_at %} by {% user_chip advisory.created_by %}</dd>
+    <dt>Modified</dt><dd>{% timestamp advisory.modified_at %}</dd>
+    {% if advisory.published_at %}<dt>Published</dt><dd>{% timestamp advisory.published_at %}</dd>{% endif %}
   </dl>
 
   <section>

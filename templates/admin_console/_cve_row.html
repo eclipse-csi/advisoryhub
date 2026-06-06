@@ -1,4 +1,4 @@
-{% load user_display %}
+{% load user_display advisoryhub %}
 <tr id="cve-task-{{ task.pk }}" data-href="{% url 'advisories:detail' task.advisory.advisory_id %}">
   <td><a href="{% url 'advisories:detail' task.advisory.advisory_id %}">{{ task.advisory.advisory_id }}</a></td>
   <td>{{ task.advisory.project.name }}</td>
@@ -7,7 +7,7 @@
     {% if task.cve_id %}<div><code>{{ task.cve_id }}</code></div>{% endif %}
     {% if error %}<div class="errors">{{ error }}</div>{% endif %}
   </td>
-  <td>{{ task.created_at|date:"Y-m-d H:i" }}<br><small>{% user_chip task.requested_by %}</small></td>
+  <td>{% timestamp task.created_at %}<br><small>{% user_chip task.requested_by %}</small></td>
   <td>
     {% if task.status == 'queued' %}
       <form class="inline"

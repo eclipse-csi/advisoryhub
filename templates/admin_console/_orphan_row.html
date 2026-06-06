@@ -1,4 +1,4 @@
-{% load user_display %}
+{% load user_display advisoryhub %}
 <tr id="orphan-{{ orphan.pk }}"{% if orphan.previous_advisory %} data-href="{% url 'advisories:detail' orphan.previous_advisory.advisory_id %}"{% endif %}>
   <td><code>{{ orphan.cve_id }}</code></td>
   <td>
@@ -13,7 +13,7 @@
     {% if error %}<div class="errors">{{ error }}</div>{% endif %}
   </td>
   <td>
-    {{ orphan.unassigned_at|date:"Y-m-d H:i" }}<br>
+    {% timestamp orphan.unassigned_at %}<br>
     <small>{% user_chip orphan.unassigned_by %}</small>
     {% if orphan.unassign_reason %}
       <details><summary>reason</summary>{{ orphan.unassign_reason }}</details>
@@ -29,7 +29,7 @@
       </form>
     {% else %}
       <small>by {% user_chip orphan.marked_rejected_by %}<br>
-      {{ orphan.marked_rejected_at|date:"Y-m-d H:i" }}</small>
+      {% timestamp orphan.marked_rejected_at %}</small>
       {% if orphan.marked_rejected_notes %}
         <details><summary>notes</summary>{{ orphan.marked_rejected_notes }}</details>
       {% endif %}

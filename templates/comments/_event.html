@@ -1,10 +1,10 @@
-{% load user_display %}
+{% load user_display advisoryhub %}
 <article class="timeline-event timeline-event--{{ event.action|cut:'.'|slugify }}"
          data-action="{{ event.action }}"
          id="event-{{ event.id }}">
   <header>
     <strong>{% user_chip event.actor fallback="system" %}</strong>
     <span class="timeline-event__summary">{% spaceless %}{% for c in event.summary_chunks %}{% if c.user %}{% user_chip c.user fallback=c.text %}{% elif c.group %}<span class="principal-group">{{ c.text }}</span>{% else %}{{ c.text }}{% endif %}{% endfor %}{% endspaceless %}</span>
-    <time datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|date:"Y-m-d H:i" }}</time>
+    {% timestamp event.created_at %}
   </header>
 </article>

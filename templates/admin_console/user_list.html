@@ -1,5 +1,5 @@
 {% extends "admin_console/_admin_base.html" %}
-{% load i18n %}
+{% load i18n advisoryhub %}
 {% block title %}Admin Console — Users{% endblock %}
 {% block admin_section %}users{% endblock %}
 {% block admin_content %}
@@ -50,7 +50,7 @@
           <td><a href="{% url 'admin_console:user_detail' u.pk %}">{{ u.email }}</a></td>
           <td>{{ u.display_name|default:"—" }}</td>
           <td>{% for g in u.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-          <td>{% if u.last_login %}{{ u.last_login|date:"Y-m-d H:i" }}{% else %}{% translate "never" %}{% endif %}</td>
+          <td>{% if u.last_login %}{% timestamp u.last_login %}{% else %}{% translate "never" %}{% endif %}</td>
           <td>{% if u.is_global_admin %}<strong>{% translate "yes" %}</strong>{% else %}—{% endif %}</td>
         </tr>
       {% empty %}

@@ -10,10 +10,11 @@ Context: advisory, version (the pinned version), diff (list of field
 rows), comparison_label, against (resolved comparison version or None),
 versions (recent versions for the switcher).
 {% endcomment %}
+{% load advisoryhub %}
 <p class="version-diff__summary">
   Comparing version
   <strong>v{{ version.version }}</strong>
-  (recorded {{ version.created_at|date:"Y-m-d H:i" }})
+  (recorded {% timestamp version.created_at %})
   against {{ comparison_label }}.
 </p>
 

@@ -9,7 +9,7 @@ the current user can take.
 Context required: advisory, can_edit, can_submit_for_review,
 can_withdraw_review, can_review, can_revoke_approval, open_review_task.
 {% endcomment %}
-{% load user_display %}
+{% load user_display advisoryhub %}
 <section class="sidebar-card sidebar-card--review">
   <header class="sidebar-card__header">
     <h2>Review</h2>
@@ -24,7 +24,7 @@ can_withdraw_review, can_review, can_revoke_approval, open_review_task.
   {% if advisory.review_status == 'submitted' and advisory.submitted_for_review_by %}
     <p class="sidebar-card__meta">
       Submitted by <strong>{% user_chip advisory.submitted_for_review_by %}</strong>
-      {% if advisory.submitted_for_review_at %} on {{ advisory.submitted_for_review_at|date:"Y-m-d H:i" }}{% endif %}.
+      {% if advisory.submitted_for_review_at %} on {% timestamp advisory.submitted_for_review_at %}{% endif %}.
     </p>
   {% endif %}
 

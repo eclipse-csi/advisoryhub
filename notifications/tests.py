@@ -10,7 +10,7 @@ from accounts.models import CommentLevel, NotificationPreference
 from advisories.models import Advisory
 from comments import services as comment_services
 from notifications import recipients
-from notifications.models import AdvisoryNotificationPreference
+from notifications.models import AdvisoryNotificationPreference, NotificationKind
 from notifications.tasks import (
     send_advisory_event_email,
     send_comment_email,
@@ -842,3 +842,224 @@ def test_soft_removed_shadow_not_reached_by_triage_event(setup):
     send_advisory_triage_event_email(setup["advisory"].pk, "advisory_triage_submitted")
     emailed = {addr for m in mail.outbox for addr in m.to}
     assert shadow.email not in emailed
+
+
+# ---- Email bodies never leak vulnerability content ------------------------
+# Emails describe only the event, the advisory id, and the project. The triage
+# mail used to render the advisory summary (the vulnerability title) — assert it
+# no longer does, in either MIME part or the subject.
+
+
+def _html_of(message):
+    return message.alternatives[0][0] if message.alternatives else ""
+
+
+@pytest.mark.django_db
+def test_triage_email_omits_advisory_summary(setup):
+    from notifications.tasks import send_advisory_triage_event_email
+
+    secret = "SQLi-in-login-handler-DO-NOT-LEAK"
+    setup["advisory"].summary = secret
+    setup["advisory"].save(update_fields=["summary"])
+    mail.outbox.clear()
+    send_advisory_triage_event_email(setup["advisory"].pk, "advisory_triage_submitted")
+    assert mail.outbox
+    for m in mail.outbox:
+        assert secret not in m.subject
+        assert secret not in m.body
+        assert secret not in _html_of(m)
+
+
+@pytest.mark.django_db
+def test_comment_email_includes_project_and_keeps_author(setup):
+    setup["project"].name = "Distinctive Jetty"
+    setup["project"].save(update_fields=["name"])
+    NotificationPreference.objects.create(user=setup["other"], comments_level=CommentLevel.ALL)
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="a plain comment, nobody mentioned"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    m = next(msg for msg in mail.outbox if setup["other"].email in msg.to)
+    assert "Distinctive Jetty" in m.body
+    assert "Distinctive Jetty" in _html_of(m)
+    # Author identity is kept (per the agreed "keep both" decision).
+    assert setup["member"].email in m.body
+
+
+# ---- Every email carries the "why am I getting this?" footer --------------
+
+
+@pytest.mark.django_db
+def test_lifecycle_email_footer_states_default_governance(setup):
+    mail.outbox.clear()
+    send_advisory_event_email(setup["advisory"].pk, "advisory_published")
+    m = next(msg for msg in mail.outbox if setup["member"].email in msg.to)
+    assert "default (global) notification settings" in m.body
+    assert reverse("notifications:preferences") in m.body
+    assert "security team" in m.body
+    # No advisory-specific override governs delivery → no per-advisory deep link.
+    assert "#advisory-notifications" not in m.body
+    assert "default (global) notification settings" in _html_of(m)
+    # No unrendered template tags or stray markup leaked into the body.
+    for stray in ("{%", "{{", "</content>"):
+        assert stray not in m.body
+        assert stray not in _html_of(m)
+
+
+@pytest.mark.django_db
+def test_lifecycle_email_footer_states_advisory_specific_governance(setup):
+    AdvisoryNotificationPreference.objects.create(
+        user=setup["member"], advisory=setup["advisory"], on_advisory_published=True
+    )
+    mail.outbox.clear()
+    send_advisory_event_email(setup["advisory"].pk, "advisory_published")
+    m = next(msg for msg in mail.outbox if setup["member"].email in msg.to)
+    assert "notification settings for this advisory" in m.body
+    assert "#advisory-notifications" in m.body
+    assert "#advisory-notifications" in _html_of(m)
+
+
+@pytest.mark.django_db
+def test_mention_email_footer_states_always_delivered(setup, make_user):
+    user = make_user(email="mona@example.org")
+    grant_to_user(setup["advisory"], user, AccessPermission.VIEWER, by=setup["member"])
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="hey @mona please look"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    m = next(msg for msg in mail.outbox if user.email in msg.to)
+    assert "mention" in m.subject.lower()
+    assert "mentioned in a comment" in m.body
+    assert "always delivered" in m.body
+    assert reverse("notifications:preferences") in m.body
+    # Mentions are an un-disableable floor — never an advisory-specific deep link.
+    assert "#advisory-notifications" not in m.body
+
+
+@pytest.mark.django_db
+def test_triage_email_footer_states_default_governance(setup):
+    from notifications.tasks import send_advisory_triage_event_email
+
+    mail.outbox.clear()
+    send_advisory_triage_event_email(setup["advisory"].pk, "advisory_triage_submitted")
+    m = next(msg for msg in mail.outbox if setup["member"].email in msg.to)
+    assert "default (global) notification settings" in m.body
+    assert "security team" in m.body
+    assert "#advisory-notifications" not in m.body
+
+
+@pytest.mark.django_db
+def test_advisory_created_footer_stays_default_even_with_override(setup):
+    """advisory_created is global-only; a per-advisory row must not relabel it."""
+    AdvisoryNotificationPreference.objects.create(
+        user=setup["member"], advisory=setup["advisory"], on_advisory_published=True
+    )
+    mail.outbox.clear()
+    send_advisory_event_email(setup["advisory"].pk, "advisory_created")
+    m = next(msg for msg in mail.outbox if setup["member"].email in msg.to)
+    assert "default (global) notification settings" in m.body
+    assert "#advisory-notifications" not in m.body
+
+
+@pytest.mark.django_db
+def test_comment_delivery_inbox_summary_stays_empty(setup):
+    """The footer/content never leaks into the stored inbox mirror."""
+    from notifications.models import Notification
+
+    NotificationPreference.objects.create(user=setup["other"], comments_level=CommentLevel.ALL)
+    comment = comment_services.add_comment(
+        setup["advisory"], author=setup["member"], body="a plain comment"
+    )
+    mail.outbox.clear()
+    send_comment_email(setup["advisory"].pk, comment.pk)
+    rows = Notification.objects.filter(recipient=setup["other"])
+    assert rows.exists()
+    assert all(r.summary == "" for r in rows)
+
+
+@pytest.mark.django_db
+def test_invitation_email_carries_tailored_footer(setup):
+    from access.models import PendingInvitation, Permission
+
+    invite = PendingInvitation.objects.create(
+        advisory=setup["advisory"],
+        email="invited@example.org",
+        permission=Permission.VIEWER,
+    )
+    mail.outbox.clear()
+    assert send_invitation_email(invite.pk) == 1
+    m = mail.outbox[0]
+    assert "someone granted you access" in m.body
+    assert "someone granted you access" in _html_of(m)
+
+
+# ---- Footer reason wording per recipient type -----------------------------
+
+
+def _admin_group():
+    from django.contrib.auth.models import Group
+
+    # Matches settings.OIDC_ADMIN_GROUP set by the ``setup`` fixture.
+    return Group.objects.get_or_create(name="advisoryhub-security")[0]
+
+
+@pytest.mark.django_db
+def test_footer_reason_for_admin(setup, make_user):
+    admin = make_user(email="admin@example.org")
+    admin.groups.add(_admin_group())
+    ctx = recipients.notification_footer(admin, setup["advisory"], kind="advisory_published")
+    assert ctx["footer_reason"] == "an AdvisoryHub administrator"
+    assert ctx["footer_governance"] == "default"
+
+
+@pytest.mark.django_db
+def test_footer_reason_for_security_team_member(setup):
+    ctx = recipients.notification_footer(
+        setup["member"], setup["advisory"], kind="advisory_published"
+    )
+    assert ctx["footer_reason"] == f"a member of the {setup['project'].name} security team"
+
+
+@pytest.mark.django_db
+def test_footer_reason_for_viewer_grantee(setup, make_user):
+    user = make_user(email="vee@example.org")
+    grant_to_user(setup["advisory"], user, AccessPermission.VIEWER, by=setup["member"])
+    ctx = recipients.notification_footer(user, setup["advisory"], kind="advisory_published")
+    assert ctx["footer_reason"] == "a holder of viewer access to this advisory"
+
+
+@pytest.mark.django_db
+def test_footer_reason_for_collaborator_grantee(setup, make_user):
+    user = make_user(email="cee@example.org")
+    grant_to_user(setup["advisory"], user, AccessPermission.COLLABORATOR, by=setup["member"])
+    ctx = recipients.notification_footer(user, setup["advisory"], kind="advisory_published")
+    assert ctx["footer_reason"] == "a holder of collaborator access to this advisory"
+
+
+@pytest.mark.django_db
+def test_footer_reason_for_shadow_member(setup):
+    shadow = _shadow_member(setup["project"])
+    ctx = recipients.notification_footer(shadow, setup["advisory"], kind="advisory_published")
+    assert ctx["footer_reason"] == f"a member of the {setup['project'].name} security team"
+
+
+@pytest.mark.django_db
+def test_footer_reason_admin_takes_precedence_over_team(setup):
+    """A user who is both admin and security-team reads as administrator."""
+    setup["member"].groups.add(_admin_group())
+    ctx = recipients.notification_footer(
+        setup["member"], setup["advisory"], kind="advisory_published"
+    )
+    assert ctx["footer_reason"] == "an AdvisoryHub administrator"
+
+
+@pytest.mark.django_db
+def test_footer_reason_mention_overrides_access(setup):
+    ctx = recipients.notification_footer(
+        setup["member"], setup["advisory"], kind=NotificationKind.MENTION
+    )
+    assert ctx["footer_reason"] == "mentioned in a comment on this advisory"
+    assert ctx["footer_governance"] == "always"
+    assert ctx["footer_advisory_url"] == ""

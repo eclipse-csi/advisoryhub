@@ -1,5 +1,8 @@
 You were mentioned on advisory {{ advisory.advisory_id }}
 
+Project: {{ advisory.project.name }}
 By: {{ comment.author.display_name|default:comment.author.email|default:"unknown" }}
 
 Open: {{ url }}
+
+{% include "notifications/_footer.txt" %}

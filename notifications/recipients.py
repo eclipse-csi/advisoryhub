@@ -27,6 +27,7 @@ from collections.abc import Iterable
 
 from django.conf import settings
 from django.db.models import Q
+from django.urls import reverse
 
 from accounts.models import CommentLevel, NotificationPreference, User
 from advisories import permissions as perms
@@ -182,6 +183,108 @@ def resolved_lifecycle_flag(user: User, advisory: Advisory, *, field: str) -> bo
         if value is not None:
             return bool(value)
     return bool(getattr(global_pref, field))
+
+
+# ---------------------------------------------------------------------------
+# Email footer ("why am I getting this?")
+# ---------------------------------------------------------------------------
+
+
+def _absolute_url(path: str) -> str:
+    """Prefix a site-relative path with ``ADVISORYHUB_BASE_URL`` when configured."""
+    base = getattr(settings, "ADVISORYHUB_BASE_URL", "").rstrip("/")
+    return f"{base}{path}" if base else path
+
+
+def notification_footer(user: User, advisory: Advisory, *, kind) -> dict:
+    """Per-recipient footer context for a notification email.
+
+    Explains *why* the recipient gets this mail (their role / access), *which*
+    settings govern delivery (their global default vs. an advisory-specific
+    override, or the un-disableable mention floor), and *where* to change them.
+
+    Resolution reuses :mod:`advisories.permissions` at send time, so the stated
+    reason matches the authorization that actually let the email through
+    (INV-AUTH-1). The dict carries only the recipient's role label, the project
+    name, and ``reverse()``-built URLs — never advisory content
+    (INV-SECRET-1..3).
+
+    Never raises: a footer failure must not suppress an email (the per-task
+    ``try/except`` in :mod:`notifications.tasks` would otherwise drop it), so any
+    unexpected state degrades to a generic footer.
+
+    ``kind`` is the value passed to ``_send_one`` — a plain event string for
+    lifecycle mails, or a :class:`~notifications.models.NotificationKind` member
+    for comment/mention/triage. Both normalise via ``getattr(kind, "value", …)``.
+    """
+    settings_url = _absolute_url(reverse("notifications:preferences"))
+    try:
+        key = getattr(kind, "value", kind)
+        project_name = advisory.project.name
+
+        # Why are they receiving this? First match wins. The mention branch is
+        # gated on the kind so a security-team member still reads "member of the
+        # … security team" for a *comment* mail, and "mentioned" only for a
+        # *mention* mail.
+        if key == "mention":
+            reason = "mentioned in a comment on this advisory"
+        elif perms.is_global_admin(user):
+            reason = "an AdvisoryHub administrator"
+        elif perms.is_security_team_member(user, advisory.project):
+            reason = f"a member of the {project_name} security team"
+        elif getattr(user, "is_provisioned", False):
+            # Shadow roster member: notification-only reach, no ``can_view`` — so
+            # it must be matched here, before ``resolved_permission`` (which
+            # returns ``None`` for a shadow).
+            reason = f"a member of the {project_name} security team"
+        else:
+            perm = perms.resolved_permission(user, advisory)
+            if perm in ("collaborator", "viewer"):
+                reason = f"a holder of {perm} access to this advisory"
+            else:
+                reason = "someone with access to this advisory"
+
+        # Which settings govern delivery?
+        if key == "mention":
+            governance = "always"
+        elif key == "comment":
+            override = _override(user, advisory)
+            governance = "advisory" if (override and override.comments_level) else "default"
+        elif key in _LIFECYCLE_EVENT_FIELDS:
+            override = _override(user, advisory)
+            field = _LIFECYCLE_EVENT_FIELDS[key]
+            governance = (
+                "advisory"
+                if override is not None and getattr(override, field) is not None
+                else "default"
+            )
+        else:
+            # advisory_created and triage: global preference only — no per-advisory
+            # override exists for either.
+            governance = "default"
+
+        # The per-advisory panel only exists for advisories that can hold an
+        # override (non-triage); only deep-link there when one actually governs.
+        advisory_url = ""
+        if governance == "advisory":
+            advisory_url = (
+                _absolute_url(reverse("advisories:detail", args=[advisory.advisory_id]))
+                + "#advisory-notifications"
+            )
+
+        return {
+            "footer_reason": reason,
+            "footer_governance": governance,
+            "footer_settings_url": settings_url,
+            "footer_advisory_url": advisory_url,
+        }
+    except Exception:  # pragma: no cover — footer must never suppress an email
+        return {
+            "footer_reason": "someone with access to this advisory",
+            "footer_governance": "default",
+            "footer_settings_url": settings_url,
+            "footer_advisory_url": "",
+        }
 
 
 # ---------------------------------------------------------------------------

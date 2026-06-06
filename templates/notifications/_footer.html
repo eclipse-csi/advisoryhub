@@ -1,0 +1,4 @@
+{# Per-recipient "why am I getting this?" footer — context from notifications.recipients.notification_footer. #}
+<hr>
+<p><small>You're receiving this email because you are {{ footer_reason }}. {% if footer_governance == "always" %}Mentions are always delivered and cannot be turned off.{% elif footer_governance == "advisory" %}It was sent according to your notification settings for this advisory.{% else %}It was sent according to your default (global) notification settings.{% endif %}</small></p>
+<p><small>Manage your notification settings at <a href="{{ footer_settings_url }}">{{ footer_settings_url }}</a>.{% if footer_advisory_url %} You can also <a href="{{ footer_advisory_url }}">adjust the settings for this advisory</a>.{% endif %}</small></p>

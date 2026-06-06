@@ -1,10 +1,11 @@
 {% load i18n %}{% blocktranslate with id=advisory.advisory_id event=event %}A triage advisory event ({{ event }}) is pending your attention.
 
 Advisory: {{ id }}
-{% endblocktranslate %}Summary: {{ advisory.summary }}
-Project: {{ advisory.project.slug }}
+{% endblocktranslate %}Project: {{ advisory.project.name }}
 
 Open the triage view: {{ url }}
 
 This message is automated. Do not include sensitive details in any reply —
 the reporter's contact information lives on the advisory's triage page.
+
+{% include "notifications/_footer.txt" %}

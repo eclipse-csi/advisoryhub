@@ -4,4 +4,4 @@
   <li>State: {{ advisory.get_state_display }}{% if advisory.review_status != 'none' %} ({{ advisory.get_review_status_display }}){% endif %}</li>
 </ul>
 <p><a href="{{ url }}">Open in AdvisoryHub</a></p>
-<p>You're receiving this because you have access to this advisory and your notification preferences are enabled for this event.</p>
+{% include "notifications/_footer.html" %}

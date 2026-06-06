@@ -1,5 +1,8 @@
 New comment on advisory {{ advisory.advisory_id }}
 
+Project: {{ advisory.project.name }}
 By: {{ comment.author.display_name|default:comment.author.email|default:"unknown" }}
 
 Open the advisory to read and reply: {{ url }}
+
+{% include "notifications/_footer.txt" %}

@@ -8,3 +8,8 @@ authenticated, the invitation will attach this permission to your account.
 The invitation expires on {{ invite.expires_at|date:"Y-m-d H:i T" }}.
 
 Sign-in URL: {{ url }}
+
+--
+You're receiving this email because someone granted you access to this advisory
+and invited you to sign in to AdvisoryHub. Your notification settings become
+available once you sign in. If you weren't expecting this, you can ignore it.

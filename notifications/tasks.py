@@ -27,15 +27,13 @@ from audit.services import record as audit_record
 
 from . import services
 from .models import NotificationKind
-from .recipients import filter_for_event
+from .recipients import _absolute_url, filter_for_event, notification_footer
 
 log = logging.getLogger(__name__)
 
 
 def _advisory_url(advisory: Advisory) -> str:
-    path = reverse("advisories:detail", args=[advisory.advisory_id])
-    base = getattr(settings, "ADVISORYHUB_BASE_URL", "").rstrip("/")
-    return f"{base}{path}" if base else path
+    return _absolute_url(reverse("advisories:detail", args=[advisory.advisory_id]))
 
 
 def _send_one(
@@ -49,8 +47,12 @@ def _send_one(
     comment_id: int | None = None,
     summary: str = "",
 ) -> None:
-    text_body = render_to_string(f"notifications/{template}.txt", context)
-    html_body = render_to_string(f"notifications/{template}.html", context)
+    # Merge the per-recipient footer ("why am I getting this?") without mutating
+    # the caller's ``context`` — the triage task reuses one dict across every
+    # recipient, so per-recipient data must not leak between sends.
+    render_context = {**context, **notification_footer(recipient, advisory, kind=kind)}
+    text_body = render_to_string(f"notifications/{template}.txt", render_context)
+    html_body = render_to_string(f"notifications/{template}.html", render_context)
     send_mail(
         subject=subject,
         message=text_body,

@@ -162,6 +162,7 @@ asymmetries with the same-row entries.
 | Post public comment | ✓ | ✓ | ✓ | ✓ |
 | See internal comments | ✗ | ✓ | ✓ | ✓ |
 | Post internal comment | ✗ | ✓ | ✓ | ✓ |
+| See other users' email addresses | ✗ ⁷ | ✗ ⁷ | ✓ | ✓ |
 | Edit advisory content | ✗ | ✓ | ✓ | ✓ |
 | Grant / revoke access | ✗ | ✗ | ✓ | ✓ |
 | Change advisory's project | ✗ | ✗ | ✓ ¹ | ✓ |
@@ -213,6 +214,12 @@ The reopened advisory returns to `Advisory.dismissed_from_state`
 (`triage` or `draft`); the normal review and publication gates re-engage
 from there. There is no direct `dismissed → published` transition
 ([INV-LIFECYCLE-4]). Defined by `can_reopen`.
+
+⁷ Owner-only PII gate ([INV-PRIVACY-4](./invariant.md#inv-privacy-4)).
+Collaborators and viewers see display names only — where a user has no display
+name, the email is rendered masked (`a•••@example.org`). A user always sees
+their *own* email. This applies to every surface: rendered pages, the
+`@`-mention autocomplete, and the JSON API. Defined by `can_see_user_emails`.
 
 ---
 

@@ -34,12 +34,19 @@ def grants_collection(request, advisory_id: str):
     if not perms.can_grant_access(request.user, advisory):
         return error("forbidden", "You cannot manage access on this advisory.", status=403)
 
+    # Owner-gated endpoint, so this is always True here; threaded explicitly to
+    # keep the serializer fail-closed (INV-PRIVACY-4).
+    show_emails = perms.can_see_user_emails(request.user, advisory)
+
     if request.method == "GET":
         return json_response(
             {
-                "grants": [grant_to_dict(g) for g in access_services.list_active_grants(advisory)],
+                "grants": [
+                    grant_to_dict(g, show_emails=show_emails)
+                    for g in access_services.list_active_grants(advisory)
+                ],
                 "pending": [
-                    invitation_to_dict(i)
+                    invitation_to_dict(i, show_emails=show_emails)
                     for i in access_services.list_pending_invitations(advisory)
                 ],
             }
@@ -76,11 +83,17 @@ def grants_collection(request, advisory_id: str):
                 )
                 _enqueue_invite_email(invitation)
                 return json_response(
-                    {"created": "invitation", "invitation": invitation_to_dict(invitation)},
+                    {
+                        "created": "invitation",
+                        "invitation": invitation_to_dict(invitation, show_emails=show_emails),
+                    },
                     status=201,
                 )
             grant = access_services.grant_to_user(advisory, user, permission, by=request.user)
-            return json_response({"created": "grant", "grant": grant_to_dict(grant)}, status=201)
+            return json_response(
+                {"created": "grant", "grant": grant_to_dict(grant, show_emails=show_emails)},
+                status=201,
+            )
 
     if principal == "group":
         group_name = (data.get("group") or "").strip()
@@ -91,7 +104,10 @@ def grants_collection(request, advisory_id: str):
         except Group.DoesNotExist:
             return error("unknown_group", f"Group {group_name!r} does not exist.", status=404)
         grant = access_services.grant_to_group(advisory, group, permission, by=request.user)
-        return json_response({"created": "grant", "grant": grant_to_dict(grant)}, status=201)
+        return json_response(
+            {"created": "grant", "grant": grant_to_dict(grant, show_emails=show_emails)},
+            status=201,
+        )
 
     return error("invalid_principal", "principal must be 'user' or 'group'.", status=400)
 

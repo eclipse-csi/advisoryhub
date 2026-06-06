@@ -31,11 +31,14 @@ def comments_collection(request, advisory_id: str):
     if not perms.can_view(request.user, advisory):
         return error("forbidden", "You do not have access to this advisory.", status=403)
 
+    # Other users' emails are owner-only; non-owners get a masked author (INV-PRIVACY-4).
+    show_emails = perms.can_see_user_emails(request.user, advisory)
+
     if request.method == "GET":
         qs = advisory.comments.select_related("author").order_by("created_at")
         if not perms.can_see_internal_comment(request.user, advisory):
             qs = qs.exclude(is_internal=True)
-        return json_response({"results": [comment_to_dict(c) for c in qs]})
+        return json_response({"results": [comment_to_dict(c, show_emails=show_emails) for c in qs]})
 
     # POST
     if not perms.can_comment(request.user, advisory):
@@ -57,4 +60,4 @@ def comments_collection(request, advisory_id: str):
 
         transaction.on_commit(lambda: safe_enqueue(send_comment_email, advisory.pk, comment.pk))
 
-    return json_response(comment_to_dict(comment), status=201)
+    return json_response(comment_to_dict(comment, show_emails=show_emails), status=201)

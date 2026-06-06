@@ -16,11 +16,13 @@ gets rendered, not its ``comment.created`` audit entry.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from accounts.utils import mask_email
 from audit.models import Action, AuditLogEntry
 
 from . import permissions as perms
@@ -1034,6 +1036,31 @@ def summary_for(entry: AuditLogEntry, principal_labels: PrincipalLabels | None =
         return entry.action
 
 
+# A bare email token inside summary prose, bounded by whitespace/commas.
+# Used to redact the email a non-owner would otherwise read in an
+# invitation event ("invited bob@example.org …"), which — unlike access
+# events — has no user principal to render as a (masked) chip.
+_EMAIL_IN_PROSE = re.compile(r"[^\s,]+@[^\s,]+")
+
+
+def _redact_chunk_emails(chunks: list[SummaryChunk]) -> list[SummaryChunk]:
+    """Mask any email in a *pure-text* chunk (INV-PRIVACY-4).
+
+    Principal (user/group) chunks are left untouched — a user chunk renders
+    through ``{% user_chip %}`` which does its own owner-gated masking, and a
+    group chunk carries a name, not an email.
+    """
+    out: list[SummaryChunk] = []
+    for c in chunks:
+        if c.user is None and c.group is None and "@" in c.text:
+            out.append(
+                SummaryChunk(text=_EMAIL_IN_PROSE.sub(lambda m: mask_email(m.group(0)), c.text))
+            )
+        else:
+            out.append(c)
+    return out
+
+
 def summary_chunks_for(
     entry: AuditLogEntry,
     principals: Principals | None = None,
@@ -1090,12 +1117,16 @@ class TimelineEvent:
         principal_labels: PrincipalLabels | None = None,
         *,
         principals: Principals | None = None,
+        show_emails: bool = True,
     ) -> TimelineEvent:
         actor = entry.actor
         actor_label = actor.display_label(fallback="unknown") if actor is not None else "system"
         labels = principal_labels
         if labels is None and principals is not None:
             labels = {k: v.label for k, v in principals.items()}
+        chunks = summary_chunks_for(entry, principals=principals)
+        if not show_emails:
+            chunks = _redact_chunk_emails(chunks)
         return cls(
             id=entry.pk,
             actor=actor,
@@ -1103,7 +1134,7 @@ class TimelineEvent:
             action=entry.action,
             created_at=entry.created_at,
             summary=summary_for(entry, principal_labels=labels),
-            summary_chunks=summary_chunks_for(entry, principals=principals),
+            summary_chunks=chunks,
         )
 
     @classmethod
@@ -1113,6 +1144,7 @@ class TimelineEvent:
         principal_labels: PrincipalLabels | None = None,
         *,
         principals: Principals | None = None,
+        show_emails: bool = True,
     ) -> TimelineEvent:
         """Wrap a coalesced run of entries into a single timeline event.
 
@@ -1122,7 +1154,10 @@ class TimelineEvent:
         """
         if len(entries) == 1:
             return cls.from_entry(
-                entries[0], principal_labels=principal_labels, principals=principals
+                entries[0],
+                principal_labels=principal_labels,
+                principals=principals,
+                show_emails=show_emails,
             )
         last = entries[-1]
         actor = last.actor
@@ -1130,6 +1165,9 @@ class TimelineEvent:
         labels = principal_labels
         if labels is None and principals is not None:
             labels = {k: v.label for k, v in principals.items()}
+        chunks = coalesced_chunks(entries, principals or {})
+        if not show_emails:
+            chunks = _redact_chunk_emails(chunks)
         return cls(
             id=last.pk,
             actor=actor,
@@ -1137,5 +1175,5 @@ class TimelineEvent:
             action=last.action,
             created_at=last.created_at,
             summary=coalesced_summary(entries, labels or {}),
-            summary_chunks=coalesced_chunks(entries, principals or {}),
+            summary_chunks=chunks,
         )

@@ -23,6 +23,16 @@ from .forms import CommentEditForm, CommentForm
 from .models import AdvisoryComment
 
 
+def _email_visibility(request, advisory) -> dict:
+    """Per-advisory override for the ``user_chip`` email-visibility flag.
+
+    The context processor defaults this to global-admin-only; advisory-scoped
+    fragments must set the precise per-advisory value so a project security-team
+    owner sees emails on their own advisory's rows (``INV-PRIVACY-4``).
+    """
+    return {"viewer_can_see_emails": perms.can_see_user_emails(request.user, advisory)}
+
+
 @login_required
 @require_http_methods(["GET"])
 def comment_thread(request, advisory_id: str):
@@ -34,6 +44,7 @@ def comment_thread(request, advisory_id: str):
         "comments/_thread.html",
         {
             "advisory": advisory,
+            **_email_visibility(request, advisory),
             "thread": services.comments_for_advisory(advisory, viewer=request.user),
             "form": CommentForm(),
             "can_comment": perms.can_comment(request.user, advisory),
@@ -55,6 +66,7 @@ def timeline(request, advisory_id: str):
         {
             "advisory": advisory,
             "timeline": services.advisory_timeline(advisory, viewer=request.user),
+            **_email_visibility(request, advisory),
             "form": CommentForm(),
             "can_comment": perms.can_comment(request.user, advisory),
             "can_post_internal": perms.can_post_internal_comment(request.user, advisory),
@@ -104,6 +116,7 @@ def comment_create(request, advisory_id: str):
         {
             "advisory": advisory,
             "timeline": services.advisory_timeline(advisory, viewer=request.user),
+            **_email_visibility(request, advisory),
             "form": CommentForm(),
             "can_comment": True,
             "can_post_internal": perms.can_post_internal_comment(request.user, advisory),
@@ -183,7 +196,12 @@ def comment_edit(request, advisory_id: str, comment_id: int):
             return render(
                 request,
                 "comments/_comment.html",
-                {"comment": comment, "advisory": comment.advisory, "request": request},
+                {
+                    "comment": comment,
+                    "advisory": comment.advisory,
+                    "request": request,
+                    **_email_visibility(request, comment.advisory),
+                },
             )
     else:
         form = CommentEditForm(instance=comment)
@@ -217,6 +235,7 @@ def comment_history(request, advisory_id: str, comment_id: int):
         {
             "comment": comment,
             "advisory": comment.advisory,
+            **_email_visibility(request, comment.advisory),
             "entries": page["entries"],
             "next_cursor": page["next_cursor"],
             "load_more_url": reverse(
@@ -239,5 +258,10 @@ def comment_redact(request, advisory_id: str, comment_id: int):
     return render(
         request,
         "comments/_comment.html",
-        {"comment": comment, "advisory": comment.advisory, "request": request},
+        {
+            "comment": comment,
+            "advisory": comment.advisory,
+            "request": request,
+            **_email_visibility(request, comment.advisory),
+        },
     )

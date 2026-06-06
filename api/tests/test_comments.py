@@ -69,6 +69,24 @@ def test_comments_post_creates_comment(client, setup):
 
 
 @pytest.mark.django_db
+def test_comments_get_masks_author_email_for_non_owner(client, setup, make_user):
+    """INV-PRIVACY-4: the JSON ``author`` is the raw email for an owner, but a
+    masked email for a viewer grantee."""
+    from comments import services as cs
+
+    cs.add_comment(setup["advisory"], author=setup["member"], body="hello")
+    viewer = make_user(email="v@example.org")
+    grant_to_user(setup["advisory"], viewer, AccessPermission.VIEWER, by=setup["member"])
+    url = reverse("api:comments", args=[setup["advisory"].advisory_id])
+
+    client.force_login(setup["member"])
+    assert client.get(url).json()["results"][0]["author"] == "m@example.org"
+
+    client.force_login(viewer)
+    assert client.get(url).json()["results"][0]["author"] == "m•••@example.org"
+
+
+@pytest.mark.django_db
 def test_comments_post_form_encoded_works_too(client, setup):
     client.force_login(setup["member"])
     response = client.post(

@@ -1,7 +1,8 @@
 {% spaceless %}
 {% if user %}
+  {% if reveal %}
   <span class="user-chip" tabindex="0">
-    <span class="user-chip__name">{{ user.display_name|default:user.email|default:fallback }}</span>
+    <span class="user-chip__name">{{ name }}</span>
     <span class="user-chip__pop" role="tooltip">
       {% if user.email %}<span class="user-chip__email">{{ user.email }}</span>{% endif %}
       {% with groups=user.groups.all %}
@@ -14,6 +15,9 @@
       {% endwith %}
     </span>
   </span>
+  {% else %}
+  <span class="user-chip user-chip--plain">{{ name }}</span>
+  {% endif %}
 {% else %}
   <span class="user-chip user-chip--missing">{{ fallback }}</span>
 {% endif %}

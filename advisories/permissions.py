@@ -138,6 +138,17 @@ def can_view(user, advisory: Advisory) -> bool:
     return resolved_permission(user, advisory) is not None
 
 
+def can_see_user_emails(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may see *other* users' email addresses on this advisory.
+
+    Owner-only (global admins + the project security team). Collaborators and
+    viewers see names only — another participant's email is PII they don't need
+    to do their job. A user always sees their *own* email; that exception is
+    applied at the render layer (the ``user_chip`` tag), not here.
+    """
+    return resolved_permission(user, advisory) == "owner"
+
+
 def can_comment(user, advisory: Advisory) -> bool:
     """Anyone with view access may comment.
 

@@ -11,6 +11,8 @@ from typing import Any
 
 from django.urls import reverse
 
+from accounts.utils import mask_email
+
 
 def advisory_to_dict(advisory) -> dict[str, Any]:
     return {
@@ -56,10 +58,13 @@ def advisory_summary_to_dict(advisory) -> dict[str, Any]:
     }
 
 
-def comment_to_dict(comment) -> dict[str, Any]:
+def comment_to_dict(comment, *, show_emails: bool = False) -> dict[str, Any]:
+    author = None
+    if comment.author_id:
+        author = comment.author.email if show_emails else mask_email(comment.author.email)
     return {
         "id": comment.pk,
-        "author": comment.author.email if comment.author_id else None,
+        "author": author,
         "body": comment.visible_body(),
         "is_redacted": comment.is_redacted,
         "is_internal": comment.is_internal,
@@ -68,11 +73,15 @@ def comment_to_dict(comment) -> dict[str, Any]:
     }
 
 
-def grant_to_dict(grant) -> dict[str, Any]:
+def grant_to_dict(grant, *, show_emails: bool = False) -> dict[str, Any]:
     principal = grant.principal()
     label = None
     if principal is not None:
         label = getattr(principal, "email", None) or getattr(principal, "name", None)
+        if not show_emails:
+            # mask_email no-ops on group names (no "@"), so a group label
+            # passes through unchanged; only a user's email gets redacted.
+            label = mask_email(label)
     return {
         "id": grant.pk,
         "principal_type": grant.principal_type,
@@ -83,10 +92,10 @@ def grant_to_dict(grant) -> dict[str, Any]:
     }
 
 
-def invitation_to_dict(invitation) -> dict[str, Any]:
+def invitation_to_dict(invitation, *, show_emails: bool = False) -> dict[str, Any]:
     return {
         "id": invitation.pk,
-        "email": invitation.email,
+        "email": invitation.email if show_emails else mask_email(invitation.email),
         "permission": invitation.permission,
         "expires_at": _isoformat(invitation.expires_at),
         "redeemed_at": _isoformat(invitation.redeemed_at),
@@ -111,26 +120,36 @@ def publication_task_to_dict(task) -> dict[str, Any]:
     }
 
 
-def cve_task_to_dict(task) -> dict[str, Any]:
+def cve_task_to_dict(task, *, show_emails: bool = False) -> dict[str, Any]:
+    def _email(user, has_id):
+        if not has_id:
+            return None
+        return user.email if show_emails else mask_email(user.email)
+
     return {
         "id": task.pk,
         "advisory_id": task.advisory.advisory_id,
         "status": task.status,
         "cve_id": task.cve_id,
-        "assignee": task.assignee.email if task.assignee_id else None,
-        "requested_by": task.requested_by.email if task.requested_by_id else None,
+        "assignee": _email(task.assignee, task.assignee_id),
+        "requested_by": _email(task.requested_by, task.requested_by_id),
         "created_at": _isoformat(task.created_at),
         "finished_at": _isoformat(task.finished_at),
     }
 
 
-def review_task_to_dict(task) -> dict[str, Any]:
+def review_task_to_dict(task, *, show_emails: bool = False) -> dict[str, Any]:
+    def _email(user, has_id):
+        if not has_id:
+            return None
+        return user.email if show_emails else mask_email(user.email)
+
     return {
         "id": task.pk,
         "advisory_id": task.advisory.advisory_id,
         "status": task.status,
-        "submitted_by": task.submitted_by.email if task.submitted_by_id else None,
-        "reviewer": task.reviewer.email if task.reviewer_id else None,
+        "submitted_by": _email(task.submitted_by, task.submitted_by_id),
+        "reviewer": _email(task.reviewer, task.reviewer_id),
         "decision_notes": task.decision_notes,
         "created_at": _isoformat(task.created_at),
         "decided_at": _isoformat(task.decided_at),

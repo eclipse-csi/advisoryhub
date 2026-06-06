@@ -172,6 +172,34 @@ def test_detail_403_for_outsider_on_draft(client, outsider, project_a):
 
 
 @pytest.mark.django_db
+def test_detail_hides_other_user_email_from_non_owner(client, member_a, project_a, make_user):
+    """INV-PRIVACY-4: a viewer grantee must not see the creator's email; the
+    owner does; and the viewer still sees their own email (nav chip)."""
+    from access.models import Permission as AccessPermission
+    from access.services import grant_to_user
+
+    creator = make_user(email="creator-x@example.org")
+    advisory = Advisory.objects.create(project=project_a, created_by=creator, summary="x")
+    viewer = make_user(email="viewer-x@example.org")
+    grant_to_user(advisory, viewer, AccessPermission.VIEWER, by=member_a)
+
+    url = reverse("advisories:detail", args=[advisory.advisory_id])
+
+    # Owner (security-team member) sees the creator's real email.
+    client.force_login(member_a)
+    owner_body = client.get(url).content.decode()
+    assert "creator-x@example.org" in owner_body
+
+    # Viewer (non-owner) sees only the masked form — never the raw email — but
+    # still sees their *own* email in the nav chip.
+    client.force_login(viewer)
+    viewer_body = client.get(url).content.decode()
+    assert "creator-x@example.org" not in viewer_body
+    assert "c•••@example.org" in viewer_body
+    assert "viewer-x@example.org" in viewer_body
+
+
+@pytest.mark.django_db
 def test_detail_records_audit_view(client, member_a, project_a):
     advisory = Advisory.objects.create(project=project_a)
     client.force_login(member_a)

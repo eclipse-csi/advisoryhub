@@ -53,7 +53,8 @@ def cve_transition(request, task_id: int):
     except Exception as exc:
         return error("validation_failed", str(exc), status=400)
     task.refresh_from_db()
-    return json_response(cve_task_to_dict(task))
+    # Admin-only endpoint (can_review == global admin), so emails are visible.
+    return json_response(cve_task_to_dict(task, show_emails=perms.is_global_admin(request.user)))
 
 
 @require_methods_json(["POST"])
@@ -81,4 +82,4 @@ def review_decide(request, task_id: int):
     except Exception as exc:
         return error("review_failed", str(exc), status=400)
     task.refresh_from_db()
-    return json_response(review_task_to_dict(task))
+    return json_response(review_task_to_dict(task, show_emails=perms.is_global_admin(request.user)))

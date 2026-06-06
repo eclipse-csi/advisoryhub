@@ -135,6 +135,7 @@ def _panel_context(advisory: Advisory, user: User) -> dict:
 
     return {
         "advisory": advisory,
+        "viewer_can_see_emails": perms.can_see_user_emails(user, advisory),
         "sections": ordered_sections,
         "permission_choices": Permission.choices,
         "groups_available": [g.name for g in services.groups_grantable_by(user)],

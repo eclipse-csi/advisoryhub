@@ -5,11 +5,24 @@ the *current viewer* is impacted, so ``base.html`` can render the banner
 and flag the body for the button-disabling script. This is display-only —
 enforcement lives in :class:`common.middleware.MaintenanceModeMiddleware`
 (``INV-MAINT-1`` / ``INV-AUTH-1``).
+
+``user_email_visibility`` sets the fail-closed default for whether the viewer
+may see other users' emails in ``{% user_chip %}`` popovers: global admins, yes
+(they're owners everywhere — this covers the admin console with no per-view
+wiring); everyone else, no. Advisory-scoped views override it with the
+per-advisory ``perms.can_see_user_emails`` so project security-team owners get
+it on their own advisories (``INV-PRIVACY-4``).
 """
 
 from __future__ import annotations
 
 from django.http import HttpRequest
+
+
+def user_email_visibility(request: HttpRequest) -> dict:
+    from advisories import permissions as perms
+
+    return {"viewer_can_see_emails": perms.is_global_admin(getattr(request, "user", None))}
 
 
 def maintenance_mode(request: HttpRequest) -> dict:

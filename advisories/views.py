@@ -331,7 +331,9 @@ def advisory_detail(request, advisory_id: str):
     from comments.services import mention_candidates as _mention_candidates
 
     mention_candidates = (
-        _mention_candidates(advisory) if perms.can_comment(request.user, advisory) else []
+        _mention_candidates(advisory, viewer=request.user)
+        if perms.can_comment(request.user, advisory)
+        else []
     )
 
     return render(
@@ -339,6 +341,7 @@ def advisory_detail(request, advisory_id: str):
         "advisories/detail.html",
         {
             "advisory": advisory,
+            "viewer_can_see_emails": perms.can_see_user_emails(request.user, advisory),
             "mention_candidates": mention_candidates,
             "can_edit": perms.can_edit(request.user, advisory),
             "can_dismiss": perms.can_dismiss(request.user, advisory),
@@ -967,6 +970,7 @@ def _detail_with_error(request, advisory: Advisory, message: str):
         "advisories/detail.html",
         {
             "advisory": advisory,
+            "viewer_can_see_emails": perms.can_see_user_emails(request.user, advisory),
             "can_edit": perms.can_edit(request.user, advisory),
             "can_dismiss": perms.can_dismiss(request.user, advisory),
             "can_reopen": perms.can_reopen(request.user, advisory),
@@ -1047,6 +1051,7 @@ def advisory_details_history(request, advisory_id: str):
         template,
         {
             "advisory": advisory,
+            "viewer_can_see_emails": perms.can_see_user_emails(request.user, advisory),
             "entries": page["entries"],
             "next_cursor": page["next_cursor"],
             "load_more_url": reverse("advisories:details_history", args=[advisory.advisory_id]),

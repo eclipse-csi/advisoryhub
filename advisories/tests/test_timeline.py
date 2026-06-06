@@ -518,7 +518,13 @@ def test_timeline_event_renders_chunks_with_chip_inside_summary(client, setup, m
     )
     principals = tl.resolve_principals([e])
     event = tl.TimelineEvent.from_entry(e, principals=principals)
-    html = render_to_string("comments/_event.html", {"event": event, "advisory": setup["advisory"]})
+    # Render as an owner would see it (viewer_can_see_emails) so the chip reveals
+    # its full form; a non-owner gets the same chip rendered plain (tested in
+    # test_user_display.py).
+    html = render_to_string(
+        "comments/_event.html",
+        {"event": event, "advisory": setup["advisory"], "viewer_can_see_emails": True},
+    )
     # The summary span exists.
     assert 'class="timeline-event__summary"' in html
     # And a user-chip is rendered *inside* it (not just on the actor).
@@ -527,6 +533,58 @@ def test_timeline_event_renders_chunks_with_chip_inside_summary(client, setup, m
     assert summary_open < summary_close
     assert 'class="user-chip"' in html[summary_open:summary_close]
     assert "Bob B" in html[summary_open:summary_close]
+
+
+@pytest.mark.django_db
+def test_invitation_prose_email_masked_for_non_owner(setup):
+    """An invitation event has no user principal to chip-mask, so its target
+    email lives in plain prose; non-owners must see it masked (INV-PRIVACY-4)."""
+    e = record(
+        action=Action.INVITATION_CREATED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+        new_value={"email": "newuser@example.org", "permission": "viewer"},
+    )
+    owner_text = " ".join(
+        c.text for c in tl.TimelineEvent.from_entry(e, show_emails=True).summary_chunks
+    )
+    assert "newuser@example.org" in owner_text
+
+    masked_text = " ".join(
+        c.text for c in tl.TimelineEvent.from_entry(e, show_emails=False).summary_chunks
+    )
+    assert "newuser@example.org" not in masked_text
+    assert "n•••@example.org" in masked_text
+
+
+@pytest.mark.django_db
+def test_advisory_timeline_masks_invitation_email_for_collaborator(setup, make_user):
+    """End-to-end: a collaborator sees invitation events (tier B) but never the
+    invited email; the owner still does."""
+    collaborator = make_user(email="collab@example.org")
+    grant_to_user(setup["advisory"], collaborator, AccessPermission.COLLABORATOR, by=setup["owner"])
+    record(
+        action=Action.INVITATION_CREATED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+        new_value={"email": "secret-invitee@example.org", "permission": "viewer"},
+    )
+
+    def _invitation_text(viewer):
+        items = comment_services.advisory_timeline(setup["advisory"], viewer=viewer)
+        inv = [
+            it["obj"]
+            for it in items
+            if it["kind"] == "event" and it["obj"].action == Action.INVITATION_CREATED
+        ]
+        assert inv, "collaborator should see the invitation event (tier B)"
+        return " ".join(c.text for c in inv[0].summary_chunks)
+
+    collab_text = _invitation_text(collaborator)
+    assert "secret-invitee@example.org" not in collab_text
+    assert "s•••@example.org" in collab_text
+
+    assert "secret-invitee@example.org" in _invitation_text(setup["owner"])
 
 
 @pytest.mark.django_db

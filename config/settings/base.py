@@ -216,6 +216,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "common.context_processors.maintenance_mode",
+                "common.context_processors.user_email_visibility",
                 "notifications.context_processors.unread_notifications",
             ],
             # `common` is a helper module, not an installed app, so its

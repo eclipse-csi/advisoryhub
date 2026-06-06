@@ -20,6 +20,7 @@ from django.utils import timezone
 from markdown_it import MarkdownIt
 
 from accounts.models import User
+from accounts.utils import mask_email
 from advisories import permissions as perms
 from advisories.models import Advisory
 from audit.models import Action
@@ -208,7 +209,7 @@ def resolve_mention_recipient_ids(body: str) -> set[int]:
     return ids
 
 
-def mention_candidates(advisory: Advisory) -> list[dict]:
+def mention_candidates(advisory: Advisory, *, viewer: User | None = None) -> list[dict]:
     """Build the ``@``-completion payload for ``advisory``.
 
     Scope is deliberately narrow (the explicit "not everyone in the DB"
@@ -228,6 +229,12 @@ def mention_candidates(advisory: Advisory) -> list[dict]:
     Each item is ``{"kind": "group"|"user", "handle": str, "label": str}``. A
     user handle is the email local-part (chips cleanly and resolves via
     :func:`resolve_mentioned_users`); a group handle is its bare name.
+
+    A user *label* exposes the full email only to an owner ``viewer`` (admins +
+    project security team); for everyone else — and, fail-closed, when ``viewer``
+    is omitted — the label is the display name, falling back to a *masked* email.
+    The handle stays the local-part either way so the mention still resolves
+    (``INV-PRIVACY-4``).
     """
     from access.models import AdvisoryAccessGrant, PrincipalType
     from notifications.recipients import _roster_shadow_members, candidate_users_for_advisory
@@ -261,15 +268,20 @@ def mention_candidates(advisory: Advisory) -> list[dict]:
     by_pk = {u.pk: u for u in candidate_users_for_advisory(advisory)}
     for shadow in _roster_shadow_members(advisory):
         by_pk.setdefault(shadow.pk, shadow)
+    show_emails = viewer is not None and perms.can_see_user_emails(viewer, advisory)
     users = sorted(by_pk.values(), key=lambda u: u.display_label().lower())
     for user in users:
         local_part = (user.email or "").split("@", 1)[0]
         has_name = bool((user.display_name or "").strip())
+        if show_emails:
+            label = f"{user.display_label()} ({user.email})" if has_name else user.email
+        else:
+            label = user.display_label() if has_name else mask_email(user.email)
         items.append(
             {
                 "kind": "user",
                 "handle": local_part,
-                "label": f"{user.display_label()} ({user.email})" if has_name else user.email,
+                "label": label,
             }
         )
     return items
@@ -529,6 +541,9 @@ def advisory_timeline(advisory: Advisory, *, viewer: User) -> list[dict]:
 
     events = list(events_for_advisory(advisory, viewer=viewer))
     principals = resolve_principals(events)
+    # Non-owners must not read emails embedded in event prose (e.g. an
+    # invitation's target, which has no user principal to chip-mask) — INV-PRIVACY-4.
+    show_emails = perms.can_see_user_emails(viewer, advisory)
     for entry in events:
         raw.append((entry.created_at, "event", entry))
 
@@ -549,7 +564,7 @@ def advisory_timeline(advisory: Advisory, *, viewer: User) -> list[dict]:
             while j < len(raw) and raw[j][1] == "event" and can_extend_run(run[-1], raw[j][2]):
                 run.append(raw[j][2])
                 j += 1
-        wrapped = TimelineEvent.from_run(run, principals=principals)
+        wrapped = TimelineEvent.from_run(run, principals=principals, show_emails=show_emails)
         out.append({"kind": "event", "ts": wrapped.created_at, "obj": wrapped})
         i = j
     return out

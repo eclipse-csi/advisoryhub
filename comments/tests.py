@@ -158,6 +158,33 @@ def test_mention_candidates_scoped_to_advisory_visibility(setup, make_user):
     assert setup["advisory"].project.security_team.name in group_handles
 
 
+@pytest.mark.django_db
+def test_mention_candidate_labels_mask_email_for_non_owners(setup, make_user):
+    """INV-PRIVACY-4: an owner sees emails in the @-completion labels; a viewer
+    grantee sees masked labels only. Handles (local-parts) are unchanged so the
+    mention still resolves."""
+    from accounts.utils import mask_email
+
+    grantee = make_user(email="grantee@example.org")  # no display name
+    grant_to_user(setup["advisory"], grantee, AccessPermission.VIEWER, by=setup["member"])
+
+    owner_labels = " | ".join(
+        i["label"]
+        for i in services.mention_candidates(setup["advisory"], viewer=setup["member"])
+        if i["kind"] == "user"
+    )
+    assert "grantee@example.org" in owner_labels
+
+    viewer_labels = " | ".join(
+        i["label"]
+        for i in services.mention_candidates(setup["advisory"], viewer=grantee)
+        if i["kind"] == "user"
+    )
+    assert "grantee@example.org" not in viewer_labels
+    assert "m@example.org" not in viewer_labels  # the security-team member, masked too
+    assert mask_email("grantee@example.org") in viewer_labels
+
+
 # ---- Mention chip rendering -----------------------------------------------
 
 

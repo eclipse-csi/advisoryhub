@@ -3213,6 +3213,12 @@ dialog.drawer--right {
   text-decoration: none;
   cursor: default;
 }
+/* Plain chip: a name with no popover (non-owner viewing another user) — drop
+   the hover affordance so it doesn't read as interactive. */
+.user-chip--plain {
+  text-decoration: none;
+  cursor: default;
+}
 
 .user-chip__pop {
   position: absolute;

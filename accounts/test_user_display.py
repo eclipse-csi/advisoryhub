@@ -13,6 +13,8 @@ Covers:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from django.contrib.auth.models import Group
 from django.db import connection
@@ -22,9 +24,22 @@ from django.test.utils import CaptureQueriesContext
 from accounts.models import User
 
 
-def _render(user, fallback: str = "—") -> str:
+def _render(
+    user,
+    fallback: str = "—",
+    *,
+    can_see_emails: bool = True,
+    request_user=None,
+) -> str:
+    """Render a chip. ``can_see_emails`` sets the ``viewer_can_see_emails`` flag
+    the view would normally compute (default ``True`` — owner's-eye view, which
+    is what the popover/groups tests below exercise). ``request_user`` simulates
+    the logged-in viewer so the self-email exception can be tested."""
     tpl = Template("{% load user_display %}{% user_chip user fallback=fallback %}")
-    return tpl.render(Context({"user": user, "fallback": fallback}))
+    ctx = {"user": user, "fallback": fallback, "viewer_can_see_emails": can_see_emails}
+    if request_user is not None:
+        ctx["request"] = SimpleNamespace(user=request_user)
+    return tpl.render(Context(ctx))
 
 
 @pytest.mark.django_db
@@ -109,6 +124,47 @@ class TestUserChipTag:
         html = _render(u)
         assert 'class="user-chip__email"' in html
         assert "alice@example.org" in html
+
+
+@pytest.mark.django_db
+class TestUserChipEmailGating:
+    """Non-owners never see another user's email — popover hidden, name masked
+    where no display name exists (INV-PRIVACY-4)."""
+
+    def test_non_owner_no_display_name_shows_masked_name_no_popover(self):
+        u = User.objects.create_user(email="bob@example.org")
+        html = _render(u, can_see_emails=False)
+        assert "bob@example.org" not in html
+        assert "b•••@example.org" in html  # masked surface label
+        assert "user-chip__pop" not in html  # no popover at all
+        assert "user-chip--plain" in html
+
+    def test_non_owner_with_display_name_hides_email_and_groups(self):
+        u = User.objects.create_user(email="alice@example.org")
+        u.display_name = "Alice Cooper"
+        u.save()
+        u.groups.add(Group.objects.get_or_create(name="advisoryhub-security")[0])
+        html = _render(u, can_see_emails=False)
+        assert "Alice Cooper" in html  # name still shown
+        assert "alice@example.org" not in html  # email hidden
+        assert "user-chip__pop" not in html  # whole popover (incl. groups) gone
+        assert "advisoryhub-security" not in html
+
+    def test_user_always_sees_own_email(self):
+        """The self-exception: a non-owner viewing their own chip still sees it."""
+        u = User.objects.create_user(email="self@example.org")
+        html = _render(u, can_see_emails=False, request_user=u)
+        assert "self@example.org" in html
+        assert "user-chip__pop" in html
+
+    def test_other_users_email_still_hidden_when_viewing_self_context(self):
+        """A non-owner whose own request is set still can't see *other* people."""
+        me = User.objects.create_user(email="me@example.org")
+        other = User.objects.create_user(email="other@example.org")
+        html = _render(other, can_see_emails=False, request_user=me)
+        assert "other@example.org" not in html
+        assert "o•••@example.org" in html
+        assert "user-chip__pop" not in html
 
 
 @pytest.mark.django_db

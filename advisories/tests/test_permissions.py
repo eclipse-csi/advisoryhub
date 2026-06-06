@@ -62,6 +62,44 @@ def test_published_advisory_not_visible_without_grant(world):
     assert not perms.can_view(AnonymousUser(), a)
 
 
+# ---- can_see_user_emails (INV-PRIVACY-4) -----------------------------------
+
+
+def test_admin_can_see_user_emails(world):
+    assert perms.can_see_user_emails(world["admin"], world["advisory"]) is True
+
+
+def test_security_team_member_can_see_user_emails(world):
+    assert perms.can_see_user_emails(world["member"], world["advisory"]) is True
+
+
+def test_outsider_cannot_see_user_emails(world):
+    assert perms.can_see_user_emails(world["outsider"], world["advisory"]) is False
+
+
+def test_anonymous_cannot_see_user_emails(world):
+    assert perms.can_see_user_emails(AnonymousUser(), world["advisory"]) is False
+
+
+@pytest.mark.django_db
+def test_collaborator_and_viewer_cannot_see_user_emails(world, make_user):
+    """Owner-only: even a collaborator (who can edit) is blinded to emails."""
+    from access.models import Permission as AccessPermission
+    from access.services import grant_to_user
+
+    collaborator = make_user(email="collab@example.org")
+    viewer = make_user(email="viewer@example.org")
+    grant_to_user(
+        world["advisory"], collaborator, AccessPermission.COLLABORATOR, by=world["member"]
+    )
+    grant_to_user(world["advisory"], viewer, AccessPermission.VIEWER, by=world["member"])
+
+    assert perms.resolved_permission(collaborator, world["advisory"]) == "collaborator"
+    assert perms.resolved_permission(viewer, world["advisory"]) == "viewer"
+    assert perms.can_see_user_emails(collaborator, world["advisory"]) is False
+    assert perms.can_see_user_emails(viewer, world["advisory"]) is False
+
+
 # ---- can_view --------------------------------------------------------------
 
 

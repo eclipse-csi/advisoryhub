@@ -118,6 +118,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PRIVACY-1](#inv-privacy-1) | Advisories without access are not enumerable. | Privacy | High |
 | [INV-PRIVACY-2](#inv-privacy-2) | Notification recipients are re-checked at send time. | Privacy | High |
 | [INV-PRIVACY-3](#inv-privacy-3) | `reporter_display_name` is display-only; never used for authorization. | Privacy | Medium |
+| [INV-PRIVACY-4](#inv-privacy-4) | Other users' email addresses are shown only to owners. | Privacy | Medium |
 | [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
 
 ---
@@ -1986,6 +1987,46 @@ form; treating it as identity would be a forgery vector.
 **Tests.** `advisories/tests/test_triage.py`.
 
 **Related.** [INV-INTAKE-2](#inv-intake-2).
+
+---
+
+<a id="inv-privacy-4"></a>
+### INV-PRIVACY-4 — Other users' emails are owner-only   [Medium]
+
+**Statement.** A participant's email address is shown only to **owners** of the
+advisory (global admins + the project security team —
+`advisories.permissions.can_see_user_emails`). Collaborators and viewers see
+display names only; where a user has no display name the email is rendered in a
+masked form (`a•••@example.org`, `accounts.utils.mask_email`). A user always
+sees their *own* email. This holds on every display surface — rendered pages,
+the `@`-mention autocomplete, and the JSON API.
+
+**Rationale.** An email address is PII. Only the people running the advisory
+(who manage access and correspond off-platform) need other participants'
+addresses; an external grantee or the auto-granted triage reporter does not.
+The decision is made server-side (the view/serializer), and the template merely
+displays the resulting flag — hiding it in the template alone would not be
+security ([INV-AUTH-1](#inv-auth-1)).
+
+**Enforced in.**
+- `advisories/permissions.py` — `can_see_user_emails` (owner-only predicate).
+- `accounts/templatetags/user_display.py` + `templates/accounts/_user_chip.html`
+  — the chip reveals the email/popover only when `viewer_can_see_emails` is set
+  (by `common.context_processors.user_email_visibility` for global admins, and
+  per-advisory by the advisory-scoped views) or the chip is the viewer's own.
+- `comments/services.py` — `mention_candidates` masks labels for non-owners.
+- `api/serializers.py` — `comment_to_dict`/`grant_to_dict`/`invitation_to_dict`/
+  `cve_task_to_dict`/`review_task_to_dict` take a fail-closed `show_emails` flag
+  threaded from the endpoint's existing permission check.
+
+**Violation impact.** PII leak: a low-trust viewer harvests the email addresses
+of the security team and other reporters.
+
+**Tests.** `accounts/tests/test_mask_email.py`,
+`advisories/tests/test_permissions.py`, `advisories/tests/test_views.py`,
+`comments/tests.py`, `api/` comment-endpoint tests.
+
+**Related.** [INV-AUTH-1](#inv-auth-1), [INV-PRIVACY-1](#inv-privacy-1).
 
 ---
 

@@ -872,6 +872,80 @@ fieldset p { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
 .field { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
 fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
 
+/* ------------------------------------------------------------ switch toggle */
+
+/* A boolean field rendered as an on/off slider. The Django CheckboxInput keeps
+   the real <input type="checkbox" class="switch__input" role="switch">; the
+   <label class="switch"> wraps it with a decorative track so a click anywhere on
+   the control toggles it. CSP-clean: no JS, no inline styles. Markup order is
+   input → .switch__track → .switch__text, so a general sibling combinator drives
+   the visual state off the input's :checked. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+/* Visually hidden but still in the layout: focusable, clickable (the label wraps
+   it), and serialised into the POST. Not display:none / visibility:hidden, which
+   would drop it from the tab order. */
+.switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.switch__track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 1.35rem;
+  background: var(--border-strong);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+.switch__track::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease;
+}
+.switch__input:checked ~ .switch__track {
+  background: var(--brand);
+}
+.switch__input:checked ~ .switch__track::after {
+  transform: translateX(1.05rem);
+}
+.switch__input:focus-visible ~ .switch__track {
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+.switch__text {
+  color: var(--text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch__track,
+  .switch__track::after {
+    transition: none;
+  }
+}
+/* Windows High Contrast: the colour-only track/thumb collapses, so lean on
+   system colours and a border to keep the state legible. */
+@media (forced-colors: active) {
+  .switch__track {
+    border: 1px solid CanvasText;
+  }
+  .switch__input:checked ~ .switch__track {
+    background: Highlight;
+  }
+}
+
 /* ------------------------------------------------------------ formsets */
 
 .formset-rows {

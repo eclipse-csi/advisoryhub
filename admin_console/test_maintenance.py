@@ -83,6 +83,20 @@ def test_toggle_page_renders_for_admin(client, actors):
 
 
 @pytest.mark.django_db
+def test_toggle_page_renders_switch_and_dirty_marker(client, actors):
+    # The control is a CSS toggle switch (not a checkbox) with the shared
+    # unsaved-changes affordances; a deliberate Save replaces the old confirm
+    # dialog, so that dialog must be gone.
+    client.force_login(actors["admin"])
+    body = client.get(reverse("admin_console:maintenance")).content.decode()
+    assert 'class="switch"' in body
+    assert "switch__input" in body
+    assert "data-unsaved-indicator" in body
+    assert "advisoryhub-form-dirty.js" in body
+    assert "maintenance-confirm" not in body
+
+
+@pytest.mark.django_db
 def test_admin_enables_with_message_records_audit(client, actors):
     client.force_login(actors["admin"])
     resp = client.post(

@@ -14,7 +14,9 @@ class MaintenanceModeForm(forms.ModelForm):
         model = MaintenanceMode
         fields = ["is_enabled", "message"]
         widgets = {
-            "is_enabled": forms.CheckboxInput(),
+            # Rendered as a CSS toggle switch (.switch in advisoryhub.css);
+            # role="switch" makes assistive tech announce on/off, not "checked".
+            "is_enabled": forms.CheckboxInput(attrs={"class": "switch__input", "role": "switch"}),
             "message": forms.Textarea(
                 attrs={
                     "rows": 3,
@@ -27,7 +29,7 @@ class MaintenanceModeForm(forms.ModelForm):
             ),
         }
         labels = {
-            "is_enabled": "Maintenance mode is ON",
+            "is_enabled": "Maintenance mode",
             "message": "Message shown to paused users",
         }
 

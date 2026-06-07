@@ -278,7 +278,8 @@ def test_unread_badge_rendered_in_nav(setup, client):
     )
     resp = client.get(reverse("advisories:list"))
     assert resp.status_code == 200
-    assert b"notif-unread-badge" in resp.content
+    # Unread surfaces as the count badge on the topbar notifications bell.
+    assert b"notif-bell__badge" in resp.content
 
 
 def test_unread_count_zero_for_anonymous():

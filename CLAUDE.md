@@ -167,6 +167,7 @@ Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css
 - **No inline `style="…"` / `<style>`** (`style-src 'self'` blocks them) — put rules in `advisoryhub.css`. htmx's own indicator-`<style>` injection is disabled (`htmx.config.includeIndicatorStyles = false` in `advisoryhub-htmx.js`); the `.htmx-indicator` rules live in the stylesheet instead.
 - Reference assets only with `{% static %}` — prod serves **content-hashed** files via WhiteNoise `CompressedManifestStaticFilesStorage`. Inter is **self-hosted** (`static/fonts/`); there is no font CDN.
 - Multi-line `{# #}` comments are forbidden (Django renders them literally — `dev/check_template_comments.py` guards this).
+- **Browser-support policy:** the frontend targets *Baseline Newly Available* features and adopts them **natively without polyfills** when support is broad across current Chrome/Edge/Firefox/Safari — e.g. CSS `@layer`, `light-dark()`, and the `popover` attribute (the account menu in `base.html` is a native `[popover]` toggled by `popovertarget`, giving click/Escape/light-dismiss with no JS). Prefer a native feature with graceful degradation over a vendored polyfill.
 
 ## Configuration
 

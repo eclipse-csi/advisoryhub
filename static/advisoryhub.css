@@ -276,6 +276,119 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 }
 .topbar form.inline { display: inline; margin: 0; }
 
+/* ------------------------------------------------------------ notif bell */
+
+/* A plain inbox link in .topbar nav (inherits the white/hover treatment from
+   `.topbar nav a`); the relative box anchors the unread count to the icon. */
+.notif-bell { position: relative; display: inline-flex; align-items: center; }
+.notif-bell .adv-icon { width: 1.15rem; height: 1.15rem; }
+/* Count pinned to the icon's top-right — soft-brand pill. It sets its own
+   background/color, so `.topbar nav a`'s text color doesn't bleed through. */
+.notif-bell__badge {
+  position: absolute;
+  top: -0.1rem;
+  inset-inline-end: 0;
+  min-width: 1.1em;
+  padding: 0 0.3em;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-fg);
+  border: 1px solid var(--brand-bd);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ account menu */
+
+/* The trigger sits in .topbar nav, so it inherits the transparent / white-on-
+   hover treatment from `.topbar nav button`; we only add icon sizing and the
+   caret. */
+.account-menu { position: relative; display: inline-flex; }
+.account-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.account-menu__trigger .adv-icon { width: 1.15rem; height: 1.15rem; }
+/* Down-caret after the icon, mirroring `.disclosure > summary::before`. */
+.account-menu__trigger::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.6rem;
+  height: 0.6rem;
+  background: currentColor;
+  opacity: 0.8;
+  -webkit-mask: var(--icon-chevron) center / contain no-repeat;
+          mask: var(--icon-chevron) center / contain no-repeat;
+}
+/* Panel: a native popover. It renders in the top layer (escaping the topbar),
+   so without anchor positioning (not yet Baseline) it cannot tether to the
+   trigger — pin it under the top-right corner with position: fixed, where the
+   trigger always lives in the sticky topbar. */
+.account-menu__panel[popover] {
+  position: fixed;
+  inset: auto;
+  top: 3.1rem;
+  inset-inline-end: 1.2rem;
+  margin: 0;
+  min-width: 15rem;
+  max-width: min(20rem, calc(100vw - 2rem));
+  padding: 0.4rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-sm);
+}
+.account-menu__header {
+  padding: 0.45rem 0.6rem 0.55rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+.account-menu__name { display: block; font-weight: 650; color: var(--text); }
+.account-menu__email {
+  display: block;
+  margin-top: 0.1rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+  word-break: break-all;
+}
+/* Scoped under __panel so the menu items beat `.topbar nav a` / `.topbar nav
+   button` (specificity 0,1,2), which would otherwise paint them white — legible
+   on the dark panel but invisible in light mode. */
+.account-menu__panel .account-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-menu__panel .account-menu__item:hover,
+.account-menu__panel .account-menu__item:focus-visible {
+  background: var(--surface-alt);
+  color: var(--text);
+  text-decoration: none;
+}
+.account-menu__signout {
+  margin: 0.3rem 0 0;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+
+:root[data-theme="dark"] .account-menu__panel[popover] { background: #1c2436; border-color: #2f3a55; }
+
 /* ------------------------------------------------------------ layout */
 
 main.container {
@@ -1267,14 +1380,6 @@ dd { margin: 0; color: var(--text); }
   background: none; border: none; padding: 0; font: inherit; cursor: pointer; color: var(--brand);
 }
 .notif-row__mark button:hover { text-decoration: underline; }
-
-/* Unread-count pill on the top-nav Inbox link. */
-.notif-unread-badge {
-  display: inline-block; min-width: 1.25em; margin-inline-start: 0.3em; padding: 0 0.4em;
-  border-radius: 999px; background: var(--brand-soft); color: var(--brand-fg);
-  border: 1px solid var(--brand-bd); font-size: var(--text-2xs); font-weight: 700;
-  line-height: 1.5; text-align: center;
-}
 
 p.state { font-size: var(--text-base); color: var(--text-soft); margin-top: -0.3em; }
 p.state strong { color: var(--text); }

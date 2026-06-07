@@ -663,6 +663,15 @@ main.container > form.advisory-filters {
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
+/* Clear is an always-present slot (refreshed out-of-band on active search);
+   display:contents so the empty slot adds no flex item / gap, and the inner
+   <a> participates in the bar's flex row exactly as a bare link did. */
+#advisory-filter-clear { display: contents; }
+/* Active-search loading cue. advisoryhub-htmx.js sets aria-busy on the swap
+   target (#advisory-results) while the request is in flight; dim it briefly
+   rather than carrying an inline .htmx-indicator, which (opacity:0, still in
+   flow) would reserve width in this single-row filter bar and leave a gap. */
+#advisory-results[aria-busy="true"] { opacity: 0.55; transition: opacity 120ms ease; }
 
 /* State filter — single-select tab strip (All / Triage / Draft / Published /
    Dismissed). Each tab is a GET link; the active one carries .is-active +

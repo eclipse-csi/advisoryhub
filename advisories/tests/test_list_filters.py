@@ -330,6 +330,110 @@ def test_full_page_has_search_form_and_live_region(client, setup):
 
 
 @pytest.mark.django_db
+def test_full_page_has_persistent_clear_slot(client, setup):
+    """The full page always renders the Clear slot (empty when no filter) so the
+    active-search fragment has a stable out-of-band target to swap into."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert 'id="advisory-filter-clear"' in body
+    assert ">Clear<" not in body  # empty slot — no filter active
+
+
+@pytest.mark.django_db
+def test_htmx_search_surfaces_clear_out_of_band(client, setup):
+    """Regression: searching live from a state-only view must surface Clear.
+
+    Repro was: on the Dismissed tab (state-only, Clear hidden), typing a query
+    filtered the results but never showed Clear — because Clear lived in the
+    (un-swapped) form. It's now refreshed out-of-band with the fragment.
+    """
+    client.force_login(setup["admin"])
+    r = client.get(
+        reverse("advisories:list"),
+        {"state": "dismissed", "q": "smuggling"},
+        HTTP_HX_REQUEST="true",
+    )
+    body = r.content.decode()
+    assert 'hx-swap-oob="innerHTML:#advisory-filter-clear"' in body
+    assert ">Clear<" in body
+
+
+@pytest.mark.django_db
+def test_htmx_no_filter_removes_clear_out_of_band(client, setup):
+    """The inverse: clearing the query during live search empties the Clear slot
+    out-of-band (state-only is not a 'filter', so Clear must not show)."""
+    client.force_login(setup["admin"])
+    r = client.get(
+        reverse("advisories:list"),
+        {"state": "dismissed"},
+        HTTP_HX_REQUEST="true",
+    )
+    body = r.content.decode()
+    assert 'hx-swap-oob="innerHTML:#advisory-filter-clear"' in body  # slot is refreshed
+    assert ">Clear<" not in body  # …but emptied
+
+
+def _clear_href(body: str) -> str | None:
+    """The href of the Clear link, or None if it isn't rendered."""
+    m = re.search(r'#advisory-filter-clear[^>]*>\s*<a href="([^"]*)">\s*Clear', body, re.S)
+    if m:
+        return m.group(1)
+    m = re.search(r'<a href="([^"]*)">\s*Clear', body)  # OOB fragment (no wrapping span id)
+    return m.group(1) if m else None
+
+
+@pytest.mark.django_db
+def test_clear_keeps_state_tab(client, setup):
+    """Regression: Clear must drop the search but stay on the current state tab,
+    not bounce back to All. State and the search/project filters are separate."""
+    client.force_login(setup["admin"])
+    body = client.get(
+        reverse("advisories:list"), {"state": "dismissed", "q": "smuggling"}
+    ).content.decode()
+    href = _clear_href(body)
+    assert href and "state=dismissed" in href
+    assert "q=" not in href
+
+
+@pytest.mark.django_db
+def test_clear_keeps_sort_drops_filter(client, setup):
+    """Clear preserves the active sort (ordering is orthogonal to filtering) while
+    dropping q."""
+    client.force_login(setup["admin"])
+    body = client.get(
+        reverse("advisories:list"), {"state": "draft", "q": "x", "sort": "project"}
+    ).content.decode()
+    href = _clear_href(body)
+    assert href and "state=draft" in href and "sort=project" in href
+    assert "q=x" not in href
+
+
+@pytest.mark.django_db
+def test_clear_on_all_tab_has_no_state(client, setup):
+    """On the All tab a search's Clear returns to the bare (All) list — no state."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list"), {"q": "smuggling"}).content.decode()
+    href = _clear_href(body)
+    assert href is not None
+    assert "state=" not in href
+
+
+@pytest.mark.django_db
+def test_htmx_clear_href_keeps_state(client, setup):
+    """The out-of-band Clear refreshed during live search carries the same
+    state-preserving href."""
+    client.force_login(setup["admin"])
+    body = client.get(
+        reverse("advisories:list"),
+        {"state": "dismissed", "q": "smuggling"},
+        HTTP_HX_REQUEST="true",
+    ).content.decode()
+    href = _clear_href(body)
+    assert href and "state=dismissed" in href
+    assert "q=" not in href
+
+
+@pytest.mark.django_db
 def test_htmx_search_preserves_active_sort_in_pager(client, setup):
     """A live search submitted with the sort hidden field keeps the sort on the
     fragment's pager links (the form echoes ?sort into a hidden input)."""

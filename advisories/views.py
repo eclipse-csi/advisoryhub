@@ -204,6 +204,16 @@ def advisory_list(request):
     pager_params.pop("page", None)
     querystring = pager_params.urlencode()
 
+    # Clear target: drop the search/project filters and reset paging, but keep
+    # the current state tab + sort. Clearing a filter must not bounce the user
+    # back to the All tab (state) or reorder the list (sort) — those are separate
+    # axes from the search/project filter the Clear link belongs to.
+    clear_params = request.GET.copy()
+    for key in ("q", "project", "page"):
+        clear_params.pop(key, None)
+    clear_encoded = clear_params.urlencode()
+    clear_href = f"?{clear_encoded}" if clear_encoded else request.path
+
     # Cap the page at a reasonable size so a careless filter doesn't
     # render a million rows. Use the same param name as the API.
     try:
@@ -232,6 +242,7 @@ def advisory_list(request):
         "sort_hrefs": sort_hrefs,
         "sort_state": sort_state,
         "querystring": querystring,
+        "clear_href": clear_href,
         "projects_for_filter": _projects_for_filter(user),
         "total": total,
         "page": page,

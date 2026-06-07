@@ -17,8 +17,7 @@
         hx-target="#advisory-results"
         hx-swap="innerHTML"
         hx-push-url="true"
-        hx-sync="this:replace"
-        hx-indicator="#advisory-list-busy">
+        hx-sync="this:replace">
     {% if current_state %}<input type="hidden" name="state" value="{{ current_state }}">{% endif %}
     {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
     {% if request.GET.page_size %}<input type="hidden" name="page_size" value="{{ request.GET.page_size }}">{% endif %}
@@ -30,10 +29,9 @@
       {% endfor %}
     </select>
     <button type="submit">{% translate "Filter" %}</button>
-    <span id="advisory-list-busy" class="htmx-indicator" aria-hidden="true">{% translate "Searching…" %}</span>
-    {% if filters %}
-      <a href="{% url 'advisories:list' %}">{% translate "Clear" %}</a>
-    {% endif %}
+    {# Persistent slot so the active-search fragment can refresh Clear out-of-band; #}
+    {# display:contents (advisoryhub.css) keeps the empty slot from adding a gap. #}
+    <span id="advisory-filter-clear">{% include "advisories/_filter_clear.html" %}</span>
   </form>
 
   <p class="muted" id="advisory-result-summary" role="status" aria-live="polite" aria-atomic="true">{% include "advisories/_list_count.html" %}</p>

@@ -4,3 +4,4 @@
 {% include "advisories/_list_table.html" %}
 {% include "advisories/_state_tabs.html" with tabs_oob=True %}
 <p hx-swap-oob="innerHTML:#advisory-result-summary">{% include "advisories/_list_count.html" %}</p>
+<span hx-swap-oob="innerHTML:#advisory-filter-clear">{% include "advisories/_filter_clear.html" %}</span>

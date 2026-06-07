@@ -44,14 +44,17 @@ x-django-env: &django-env
   OIDC_OP_TOKEN_ENDPOINT: https://kanidm:8443/oauth2/token
   OIDC_OP_USER_ENDPOINT: https://kanidm:8443/oauth2/openid/advisoryhub/userinfo
   OIDC_OP_JWKS_ENDPOINT: https://kanidm:8443/oauth2/openid/advisoryhub/public_key.jwk
-  # Browser-facing logout endpoint. Kanidm 1.10.x does NOT advertise an
-  # OIDC `end_session_endpoint` (RP-initiated logout per the spec), so we
-  # point at its UI session-termination route. It ignores standard OIDC
-  # params (`id_token_hint`, `post_logout_redirect_uri`) and redirects to
-  # the kanidm UI on success — that's fine for dev; the SSO cookie is
-  # killed, which is what stops the silent re-auth after sign-out.
-  # In prod, set this to the real OP's OIDC end_session_endpoint.
-  OIDC_OP_LOGOUT_ENDPOINT: https://localhost:8443/ui/logout
+  # Kanidm does NOT implement OIDC RP-initiated logout — its discovery doc has
+  # no usable end_session_endpoint (kanidm issues #1997 / #3752 / #4240). Its
+  # only logout is an interactive /ui/logout web page that ignores id_token_hint
+  # / post_logout_redirect_uri and never redirects back, which forced a
+  # confusing second click. Leave this empty in dev: accounts.auth.provider_logout
+  # then falls back to LOGOUT_REDIRECT_URL, so one click ends the Django session
+  # and lands on /accounts/signed-out/. The kanidm SSO cookie survives, so
+  # returning to a protected page silently re-auths via SSO (expected). To fully
+  # end the kanidm session in dev, sign out in the kanidm UI directly (or use a
+  # private window). In prod, set this to the real OP's OIDC end_session_endpoint.
+  OIDC_OP_LOGOUT_ENDPOINT: ""
   OIDC_RP_SIGN_ALGO: ES256
   OIDC_VERIFY_SSL: "False"           # self-signed kanidm cert in dev
   OIDC_GROUP_CLAIM: groups

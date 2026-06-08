@@ -27,7 +27,9 @@ from access.models import AdvisoryAccessGrant, PendingInvitation, PrincipalType
 from accounts.models import User
 from accounts.services import ban_user, unban_user
 from audit.models import Action
+from audit.retention import forget_user
 from audit.services import record_from_request
+from common.net import client_ip
 from projects.models import Project
 
 from .base import admin_required
@@ -230,4 +232,46 @@ def user_unban(request, user_id: int):
         },
     )
     messages.success(request, f"{target.email} has been unbanned.")
+    return back
+
+
+@admin_required
+@require_POST
+def user_forget(request, user_id: int):
+    """Exercise a GDPR right-to-be-forgotten against ``user_id``.
+
+    Permanently anonymizes the account and scrubs the user's PII across the
+    system (audit JSON, comments + edit history, invitations, intake sidecars,
+    roster) via :func:`audit.retention.forget_user`. The audit record of the
+    erasure itself is kept. Admin-only (``@admin_required``), never against
+    oneself, and double-guarded against accidents: a justification message is
+    required *and* the admin must retype the user's email to confirm (the
+    submit button is gated client-side, re-checked here).
+    """
+    target = get_object_or_404(User, pk=user_id)
+    back = redirect(reverse("admin_console:user_detail", args=[target.pk]))
+
+    if target.pk == request.user.pk:
+        messages.error(request, "You cannot forget your own account.")
+        return back
+
+    reason = (request.POST.get("reason") or "").strip()
+    if not reason:
+        messages.error(request, "A justification message is required to forget an account.")
+        return back
+
+    confirm = (request.POST.get("confirm_email") or "").strip().lower()
+    if confirm != (target.email or "").strip().lower():
+        messages.error(request, "The confirmation email did not match.")
+        return back
+
+    original_email = target.email
+    forget_user(
+        target,
+        by=request.user,
+        reason=reason,
+        ip_address=client_ip(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+    )
+    messages.success(request, f"{original_email} has been forgotten and anonymized.")
     return back

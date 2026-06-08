@@ -64,6 +64,26 @@ def test_forget_user_redacts_authored_comments(setup):
 
 
 @pytest.mark.django_db
+def test_forget_user_scrubs_comment_version_history(setup):
+    """Every append-only ``CommentVersion`` of an authored comment — not just
+    the live body — is overwritten with the placeholder."""
+    from comments.models import CommentVersion
+    from comments.services import add_comment, edit_comment
+
+    c = add_comment(setup["advisory"], author=setup["member"], body="original secret")
+    edit_comment(c, by=setup["member"], new_body="edited secret")
+    versions = CommentVersion.objects.filter(comment=c)
+    assert versions.count() == 2  # v1 + v2
+
+    counters = forget_user(setup["member"])
+
+    assert counters["comment_versions"] == 2
+    assert versions.count() == 2  # rows are NOT deleted, only their bodies scrubbed
+    for v in versions:
+        assert v.body == "[redacted by user-forget request]"
+
+
+@pytest.mark.django_db
 def test_forget_user_drops_their_pending_invitations(setup):
     from access.models import PendingInvitation, Permission
     from access.services import invite_email
@@ -97,7 +117,34 @@ def test_forget_user_records_audit_of_the_forgetting(setup):
     forget_user(setup["member"])
     forget_audit = AuditLogEntry.objects.filter(metadata__operation="forget_user").first()
     assert forget_audit is not None
+    assert forget_audit.action == Action.USER_FORGOTTEN
     assert forget_audit.metadata["subject_pk"] == setup["member"].pk
+    # No requesting operator on the CLI path.
+    assert forget_audit.actor_id is None
+    assert forget_audit.metadata["via"] == "cli"
+
+
+@pytest.mark.django_db
+def test_forget_user_records_requesting_operator_and_reason(make_user, setup):
+    """The admin-console path records who requested the erasure, the source
+    IP/UA, and a secret-redacted justification on the USER_FORGOTTEN entry."""
+    operator = make_user(email="operator@example.org")
+    forget_user(
+        setup["member"],
+        by=operator,
+        reason="GDPR ticket #42; token ghp_abcdefghijklmnopqrstuvwx leaked",
+        ip_address="198.51.100.9",
+        user_agent="Mozilla/5.0",
+    )
+    entry = AuditLogEntry.objects.get(action=Action.USER_FORGOTTEN)
+    assert entry.actor_id == operator.pk
+    assert entry.ip_address == "198.51.100.9"
+    assert entry.metadata["via"] == "admin_console"
+    assert entry.metadata["subject_pk"] == setup["member"].pk
+    # Reason is recorded but funnelled through redact_secrets (INV-AUDIT-2).
+    assert "ghp_" not in entry.metadata["reason"]
+    assert "***" in entry.metadata["reason"]
+    assert "GDPR ticket #42" in entry.metadata["reason"]
 
 
 @pytest.mark.django_db

@@ -2693,12 +2693,13 @@ main.container section > p.empty {
   color: var(--text-muted);
   margin-bottom: 0.3rem;
 }
-.confirm-dialog textarea {
+.confirm-dialog textarea,
+.confirm-dialog input[type="text"] {
   width: 100%;
-  min-height: 4rem;
   margin-bottom: 0.9rem;
   font: inherit;
 }
+.confirm-dialog textarea { min-height: 4rem; }
 .confirm-dialog .dialog-actions {
   display: flex;
   justify-content: flex-end;

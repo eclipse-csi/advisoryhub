@@ -100,6 +100,12 @@ class Action(models.TextChoices):
     # low-volume, security-relevant governance events. See INV-AUTH-8.
     USER_BANNED = "user.banned"
     USER_UNBANNED = "user.unbanned"
+    # GDPR right-to-be-forgotten erasure (admin console or `manage.py
+    # forget_user`). Durable governance event: the actor is the requesting
+    # operator (null on the CLI path), the forgotten subject's pk + the per-
+    # source scrub counters live in metadata, with no PII inside. See
+    # ``audit.retention.forget_user``.
+    USER_FORGOTTEN = "user.forgotten"
     # Triage flow (current). The intake form creates an Advisory(state=triage)
     # rather than a separate report row. Old REPORT_* values below remain in
     # the enum so existing audit rows stay readable; new code emits the

@@ -46,6 +46,16 @@
     {% endif %}
   </section>
 
+  <section>
+    <h2>{% translate "Right to be forgotten (GDPR)" %}</h2>
+    {% if is_self %}
+      <p class="muted">{% translate "You cannot forget your own account." %}</p>
+    {% else %}
+      <p class="muted">{% translate "Permanently anonymizes this account and scrubs the user's PII from the audit log, comments (incl. edit history), invitations, intake sidecars, and roster. The audit record of the erasure itself is kept. This cannot be undone." %}</p>
+      <button type="button" class="danger" data-dialog-open="forget-user-dialog">{% translate "Forget this account…" %}</button>
+    {% endif %}
+  </section>
+
   {% comment %}
   Modal dialogs are deliberately placed OUTSIDE the carded <section>s above. A
   modal <dialog> renders in the top layer and is centred by the UA via
@@ -78,6 +88,26 @@
         <div class="dialog-actions">
           <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
           <button type="submit" class="danger">{% translate "Ban account" %}</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
+
+  {% if not is_self %}
+    <dialog id="forget-user-dialog" class="confirm-dialog" aria-labelledby="forget-user-dialog-title">
+      <form method="post" action="{% url 'admin_console:user_forget' target_user.pk %}">
+        {% csrf_token %}
+        <h3 id="forget-user-dialog-title">{% blocktranslate with email=target_user.email %}Forget {{ email }}?{% endblocktranslate %}</h3>
+        <p>{% translate "This permanently anonymizes the account and scrubs their PII everywhere. It cannot be undone." %}</p>
+        <label>{% translate "Reason / justification (required)" %}
+          <textarea name="reason" required rows="3" data-confirm-required autofocus></textarea>
+        </label>
+        <label>{% blocktranslate with email=target_user.email %}Type {{ email }} to confirm{% endblocktranslate %}
+          <input type="text" name="confirm_email" autocomplete="off" autocapitalize="none" spellcheck="false" data-confirm-token="{{ target_user.email }}">
+        </label>
+        <div class="dialog-actions">
+          <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
+          <button type="submit" class="danger" data-confirm-submit disabled>{% translate "Forget account" %}</button>
         </div>
       </form>
     </dialog>

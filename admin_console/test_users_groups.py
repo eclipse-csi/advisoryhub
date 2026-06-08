@@ -408,8 +408,9 @@ def test_pages_contain_no_mutation_forms(client, base, rich_user):
 
     The global layout includes a sign-out form (POST to /oidc/logout/); we
     assert no POST form *targets an /admin/users/ or /admin/groups/ URL* — with
-    the sole exception of the deliberate ban/unban controls on the user-detail
-    page (INV-AUTH-8), exercised in ``admin_console/test_ban.py``.
+    the sole exception of the deliberate ban/unban controls (INV-AUTH-8,
+    ``admin_console/test_ban.py``) and the GDPR forget control
+    (``admin_console/test_forget.py``) on the user-detail page.
     """
     import re
 
@@ -424,7 +425,7 @@ def test_pages_contain_no_mutation_forms(client, base, rich_user):
         r'<form\b[^>]*\bmethod\s*=\s*"post"[^>]*\baction\s*=\s*"(/admin/(?:users|groups)/[^"]*)"',
         re.IGNORECASE,
     )
-    allowed = re.compile(r"/admin/users/\d+/(?:ban|unban)/$")
+    allowed = re.compile(r"/admin/users/\d+/(?:ban|unban|forget)/$")
     for url in pages:
         body = client.get(url).content.decode()
         offenders = [m for m in pattern.findall(body) if not allowed.match(m)]

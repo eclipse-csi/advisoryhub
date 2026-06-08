@@ -33,8 +33,14 @@ from django.db import connection, transaction
 from django.utils import timezone
 
 from .models import AccessLogEntry, Action, AuditLogEntry
+from .services import record
 
 log = logging.getLogger(__name__)
+
+# Replacement text written over forgotten users' comment bodies (and their
+# append-only edit-history rows). Kept as a single constant so the live comment
+# and its versions read identically.
+_COMMENT_REDACTION_PLACEHOLDER = "[redacted by user-forget request]"
 
 
 @contextmanager
@@ -53,19 +59,34 @@ def _audit_trigger_bypass():
 # ---------------------------------------------------------------------------
 
 
-def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
+def forget_user(
+    user,
+    *,
+    by=None,
+    reason: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+    anonymized_email: str | None = None,
+) -> dict[str, int]:
     """Anonymize ``user`` across the system, return per-source counters.
 
     The user row itself is mutated (email/display_name/oidc_subject
     blanked), not deleted, so existing FK-NULL columns keep their
     structural meaning. If you also want the row gone afterwards, call
     ``user.delete()`` separately.
+
+    ``by`` is the requesting operator (an admin via the console, or ``None``
+    on the CLI path); it, the ``reason``, and the source ``ip_address`` /
+    ``user_agent`` are recorded on the durable ``USER_FORGOTTEN`` audit entry
+    (the reason is secret-redacted). The entry carries no PII of the forgotten
+    subject — only its pk and the scrub counters.
     """
     pseudo = anonymized_email or f"forgotten-{user.pk}@example.invalid"
     counters = {
         "audit_entries": 0,
         "access_log_entries": 0,
         "comments": 0,
+        "comment_versions": 0,
         "invitations": 0,
         "intake_reports": 0,
     }
@@ -105,17 +126,26 @@ def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
         counters["access_log_entries"] = deleted_access
 
         # 2. Their authored comments — redact body, keep the structural
-        # presence so reply threads stay coherent.
+        # presence so reply threads stay coherent. The append-only
+        # ``CommentVersion`` edit-history rows hold the same authored text, so
+        # scrub those too. A bulk ``update()`` bypasses ``CommentVersion``'s
+        # write-once ``save()`` guard; there's no Postgres trigger on that
+        # table (only ``AuditLogEntry`` has one), so it needs no special
+        # handling. Scoped to comments the user *authored* — we don't touch
+        # versions they merely edited on someone else's comment.
         try:
-            from comments.models import AdvisoryComment
+            from comments.models import AdvisoryComment, CommentVersion
 
             comments = AdvisoryComment.objects.filter(author=user)
             for c in comments:
                 if c.body:
-                    c.body = "[redacted by user-forget request]"
+                    c.body = _COMMENT_REDACTION_PLACEHOLDER
                 c.redacted_at = c.redacted_at or timezone.now()
                 c.save(update_fields=["body", "redacted_at"])
                 counters["comments"] += 1
+            counters["comment_versions"] = CommentVersion.objects.filter(
+                comment__author=user
+            ).update(body=_COMMENT_REDACTION_PLACEHOLDER)
         except Exception:
             log.exception("comments scrub failed during forget_user(%s)", user.pk)
 
@@ -198,14 +228,22 @@ def forget_user(user, *, anonymized_email: str | None = None) -> dict[str, int]:
         user.is_active = False
         user.save()
 
-        # 6. Audit the act of forgetting itself.
-        AuditLogEntry.objects.create(
-            actor=None,
-            action=Action.NOTIFICATION_PREFS_CHANGED,  # closest-fitting existing action
+        # 6. Audit the act of forgetting itself on the durable ledger. Routed
+        # through ``record`` so the action is validated and the operator-typed
+        # reason is secret-redacted (INV-AUDIT-2). The fresh INSERT is allowed
+        # inside the trigger-bypass block — the append-only trigger only blocks
+        # UPDATE/DELETE.
+        record(
+            action=Action.USER_FORGOTTEN,
+            actor=by,
+            ip_address=ip_address,
+            user_agent=user_agent,
             metadata={
                 "operation": "forget_user",
                 "subject_pk": user.pk,
                 "counters": counters,
+                "reason": reason,
+                "via": "admin_console" if by else "cli",
             },
         )
 

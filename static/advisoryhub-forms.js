@@ -34,8 +34,41 @@
     if (el.form) syncWithin(el.form);
   });
 
+  // ---- confirm-to-submit gate ------------------------------------------
+  // A submit control marked `data-confirm-submit` stays disabled until, within
+  // its form, every `[data-confirm-token]` input's trimmed/lowercased value
+  // equals its token attribute AND every `[data-confirm-required]` field is
+  // non-empty. Gates consequential actions (e.g. GDPR forget-user) behind
+  // retyping a confirmation phrase plus a justification — CSP-clean, no inline
+  // handlers. The button ships `disabled` in markup so it fails closed when JS
+  // is unavailable.
+  function syncConfirm(form) {
+    if (!form) return;
+    var btn = form.querySelector("[data-confirm-submit]");
+    if (!btn) return;
+    var ok = true,
+      i,
+      els;
+    els = form.querySelectorAll("[data-confirm-token]");
+    for (i = 0; i < els.length; i++) {
+      var want = (els[i].getAttribute("data-confirm-token") || "").trim().toLowerCase();
+      if ((els[i].value || "").trim().toLowerCase() !== want) ok = false;
+    }
+    els = form.querySelectorAll("[data-confirm-required]");
+    for (i = 0; i < els.length; i++) {
+      if (!(els[i].value || "").trim()) ok = false;
+    }
+    btn.disabled = !ok;
+  }
+
+  function syncConfirmWithin(root) {
+    var btns = (root || document).querySelectorAll("[data-confirm-submit]");
+    for (var i = 0; i < btns.length; i++) syncConfirm(btns[i].form);
+  }
+
   document.body.addEventListener("htmx:afterSwap", function (event) {
     syncWithin(event.target);
+    syncConfirmWithin(event.target);
   });
 
   // ---- aria-invalid bridge ---------------------------------------------
@@ -54,13 +87,18 @@
     else if (el.getAttribute("aria-invalid") === "true") el.removeAttribute("aria-invalid");
   }
   document.addEventListener("blur", function (e) { syncAriaInvalid(e.target); }, true);
-  document.addEventListener("input", function (e) { syncAriaInvalid(e.target); });
+  document.addEventListener("input", function (e) {
+    syncAriaInvalid(e.target);
+    if (e.target && e.target.form) syncConfirm(e.target.form);
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       syncWithin(document);
+      syncConfirmWithin(document);
     });
   } else {
     syncWithin(document);
+    syncConfirmWithin(document);
   }
 })();

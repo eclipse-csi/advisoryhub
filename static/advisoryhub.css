@@ -389,6 +389,80 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 
 :root[data-theme="dark"] .account-menu__panel[popover] { background: #1c2436; border-color: #2f3a55; }
 
+/* ------------------------------------------------------------ new menu */
+
+/* "New" entry-point: a native-popover button group (mirrors .account-menu)
+   offering "New advisory" and "Report a vulnerability". The trigger sits in
+   .topbar nav, inheriting the transparent / white-on-hover treatment from
+   `.topbar nav button`. */
+.new-menu { position: relative; display: inline-flex; }
+.new-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.new-menu__trigger .adv-icon { width: 1.15rem; height: 1.15rem; }
+/* Down-caret after the label, matching .account-menu__trigger::after. */
+.new-menu__trigger::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.6rem;
+  height: 0.6rem;
+  background: currentColor;
+  opacity: 0.8;
+  -webkit-mask: var(--icon-chevron) center / contain no-repeat;
+          mask: var(--icon-chevron) center / contain no-repeat;
+}
+/* Panel: like the account panel, a top-layer popover pinned with position:
+   fixed (anchor positioning is not yet Baseline). The trigger sits a layout-
+   stable distance from the right edge — the bell and account triggers to its
+   right have fixed widths (the bell badge is absolutely positioned) — so a
+   fixed inset lands the panel under the trigger. */
+.new-menu__panel[popover] {
+  position: fixed;
+  inset: auto;
+  top: 3.1rem;
+  inset-inline-end: 7.7rem;
+  margin: 0;
+  min-width: 17rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.4rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-sm);
+}
+/* Scoped under __panel so items beat `.topbar nav a` (specificity 0,1,2),
+   which would otherwise paint them white — see the account-menu note. */
+.new-menu__panel .new-menu__item {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  text-decoration: none;
+}
+.new-menu__panel .new-menu__item:hover,
+.new-menu__panel .new-menu__item:focus-visible {
+  background: var(--surface-alt);
+  color: var(--text);
+  text-decoration: none;
+}
+.new-menu__item .adv-icon { flex: 0 0 auto; margin-top: 0.1rem; color: var(--text-soft); }
+.new-menu__item-body { display: flex; flex-direction: column; }
+.new-menu__item-title { font-weight: 650; color: var(--text); }
+.new-menu__item-desc {
+  margin-top: 0.05rem;
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .new-menu__panel[popover] { background: #1c2436; border-color: #2f3a55; }
+
 /* ------------------------------------------------------------ layout */
 
 main.container {

@@ -349,6 +349,23 @@ def can_create_advisory_for_project(user, project) -> bool:
     return is_security_team_member(user, project)
 
 
+def can_author_any_advisory(user) -> bool:
+    """Whether ``user`` may create an advisory for *at least one* project.
+
+    The project-agnostic twin of :func:`can_create_advisory_for_project`: a
+    global admin (everywhere) or a member of any project's security team. Used
+    to decide whether to *offer* the "New advisory" entry point in the UI;
+    actual creation is still authorized per-project at the view boundary.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if is_global_admin(user):
+        return True
+    from projects.models import Project
+
+    return Project.objects.filter(security_team__in=user.groups.all()).exists()
+
+
 # ---- Triage (folded from intake.permissions) -------------------------------
 
 UNSORTED_PROJECT_SLUG = "unsorted"

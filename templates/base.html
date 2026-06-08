@@ -52,11 +52,37 @@
         <svg class="adv-icon theme-icon theme-icon--dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
     </div>
-    <a href="{% url 'intake:report' %}">{% translate "Report a vulnerability" %}</a>
+    {# Report link for everyone who can't author (anonymous + non-team users); authors get it inside the New menu instead. #}
+    {% if not user.is_authenticated or not user.can_author_advisories %}
+      <a href="{% url 'intake:report' %}">{% translate "Report a vulnerability" %}</a>
+    {% endif %}
     {% if user.is_authenticated %}
       <a href="{% url 'advisories:list' %}">{% translate "Advisories" %}</a>
-      <a href="{% url 'advisories:create' %}">{% translate "New advisory" %}</a>
       {% if user.is_global_admin %}<a href="{% url 'admin_console:index' %}">{% translate "Admin Console" %}</a>{% endif %}
+      {# New menu: same native-popover pattern as the account menu below — a button group, NOT an ARIA menu (no role=menu / aria-haspopup). Offered only to users who can author advisories; each item's description conveys the difference (authored advisory vs. incoming report for triage). #}
+      {% if user.can_author_advisories %}
+      <div class="new-menu">
+        <button type="button" class="new-menu__trigger" popovertarget="new-menu">
+          {% include "advisories/_icons.html" with icon="plus" %}<span>{% translate "New" %}</span>
+        </button>
+        <div id="new-menu" popover class="new-menu__panel">
+          <a class="new-menu__item" href="{% url 'advisories:create' %}">
+            {% include "advisories/_icons.html" with icon="document" %}
+            <span class="new-menu__item-body">
+              <span class="new-menu__item-title">{% translate "New advisory" %}</span>
+              <span class="new-menu__item-desc">{% translate "Author a draft to review and publish" %}</span>
+            </span>
+          </a>
+          <a class="new-menu__item" href="{% url 'intake:report' %}">
+            {% include "advisories/_icons.html" with icon="bug" %}
+            <span class="new-menu__item-body">
+              <span class="new-menu__item-title">{% translate "Report a vulnerability" %}</span>
+              <span class="new-menu__item-desc">{% translate "Submit an issue for the team to triage" %}</span>
+            </span>
+          </a>
+        </div>
+      </div>
+      {% endif %}
       {# Notifications bell: a plain link to the inbox; the visible count is aria-hidden and conveyed once via aria-label. Single source of truth for unread (the account icon carries none). #}
       <a class="notif-bell" href="{% url 'notifications:inbox' %}" aria-label="{% translate 'Notifications' %}{% if unread_notification_count %} — {{ unread_notification_count }} {% translate 'unread' %}{% endif %}" title="{% translate 'Notifications' %}">
         {% include "advisories/_icons.html" with icon="bell" %}

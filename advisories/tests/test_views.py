@@ -1483,3 +1483,41 @@ def test_edit_without_project_change_does_not_fire_advisory_created(client, admi
             },
         )
     queued.assert_not_called()
+
+
+# ---- topbar "New" menu (only proposed to authors) --------------------------
+
+
+@pytest.mark.django_db
+def test_topbar_offers_new_menu_to_author(client, member_a):
+    """A security-team member sees the New menu with the "New advisory" item."""
+    client.force_login(member_a)
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert "new-menu__trigger" in body
+    assert "New advisory" in body
+
+
+@pytest.mark.django_db
+def test_topbar_offers_new_menu_to_admin(client, admin_user):
+    client.force_login(admin_user)
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert "new-menu__trigger" in body
+    assert "New advisory" in body
+
+
+@pytest.mark.django_db
+def test_topbar_hides_new_menu_from_non_author(client, outsider):
+    """A logged-in non-team user gets no New menu — only the plain Report link."""
+    client.force_login(outsider)
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert "new-menu__trigger" not in body
+    assert "New advisory" not in body
+    assert "Report a vulnerability" in body
+
+
+@pytest.mark.django_db
+def test_topbar_hides_new_menu_from_anonymous(client):
+    """Anonymous visitors get the plain Report link, never the New menu."""
+    body = client.get(reverse("intake:report")).content.decode()
+    assert "new-menu__trigger" not in body
+    assert "Report a vulnerability" in body

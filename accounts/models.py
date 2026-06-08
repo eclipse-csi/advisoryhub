@@ -86,6 +86,17 @@ class User(AbstractUser):
 
         return self.groups.filter(name=settings.OIDC_ADMIN_GROUP).exists()
 
+    @property
+    def can_author_advisories(self) -> bool:
+        """Member of any project's security team, or a global admin.
+
+        Drives whether the topbar offers the "New advisory" entry point; the
+        view still authorizes creation per-project at the boundary.
+        """
+        from advisories.permissions import can_author_any_advisory
+
+        return can_author_any_advisory(self)
+
 
 class CommentLevel(models.TextChoices):
     """Notification level for comments.

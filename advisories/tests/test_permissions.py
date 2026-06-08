@@ -447,6 +447,30 @@ def test_admin_can_create_for_any_project(world):
     assert perms.can_create_advisory_for_project(world["admin"], world["project_b"])
 
 
+# ---- can_author_any_advisory -----------------------------------------------
+
+
+def test_admin_can_author_any_advisory(world):
+    assert perms.can_author_any_advisory(world["admin"])
+
+
+def test_team_member_can_author_any_advisory(world):
+    assert perms.can_author_any_advisory(world["member"])
+
+
+def test_outsider_cannot_author_any_advisory(world):
+    assert not perms.can_author_any_advisory(world["outsider"])
+
+
+def test_anonymous_cannot_author_any_advisory():
+    assert not perms.can_author_any_advisory(AnonymousUser())
+
+
+def test_user_property_mirrors_can_author_any_advisory(world):
+    assert world["member"].can_author_advisories is True
+    assert world["outsider"].can_author_advisories is False
+
+
 # ---- can_review ------------------------------------------------------------
 
 

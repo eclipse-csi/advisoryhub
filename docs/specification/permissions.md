@@ -51,6 +51,14 @@ authority.
 There is no local password store and no local group editor: revocation
 happens in the IdP and propagates at next login.
 
+- **Ban (local override).** `is_active=False` is the one app-side override of
+  IdP-mediated authority: an admin can ban an account from the admin console
+  to deny login and drop its live session immediately, rather than wait for an
+  IdP group change to propagate at next login ([INV-AUTH-8]). It is reversible
+  (unban) and audited at both ends. (A Celery task already queued under a
+  banned actor still re-checks group membership, not `is_active` — the same
+  next-login lag as an IdP demotion.)
+
 ---
 
 ## 3. Actors

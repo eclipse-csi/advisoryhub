@@ -36,6 +36,8 @@ urlpatterns = [
     ),
     path("users/", views.user_list, name="user_list"),
     path("users/<int:user_id>/", views.user_detail, name="user_detail"),
+    path("users/<int:user_id>/ban/", views.user_ban, name="user_ban"),
+    path("users/<int:user_id>/unban/", views.user_unban, name="user_unban"),
     path("groups/", views.group_list, name="group_list"),
     path("groups/<int:group_id>/", views.group_detail, name="group_detail"),
     path("maintenance/", views.maintenance, name="maintenance"),

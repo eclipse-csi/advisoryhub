@@ -62,6 +62,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-AUTH-5](#inv-auth-5) | Triage advisories are owner-only for edit / publish / CVE / comment. | Authorization | Critical |
 | [INV-AUTH-6](#inv-auth-6) | Admin-routing-flagged advisories are editable only by global admins. | Authorization | High |
 | [INV-AUTH-7](#inv-auth-7) | Publication state grants no implicit read access inside AdvisoryHub. | Authorization | Critical |
+| [INV-AUTH-8](#inv-auth-8) | A banned account is denied login and its live session is dropped on the next request. | Authorization | High |
 | [INV-MAINT-1](#inv-maint-1) | While maintenance mode is on, only global admins may mutate state; everyone else is paused server-side. | Maintenance | Critical |
 | [INV-AUDIT-1](#inv-audit-1) | The audit log is append-only at both the application layer and the database. | Audit | Critical |
 | [INV-AUDIT-2](#inv-audit-2) | All user/CI-supplied strings are redacted before reaching audit / errors / notifications. | Audit | Critical |
@@ -542,6 +543,50 @@ leak to unauthenticated users.
 **Tests.** `advisories/tests/test_views.py`, `api/tests/test_advisories.py`.
 
 **Related.** [INV-COMMENT-2](#inv-comment-2), [INV-PRIVACY-1](#inv-privacy-1).
+
+---
+
+<a id="inv-auth-8"></a>
+### INV-AUTH-8 — A banned account is denied login and dropped mid-session   [High]
+
+**Statement.** An admin can ban a user from the admin console. A banned account
+(`is_active=False`, with `banned_at`/`banned_by`/`ban_reason` set) cannot complete a
+new sign-in *and* loses any live session on its very next request; it also stops
+receiving notifications. Banning requires a reason; an admin may ban anyone except
+themselves (banning another global admin is an allowed emergency override). `is_active`
+is the single enforcement switch and is toggled **only** by `accounts.services.ban_user`
+/ `unban_user`. A ban is reversible (`unban`) and both ends are recorded in the durable
+audit ledger.
+
+**Rationale.** Group membership is IdP-mediated and only re-syncs at login
+([INV-OIDC-3](#inv-oidc-3)), so revoking access by changing a group does not end a
+live session or take effect until next login. A ban is the one app-side override that
+acts immediately, for a compromised or abusive account, without waiting on the IdP.
+The append-only audit trail keeps the who/when/why for forensics.
+
+**Enforced in.**
+- `accounts/services.py` — `ban_user` / `unban_user` set the metadata and flip
+  `is_active` in lockstep.
+- `accounts/auth.py` — `AdvisoryHubOIDCBackend.get_user` returns `None` for an inactive
+  user (restoring the `is_active` check mozilla-django-oidc's `get_user` drops), so
+  `AuthenticationMiddleware` resolves a banned user to `AnonymousUser` next request. New
+  logins are refused by the OIDC callback view's own `is_active` gate.
+- `admin_console/views/users.py` — `user_ban` / `user_unban` (`@admin_required`,
+  `@require_POST`, self-ban guard, required reason) record the durable
+  `Action.USER_BANNED` / `USER_UNBANNED` entries via `record_from_request`.
+- `notifications/recipients.py`, `notifications/tasks.py` — already filter
+  `is_active=True`, so a banned user drops out of recipient resolution.
+
+**Violation impact.** A compromised or abusive account keeps an authenticated session
+(or signs back in) after an admin has revoked it; or a ban leaves no audit trail.
+
+**Residual.** A Celery task already queued under a now-banned actor re-checks
+group-based authorization (not `is_active`), matching IdP-demotion semantics; it is not
+retro-blocked by the ban.
+
+**Tests.** `accounts/test_ban.py`, `admin_console/test_ban.py`.
+
+**Related.** [INV-OIDC-3](#inv-oidc-3), [INV-AUTH-1](#inv-auth-1), [INV-AUDIT-1](#inv-audit-1).
 
 ---
 
@@ -1131,6 +1176,10 @@ login full-replace ([INV-OIDC-1](#inv-oidc-1)) ever fighting the sync.
 
 **Violation impact.** A never-authenticated identity gains `owner`/`collaborator`
 access; or the login full-replace silently wipes roster-driven membership.
+
+> A shadow user is `is_active=True` (so it stays a notification recipient). Banning
+> one ([INV-AUTH-8](#inv-auth-8)) flips it to `is_active=False`, which also removes it
+> from notification recipient resolution — the same `is_active` filter applies.
 
 **Tests.** `projects/test_roster_sync.py`, `accounts/test_roster_linking.py`.
 

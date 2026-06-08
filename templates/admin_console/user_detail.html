@@ -17,8 +17,71 @@
       <dt>{% translate "Date joined" %}</dt><dd>{% timestamp target_user.date_joined %}</dd>
       <dt>{% translate "OIDC subject" %}</dt><dd><code>{{ target_user.oidc_subject|default:"—" }}</code></dd>
       <dt>{% translate "Admin" %}</dt><dd>{% if is_admin %}<strong>{% translate "yes — global admin" %}</strong>{% else %}—{% endif %}</dd>
+      <dt>{% translate "Status" %}</dt>
+      <dd>
+        {% if target_user.is_banned %}
+          <span class="badge state-dismissed">{% translate "Banned" %}</span>
+        {% else %}
+          <span class="badge state-published">{% translate "Active" %}</span>
+        {% endif %}
+      </dd>
     </dl>
   </section>
+
+  <section>
+    <h2>{% translate "Account access" %}</h2>
+    {% if target_user.is_banned %}
+      <p>{% blocktranslate %}This account is <strong>banned</strong>: the user is signed out, cannot sign back in, and receives no notifications until unbanned.{% endblocktranslate %}</p>
+      <dl>
+        <dt>{% translate "Banned by" %}</dt><dd>{{ target_user.banned_by.display_label|default:"—" }}</dd>
+        <dt>{% translate "Banned at" %}</dt><dd>{% timestamp target_user.banned_at %}</dd>
+        <dt>{% translate "Reason" %}</dt><dd>{{ target_user.ban_reason|default:"—" }}</dd>
+      </dl>
+      <button type="button" class="success" data-dialog-open="unban-user-dialog">{% translate "Unban account" %}</button>
+    {% elif is_self %}
+      <p class="muted">{% translate "You cannot ban your own account." %}</p>
+    {% else %}
+      <p class="muted">{% translate "Banning an account immediately signs the user out, blocks future sign-in, and stops their notifications until you unban it. A global admin can still be banned as an emergency override." %}</p>
+      <button type="button" class="danger" data-dialog-open="ban-user-dialog">{% translate "Ban this account…" %}</button>
+    {% endif %}
+  </section>
+
+  {% comment %}
+  Modal dialogs are deliberately placed OUTSIDE the carded <section>s above. A
+  modal <dialog> renders in the top layer and is centred by the UA via
+  `inset:0; margin:auto`; as a section's trailing child it would instead be
+  caught by the card margin-trim rule (`… > section > :last-child{margin-bottom:0}`),
+  which overrides that auto and pins the dialog to the bottom of the viewport.
+  Keep them here, as direct children of `.admin-console__main`.
+  {% endcomment %}
+  {% if target_user.is_banned %}
+    <dialog id="unban-user-dialog" class="confirm-dialog" aria-labelledby="unban-user-dialog-title">
+      <form method="post" action="{% url 'admin_console:user_unban' target_user.pk %}">
+        {% csrf_token %}
+        <h3 id="unban-user-dialog-title">{% translate "Unban this account?" %}</h3>
+        <p>{% translate "Restores the user's sign-in and notifications. The ban reason stays in the audit log." %}</p>
+        <div class="dialog-actions">
+          <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
+          <button type="submit" class="success">{% translate "Unban account" %}</button>
+        </div>
+      </form>
+    </dialog>
+  {% elif not is_self %}
+    <dialog id="ban-user-dialog" class="confirm-dialog" aria-labelledby="ban-user-dialog-title">
+      <form method="post" action="{% url 'admin_console:user_ban' target_user.pk %}">
+        {% csrf_token %}
+        <h3 id="ban-user-dialog-title">{% blocktranslate with email=target_user.email %}Ban {{ email }}?{% endblocktranslate %}</h3>
+        <p>{% translate "The user is signed out immediately and cannot sign back in until unbanned." %}</p>
+        <label>{% translate "Reason (required)" %}
+          <textarea name="reason" required rows="4" autofocus></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
+          <button type="submit" class="danger">{% translate "Ban account" %}</button>
+        </div>
+      </form>
+    </dialog>
+  {% endif %}
 
   {% if is_admin %}
     <section class="banner">

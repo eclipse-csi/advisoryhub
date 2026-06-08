@@ -404,10 +404,12 @@ def test_group_detail_shows_secured_projects(client, base):
 
 @pytest.mark.django_db
 def test_pages_contain_no_mutation_forms(client, base, rich_user):
-    """Sentinel against accidental mutation surfaces on these read-only pages.
+    """Sentinel against *accidental* mutation surfaces on these directory pages.
 
     The global layout includes a sign-out form (POST to /oidc/logout/); we
-    assert no POST form *targets an /admin/users/ or /admin/groups/ URL*.
+    assert no POST form *targets an /admin/users/ or /admin/groups/ URL* — with
+    the sole exception of the deliberate ban/unban controls on the user-detail
+    page (INV-AUTH-8), exercised in ``admin_console/test_ban.py``.
     """
     import re
 
@@ -422,7 +424,8 @@ def test_pages_contain_no_mutation_forms(client, base, rich_user):
         r'<form\b[^>]*\bmethod\s*=\s*"post"[^>]*\baction\s*=\s*"(/admin/(?:users|groups)/[^"]*)"',
         re.IGNORECASE,
     )
+    allowed = re.compile(r"/admin/users/\d+/(?:ban|unban)/$")
     for url in pages:
         body = client.get(url).content.decode()
-        offenders = pattern.findall(body)
+        offenders = [m for m in pattern.findall(body) if not allowed.match(m)]
         assert not offenders, f"{url} should have no POST form targeting itself; found {offenders}"

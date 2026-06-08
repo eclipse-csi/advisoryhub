@@ -15,13 +15,19 @@ from __future__ import annotations
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from access.models import AdvisoryAccessGrant, PendingInvitation, PrincipalType
 from accounts.models import User
+from accounts.services import ban_user, unban_user
+from audit.models import Action
+from audit.services import record_from_request
 from projects.models import Project
 
 from .base import admin_required
@@ -137,6 +143,7 @@ def user_detail(request, user_id: int):
         {
             "target_user": target_user,
             "is_admin": is_admin,
+            "is_self": target_user.pk == request.user.pk,
             "groups": groups,
             "secured_projects": secured_projects,
             "direct_grants": direct_grants,
@@ -148,3 +155,66 @@ def user_detail(request, user_id: int):
             "admin_section": "users",
         },
     )
+
+
+@admin_required
+@require_POST
+def user_ban(request, user_id: int):
+    """Ban a user account: disable sign-in and drop any live session.
+
+    An admin may ban anyone *except themselves* (the self-ban guard prevents an
+    accidental lockout); banning another global admin is allowed as an
+    emergency override. A reason is required. See INV-AUTH-8.
+    """
+    target = get_object_or_404(User, pk=user_id)
+    back = redirect(reverse("admin_console:user_detail", args=[target.pk]))
+
+    if target.pk == request.user.pk:
+        messages.error(request, "You cannot ban your own account.")
+        return back
+
+    reason = (request.POST.get("reason") or "").strip()
+    if not reason:
+        messages.error(request, "A reason is required to ban an account.")
+        return back
+
+    if not ban_user(target, by=request.user, reason=reason):
+        messages.info(request, f"{target.email} is already banned.")
+        return back
+
+    record_from_request(
+        request,
+        action=Action.USER_BANNED,
+        metadata={
+            "target_user_id": target.pk,
+            "target_email": target.email,
+            "reason": reason,
+        },
+    )
+    messages.success(request, f"{target.email} has been banned and signed out.")
+    return back
+
+
+@admin_required
+@require_POST
+def user_unban(request, user_id: int):
+    """Lift a ban: restore sign-in and notifications for the account."""
+    target = get_object_or_404(User, pk=user_id)
+    back = redirect(reverse("admin_console:user_detail", args=[target.pk]))
+
+    previous_reason = unban_user(target, by=request.user)
+    if previous_reason is None:
+        messages.info(request, f"{target.email} is not banned.")
+        return back
+
+    record_from_request(
+        request,
+        action=Action.USER_UNBANNED,
+        metadata={
+            "target_user_id": target.pk,
+            "target_email": target.email,
+            "previous_reason": previous_reason,
+        },
+    )
+    messages.success(request, f"{target.email} has been unbanned.")
+    return back

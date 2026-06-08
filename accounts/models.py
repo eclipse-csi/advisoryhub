@@ -57,6 +57,23 @@ class User(AbstractUser):
             "from the OIDC claim. See INV-OIDC-5."
         ),
     )
+    # --- Ban / block metadata (INV-AUTH-8) -----------------------------------
+    # The enforcement switch for a ban is the inherited ``is_active`` flag: the
+    # OIDC callback view refuses login when it is False and the backend's
+    # ``get_user`` override drops a live session. These three columns only
+    # describe the *current* ban for the UI; the append-only audit ledger holds
+    # the who/when/why history. ``is_active`` is toggled *only* by
+    # ``accounts.services.ban_user`` / ``unban_user`` — treat it read-only
+    # everywhere else.
+    banned_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    banned_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    ban_reason = models.TextField(blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: ClassVar[list[str]] = []
@@ -78,6 +95,17 @@ class User(AbstractUser):
         label rather than the fallback.
         """
         return (self.display_name or "").strip() or (self.email or "").strip() or fallback
+
+    @property
+    def is_banned(self) -> bool:
+        """Whether the account is currently banned (disabled by an admin).
+
+        Derived from ``banned_at`` so there is a single source of truth that
+        cannot desync from a separate boolean. Enforcement keys off
+        ``is_active`` (kept in lockstep by the ban services); this property
+        drives display and the ban/unban UI. See INV-AUTH-8.
+        """
+        return self.banned_at is not None
 
     @property
     def is_global_admin(self) -> bool:

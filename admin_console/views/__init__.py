@@ -14,7 +14,7 @@ from .inbox import inbox
 from .maintenance import maintenance
 from .projects import project_create, project_edit, project_list, project_sync_roster
 from .publications import publications
-from .users import user_detail, user_list
+from .users import user_ban, user_detail, user_list, user_unban
 
 # The URL conf historically referred to the inbox view as ``index``; keep
 # that alias so URL patterns and existing tests stay stable.
@@ -38,6 +38,8 @@ __all__ = [
     "project_list",
     "project_sync_roster",
     "publications",
+    "user_ban",
     "user_detail",
     "user_list",
+    "user_unban",
 ]

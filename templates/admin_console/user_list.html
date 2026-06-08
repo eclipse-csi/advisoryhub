@@ -47,7 +47,7 @@
     <tbody>
       {% for u in page.object_list %}
         <tr data-href="{% url 'admin_console:user_detail' u.pk %}">
-          <td><a href="{% url 'admin_console:user_detail' u.pk %}">{{ u.email }}</a></td>
+          <td><a href="{% url 'admin_console:user_detail' u.pk %}">{{ u.email }}</a>{% if u.is_banned %} <span class="badge state-dismissed">{% translate "banned" %}</span>{% endif %}</td>
           <td>{{ u.display_name|default:"—" }}</td>
           <td>{% for g in u.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
           <td>{% if u.last_login %}{% timestamp u.last_login %}{% else %}{% translate "never" %}{% endif %}</td>

@@ -95,6 +95,11 @@ class Action(models.TextChoices):
     # Site-wide maintenance mode toggle (admin console). See INV-MAINT-1.
     MAINTENANCE_ENABLED = "maintenance.enabled"
     MAINTENANCE_DISABLED = "maintenance.disabled"
+    # Admin bans/unbans a user account (admin console). The banned user is the
+    # target (in metadata); the actor is the admin. Durable — these are
+    # low-volume, security-relevant governance events. See INV-AUTH-8.
+    USER_BANNED = "user.banned"
+    USER_UNBANNED = "user.unbanned"
     # Triage flow (current). The intake form creates an Advisory(state=triage)
     # rather than a separate report row. Old REPORT_* values below remain in
     # the enum so existing audit rows stay readable; new code emits the

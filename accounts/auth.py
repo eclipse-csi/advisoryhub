@@ -66,6 +66,22 @@ class AdvisoryHubOIDCBackend(OIDCAuthenticationBackend):
         self._post_login_hooks(user, claims)
         return user
 
+    def get_user(self, user_id):
+        """Drop the session of a banned (``is_active=False``) account.
+
+        mozilla-django-oidc overrides Django's ``ModelBackend.get_user`` and
+        returns the user *without* the standard ``user_can_authenticate``
+        (``is_active``) check, so a session opened before a ban would otherwise
+        survive. Re-instating that check makes ``AuthenticationMiddleware``
+        resolve a banned user to ``AnonymousUser`` on their very next request —
+        the live-session half of INV-AUTH-8. (New logins are already refused by
+        the OIDC callback view's own ``is_active`` gate.)
+        """
+        user = super().get_user(user_id)
+        if user is not None and not user.is_active:
+            return None
+        return user
+
     # --- internals -----------------------------------------------------------
 
     def _apply_claims(self, user: User, claims: dict[str, Any]) -> None:

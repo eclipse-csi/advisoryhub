@@ -39,6 +39,9 @@ PER_PAGE = 50
 def user_list(request):
     selected_q = (request.GET.get("q") or "").strip()[:200]
     selected_group_raw = (request.GET.get("group") or "").strip()
+    selected_status = (request.GET.get("status") or "").strip()
+    if selected_status not in ("active", "banned"):
+        selected_status = ""
 
     qs = User.objects.prefetch_related("groups").order_by("email")
 
@@ -61,6 +64,13 @@ def user_list(request):
         qs = qs.filter(groups__pk=candidate).distinct()
         selected_group = str(candidate)
 
+    # Ban status filters on the indexed ``banned_at`` column (``is_banned`` is a
+    # Python-only property and not queryable).
+    if selected_status == "banned":
+        qs = qs.filter(banned_at__isnull=False)
+    elif selected_status == "active":
+        qs = qs.filter(banned_at__isnull=True)
+
     page = Paginator(qs, PER_PAGE).get_page(request.GET.get("page"))
 
     filters_pairs: list[tuple[str, str]] = []
@@ -68,6 +78,8 @@ def user_list(request):
         filters_pairs.append(("q", selected_q))
     if selected_group:
         filters_pairs.append(("group", selected_group))
+    if selected_status:
+        filters_pairs.append(("status", selected_status))
     filters_querystring = urlencode(filters_pairs)
 
     return render(
@@ -77,9 +89,10 @@ def user_list(request):
             "page": page,
             "selected_q": selected_q,
             "selected_group": selected_group,
+            "selected_status": selected_status,
             "group_choices": group_choices,
             "filters_querystring": filters_querystring,
-            "any_filter_active": bool(selected_q or selected_group),
+            "any_filter_active": bool(selected_q or selected_group or selected_status),
             "admin_section": "users",
         },
     )

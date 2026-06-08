@@ -4,7 +4,7 @@
 {% block admin_content %}
   <header class="advisory-detail__header">
     <h1>Projects</h1>
-    <p><a href="{% url 'admin_console:project_create' %}">New project</a></p>
+    <a class="btn" href="{% url 'admin_console:project_create' %}">{% include "advisories/_icons.html" with icon="plus" %}New project</a>
   </header>
 
   <table>

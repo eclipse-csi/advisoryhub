@@ -45,3 +45,7 @@ RATELIMIT_ENABLE = False
 # Step-up auth would otherwise redirect every publish click in tests
 # through the OIDC flow; the dedicated step-up tests re-enable it.
 STEP_UP_REQUIRED = False
+
+# Never bind the worker metrics exporter in tests (it's 0 by default too, but
+# pin it so a stray env var can't make worker_process_init try to open a port).
+PROMETHEUS_WORKER_METRICS_PORT = 0

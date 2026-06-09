@@ -30,6 +30,7 @@ from advisories import services as advisory_services
 from advisories.models import Advisory, State
 from audit.models import Action
 from audit.services import record
+from common import metrics
 from common.enqueue import safe_enqueue
 
 from .models import PublicationTask, PublicationTaskStatus
@@ -129,6 +130,9 @@ def mark_running(task: PublicationTask) -> PublicationTask:
     task.attempts += 1
     task.started_at = timezone.now()
     task.save(update_fields=["status", "attempts", "started_at"])
+    # Count the run as started here (in the worker) so every publication series
+    # originates on the worker scrape target — see common.metrics.
+    metrics.publication_total.labels(status="started").inc()
     return task
 
 
@@ -138,6 +142,8 @@ def mark_succeeded(task: PublicationTask, *, commit_sha: str) -> PublicationTask
     task.finished_at = timezone.now()
     task.last_error = ""
     task.save(update_fields=["status", "commit_sha", "finished_at", "last_error"])
+    metrics.publication_total.labels(status="succeeded").inc()
+    _observe_duration(task)
     return task
 
 
@@ -148,4 +154,14 @@ def mark_failed(task: PublicationTask, *, error: str) -> PublicationTask:
     task.finished_at = timezone.now()
     task.last_error = redact_secrets(error or "")[:8000]
     task.save(update_fields=["status", "finished_at", "last_error"])
+    metrics.publication_total.labels(status="failed").inc()
+    _observe_duration(task)
     return task
+
+
+def _observe_duration(task: PublicationTask) -> None:
+    """Record the run's wall-clock duration when both timestamps are present."""
+    if task.started_at and task.finished_at:
+        metrics.publication_duration_seconds.observe(
+            (task.finished_at - task.started_at).total_seconds()
+        )

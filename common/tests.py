@@ -295,3 +295,117 @@ def test_metrics_endpoint_serves_prometheus_format(client):
     # request-counter HELP line; we don't pin specific metric names
     # because django_prometheus updates them between versions.
     assert "# HELP" in body or "# TYPE" in body
+
+
+# ---- Custom application metrics -----------------------------------------
+#
+# prometheus_client metric objects are process-global singletons that
+# accumulate across the whole pytest run, so Counter/Histogram assertions read
+# a *delta* (value before vs. after the action). The backlog Gauge is `.set()`,
+# so its absolute value is deterministic.
+
+from celery import shared_task  # noqa: E402
+
+
+@shared_task(name="common.tests._metrics_probe")
+def _metrics_probe(fail: bool = False) -> str:
+    if fail:
+        raise ValueError("boom")
+    return "ok"
+
+
+def _counter_value(metric, **labels) -> float:
+    return metric.labels(**labels)._value.get()
+
+
+@pytest.mark.django_db
+def test_celery_task_signals_record_success_metric():
+    """Under EAGER, a task's prerun/postrun signals feed the success counter
+    and the duration histogram (handlers connected in audit/apps.py)."""
+    from common import metrics
+
+    before = _counter_value(
+        metrics.celery_task_total, task="common.tests._metrics_probe", status="success"
+    )
+    dur_before = metrics.celery_task_duration_seconds.labels(
+        task="common.tests._metrics_probe"
+    )._sum.get()
+
+    assert _metrics_probe.delay().get() == "ok"
+
+    after = _counter_value(
+        metrics.celery_task_total, task="common.tests._metrics_probe", status="success"
+    )
+    dur_after = metrics.celery_task_duration_seconds.labels(
+        task="common.tests._metrics_probe"
+    )._sum.get()
+    assert after == before + 1
+    assert dur_after >= dur_before  # a (possibly ~0) observation was recorded
+
+
+@pytest.mark.django_db
+def test_celery_task_failure_metric():
+    """A failing task increments the failure counter (task_failure signal).
+
+    CELERY_TASK_EAGER_PROPAGATES=True re-raises, so the call is wrapped.
+    """
+    from common import metrics
+
+    before = _counter_value(
+        metrics.celery_task_total, task="common.tests._metrics_probe", status="failure"
+    )
+    with pytest.raises(ValueError):
+        _metrics_probe.delay(fail=True).get()
+    after = _counter_value(
+        metrics.celery_task_total, task="common.tests._metrics_probe", status="failure"
+    )
+    assert after == before + 1
+
+
+@pytest.mark.django_db
+def test_backlog_gauge_refresh_sets_live_counts(client, make_user, make_project):
+    """refresh_backlog_gauges sets advisoryhub_backlog from live DB counts, and
+    the series surfaces on /metrics."""
+    from advisories.models import Advisory, State
+    from advisories.services import latest_version
+    from audit.tasks import refresh_backlog_gauges
+    from common import metrics
+    from publication.models import PublicationTask, PublicationTaskStatus
+
+    member = make_user(email="bk@example.org")
+    project = make_project("bk", team_members=[member])
+
+    # Two failed publications.
+    for _ in range(2):
+        adv = Advisory.objects.create(project=project, summary="s", created_by=member)
+        PublicationTask.objects.create(
+            advisory=adv,
+            version=latest_version(adv),
+            status=PublicationTaskStatus.FAILED,
+        )
+    # Three advisories sitting in triage.
+    for _ in range(3):
+        Advisory.objects.create(project=project, state=State.TRIAGE, summary="t", created_by=member)
+
+    result = refresh_backlog_gauges()
+    assert result["pub_failed"] == 2
+    assert result["triage"] == 3
+    assert metrics.backlog.labels(queue="pub_failed")._value.get() == 2
+    assert metrics.backlog.labels(queue="triage")._value.get() == 3
+
+    body = client.get("/metrics").content
+    assert b"advisoryhub_backlog" in body
+
+
+@pytest.mark.django_db
+def test_worker_metrics_exporter_disabled_by_default(monkeypatch):
+    """PROMETHEUS_WORKER_METRICS_PORT=0 (test default) → no exporter bind."""
+    import prometheus_client
+
+    from common import celery_metrics
+
+    def boom(*_a, **_k):
+        raise AssertionError("start_http_server must not be called when the port is 0")
+
+    monkeypatch.setattr(prometheus_client, "start_http_server", boom)
+    assert celery_metrics._start_exporter() is False

@@ -509,7 +509,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-Three periodic jobs are registered in `config/settings/base.py`:
+Four periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -521,12 +521,20 @@ CELERY_BEAT_SCHEDULE = {
         "task": "audit.tasks.maintain_access_log_partitions",
         "schedule": timedelta(days=1),
     },
+    "backlog-gauge-refresh": {
+        "task": "audit.tasks.refresh_backlog_gauges",
+        "schedule": timedelta(seconds=60),
+    },
     "security-roster-sync": {
         "task": "projects.tasks.run_roster_sync",
         "schedule": timedelta(hours=PMI_ROSTER_SYNC_INTERVAL_HOURS),
     },
 }
 ```
+
+`backlog-gauge-refresh` re-reads the operator queue depths and `.set()`s the
+`advisoryhub_backlog` Prometheus gauge (see §8.3); it runs in the worker so the
+series lands on the worker's metrics exporter.
 
 `access-log-partition-maintenance` creates the upcoming month's
 `AccessLogEntry` partition and drops months older than
@@ -561,6 +569,7 @@ user-triggered, scoped (project or all), and recorded as a
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
 | `audit` | `maintain_access_log_partitions` | Beat-scheduled `AccessLogEntry` partition create-ahead + drop-expired. |
+| `audit` | `refresh_backlog_gauges` | Beat-scheduled refresh of the `advisoryhub_backlog` Prometheus gauge from live queue depths. |
 | `projects` | `run_roster_sync` | Beat-scheduled security-team roster sync (shadow-user provisioning); no-op unless `PMI_ROSTER_SYNC_ENABLED`. |
 
 Idempotency story:
@@ -697,7 +706,11 @@ forced False in `test`).
 because it is a network round-trip).
 
 **Observability.** `SENTRY_DSN` (optional — enables Sentry via
-`common.sentry.init_from_env`).
+`common.sentry.init_from_env`). `PROMETHEUS_WORKER_METRICS_PORT`
+(default 0/disabled — the Celery worker's own metrics exporter port;
+docker-compose sets 9808). `PROMETHEUS_MULTIPROC_DIR` (read straight
+from the OS env by `django_prometheus`; set in prod to a writable
+tmpfs so `/metrics` aggregates across gunicorn workers — see §8.8).
 
 ---
 
@@ -735,8 +748,42 @@ because it is a network round-trip).
 `django_prometheus` is installed; `PrometheusBeforeMiddleware` is
 first and `PrometheusAfterMiddleware` is last in `MIDDLEWARE`, so
 the in-flight timer covers the entire request lifecycle. The
-default metrics endpoint can be enabled by adding the
-`django_prometheus.urls` include if metrics are scraped.
+`/metrics` endpoint is wired **unconditionally** (`config/urls.py`,
+via the `django_prometheus.urls` include); it carries no auth and
+must be kept off the public ingress (private port / network policy /
+reverse-proxy auth header).
+
+On top of django-prometheus's defaults (request counts, response
+status, the request-latency histogram, DB and cache series) the app
+exports custom business series defined in `common.metrics`:
+
+- `advisoryhub_publication_total{status}` — publication runs by
+  status (`started`/`succeeded`/`failed`), with
+  `advisoryhub_publication_stage_total{stage}` and the
+  `advisoryhub_publication_duration_seconds` histogram (instrumented
+  in `publication/services.py` + `publication/tasks.py`).
+- `advisoryhub_celery_task_total{task,status}` and
+  `advisoryhub_celery_task_duration_seconds{task}` — set from Celery
+  signal handlers in `common.celery_metrics`.
+- `advisoryhub_backlog{queue}` — operator queue depths, refreshed
+  every 60s by the `audit.tasks.refresh_backlog_gauges` beat task
+  (queries mirror the Admin Console inbox strip).
+
+These custom series are produced in the **worker** process, which
+serves no HTTP, so the worker runs its own exporter
+(`prometheus_client.start_http_server` on
+`PROMETHEUS_WORKER_METRICS_PORT`, default 0/disabled) as a *second*
+scrape target. The worker uses the **threads** pool
+(`--pool=threads`): all tasks run in one process, so the single
+exporter (started on `worker_ready`) sees every worker thread's
+counts and `--concurrency` can be raised freely. The default
+**prefork** pool would fork separate-memory child processes whose
+counts a MainProcess exporter can't see — switching to it requires
+`prometheus_client` multiprocess mode (a per-container
+`PROMETHEUS_MULTIPROC_DIR`), the same mechanism as the gunicorn web
+path (§8.8). The `advisoryhub_backlog` gauge uses
+`multiprocess_mode="mostrecent"` so it reports correctly under
+gunicorn multiprocess too.
 
 ### 8.4 Sentry
 
@@ -797,6 +844,44 @@ each lifecycle state, sample comments, and an initialised bare Git
 publication repository. The command uses the dev-only
 `_unsafe_dev_reset_bypass()` context manager when invoked with
 `--reset`.
+
+### 8.8 Metrics scraping & alerting
+
+A dev/demo Prometheus + Grafana stack lives under `dev/observability/`
+and is gated behind the `observability` docker-compose profile, so it
+is opt-in (`docker compose --profile observability up prometheus
+grafana`, or `mise run obs-up`). It is **not** for production — prod is
+scraped by the operator's own Prometheus.
+
+- **Scrape targets** (`dev/observability/prometheus.yml`): the web
+  `/metrics` (django-prometheus series), the worker exporter
+  `worker:9808` (the `advisoryhub_*` series), and Prometheus itself.
+- **Alert rules** (`dev/observability/rules/advisoryhub.rules.yml`),
+  in three groups: *availability* (target down, 5xx ratio, p95 latency
+  burn), *pipeline* (publication failure rate, stuck failed-publication
+  backlog, Celery failure spike), and *readiness* (work queued but no
+  Celery progress — the visible proxy for a down broker, since
+  `safe_enqueue` swallows broker outages; cf. `READYZ_INCLUDE_BROKER`).
+- **Grafana** auto-provisions the Prometheus datasource and two
+  dashboards (request rate/errors/latency; publication outcomes &
+  duration, Celery throughput, backlog).
+
+**Proposed SLOs** (defaults — tune to operations):
+
+| SLO                          | Target  | Window      | Backing alert                       |
+| ---------------------------- | ------- | ----------- | ----------------------------------- |
+| Web availability (non-5xx)   | ≥ 99.5% | 30d         | `AdvisoryHubHigh5xxRate`            |
+| p95 request latency          | < 1s    | 5m rolling  | `AdvisoryHubLatencySLOBurn`        |
+| Publication success          | ≥ 90%   | 24h         | `AdvisoryHubPublicationFailureRate` |
+| Scrape targets reachable     | 99.9%   | 30d         | `AdvisoryHubTargetDown`            |
+
+**Production note.** `/metrics` must stay on a private port. Under
+multiple gunicorn workers the custom counters only aggregate when
+`prometheus_client` multiprocess mode is on: set
+`PROMETHEUS_MULTIPROC_DIR` to a writable, empty-at-boot tmpfs and run
+`gunicorn config.wsgi -c gunicorn.conf.py` (its `child_exit` hook reaps
+dead workers' mmap files). The Celery worker exports its own series on
+`PROMETHEUS_WORKER_METRICS_PORT`; scrape both targets.
 
 ---
 

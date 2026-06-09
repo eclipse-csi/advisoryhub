@@ -1,0 +1,36 @@
+# Dev/demo Prometheus config for AdvisoryHub.
+#
+# Scrapes the web app's /metrics (django-prometheus HTTP/DB/cache series),
+# the Celery worker's own exporter (advisoryhub_* publication/task/backlog
+# series), and Prometheus itself. Services are reachable by compose service
+# name on the default network. NOT a production config — prod scrapes with the
+# operator's own Prometheus.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    env: dev
+
+rule_files:
+  - /etc/prometheus/rules/*.rules.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: advisoryhub-web
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["web:8000"]
+        labels:
+          service: web
+
+  - job_name: advisoryhub-celery
+    # The worker exposes its own exporter on PROMETHEUS_WORKER_METRICS_PORT
+    # (9808 in docker-compose). The publication, celery-task, and backlog
+    # series live here, not on the web target.
+    static_configs:
+      - targets: ["worker:9808"]
+        labels:
+          service: worker

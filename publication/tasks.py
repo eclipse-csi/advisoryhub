@@ -18,6 +18,7 @@ from django.utils import timezone
 from advisories.models import Advisory, State
 from audit.models import Action
 from audit.services import record
+from common import metrics
 
 from . import csaf as csaf_builder
 from . import cve as cve_builder
@@ -75,6 +76,7 @@ def run_publication(self, task_id: int) -> str:
             advisory=task.advisory,
             new_value={"task_id": task.pk},
         )
+        metrics.publication_stage_total.labels(stage="osv_generated").inc()
 
         csaf_doc = csaf_builder.build_csaf(task.version)
         csaf_builder.validate_csaf(csaf_doc)
@@ -83,6 +85,7 @@ def run_publication(self, task_id: int) -> str:
             advisory=task.advisory,
             new_value={"task_id": task.pk},
         )
+        metrics.publication_stage_total.labels(stage="csaf_generated").inc()
 
         # A CVE record is exported only when the Eclipse Foundation has
         # assigned a CVE to this advisory. The id is read from the pinned
@@ -103,6 +106,7 @@ def run_publication(self, task_id: int) -> str:
                 advisory=task.advisory,
                 new_value={"task_id": task.pk, "cve_id": assigned_cve},
             )
+            metrics.publication_stage_total.labels(stage="cve_generated").inc()
 
         # 2. Persist generated documents to PublicationArtifact (the
         # single source of truth for what we pushed). The pinned
@@ -153,12 +157,14 @@ def run_publication(self, task_id: int) -> str:
             new_value={"commit_sha": result.commit_sha},
             metadata={"task_id": task.pk, "branch": result.pushed_to},
         )
+        metrics.publication_stage_total.labels(stage="git_commit").inc()
         record(
             action=Action.PUBLICATION_GIT_PUSH,
             advisory=task.advisory,
             new_value={"commit_sha": result.commit_sha, "branch": result.pushed_to},
             metadata={"task_id": task.pk},
         )
+        metrics.publication_stage_total.labels(stage="git_push").inc()
 
         # 4. Flip advisory state — only after a successful push.
         with transaction.atomic():
@@ -211,6 +217,8 @@ def run_publication(self, task_id: int) -> str:
 
 def _fail(task: PublicationTask, *, error: str, action: str) -> str:
     services.mark_failed(task, error=error)
+    if action == Action.PUBLICATION_GIT_PUSH_FAILED:
+        metrics.publication_stage_total.labels(stage="git_push_failed").inc()
     # task.last_error is already redacted; pass it through audit (which redacts again)
     record(
         action=action,

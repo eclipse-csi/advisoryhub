@@ -531,3 +531,55 @@ def test_artifacts_persisted_on_validation_failure(setup, monkeypatch):
     task = pub_services.publish(setup["advisory"], by=setup["admin"])
     pub_tasks.run_publication(task.pk)
     assert not PublicationArtifact.objects.filter(task=task).exists()
+
+
+# ---- Prometheus metrics --------------------------------------------------
+#
+# prometheus_client metric objects are process-global and accumulate across the
+# run, so we assert deltas (value before vs. after the publication).
+
+
+@pytest.mark.django_db
+def test_publication_metrics_increment_on_success(setup):
+    from common import metrics
+
+    succeeded_before = metrics.publication_total.labels(status="succeeded")._value.get()
+    git_push_before = metrics.publication_stage_total.labels(stage="git_push")._value.get()
+    duration_sum_before = metrics.publication_duration_seconds._sum.get()
+
+    task = pub_services.publish(setup["advisory"], by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+    task.refresh_from_db()
+    assert task.status == PublicationTaskStatus.SUCCEEDED
+
+    assert metrics.publication_total.labels(status="succeeded")._value.get() == succeeded_before + 1
+    assert (
+        metrics.publication_stage_total.labels(stage="git_push")._value.get() == git_push_before + 1
+    )
+    assert metrics.publication_duration_seconds._sum.get() >= duration_sum_before
+
+
+@pytest.mark.django_db
+def test_publication_metrics_increment_on_git_failure(setup, monkeypatch):
+    from common import metrics
+
+    def boom(**_kwargs):
+        raise GitPublicationError("simulated push failure")
+
+    monkeypatch.setattr(pub_tasks, "publish_files", boom)
+
+    failed_before = metrics.publication_total.labels(status="failed")._value.get()
+    git_push_failed_before = metrics.publication_stage_total.labels(
+        stage="git_push_failed"
+    )._value.get()
+
+    task = pub_services.publish(setup["advisory"], by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+    task.refresh_from_db()
+    assert task.status == PublicationTaskStatus.FAILED
+
+    assert metrics.publication_total.labels(status="failed")._value.get() == failed_before + 1
+    assert (
+        metrics.publication_stage_total.labels(stage="git_push_failed")._value.get()
+        == git_push_failed_before + 1
+    )

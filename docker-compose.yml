@@ -176,7 +176,35 @@ services:
 
   worker:
     build: .
-    command: celery -A config worker -l info
+    # --pool=threads: all tasks run in one process (worker threads), so the
+    # single metrics exporter on PROMETHEUS_WORKER_METRICS_PORT sees every
+    # task's counts and --concurrency can be raised freely. Our tasks are
+    # I/O-bound (git push, GHSA/PMI API, email), which the threads pool suits.
+    # (The default prefork pool forks separate processes whose metrics a single
+    # exporter can't see — see common/celery_metrics.py.)
+    command: celery -A config worker -l info --pool=threads --concurrency=4
+    environment:
+      <<: *django-env
+      PROMETHEUS_WORKER_METRICS_PORT: "9808"
+    env_file:
+      - path: ./dev/kanidm/.env.kanidm
+        required: false
+    ports:
+      - "9808:9808"                      # worker-local Prometheus exporter
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  # Celery beat — fires the periodic tasks in CELERY_BEAT_SCHEDULE (backlog
+  # gauge refresh, access-log partition maintenance, PMI sync). The dev stack
+  # previously had no beat, so those tasks never ran locally.
+  beat:
+    build: .
+    command: celery -A config beat -l info --schedule=/tmp/celerybeat-schedule
     environment: *django-env
     env_file:
       - path: ./dev/kanidm/.env.kanidm
@@ -189,6 +217,59 @@ services:
     volumes:
       - .:/app
 
+  # ------------------------------------------------------------------
+  # Dev/demo observability (opt-in). NOT started by `docker compose up`
+  # or `mise run up`; bring it up with the `observability` profile:
+  #   docker compose --profile observability up prometheus grafana
+  #   (or `mise run obs-up`)
+  # Production does NOT use these — the operator scrapes /metrics with
+  # their own Prometheus. See dev/observability/README.md.
+  # ------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["observability"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"   # small local window in dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./dev/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./dev/observability/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    profiles: ["observability"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin     # dev-fixture cred, like postgres/valkey
+      GF_AUTH_ANONYMOUS_ENABLED: "true"     # demo: read-only dashboards without login
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: light
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dev/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dev/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
 volumes:
   pgdata:
   kanidm-data:
+  prometheus-data:
+  grafana-data:

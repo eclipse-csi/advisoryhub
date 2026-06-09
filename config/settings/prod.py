@@ -33,3 +33,17 @@ STORAGES = {
 # immutable Cache-Control automatically. This sets the max-age for any
 # non-hashed fallbacks too.
 WHITENOISE_MAX_AGE = 60 * 60 * 24 * 365
+
+# ---------------------------------------------------------------------------
+# Prometheus /metrics under gunicorn (multiprocess)
+# ---------------------------------------------------------------------------
+# The /metrics endpoint is wired unconditionally (config/urls.py). Under
+# multiple gunicorn workers the custom advisoryhub_* counters only aggregate
+# correctly when prometheus_client multiprocess mode is on. The deploy MUST:
+#   * set PROMETHEUS_MULTIPROC_DIR to a writable, empty-at-boot dir (tmpfs);
+#   * run gunicorn with this repo's gunicorn.conf.py (its child_exit hook reaps
+#     dead workers' mmap files):  gunicorn config.wsgi -c gunicorn.conf.py
+# django_prometheus reads PROMETHEUS_MULTIPROC_DIR straight from the OS env, so
+# there is nothing to set here — this block is the deployment checklist. The
+# Celery worker exports its own series on PROMETHEUS_WORKER_METRICS_PORT (see
+# common.celery_metrics); scrape both targets.

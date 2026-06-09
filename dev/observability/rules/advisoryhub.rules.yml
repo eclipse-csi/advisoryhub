@@ -1,0 +1,92 @@
+# Example alert rules for AdvisoryHub. Thresholds are dev/demo defaults — tune
+# them against your own SLOs before using in production. With no Alertmanager in
+# the dev stack, firing alerts show up in Prometheus /alerts and Grafana's
+# Alerting view; wire an Alertmanager to actually page.
+groups:
+  - name: advisoryhub-availability
+    rules:
+      # A scrape target (web or worker exporter) is unreachable.
+      - alert: AdvisoryHubTargetDown
+        expr: up{job=~"advisoryhub-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} target is down"
+          description: "Prometheus cannot scrape {{ $labels.instance }} ({{ $labels.job }}) for 1m."
+
+      # >2% of responses are 5xx over 5m.
+      - alert: AdvisoryHubHigh5xxRate
+        expr: |
+          sum(rate(django_http_responses_total_by_status_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(django_http_responses_total_by_status_total[5m])), 1e-9) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx error ratio above 2%"
+          description: "{{ $value | humanizePercentage }} of responses are 5xx over the last 5m."
+
+      # p95 request latency over the 1s SLO for 10m.
+      - alert: AdvisoryHubLatencySLOBurn
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(django_http_requests_latency_seconds_by_view_method_bucket[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 request latency above the 1s SLO"
+          description: "p95 latency is {{ $value | humanizeDuration }} over the last 5m."
+
+  - name: advisoryhub-pipeline
+    rules:
+      # >10% of publication runs failing over 15m.
+      - alert: AdvisoryHubPublicationFailureRate
+        expr: |
+          sum(rate(advisoryhub_publication_total{status="failed"}[15m]))
+            / clamp_min(sum(rate(advisoryhub_publication_total{status=~"succeeded|failed"}[15m])), 1e-9) > 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Publication failure rate above 10%"
+          description: "Failed pushes leave state unchanged (INV-LIFECYCLE-3); check /admin/publications/."
+
+      # Failed-publication backlog stuck high.
+      - alert: AdvisoryHubPublicationBacklogStuck
+        expr: advisoryhub_backlog{queue="pub_failed"} > 5
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Failed-publication backlog = {{ $value }}"
+          description: "More than 5 publications have been stuck failed for 30m."
+
+      # Elevated Celery task failures.
+      - alert: AdvisoryHubCeleryFailureSpike
+        expr: sum(rate(advisoryhub_celery_task_total{status="failure"}[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery task failures elevated"
+          description: ">0.2 task failures/s over the last 10m across all tasks."
+
+  - name: advisoryhub-readiness
+    rules:
+      # Work is queued but Celery makes no progress — the broker is the usual
+      # suspect. safe_enqueue swallows broker outages (common.health), so a down
+      # broker is otherwise invisible; this rule and READYZ_INCLUDE_BROKER are
+      # the two ways to surface it.
+      - alert: AdvisoryHubCeleryStalled
+        expr: |
+          advisoryhub_backlog{queue="cve_open"} > 0
+            and sum(rate(advisoryhub_celery_task_total[10m])) == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Work queued but no Celery progress (suspect broker down)"
+          description: "Queued work is not draining; check the broker and common.health._check_broker."

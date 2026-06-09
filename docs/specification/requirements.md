@@ -974,6 +974,16 @@ is required.
   `common.middleware.RequestIDMiddleware`; the format is switchable
   to plain text via `LOG_FORMAT=plain`.
 - Sentry is initialised when `SENTRY_DSN` is set.
+- Prometheus metrics are exposed at `/metrics` (django-prometheus
+  defaults plus the custom `advisoryhub_publication_*`,
+  `advisoryhub_celery_task_*`, and `advisoryhub_backlog` series; the
+  worker exports its own series on a separate port). A dev/demo
+  Prometheus + Grafana stack (opt-in `observability` compose profile)
+  ships example dashboards, alert rules, and documented SLOs
+  (availability ≥ 99.5%, p95 latency < 1s, publication success ≥ 90%).
+  In production the operator scrapes `/metrics` with their own
+  Prometheus — AdvisoryHub ships no production monitoring
+  infrastructure of its own.
 - Public intake is rate-limited per-IP for anonymous submitters
   and per-user for authenticated ones; the global toggle
   `RATELIMIT_ENABLE` exists for tests and local debugging.

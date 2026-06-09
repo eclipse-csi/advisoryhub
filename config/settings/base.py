@@ -109,6 +109,10 @@ env = environ.Env(
     # 1 behind a single ingress/LB) so per-IP rate limits and audit IPs
     # reflect the true client and can't be spoofed via a forged header.
     TRUSTED_PROXY_COUNT=(int, 0),
+    # Port for the worker-local Prometheus exporter (common.celery_metrics).
+    # 0 disables it (web/tests/manage.py never bind); the docker-compose worker
+    # sets 9808 and runs --pool=threads so one exporter sees all task threads.
+    PROMETHEUS_WORKER_METRICS_PORT=(int, 0),
 )
 
 # Read .env if present (silently ignored if missing)
@@ -347,6 +351,9 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 3600}
 READYZ_INCLUDE_PUB_REPO = env.bool("READYZ_INCLUDE_PUB_REPO", default=False)
 READYZ_INCLUDE_BROKER = env.bool("READYZ_INCLUDE_BROKER", default=False)
 
+# Worker-local Prometheus exporter port (0 = disabled). See common.celery_metrics.
+PROMETHEUS_WORKER_METRICS_PORT = env("PROMETHEUS_WORKER_METRICS_PORT")
+
 # ---------------------------------------------------------------------------
 # Email
 # ---------------------------------------------------------------------------
@@ -429,6 +436,13 @@ CELERY_BEAT_SCHEDULE = {
     "access-log-partition-maintenance": {
         "task": "audit.tasks.maintain_access_log_partitions",
         "schedule": timedelta(days=1),
+    },
+    # Refresh the advisoryhub_backlog Prometheus gauge from live DB counts.
+    # Runs in the worker so the series lands on the worker's metrics exporter
+    # (see common.metrics / common.celery_metrics).
+    "backlog-gauge-refresh": {
+        "task": "audit.tasks.refresh_backlog_gauges",
+        "schedule": timedelta(seconds=60),
     },
     # Refresh project security-team rosters from the authenticated Eclipse API
     # every PMI_ROSTER_SYNC_INTERVAL_HOURS. The task itself no-ops unless

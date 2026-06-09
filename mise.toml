@@ -95,12 +95,20 @@ description = "One-time kanidm bootstrap: cert, demo users, OAuth2 client"
 run = "bash dev/kanidm/setup.sh"
 
 [tasks.up]
-description = "Start the full dev stack (postgres, valkey, kanidm, web, worker)"
+description = "Start the full dev stack (postgres, valkey, kanidm, web, worker, beat)"
 run = "docker compose up"
 
 [tasks.down]
 description = "Stop the dev stack"
 run = "docker compose down"
+
+[tasks.obs-up]
+description = "Start the opt-in observability stack (Prometheus + Grafana). See dev/observability/README.md"
+run = "docker compose --profile observability up prometheus grafana"
+
+[tasks.obs-down]
+description = "Stop the observability stack"
+run = "docker compose --profile observability down"
 
 [tasks.build]
 description = "Rebuild the web/worker images (down -v wipes volumes, NOT images — run after a Dockerfile or dependency change)"

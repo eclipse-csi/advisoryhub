@@ -34,6 +34,16 @@ The authoritative source for what this system *is* and *does* lives in
 If you're contributing code, read the relevant spec file before making
 non-trivial changes and cite `INV-*` IDs in commits and PRs.
 
+## Manuals
+
+Task-oriented guides for the people who use and run AdvisoryHub:
+
+- [`docs/manual/`](docs/manual/) — **end-user** guides, one per role
+  (vulnerability reporter, collaborator/viewer, project security team, and
+  in-app administrator).
+- [`docs/operations/`](docs/operations/) — **operator** manual for installing,
+  configuring, running, and maintaining the service.
+
 ## Running locally
 
 `docker-compose.yml` is **dev-only** — every value it sets is a fixture,
@@ -101,7 +111,9 @@ secret-vs-config markers — it is a reference for whatever secret manager
 or platform manifest your deploy uses (Kubernetes Secrets, Docker Swarm
 secrets, AWS SSM, …) and is *not* loaded by docker-compose. The full
 env-var inventory with groups, defaults, and descriptions is in
-[`architecture.md §7`](docs/specification/architecture.md).
+[`architecture.md §7`](docs/specification/architecture.md), and the step-by-step
+operator guide (install, run, integrate, operate) is in
+[`docs/operations/`](docs/operations/).
 
 ## Running tests
 

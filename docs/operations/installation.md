@@ -28,8 +28,8 @@ docker compose exec web python manage.py seed_demo --with-publish-repo /tmp/advi
 Sign in at `http://localhost:8000/` as **`alice@example.org`** /
 **`correcthorsebatterystaple`** (created by the bootstrap script to match
 `seed_demo`). The bootstrap also creates the admin user `admin@example.org` and
-the groups `advisoryhub-security`, `eclipse-jetty-security`,
-`eclipse-vert-x-security`.
+the groups `advisoryhub-security`, `demo-lantern-security`,
+`demo-marigold-security`.
 
 Reset everything (drops volumes, rebuilds images so a changed `Dockerfile` /
 `uv.lock` is picked up):

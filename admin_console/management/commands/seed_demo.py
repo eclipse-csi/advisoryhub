@@ -9,7 +9,7 @@ Usage::
 What you get:
 
 * a global admin user (``admin@example.org``) in the configured admin group;
-* 20 Eclipse projects (a mix of mature publishers and non-mature) each
+* 20 demo projects (a mix of mature publishers and non-mature) each
   with a security team and 1-2 members;
 * ~30 demo users with a stable distribution across teams and outsiders;
 * ~30 advisories spread across draft / submitted / changes-requested /
@@ -53,195 +53,199 @@ from publication.models import PublicationTask
 from workflows import services as wf
 from workflows.models import CveRequestStatus, OrphanCve, ReviewTask
 
-# Eclipse project catalogue used by the demo seed.
+# Fake project catalogue used by the demo seed. The names/slugs are
+# deliberately fictional (no real Eclipse project is referenced) — slugs
+# and team-group names must stay stable across reseeds because the kanidm
+# bootstrap (dev/kanidm/setup.sh) re-asserts alice's/bob's group membership
+# on every OIDC login.
 # (slug, display_name, mature, team_group_name, default_package, ecosystem)
-ECLIPSE_PROJECTS: list[tuple[str, str, bool, str, str, str]] = [
+DEMO_PROJECTS: list[tuple[str, str, bool, str, str, str]] = [
     (
-        "technology.jetty",
-        "Eclipse Jetty",
+        "demotech.lantern",
+        "Demo Lantern",
         True,
-        "eclipse-jetty-security",
-        "org.eclipse.jetty:jetty-server",
+        "demo-lantern-security",
+        "org.example.lantern:lantern-core",
         "Maven",
     ),
     (
-        "technology.vert-x",
-        "Eclipse Vert.x",
+        "demotech.marigold",
+        "Demo Marigold",
         False,
-        "eclipse-vert-x-security",
-        "io.vertx:vertx-core",
+        "demo-marigold-security",
+        "org.example.marigold:marigold-core",
         "Maven",
     ),
     (
-        "ee4j.jersey",
-        "Eclipse Jersey",
+        "demotech.beacon",
+        "Demo Beacon",
         True,
-        "eclipse-jersey-security",
-        "org.glassfish.jersey.core:jersey-server",
+        "demo-beacon-security",
+        "org.example.beacon:beacon-server",
         "Maven",
     ),
     (
-        "ee4j.glassfish",
-        "Eclipse GlassFish",
+        "demotech.harbor",
+        "Demo Harbor",
         True,
-        "eclipse-glassfish-security",
-        "org.glassfish.main:glassfish",
+        "demo-harbor-security",
+        "org.example.harbor:harbor-core",
         "Maven",
     ),
     (
-        "technology.equinox",
-        "Eclipse Equinox",
+        "demotech.meadow",
+        "Demo Meadow",
         True,
-        "eclipse-equinox-security",
-        "org.eclipse.osgi:osgi",
+        "demo-meadow-security",
+        "org.example.meadow:meadow-core",
         "Maven",
     ),
     (
-        "technology.platform",
-        "Eclipse Platform",
+        "demotech.summit",
+        "Demo Summit",
         True,
-        "eclipse-platform-security",
-        "org.eclipse.platform:platform",
+        "demo-summit-security",
+        "org.example.summit:summit-core",
         "Maven",
     ),
     (
-        "modeling.emf",
-        "Eclipse Modeling Framework",
+        "demotech.willow",
+        "Demo Willow",
         False,
-        "eclipse-emf-security",
-        "org.eclipse.emf:emf-common",
+        "demo-willow-security",
+        "org.example.willow:willow-core",
         "Maven",
     ),
     (
-        "modeling.sirius",
-        "Eclipse Sirius",
+        "demotech.cinder-hollow",
+        "Demo Cinder Hollow",
         False,
-        "eclipse-sirius-security",
-        "org.eclipse.sirius:sirius-runtime",
+        "demo-cinder-hollow-security",
+        "org.example.cinder:cinder-runtime",
         "Maven",
     ),
     (
-        "technology.jgit",
-        "Eclipse JGit",
+        "demotech.compass",
+        "Demo Compass",
         True,
-        "eclipse-jgit-security",
-        "org.eclipse.jgit:org.eclipse.jgit",
+        "demo-compass-security",
+        "org.example.compass:compass-core",
         "Maven",
     ),
     (
-        "technology.egit",
-        "Eclipse EGit",
+        "demotech.thicket",
+        "Demo Thicket",
         False,
-        "eclipse-egit-security",
-        "org.eclipse.egit:org.eclipse.egit",
+        "demo-thicket-security",
+        "org.example.thicket:thicket-core",
         "Maven",
     ),
     (
-        "technology.mosquitto",
-        "Eclipse Mosquitto",
+        "demotools.otter",
+        "Demo Otter",
         True,
-        "eclipse-mosquitto-security",
-        "mosquitto",
+        "demo-otter-security",
+        "otter",
         "Other",
     ),
     (
-        "technology.paho",
-        "Eclipse Paho",
+        "demotools.quartz",
+        "Demo Quartz",
         False,
-        "eclipse-paho-security",
-        "org.eclipse.paho:org.eclipse.paho.client.mqttv3",
+        "demo-quartz-security",
+        "org.example.quartz:quartz-client",
         "Maven",
     ),
     (
-        "iot.kura",
-        "Eclipse Kura",
+        "demotools.saffron",
+        "Demo Saffron",
         False,
-        "eclipse-kura-security",
-        "org.eclipse.kura:kura-api",
+        "demo-saffron-security",
+        "org.example.saffron:saffron-api",
         "Maven",
     ),
     (
-        "iot.hono",
-        "Eclipse Hono",
+        "demotools.harvest",
+        "Demo Harvest",
         True,
-        "eclipse-hono-security",
-        "org.eclipse.hono:hono-client",
+        "demo-harvest-security",
+        "org.example.harvest:harvest-client",
         "Maven",
     ),
     (
-        "iot.ditto",
-        "Eclipse Ditto",
+        "demotools.ember",
+        "Demo Ember",
         False,
-        "eclipse-ditto-security",
-        "org.eclipse.ditto:ditto-client",
+        "demo-ember-security",
+        "org.example.ember:ember-client",
         "Maven",
     ),
     (
-        "technology.jdt",
-        "Eclipse JDT",
+        "demotools.juniper",
+        "Demo Juniper",
         True,
-        "eclipse-jdt-security",
-        "org.eclipse.jdt:org.eclipse.jdt.core",
+        "demo-juniper-security",
+        "org.example.juniper:juniper-core",
         "Maven",
     ),
     (
-        "technology.cdt",
-        "Eclipse CDT",
+        "demotools.cobalt",
+        "Demo Cobalt",
         False,
-        "eclipse-cdt-security",
-        "org.eclipse.cdt:org.eclipse.cdt.core",
+        "demo-cobalt-security",
+        "org.example.cobalt:cobalt-core",
         "Maven",
     ),
     (
-        "technology.pde",
-        "Eclipse PDE",
+        "demotools.pebble-brook",
+        "Demo Pebble Brook",
         False,
-        "eclipse-pde-security",
-        "org.eclipse.pde:org.eclipse.pde.core",
+        "demo-pebble-brook-security",
+        "org.example.pebble:pebble-core",
         "Maven",
     ),
     (
-        "technology.tycho",
-        "Eclipse Tycho",
+        "demotools.tamarind",
+        "Demo Tamarind",
         True,
-        "eclipse-tycho-security",
-        "org.eclipse.tycho:tycho-core",
+        "demo-tamarind-security",
+        "org.example.tamarind:tamarind-core",
         "Maven",
     ),
-    ("technology.theia", "Eclipse Theia", True, "eclipse-theia-security", "@theia/core", "npm"),
+    ("demotools.thimble", "Demo Thimble", True, "demo-thimble-security", "@demo/thimble", "npm"),
 ]
 
 # Demo users. The first three (alice/bob/carol) are kept verbatim for
 # parity with docs and the OIDC bootstrap script.
 # (email, display_name, project_slug_for_team_or_None)
 DEMO_USERS: list[tuple[str, str, str | None]] = [
-    ("alice@example.org", "Alice Doe", "technology.jetty"),
-    ("bob@example.org", "Bob Smith", "technology.vert-x"),
+    ("alice@example.org", "Alice Doe", "demotech.lantern"),
+    ("bob@example.org", "Bob Smith", "demotech.marigold"),
     ("carol@example.org", "Carol Outsider", None),
-    ("dave@example.org", "Dave Patel", "ee4j.jersey"),
-    ("erin@example.org", "Erin Mueller", "ee4j.glassfish"),
-    ("frank@example.org", "Frank O'Hara", "technology.equinox"),
-    ("gina@example.org", "Gina Rossi", "technology.platform"),
-    ("hans@example.org", "Hans Becker", "modeling.emf"),
-    ("ines@example.org", "Ines Lefevre", "modeling.sirius"),
-    ("jules@example.org", "Jules Tremblay", "technology.jgit"),
-    ("kira@example.org", "Kira Watanabe", "technology.egit"),
-    ("liam@example.org", "Liam O'Connor", "technology.mosquitto"),
-    ("mira@example.org", "Mira Sato", "technology.paho"),
-    ("noah@example.org", "Noah Andersson", "iot.kura"),
-    ("olga@example.org", "Olga Ivanova", "iot.hono"),
-    ("pablo@example.org", "Pablo Garcia", "iot.ditto"),
-    ("quinn@example.org", "Quinn Park", "technology.jdt"),
-    ("ravi@example.org", "Ravi Kumar", "technology.cdt"),
-    ("sara@example.org", "Sara Nilsson", "technology.pde"),
-    ("theo@example.org", "Theo Dubois", "technology.tycho"),
-    ("uma@example.org", "Uma Krishnan", "technology.theia"),
+    ("dave@example.org", "Dave Patel", "demotech.beacon"),
+    ("erin@example.org", "Erin Mueller", "demotech.harbor"),
+    ("frank@example.org", "Frank O'Hara", "demotech.meadow"),
+    ("gina@example.org", "Gina Rossi", "demotech.summit"),
+    ("hans@example.org", "Hans Becker", "demotech.willow"),
+    ("ines@example.org", "Ines Lefevre", "demotech.cinder-hollow"),
+    ("jules@example.org", "Jules Tremblay", "demotech.compass"),
+    ("kira@example.org", "Kira Watanabe", "demotech.thicket"),
+    ("liam@example.org", "Liam O'Connor", "demotools.otter"),
+    ("mira@example.org", "Mira Sato", "demotools.quartz"),
+    ("noah@example.org", "Noah Andersson", "demotools.saffron"),
+    ("olga@example.org", "Olga Ivanova", "demotools.harvest"),
+    ("pablo@example.org", "Pablo Garcia", "demotools.ember"),
+    ("quinn@example.org", "Quinn Park", "demotools.juniper"),
+    ("ravi@example.org", "Ravi Kumar", "demotools.cobalt"),
+    ("sara@example.org", "Sara Nilsson", "demotools.pebble-brook"),
+    ("theo@example.org", "Theo Dubois", "demotools.tamarind"),
+    ("uma@example.org", "Uma Krishnan", "demotools.thimble"),
     # Second members for some teams.
-    ("vera@example.org", "Vera Petrova", "technology.jetty"),
-    ("walt@example.org", "Walt Robinson", "ee4j.jersey"),
-    ("xena@example.org", "Xena Marinos", "iot.hono"),
-    ("yusuf@example.org", "Yusuf Demir", "technology.platform"),
-    ("zoe@example.org", "Zoe Fischer", "technology.jdt"),
+    ("vera@example.org", "Vera Petrova", "demotech.lantern"),
+    ("walt@example.org", "Walt Robinson", "demotech.beacon"),
+    ("xena@example.org", "Xena Marinos", "demotools.harvest"),
+    ("yusuf@example.org", "Yusuf Demir", "demotech.summit"),
+    ("zoe@example.org", "Zoe Fischer", "demotools.juniper"),
     # External reviewers / collaborators (no team membership).
     ("amir@example.org", "Amir Hassan", None),
     ("bella@example.org", "Bella Costa", None),
@@ -448,7 +452,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, reset: bool, with_publish_repo: str | None, **opts):
-        seed_group_names = {p[3] for p in ECLIPSE_PROJECTS} | {settings.OIDC_ADMIN_GROUP}
+        seed_group_names = {p[3] for p in DEMO_PROJECTS} | {settings.OIDC_ADMIN_GROUP}
 
         if reset:
             self.stdout.write(self.style.WARNING("Wiping demo data..."))
@@ -516,7 +520,7 @@ class Command(BaseCommand):
         admin, _ = User.objects.get_or_create(
             email="admin@example.org",
             defaults={
-                "display_name": "Eclipse Security Admin",
+                "display_name": "Demo Security Admin",
                 "is_staff": True,
                 "is_superuser": True,
             },
@@ -525,7 +529,7 @@ class Command(BaseCommand):
 
         # Projects + security teams.
         projects: dict[str, Project] = {}
-        for slug, name, mature, team_group, _pkg, _eco in ECLIPSE_PROJECTS:
+        for slug, name, mature, team_group, _pkg, _eco in DEMO_PROJECTS:
             projects[slug] = self._make_project(
                 slug, name, team_group_name=team_group, mature=mature
             )
@@ -539,10 +543,10 @@ class Command(BaseCommand):
                 u.groups.add(projects[member_of].security_team)
 
         # Convenient aliases for the original hardcoded users.
-        member_jetty = users["alice@example.org"]
-        member_vertx = users["bob@example.org"]
-        jetty = projects["technology.jetty"]
-        vertx = projects["technology.vert-x"]
+        member_lantern = users["alice@example.org"]
+        member_marigold = users["bob@example.org"]
+        lantern = projects["demotech.lantern"]
+        marigold = projects["demotech.marigold"]
 
         # Seed vulnerability reports independently of advisories so a
         # re-run can backfill them onto an older demo database.
@@ -554,9 +558,9 @@ class Command(BaseCommand):
 
         # --- Anchor advisories (preserved for parity with docs/tests) -----
 
-        # Advisory 1: draft on Jetty
+        # Advisory 1: draft on Demo Lantern
         Advisory.objects.create(
-            project=jetty,
+            project=lantern,
             summary="HTTP/2 header smuggling in request multiplexer",
             details=(
                 "Specially crafted CONTINUATION frames may smuggle "
@@ -567,11 +571,11 @@ class Command(BaseCommand):
             aliases=[],
             cwe_ids=["CWE-444"],
             references=[
-                {"type": "ADVISORY", "url": "https://www.eclipse.org/jetty/security_reports.php"},
+                {"type": "ADVISORY", "url": "https://example.org/demo/lantern/security"},
             ],
             affected=[
                 {
-                    "package": {"ecosystem": "Maven", "name": "org.eclipse.jetty:jetty-server"},
+                    "package": {"ecosystem": "Maven", "name": "org.example.lantern:lantern-core"},
                     "ranges": [
                         {
                             "type": "ECOSYSTEM",
@@ -582,26 +586,26 @@ class Command(BaseCommand):
             ],
             severity=[{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"}],
             credits=[{"name": "An anonymous reporter", "type": "REPORTER"}],
-            created_by=member_jetty,
+            created_by=member_lantern,
         )
 
-        # Advisory 2: submitted for review (Vert.x)
+        # Advisory 2: submitted for review (Demo Marigold)
         in_review = Advisory.objects.create(
-            project=vertx,
-            summary="Deserialization of untrusted data in EventBus codec",
+            project=marigold,
+            summary="Deserialization of untrusted data in message-bus codec",
             details=(
                 "When custom message codecs are registered without "
                 "explicit class allowlisting, an attacker controlling "
-                "an EventBus message can trigger reflection-based "
+                "a message-bus payload can trigger reflection-based "
                 "deserialization of arbitrary classes."
             ),
             cwe_ids=["CWE-502"],
             references=[
-                {"type": "ADVISORY", "url": "https://vertx.io/security"},
+                {"type": "ADVISORY", "url": "https://example.org/demo/marigold/security"},
             ],
             affected=[
                 {
-                    "package": {"ecosystem": "Maven", "name": "io.vertx:vertx-core"},
+                    "package": {"ecosystem": "Maven", "name": "org.example.marigold:marigold-core"},
                     "ranges": [
                         {
                             "type": "ECOSYSTEM",
@@ -611,24 +615,24 @@ class Command(BaseCommand):
                 }
             ],
             severity=[{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H"}],
-            created_by=member_vertx,
+            created_by=member_marigold,
         )
-        wf.submit_for_review(in_review, by=member_vertx)
+        wf.submit_for_review(in_review, by=member_marigold)
 
-        # Advisory 3: approved and published (Jetty, mature project)
+        # Advisory 3: approved and published (Demo Lantern, mature project)
         published = Advisory.objects.create(
-            project=jetty,
+            project=lantern,
             summary="Path traversal via double URL-decoded request URI",
             details="See references for details.",
             aliases=["CVE-2026-12345"],
             cwe_ids=["CWE-22"],
             references=[
-                {"type": "ADVISORY", "url": "https://www.eclipse.org/jetty/security_reports.php"},
-                {"type": "FIX", "url": "https://github.com/eclipse/jetty.project/commit/deadbeef"},
+                {"type": "ADVISORY", "url": "https://example.org/demo/lantern/security"},
+                {"type": "FIX", "url": "https://github.com/demo-org/lantern/commit/deadbeef"},
             ],
             affected=[
                 {
-                    "package": {"ecosystem": "Maven", "name": "org.eclipse.jetty:jetty-server"},
+                    "package": {"ecosystem": "Maven", "name": "org.example.lantern:lantern-core"},
                     "ranges": [
                         {
                             "type": "ECOSYSTEM",
@@ -639,7 +643,7 @@ class Command(BaseCommand):
             ],
             severity=[{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N"}],
             credits=[{"name": "Eve Reporter", "type": "REPORTER"}],
-            created_by=member_jetty,
+            created_by=member_lantern,
         )
 
         # --- Bulk advisories across all states ---------------------------
@@ -653,7 +657,7 @@ class Command(BaseCommand):
             )
         else:
             # Approve it so it shows as ready-to-publish in the dashboard.
-            review_task = wf.submit_for_review(published, by=member_jetty)
+            review_task = wf.submit_for_review(published, by=member_lantern)
             wf.approve_review(review_task, by=admin, notes="LGTM")
 
         # GHSA-linked demo advisories so a developer can click around the
@@ -668,8 +672,8 @@ class Command(BaseCommand):
             f"{Advisory.objects.count()} advisories.\n"
             "Demo users (all email-authenticated, no password set):\n"
             "  admin@example.org   global admin\n"
-            "  alice@example.org   eclipse-jetty security team\n"
-            "  bob@example.org     eclipse-vert-x security team\n"
+            "  alice@example.org   demo-lantern security team\n"
+            "  bob@example.org     demo-marigold security team\n"
             "  carol@example.org   outsider (no project membership)\n"
             "  ...plus ~28 more @example.org users across teams.\n"
             "Sign in via OIDC with one of these emails after wiring "
@@ -696,10 +700,10 @@ class Command(BaseCommand):
 
         admin = User.objects.get(email="admin@example.org")
         outsider = users.get("carol@example.org")
-        jetty = projects["technology.jetty"]
-        vertx = projects["technology.vert-x"]
-        jersey = projects["ee4j.jersey"]
-        glassfish = projects["ee4j.glassfish"]
+        lantern = projects["demotech.lantern"]
+        marigold = projects["demotech.marigold"]
+        beacon = projects["demotech.beacon"]
+        harbor = projects["demotech.harbor"]
         unsorted = Project.objects.get(slug="unsorted")
         now = timezone.now()
 
@@ -709,7 +713,7 @@ class Command(BaseCommand):
         specs: list[tuple[dict, dict, timedelta]] = [
             (
                 dict(
-                    project=jetty,
+                    project=lantern,
                     state=State.TRIAGE,
                     summary="Possible XSS in default error page",
                     details=(
@@ -727,12 +731,12 @@ class Command(BaseCommand):
             ),
             (
                 dict(
-                    project=vertx,
+                    project=marigold,
                     state=State.TRIAGE,
-                    summary="Memory exhaustion via crafted EventBus message",
+                    summary="Memory exhaustion via crafted message-bus message",
                     details=(
                         "Sending a chain of self-referential bridged messages can "
-                        "exhaust heap on the receiving verticle."
+                        "exhaust heap on the receiving worker."
                     ),
                 ),
                 dict(
@@ -744,7 +748,7 @@ class Command(BaseCommand):
             ),
             (
                 dict(
-                    project=glassfish,
+                    project=harbor,
                     state=State.TRIAGE,
                     summary="Admin console login bypass with crafted JSESSIONID",
                     details="Will share details by email when contacted.",
@@ -752,13 +756,13 @@ class Command(BaseCommand):
                 dict(
                     submitted_ip="203.0.113.99",
                     submitted_user_agent="Mozilla/5.0 (safari/17)",
-                    # Demo of the admin-routing flag: the GlassFish security
-                    # team reviewer suspects this is actually a Jersey issue.
+                    # Demo of the admin-routing flag: the Demo Harbor security
+                    # team reviewer suspects this is actually a Demo Beacon issue.
                     # They can't act on it; an admin must reassign.
                     needs_admin_routing=True,
                     admin_routing_note=(
-                        "This looks more like a Jersey authentication bug than "
-                        "a GlassFish issue — please re-route to ee4j.jersey."
+                        "This looks more like a Demo Beacon authentication bug than "
+                        "a Demo Harbor issue — please re-route to demotech.beacon."
                     ),
                     flagged_for_routing_at=now - timedelta(hours=1),
                     flagged_for_routing_by=admin,
@@ -769,9 +773,9 @@ class Command(BaseCommand):
                 dict(
                     project=unsorted,
                     state=State.TRIAGE,
-                    summary="Something is broken in an Eclipse plugin but I'm not sure which",
+                    summary="Something is broken in a demo plugin but I'm not sure which",
                     details=(
-                        "I get a crash when opening certain files in Eclipse. "
+                        "I get a crash when opening certain files in the app. "
                         "I don't know which project this belongs to."
                     ),
                 ),
@@ -785,7 +789,7 @@ class Command(BaseCommand):
             ),
             (
                 dict(
-                    project=jetty,
+                    project=lantern,
                     state=State.DISMISSED,
                     summary="Duplicate report — public CVE already filed",
                     details="Same issue as CVE-2024-XXXXX, already coordinated upstream.",
@@ -803,12 +807,12 @@ class Command(BaseCommand):
             specs.append(
                 (
                     dict(
-                        project=jersey,
+                        project=beacon,
                         state=State.TRIAGE,
-                        summary="Race condition in Jersey async response handler",
+                        summary="Race condition in Demo Beacon async response handler",
                         details=(
                             "Under load the async resumed-response can race with a "
-                            "second resume call, producing a `ResponseProcessingException`."
+                            "second resume call, producing a duplicate-response error."
                         ),
                         created_by=outsider,
                     ),
@@ -828,7 +832,7 @@ class Command(BaseCommand):
                         state=State.TRIAGE,
                         summary="Cross-project info disclosure — not sure where to file",
                         details=(
-                            "I noticed similar patterns across a few Eclipse projects. "
+                            "I noticed similar patterns across a few demo projects. "
                             "Filing this so the security team can route it."
                         ),
                         created_by=outsider,
@@ -887,11 +891,11 @@ class Command(BaseCommand):
         now = timezone.now()
 
         # 1) The installation registry needs at least one active row for
-        # the client to resolve "eclipse" to a token.
+        # the client to resolve "demo-org" to a token.
         GitHubAppInstallation.objects.get_or_create(
             installation_id=1,
             defaults={
-                "account_login": "eclipse",
+                "account_login": "demo-org",
                 "account_type": GitHubAppAccountType.ORGANIZATION,
                 "app_slug": "advisoryhub-demo",
                 "last_seen_at": now,
@@ -901,15 +905,15 @@ class Command(BaseCommand):
         # 2) PMI mirror entries for a couple of mature projects. We map
         # PMI slugs to plausible GitHub repos.
         demo_repos: list[tuple[str, str, str]] = [
-            ("technology.jetty", "eclipse", "jetty.project"),
-            ("ee4j.jersey", "eclipse-ee4j", "jersey"),
+            ("demotech.lantern", "demo-org", "lantern"),
+            ("demotech.beacon", "demo-labs", "beacon"),
         ]
-        # Add a second installation so eclipse-ee4j resolves too — this
+        # Add a second installation so demo-labs resolves too — this
         # also lets a dev see the multi-installation UI populated.
         GitHubAppInstallation.objects.get_or_create(
             installation_id=2,
             defaults={
-                "account_login": "eclipse-ee4j",
+                "account_login": "demo-labs",
                 "account_type": GitHubAppAccountType.ORGANIZATION,
                 "app_slug": "advisoryhub-demo",
                 "last_seen_at": now,
@@ -958,26 +962,26 @@ class Command(BaseCommand):
         # ``republish_required`` so the dashboard signal is visible.
         demo_advisories: list[tuple[str, str, str, str, str, bool]] = [
             (
-                "technology.jetty",
-                "eclipse",
-                "jetty.project",
-                "GHSA-demo-jetty-aaaa",
+                "demotech.lantern",
+                "demo-org",
+                "lantern",
+                "GHSA-demo-lntn-aaaa",
                 "Path traversal in static file handler",
                 False,  # draft
             ),
             (
-                "ee4j.jersey",
-                "eclipse-ee4j",
-                "jersey",
-                "GHSA-demo-jrsy-bbbb",
-                "XML external entity in JAX-RS parser",
+                "demotech.beacon",
+                "demo-labs",
+                "beacon",
+                "GHSA-demo-bcn-bbbb",
+                "XML external entity in REST parser",
                 False,  # draft
             ),
             (
-                "technology.jetty",
-                "eclipse",
-                "jetty.project",
-                "GHSA-demo-jty2-cccc",
+                "demotech.lantern",
+                "demo-org",
+                "lantern",
+                "GHSA-demo-lntn2-cccc",
                 "HTTP/2 header smuggling regression",
                 True,  # published, republish_required
             ),
@@ -1060,7 +1064,7 @@ class Command(BaseCommand):
         outsiders = [users[email] for email, _name, member_of in DEMO_USERS if member_of is None]
 
         # Project metadata indexed for affected-package generation.
-        project_meta = {p[0]: (p[4], p[5]) for p in ECLIPSE_PROJECTS}
+        project_meta = {p[0]: (p[4], p[5]) for p in DEMO_PROJECTS}
 
         # Each project gets at least one advisory; round-robin afterwards.
         project_slugs = list(projects.keys())
@@ -1094,7 +1098,7 @@ class Command(BaseCommand):
                 references=[
                     {
                         "type": "ADVISORY",
-                        "url": f"https://www.eclipse.org/security/advisories/{slug}",
+                        "url": f"https://example.org/security/advisories/{slug}",
                     },
                 ],
                 affected=[
@@ -1270,7 +1274,7 @@ class Command(BaseCommand):
             subprocess.run(
                 ["git", "-C", str(seed), "config", "commit.gpgsign", "false"], check=True
             )
-            (seed / "README.md").write_text("Eclipse Foundation security advisories — generated.\n")
+            (seed / "README.md").write_text("Demo security advisories — generated.\n")
             subprocess.run(["git", "-C", str(seed), "add", "README.md"], check=True)
             subprocess.run(
                 ["git", "-C", str(seed), "commit", "-m", "init"], check=True, capture_output=True

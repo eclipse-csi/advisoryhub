@@ -36,8 +36,8 @@ the OIDC group claim flows naturally into Django group membership.
 | SPN | Group | What they can do |
 | --- | --- | --- |
 | `eclipse-admin@example.org` | `advisoryhub-security` | Global admin/security team |
-| `alice@example.org` | `eclipse-jetty-security` | Eclipse Jetty security team member |
-| `bob@example.org` | `eclipse-vert-x-security` | Eclipse Vert.x security team member |
+| `alice@example.org` | `demo-lantern-security` | Demo Lantern security team member |
+| `bob@example.org` | `demo-marigold-security` | Demo Marigold security team member |
 | `carol@example.org` | (none) | Outsider — sees only published advisories |
 
 To change passwords, re-run `setup.sh` with `DEMO_PW` set — it idempotently

@@ -220,7 +220,7 @@ TOOLS_SCRIPT='
   # kanidms `<entity> get` returns 0 even when the entity is missing,
   # and `create` returns 409 if it already exists. Idempotent pattern:
   # just try to create, swallow conflict errors.
-  for g in advisoryhub-security eclipse-jetty-security eclipse-vert-x-security; do
+  for g in advisoryhub-security demo-lantern-security demo-marigold-security; do
     $KANIDM -D idm_admin group create "$g" >/dev/null 2>&1 || true
   done
 
@@ -239,16 +239,16 @@ TOOLS_SCRIPT='
   seed_user bob           Bob-Smith              bob@example.org
   seed_user carol         Carol-Outsider         carol@example.org
 
-  $KANIDM -D idm_admin group add-members advisoryhub-security    eclipse-admin >/dev/null 2>&1 || true
-  $KANIDM -D idm_admin group add-members eclipse-jetty-security  alice         >/dev/null 2>&1 || true
-  $KANIDM -D idm_admin group add-members eclipse-vert-x-security bob           >/dev/null 2>&1 || true
+  $KANIDM -D idm_admin group add-members advisoryhub-security   eclipse-admin >/dev/null 2>&1 || true
+  $KANIDM -D idm_admin group add-members demo-lantern-security  alice         >/dev/null 2>&1 || true
+  $KANIDM -D idm_admin group add-members demo-marigold-security bob           >/dev/null 2>&1 || true
 
   $KANIDM -D idm_admin system oauth2 create advisoryhub "AdvisoryHub" "http://localhost:8000" >/dev/null 2>&1 || true
   $KANIDM -D idm_admin system oauth2 add-redirect-url advisoryhub "http://localhost:8000/oidc/callback/" >/dev/null 2>&1 || true
   # Permit the post-logout landing URL so RP-initiated logout
   # (post_logout_redirect_uri) is accepted by kanidm.
   $KANIDM -D idm_admin system oauth2 add-redirect-url advisoryhub "http://localhost:8000/accounts/signed-out/" >/dev/null 2>&1 || true
-  for g in advisoryhub-security eclipse-jetty-security eclipse-vert-x-security; do
+  for g in advisoryhub-security demo-lantern-security demo-marigold-security; do
     $KANIDM -D idm_admin system oauth2 update-scope-map advisoryhub "$g" openid email profile groups >/dev/null 2>&1 || true
   done
 
@@ -396,6 +396,6 @@ echo "    open http://localhost:8000/   # then click 'Sign in'"
 echo
 ec "All four demo users have password \`$DEMO_PW\`. SPNs accepted at sign-in:"
 echo "    eclipse-admin   global admin"
-echo "    alice           Eclipse Jetty security team"
-echo "    bob             Eclipse Vert.x security team"
+echo "    alice           Demo Lantern security team"
+echo "    bob             Demo Marigold security team"
 echo "    carol           outsider (no project membership)"

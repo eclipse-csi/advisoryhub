@@ -36,7 +36,10 @@ spec:
         - name: migrate
           image: {{ include "advisoryhub.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python", "manage.py", "migrate", "--noinput"]
+          # command intentionally unset — the image ENTRYPOINT must run first
+          # (it registers the arbitrary runtime UID via nss_wrapper), then
+          # execs this argv.
+          args: ["python", "manage.py", "migrate", "--noinput"]
           securityContext:
             {{- include "advisoryhub.containerSecurityContext" . | nindent 12 }}
           # Pre-install hooks run before regular release resources exist, so

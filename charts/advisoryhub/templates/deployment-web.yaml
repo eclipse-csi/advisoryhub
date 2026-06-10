@@ -48,8 +48,8 @@ spec:
           envFrom:
             {{- include "advisoryhub.envFrom" . | nindent 12 }}
           env:
-            # Writable HOME under readOnlyRootFilesystem (entrypoint passwd
-            # registration, gunicorn control socket).
+            # Writable HOME under readOnlyRootFilesystem (entrypoint
+            # nss_wrapper passwd file, gunicorn control socket).
             - name: HOME
               value: /tmp
             # gunicorn worker count (read natively by gunicorn).

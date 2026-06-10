@@ -91,8 +91,10 @@ controller via `podAnnotations`.
 
 `containerSecurityContext.readOnlyRootFilesystem: true` is the default and
 works: writes go to the `/tmp` emptyDirs (and the web metrics emptyDir), and
-the image's entrypoint falls back to nss_wrapper to register the arbitrary
-UID when `/etc/passwd` is read-only.
+the image's entrypoint registers the arbitrary UID through nss_wrapper
+(`/tmp/passwd` + `LD_PRELOAD`; `/etc/passwd` is never touched). The chart
+deliberately leaves `command:` unset on every pod so that entrypoint always
+runs — override commands via `args:` only.
 
 ## Observability toggles
 

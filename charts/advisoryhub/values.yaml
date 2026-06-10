@@ -50,7 +50,7 @@ containerSecurityContext:
   capabilities:
     drop: ["ALL"]
   # The image supports this (writes go to /tmp and the metrics emptyDir; the
-  # entrypoint falls back to nss_wrapper for the arbitrary-UID passwd entry).
+  # entrypoint registers the arbitrary UID through nss_wrapper in /tmp).
   readOnlyRootFilesystem: true
 
 # ---------------------------------------------------------------------------

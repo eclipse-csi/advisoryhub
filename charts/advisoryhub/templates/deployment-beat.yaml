@@ -41,8 +41,11 @@ spec:
         - name: beat
           image: {{ include "advisoryhub.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["celery"]
+          # command intentionally unset — the image ENTRYPOINT must run first
+          # (it registers the arbitrary runtime UID via nss_wrapper), then
+          # execs this argv.
           args:
+            - "celery"
             - "-A"
             - "config"
             - "beat"

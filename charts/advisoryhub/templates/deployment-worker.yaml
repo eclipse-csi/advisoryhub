@@ -38,11 +38,15 @@ spec:
         - name: worker
           image: {{ include "advisoryhub.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # command intentionally unset — the image ENTRYPOINT must run first
+          # (it registers the arbitrary runtime UID via nss_wrapper; without
+          # it, ssh publication pushes fail with "No user exists for uid"),
+          # then execs this argv.
           # --pool=threads is load-bearing: all tasks run as threads of one
           # process, so the single exporter on the metrics port sees every
           # task's counts (raise --concurrency freely instead).
-          command: ["celery"]
           args:
+            - "celery"
             - "-A"
             - "config"
             - "worker"
@@ -89,13 +93,18 @@ spec:
             failureThreshold: 3
           {{- else if .Values.worker.probes.celeryInspectPing.enabled }}
           # Costly: each run boots a full Django/Celery process and round-trips
-          # the broker — hence the long period and off-by-default.
+          # the broker — hence the long period and off-by-default. python -c,
+          # not sh -c: the image has no shell, and socket.gethostname() stands
+          # in for the $HOSTNAME expansion (execvp keeps it a single process).
           livenessProbe:
             exec:
               command:
-                - sh
+                - python
                 - -c
-                - exec celery -A config inspect ping -d "celery@$HOSTNAME" --timeout 10
+                - >-
+                  import os, socket;
+                  os.execvp("celery", ["celery", "-A", "config", "inspect", "ping",
+                  "-d", "celery@" + socket.gethostname(), "--timeout", "10"])
             periodSeconds: {{ .Values.worker.probes.celeryInspectPing.periodSeconds }}
             timeoutSeconds: {{ .Values.worker.probes.celeryInspectPing.timeoutSeconds }}
             failureThreshold: {{ .Values.worker.probes.celeryInspectPing.failureThreshold }}

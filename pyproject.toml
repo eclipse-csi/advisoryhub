@@ -57,6 +57,7 @@ dev = [
     "responses>=0.25",
     "ruff>=0.5",
     "django-stubs[compatible-mypy]>=5.1",
+    "zizmor>=1.0",
 ]
 
 [tool.pytest.ini_options]

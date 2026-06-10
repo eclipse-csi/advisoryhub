@@ -5,14 +5,21 @@ Each call clones the configured repo into a fresh ``TemporaryDirectory``
 writes the generated files at deterministic paths, commits with a
 deterministic message, and pushes the configured branch.
 
+Every Git operation shells out to the ``git`` binary directly — argument
+lists only, never ``shell=True`` — so the production image needs nothing
+beyond the ``git``/``ssh`` executables (it has no shell). The per-command
+timeouts below are the *only* real hang protection: Celery time limits
+are not enforced under the threads pool the production worker runs with.
+
 Auth modes:
 
-* ``ssh``: set ``GIT_SSH_COMMAND`` for the GitPython subcalls so the SSH
+* ``ssh``: set ``GIT_SSH_COMMAND`` for the git subprocesses so the SSH
   client uses a specific identity file and skips host-key prompts. The
   configured ``ssh_key_path`` is used as ``-i``.
 * ``token``: rewrite the HTTPS URL to embed ``x-access-token:<TOKEN>@``.
   The token never appears in repo state, audit metadata, or last_error
-  (URLs are passed through ``redact_secrets`` before persisting).
+  (error messages are built from git's output — never the argument list —
+  and passed through ``redact_secrets`` before persisting).
 
 Public entry point: :func:`publish_files`.
 """
@@ -20,16 +27,21 @@ Public entry point: :func:`publish_files`.
 from __future__ import annotations
 
 import logging
+import os
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from git import Actor, Repo
-from git.exc import GitCommandError
-
 from .repo_config import RepoConfig
 
 log = logging.getLogger(__name__)
+
+# Wall-clock caps per git invocation. Network commands (clone/push) get a
+# generous budget that still fits inside the publication task's overall
+# window; local commands (add/commit/rev-parse) should be near-instant.
+_NETWORK_TIMEOUT = 300
+_LOCAL_TIMEOUT = 60
 
 
 class GitPublicationError(Exception):
@@ -63,44 +75,70 @@ def publish_files(
     if not config.repo_url:
         raise GitPublicationError("publication repository URL is not configured")
 
-    git_env = _ssh_command_env(config)
+    env = _git_env(config)
     with tempfile.TemporaryDirectory(prefix="advisoryhub-pub-") as workdir:
-        try:
-            effective_url = _embed_token(config)
-            repo = Repo.clone_from(
-                effective_url,
+        # The token-embedded URL only ever appears in this argument list;
+        # _run_git never quotes the argument list in error messages.
+        _run_git(
+            [
+                "clone",
+                "--depth",
+                "1",
+                "--single-branch",
+                "--branch",
+                config.branch,
+                "--",
+                _embed_token(config),
                 workdir,
-                branch=config.branch,
-                depth=1,
-                env=git_env or None,
-            )
-        except GitCommandError as exc:
-            raise GitPublicationError(_redact(str(exc), config)) from exc
+            ],
+            action="clone",
+            env=env,
+            config=config,
+            timeout=_NETWORK_TIMEOUT,
+        )
 
-        try:
-            # Carry the SSH identity into push too, without mutating the
-            # global process env (which would race between concurrent
-            # publications under a threaded Celery pool).
-            if git_env:
-                repo.git.update_environment(**git_env)
-            _configure_author(repo, config)
-            changed = _write_files(Path(workdir), files)
-            if not changed:
-                sha = repo.head.commit.hexsha
-                return PublishResult(commit_sha=sha, pushed_to=config.branch)
+        changed = _write_files(Path(workdir), files)
+        if not changed:
+            sha = _rev_parse_head(workdir, env=env, config=config)
+            return PublishResult(commit_sha=sha, pushed_to=config.branch)
 
-            repo.index.add([f.path for f in files])
-            commit = repo.index.commit(
-                commit_message, author=_author(config), committer=_author(config)
-            )
-            origin = repo.remote(name="origin")
-            push_info = origin.push(refspec=f"HEAD:{config.branch}")
-            _check_push(push_info, config)
-            return PublishResult(commit_sha=commit.hexsha, pushed_to=config.branch)
-        except GitPublicationError:
-            raise
-        except GitCommandError as exc:
-            raise GitPublicationError(_redact(str(exc), config)) from exc
+        _run_git(
+            ["-C", workdir, "add", "--", *[f.path for f in files]],
+            action="add",
+            env=env,
+            config=config,
+            timeout=_LOCAL_TIMEOUT,
+        )
+        # Author/committer identity comes from the GIT_AUTHOR_*/GIT_COMMITTER_*
+        # variables in ``env``. The publication bot must never sign commits —
+        # the deploy key/token is the trust signal. Host-wide GPG config
+        # (commit.gpgsign=true) would otherwise abort the commit.
+        _run_git(
+            [
+                "-C",
+                workdir,
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "tag.gpgsign=false",
+                "commit",
+                "-m",
+                commit_message,
+            ],
+            action="commit",
+            env=env,
+            config=config,
+            timeout=_LOCAL_TIMEOUT,
+        )
+        _run_git(
+            ["-C", workdir, "push", "origin", f"HEAD:{config.branch}"],
+            action="push",
+            env=env,
+            config=config,
+            timeout=_NETWORK_TIMEOUT,
+        )
+        sha = _rev_parse_head(workdir, env=env, config=config)
+        return PublishResult(commit_sha=sha, pushed_to=config.branch)
 
 
 # ---------------------------------------------------------------------------
@@ -108,53 +146,92 @@ def publish_files(
 # ---------------------------------------------------------------------------
 
 
-def _ssh_command_env(config: RepoConfig) -> dict[str, str]:
-    """Per-call git environment (``GIT_SSH_COMMAND``) when SSH auth is configured.
+def _run_git(
+    args: list[str],
+    *,
+    action: str,
+    env: dict[str, str],
+    config: RepoConfig,
+    timeout: int,
+) -> subprocess.CompletedProcess[str]:
+    """Run one git command; raise a redacted :class:`GitPublicationError` on failure.
 
-    Returned as an explicit env dict that is passed to GitPython's
-    clone/push commands rather than mutating the global ``os.environ`` —
-    the latter would race between concurrent publications under a threaded
-    Celery pool.
+    Error messages are built from ``action`` and git's own output only —
+    never from the argument list, which may embed the HTTPS token.
     """
-    if config.auth_method != "ssh" or not config.ssh_key_path:
-        return {}
-    cmd = (
-        f"ssh -i {config.ssh_key_path} "
-        "-o IdentitiesOnly=yes "
-        "-o StrictHostKeyChecking=accept-new "
-        "-o BatchMode=yes"
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GitPublicationError(f"git {action} timed out after {timeout}s") from exc
+    except OSError as exc:  # git binary missing or not executable
+        raise GitPublicationError(_redact(f"git {action} failed to start: {exc}", config)) from exc
+    if proc.returncode != 0:
+        detail = proc.stderr.strip() or proc.stdout.strip() or "no output"
+        raise GitPublicationError(
+            _redact(f"git {action} failed (exit {proc.returncode}): {detail}", config)
+        )
+    return proc
+
+
+def _rev_parse_head(workdir: str, *, env: dict[str, str], config: RepoConfig) -> str:
+    proc = _run_git(
+        ["-C", workdir, "rev-parse", "HEAD"],
+        action="rev-parse",
+        env=env,
+        config=config,
+        timeout=_LOCAL_TIMEOUT,
     )
-    return {"GIT_SSH_COMMAND": cmd}
+    return proc.stdout.strip()
+
+
+def _git_env(config: RepoConfig) -> dict[str, str]:
+    """Per-call environment for the git subprocesses.
+
+    Built as an explicit dict per call rather than mutating the global
+    ``os.environ`` — that would race between concurrent publications under
+    a threaded Celery pool. It must *extend* the process environment, not
+    replace it: the container entrypoint's nss_wrapper variables
+    (``LD_PRELOAD``/``NSS_WRAPPER_*``) have to reach the git → ssh child
+    processes for ssh to work under an arbitrary OpenShift UID.
+    """
+    env = {
+        **os.environ,
+        # Fail fast instead of waiting on an interactive credential prompt.
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_AUTHOR_NAME": config.commit_author_name,
+        "GIT_AUTHOR_EMAIL": config.commit_author_email,
+        "GIT_COMMITTER_NAME": config.commit_author_name,
+        "GIT_COMMITTER_EMAIL": config.commit_author_email,
+    }
+    if config.auth_method == "ssh" and config.ssh_key_path:
+        env["GIT_SSH_COMMAND"] = (
+            f"ssh -i {config.ssh_key_path} "
+            "-o IdentitiesOnly=yes "
+            "-o StrictHostKeyChecking=accept-new "
+            "-o BatchMode=yes"
+        )
+    return env
 
 
 def _embed_token(config: RepoConfig) -> str:
     """Embed an HTTPS token in the URL when configured.
 
-    The returned URL is *only* used as the argument to ``Repo.clone_from``;
-    it is never persisted, logged, or audited. ``_redact`` strips it from
-    any error string we surface.
+    The returned URL is *only* used as a ``git clone`` argument; it is
+    never persisted, logged, or audited. ``_redact`` strips it from any
+    error string we surface.
     """
     if config.auth_method != "token" or not config.token:
         return config.repo_url
     if not config.repo_url.startswith("https://"):
         return config.repo_url
     return config.repo_url.replace("https://", f"https://x-access-token:{config.token}@", 1)
-
-
-def _configure_author(repo: Repo, config: RepoConfig) -> None:
-    cw = repo.config_writer()
-    cw.set_value("user", "name", config.commit_author_name)
-    cw.set_value("user", "email", config.commit_author_email)
-    # The publication bot must never sign commits — the deploy key/token
-    # is the trust signal. Host-wide GPG config (commit.gpgsign=true)
-    # would otherwise abort the commit.
-    cw.set_value("commit", "gpgsign", "false")
-    cw.set_value("tag", "gpgsign", "false")
-    cw.release()
-
-
-def _author(config: RepoConfig) -> Actor:
-    return Actor(config.commit_author_name, config.commit_author_email)
 
 
 def _write_files(root: Path, files: list[WrittenFile]) -> bool:
@@ -169,16 +246,6 @@ def _write_files(root: Path, files: list[WrittenFile]) -> bool:
         target.write_text(f.content)
         changed = True
     return changed
-
-
-def _check_push(push_info_list, config: RepoConfig) -> None:
-    for info in push_info_list:
-        # GitPython push returns flags; non-zero error flags mean failure.
-        # See git.PushInfo.flags constants.
-        if info.flags & info.ERROR:
-            raise GitPublicationError(_redact(f"git push failed: {info.summary}", config))
-        if info.flags & info.REJECTED or info.flags & info.REMOTE_REJECTED:
-            raise GitPublicationError(_redact(f"git push rejected: {info.summary}", config))
 
 
 def _redact(message: str, config: RepoConfig) -> str:

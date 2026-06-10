@@ -34,7 +34,7 @@ Cross-references point at the deep-dive documents in this folder.
 | Authentication | `mozilla-django-oidc` | All authentication via OIDC. PKCE on by default. |
 | Templating | Django templates + HTMX | `django_htmx` middleware; partial-update fragments on the admin console and advisory actions. |
 | Markdown | `markdown-it-py` + `bleach` | Strict allowlist; rendered HTML never stored. |
-| Git client | `GitPython` | Used by the publication pipeline. |
+| Git client | `git` CLI via `subprocess` | Used by the publication pipeline; argument lists only, never `shell=True`. |
 | HTTP client (GHSA) | `requests` / `urllib3` | Through `ghsa.client`. |
 | Metrics | `django-prometheus` | `PrometheusBeforeMiddleware` first, `PrometheusAfterMiddleware` last. |
 | Error reporting | Sentry | Optional, enabled when `SENTRY_DSN` is set. |
@@ -301,39 +301,48 @@ either succeeds or marks the task `failed` and returns):
 
 ### 4.3 Git layer (`publication.git_service.publish_files`)
 
-For each call:
+Every step shells out to the `git` binary with explicit argument
+lists (`subprocess.run`, never `shell=True`); there is no Python Git
+library. Each invocation carries a wall-clock timeout (300 s for
+clone/push, 60 s for local commands) — the only real hang protection,
+since Celery time limits are not enforced under the worker's threads
+pool. For each call:
 
-1. `_ssh_env(config)` context manager: if auth mode is `ssh`,
-   sets `GIT_SSH_COMMAND` to
+1. `_git_env(config)` builds a per-call environment dict that
+   *extends* `os.environ` (it never mutates it — that would race
+   between concurrent publications under a threaded Celery pool;
+   extending rather than replacing matters so the container
+   entrypoint's nss_wrapper variables reach the git → ssh child
+   processes): `GIT_TERMINAL_PROMPT=0`, the
+   `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity from the config, and —
+   when auth mode is `ssh` — `GIT_SSH_COMMAND` set to
    `ssh -i <key> -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o BatchMode=yes`
-   for the duration of the clone and restores the previous value on
-   exit ([INV-SECRET-2](./invariant.md#inv-secret-2)).
+   ([INV-SECRET-2](./invariant.md#inv-secret-2)).
 2. A fresh `tempfile.TemporaryDirectory(prefix="advisoryhub-pub-")`
    ([INV-PUB-1](./invariant.md#inv-pub-1)).
 3. `_embed_token(config)`: if auth mode is `token` and the URL is
    HTTPS, rewrites it to
    `https://x-access-token:$PUB_REPO_TOKEN@…`. The rewritten URL is
-   only used as the `Repo.clone_from` argument; it is never
-   persisted, logged, or audited.
-4. `Repo.clone_from(effective_url, workdir, branch=config.branch,
-   depth=1)` — shallow clone
-   ([INV-PUB-3](./invariant.md#inv-pub-3)).
-5. `_configure_author` sets `user.name` and `user.email` from the
-   config, and forces `commit.gpgsign=false` /
-   `tag.gpgsign=false` so a host-wide signing config can never
-   block the bot.
-6. `_write_files(workdir, files)` writes each `WrittenFile` and
+   only used as a `git clone` argument; it is never persisted,
+   logged, or audited.
+4. `git clone --depth 1 --single-branch --branch <branch>` — shallow
+   clone ([INV-PUB-3](./invariant.md#inv-pub-3)).
+5. `_write_files(workdir, files)` writes each `WrittenFile` and
    returns whether anything changed. Idempotent on content: if both
    the OSV and the CSAF are byte-identical to what is already on
    the branch, no commit is created and the function returns
    `PublishResult(commit_sha=HEAD, …)`.
-7. Otherwise the index is staged, a commit is created with the
-   configured author + the deterministic message
-   `Publish advisory <advisory_id>`, and `origin.push` is run
-   against `refspec=f"HEAD:{config.branch}"`. `_check_push`
-   inspects each `PushInfo` and raises `GitPublicationError` on
-   any error / rejected / remote-rejected flag.
-8. All raised error strings flow through `_redact(str, config)`
+6. Otherwise `git add`, then
+   `git -c commit.gpgsign=false -c tag.gpgsign=false commit` with the
+   deterministic message `Publish advisory <advisory_id>` (the bot
+   must never sign commits — the deploy key/token is the trust
+   signal; a host-wide `commit.gpgsign=true` would otherwise abort
+   the commit), then `git push origin HEAD:<branch>`. A non-zero
+   exit from any step — including rejected pushes — raises
+   `GitPublicationError`.
+7. All raised error strings are built from the failing subcommand's
+   name and git's own output — never from the argument list, which
+   may embed the token — and flow through `_redact(str, config)`
    which calls `audit.services.redact_secrets` and then explicitly
    strips the configured token, so an error message that somehow
    surfaces a URL with embedded credentials still leaves the
@@ -968,8 +977,8 @@ a real Git remote:
 - Email lands in `mail.outbox` via the locmem backend.
 - Publication tests use a **local bare repository** created in a
   `tempfile.TemporaryDirectory()`; the `PUB_REPO_URL` setting
-  is pointed at the bare repo's path so the real `GitPython`
-  call exercises the actual flow. Tests skip themselves when
+  is pointed at the bare repo's path so the real `git` subprocess
+  calls exercise the actual flow. Tests skip themselves when
   `git` is not on `PATH`.
 
 ### 9.5 Lint & format

@@ -1,7 +1,7 @@
 """Tests for the Git publication service against a local bare repo.
 
-These tests need a working Git binary on PATH and the GitPython library;
-they skip cleanly if either is missing.
+These tests need a working Git binary on PATH; they skip cleanly if it
+is missing.
 """
 
 from __future__ import annotations
@@ -11,12 +11,10 @@ import subprocess
 
 import pytest
 
-git_module = pytest.importorskip("git")
-from git import Repo  # noqa: E402
-
 from publication.git_service import (
     GitPublicationError,
     WrittenFile,
+    _git_env,
     publish_files,
 )
 from publication.repo_config import RepoConfig
@@ -27,6 +25,14 @@ def _git_available() -> bool:
 
 
 pytestmark = pytest.mark.skipif(not _git_available(), reason="git binary not on PATH")
+
+
+def _clone(url: str, dest: str, branch: str = "main") -> None:
+    subprocess.run(
+        ["git", "clone", "--branch", branch, "--", url, dest],
+        check=True,
+        capture_output=True,
+    )
 
 
 @pytest.fixture
@@ -96,7 +102,7 @@ def test_publish_files_writes_and_pushes(config, bare_repo, tmp_path):
 
     # Re-clone the bare repo to verify the files arrived.
     verify = tmp_path / "verify"
-    Repo.clone_from(str(bare_repo), str(verify), branch="main")
+    _clone(str(bare_repo), str(verify))
     assert (
         verify / "osv" / "ECL-cccc-ffff-gggg.json"
     ).read_text() == '{"id": "ECL-cccc-ffff-gggg"}\n'
@@ -117,7 +123,7 @@ def test_publish_overwrites_existing_file_on_change(config, bare_repo, tmp_path)
     r2 = publish_files(config=config, files=[file_v2], commit_message="v2")
     assert r1.commit_sha != r2.commit_sha
     verify = tmp_path / "verify"
-    Repo.clone_from(str(bare_repo), str(verify), branch="main")
+    _clone(str(bare_repo), str(verify))
     assert (verify / "osv" / "X.json").read_text() == '{"v": 2}\n'
 
 
@@ -169,3 +175,18 @@ def test_publish_redacts_token_in_error_message(tmp_path):
         assert "ghp_supersecrettoken" not in str(exc)
     else:
         pytest.fail("expected GitPublicationError")
+
+
+def test_git_env_extends_process_environment(config, monkeypatch):
+    """_git_env must extend os.environ, never replace it.
+
+    The container entrypoint's nss_wrapper variables (LD_PRELOAD /
+    NSS_WRAPPER_*) have to reach the git → ssh child processes for ssh to
+    work under an arbitrary OpenShift UID.
+    """
+    monkeypatch.setenv("NSS_WRAPPER_PASSWD", "/tmp/passwd-sentinel")
+    env = _git_env(config)
+    assert env["NSS_WRAPPER_PASSWD"] == "/tmp/passwd-sentinel"
+    assert env["GIT_TERMINAL_PROMPT"] == "0"
+    assert env["GIT_AUTHOR_NAME"] == config.commit_author_name
+    assert env["GIT_COMMITTER_EMAIL"] == config.commit_author_email

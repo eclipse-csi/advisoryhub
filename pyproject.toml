@@ -17,7 +17,6 @@ dependencies = [
     "bleach>=6.1",
     "jsonschema>=4.21",
     "cvss>=3.0",
-    "GitPython>=3.1",
     "django-environ>=0.11",
     "django-ratelimit>=4.1",
     "sentry-sdk[django]>=2.0",

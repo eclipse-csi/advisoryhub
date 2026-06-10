@@ -17,9 +17,6 @@ import subprocess
 
 import pytest
 
-git_module = pytest.importorskip("git")
-from git import Repo  # noqa: E402
-
 from advisories.models import Advisory, State
 from audit.models import Action, AuditLogEntry
 from publication import services as pub_services
@@ -37,6 +34,14 @@ def _git_available() -> bool:
 
 
 pytestmark = pytest.mark.skipif(not _git_available(), reason="git binary not on PATH")
+
+
+def _clone(url: str, dest: str, branch: str = "main") -> None:
+    subprocess.run(
+        ["git", "clone", "--branch", branch, "--", url, dest],
+        check=True,
+        capture_output=True,
+    )
 
 
 @pytest.fixture
@@ -216,7 +221,7 @@ def test_run_publication_writes_files_and_flips_state(setup):
     # Verify file content reached the bare repo, bucketed by publication year.
     year = setup["advisory"].published_at.year
     verify = setup["tmp_path"] / "verify"
-    Repo.clone_from(str(setup["bare_repo"]), str(verify), branch="main")
+    _clone(str(setup["bare_repo"]), str(verify))
     osv_file = verify / "osv" / str(year) / "ECL-cccc-ffff-gggg.json"
     csaf_file = verify / "csaf" / str(year) / "ECL-cccc-ffff-gggg.json"
     assert osv_file.exists()
@@ -478,7 +483,7 @@ def test_run_publication_generates_and_pushes_cve_when_assigned(setup):
 
     # File reached the bare repo at the bucketed path.
     verify = setup["tmp_path"] / "verify-cve"
-    Repo.clone_from(str(setup["bare_repo"]), str(verify), branch="main")
+    _clone(str(setup["bare_repo"]), str(verify))
     assert (verify / "cves" / "2026" / "0xxx" / "CVE-2026-0001.json").exists()
 
     assert AuditLogEntry.objects.filter(

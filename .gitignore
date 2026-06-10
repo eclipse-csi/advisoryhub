@@ -13,3 +13,4 @@ htmlcov/
 .DS_Store
 dev/kanidm/.env.kanidm
 mise.local.toml
+sbom.cdx.json

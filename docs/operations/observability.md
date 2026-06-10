@@ -88,6 +88,14 @@ The dev stack has no Alertmanager — firing alerts show in Prometheus `/alerts`
 Grafana; wire an Alertmanager in production to actually page. See
 `dev/observability/README.md` for the full layout.
 
+On Kubernetes/OKD, the Helm chart ships these same rules and dashboards as a
+`PrometheusRule` and Grafana-sidecar ConfigMaps (`metrics.prometheusRule` /
+`metrics.grafanaDashboards`), with ServiceMonitors that pin the `job` label to
+the names the rules expect — see
+[deploy-kubernetes.md §7](./deploy-kubernetes.md#7-monitoring). The chart's
+copies are kept byte-identical to `dev/observability/` by
+`dev/check_chart_assets.sh` (prek + CI).
+
 ---
 
 ## 4. Sentry

@@ -120,16 +120,39 @@ curl -fsS https://<host>/readyz      # readiness — 200 only if DB + cache reac
 
 ---
 
-## 3. The shipped image is a dev image
+## 3. The container image
 
-Be deliberate about this: the repository's `Dockerfile` builds a **development**
-image. Its `CMD` is `python manage.py runserver` (the Django dev server, never for
-production), and it installs the dev dependency group (`uv sync --locked --extra
-dev`). For production you **reuse the image but override the command** to run
-gunicorn / Celery (see [running-in-production.md](./running-in-production.md)),
-and you may build a leaner image without `--extra dev`. The dev server, the
-`DEBUG=True` dev settings, and the bundled Kanidm/compose services must not be
-used to serve real traffic.
+The repository `Dockerfile` is multi-target:
+
+- **`dev`** (what docker-compose builds): dependencies only, dev extras
+  included, `CMD runserver`, source bind-mounted. Never serves real traffic.
+- **`production`** (the default target — CI publishes it to
+  `ghcr.io/mbarbero/advisoryhub` via `.github/workflows/release-image.yml`,
+  scanned, SBOM/provenance-attested, and cosign-signed): runtime dependencies
+  only, source and `collectstatic` output baked in, default `CMD` gunicorn.
+
+Production-image facts an operator needs:
+
+- **Base**: Docker Hardened Images (`dhi.io/python:…-debian13-dev`); pulling
+  the base for a local build requires `docker login dhi.io` (free Docker
+  account). The *published* image on ghcr.io needs no DHI credentials.
+- **One image, three processes** — override the command for the task tier:
+  - web (default CMD): `gunicorn config.wsgi -c gunicorn.conf.py --bind 0.0.0.0:8000`
+    (worker count via the `WEB_CONCURRENCY` env var)
+  - worker: `celery -A config worker -l info --pool=threads --concurrency=4`
+  - beat: `celery -A config beat -l info --schedule=/tmp/celerybeat-schedule`
+- `DJANGO_SETTINGS_MODULE=config.settings.prod` is baked in (override-able).
+- **OpenShift-compatible**: runs as any non-root UID in group 0 (the
+  entrypoint registers the runtime UID, falling back to nss_wrapper on a
+  read-only root filesystem). Writable paths needed at runtime: `/tmp`, and
+  on web `PROMETHEUS_MULTIPROC_DIR` — mount emptyDirs there when running with
+  `readOnlyRootFilesystem`.
+- Optional strict SSH host pinning: mount a pre-populated file at
+  `/etc/ssh/ssh_known_hosts` (otherwise publication pushes trust the remote
+  on first contact via `StrictHostKeyChecking=accept-new`).
+
+For Kubernetes/OKD, the Helm chart in `charts/advisoryhub/` wires all of this
+up — see [deploy-kubernetes.md](./deploy-kubernetes.md).
 
 ---
 
@@ -137,4 +160,5 @@ used to serve real traffic.
 
 - [configuration.md](./configuration.md) — every environment variable.
 - [running-in-production.md](./running-in-production.md) — how to run the processes.
+- [deploy-kubernetes.md](./deploy-kubernetes.md) — Helm chart deployment on OKD / Kubernetes.
 - [integrations.md](./integrations.md) — OIDC, publication repo, GHSA, roster sync.

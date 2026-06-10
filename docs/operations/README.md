@@ -9,8 +9,9 @@ the code wins; cross-references point you at the authoritative source.
 
 It is **documentation only**: it tells you how to run AdvisoryHub with the tools
 the repository already ships (`Dockerfile`, `docker-compose.yml`,
-`gunicorn.conf.py`, the management commands). It does **not** prescribe a
-specific orchestrator — production deployment is platform-agnostic.
+`gunicorn.conf.py`, the management commands). Production deployment is
+platform-agnostic; for Kubernetes/OKD the repository ships a first-class
+[Helm chart](./deploy-kubernetes.md), but nothing requires it.
 
 ---
 
@@ -79,9 +80,10 @@ The full architecture, pipelines, and rationale are in
 
 | Page | Covers |
 |---|---|
-| [installation.md](./installation.md) | Local evaluation (docker-compose) and the **production first-run bootstrap** sequence. |
+| [installation.md](./installation.md) | Local evaluation (docker-compose), the **production first-run bootstrap** sequence, and the **container image**. |
 | [configuration.md](./configuration.md) | The settings modules and the **complete environment-variable reference**. |
 | [running-in-production.md](./running-in-production.md) | Running web/worker/beat, reverse proxy & TLS, static files, health probes, the beat schedule, and the security-hardening checklist. |
+| [deploy-kubernetes.md](./deploy-kubernetes.md) | Deploying with the **Helm chart** (`charts/advisoryhub/`) on **OKD/OpenShift** or vanilla Kubernetes. |
 | [integrations.md](./integrations.md) | Wiring the **OIDC provider**, the **publication Git repo** (SSH/token), the optional **GHSA GitHub App**, and **roster sync**. |
 | [observability.md](./observability.md) | Logging, Prometheus metrics, the bundled Grafana/alert assets, and Sentry. |
 | [maintenance.md](./maintenance.md) | Backups & data integrity, upgrades, maintenance mode, the management-command reference, and data retention / GDPR. |

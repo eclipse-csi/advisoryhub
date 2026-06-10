@@ -54,8 +54,10 @@ Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/k
 - `mise run check` / `makemigrations-check` / `audit` — Django checks + pip-audit
 - `mise run verify-vendor` / `check-templates` — vendored-asset checksum + template-comment guards (also run by prek/CI)
 - `mise run helm-lint` / `helm-template` / `helm-validate` / `verify-chart-assets` — Helm chart gates for `charts/advisoryhub` (lint + kubeconform render validation + observability-asset sync; also run by CI)
+- `mise run zizmor` — security-audit the GitHub Actions workflows (also run by prek + CI's workflow-security job; config in `.github/zizmor.yml`)
+- `mise run release` / `release-check` / `changelog` / `sbom` — cut a release / version-consistency gate / git-cliff notes / CycloneDX SBOM (see [Releases](#releases))
 
-mise pins only the bootstrap `uv` + `prek` (in `mise.toml`); all dev tool versions stay in `uv.lock`, the Python version in `.python-version`. CI runs these same tasks. Raw `uv`/`docker compose` commands remain canonical.
+mise pins only the bootstrap `uv` + `prek` (in `mise.toml`) plus the chart/release binaries (`helm`, `kubeconform`, `git-cliff`, `trivy`); all dev tool versions stay in `uv.lock`, the Python version in `.python-version`. CI runs these same tasks. Raw `uv`/`docker compose` commands remain canonical.
 
 ### Tests
 
@@ -106,7 +108,7 @@ prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
 prek run --all-files --hook-stage manual      # advisory ty (mirrors CI's ty job)
 ```
 
-Commit stage = file hygiene + `ruff check --fix` + `ruff format`, plus two repo guards: `dev/check_vendored_assets.sh` (htmx + Inter font sha256 vs their `*.VERSION` files) and `dev/check_template_comments.py` (rejects multi-line `{# #}` — Django's single-line comment renders those as literal text). Push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored/verbatim assets (`static/htmx.*`, `static/fonts/*.woff2`, `static/fonts/Inter.VERSION`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded from the hygiene hooks.
+Commit stage = file hygiene + `ruff check --fix` + `ruff format`, plus three repo guards: `dev/check_vendored_assets.sh` (htmx + Inter font sha256 vs their `*.VERSION` files), `dev/check_template_comments.py` (rejects multi-line `{# #}` — Django's single-line comment renders those as literal text), and zizmor (workflow security audit, fires when `.github/` workflow files change). Push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored/verbatim assets (`static/htmx.*`, `static/fonts/*.woff2`, `static/fonts/Inter.VERSION`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded from the hygiene hooks.
 
 ## Load-bearing rules
 
@@ -178,6 +180,12 @@ Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css
 `docker-compose.yml`'s `x-django-env` anchor is the canonical dev configuration (reused by `web` and `worker`); **don't edit env files for dev**. `.env.example` documents every prod knob and is reference-only — it is *not* loaded by docker-compose. `dev/kanidm/.env.kanidm` is the only file compose actually loads at runtime (for the OIDC client secret minted by the bootstrap script).
 
 Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP is enforced by default; set `True` for Report-Only) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`, `PMI_ROSTER_SYNC_ENABLED` (+ `ECLIPSE_API_*` OAuth2 creds — security-team roster sync, off by default).
+
+## Releases
+
+Tag-driven; full runbook in [`docs/releasing.md`](docs/releasing.md). `mise run release -- X.Y.Z` bumps every recorded version in lockstep (`pyproject.toml` + `uv.lock` via `uv version`, `Chart.yaml` `version`/`appVersion`) and creates the signed `chore(release)` commit + signed `vX.Y.Z` tag; pushing the tag triggers `release-image.yml` (container image → ghcr.io, signed, SBOM + provenance) and `release.yml` (version gate → git-cliff notes → wait-for-image → Helm chart → `oci://ghcr.io/<owner>/charts`, cosign-signed → GitHub release with chart/SBOM/checksums attached). `mise run release-check` asserts the version lockstep anytime.
+
+**Workflow conventions** (gated by zizmor — `mise run zizmor`, prek hook, and the `workflow-security.yml` job): every `uses:` is pinned to a full commit SHA with a trailing `# vX.Y.Z` comment that Dependabot maintains — keep both when editing workflows; every job starts with `step-security/harden-runner` (audit); checkouts set `persist-credentials: false`; step outputs are expanded via `env:` indirection, never inline in `run:`. Suppressions live in `.github/zizmor.yml` with rationale.
 
 ## Deferred / out of scope
 

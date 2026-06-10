@@ -1,0 +1,22 @@
+# Dependabot keeps the SHA-pinned `uses:` references in .github/workflows/
+# fresh (it rewrites both the pin and the trailing `# vX.Y.Z` comment).
+#
+# Deliberately github-actions only:
+#   * Python deps stay in uv.lock — pip-audit already FAILS CI on known-
+#     vulnerable runtime deps; feature upgrades happen via explicit `uv lock`
+#     bumps, not bot churn.
+#   * Docker bases (dhi.io) are digest-pinned on purpose, live behind a
+#     credentialed registry Dependabot can't reach without extra secrets, and
+#     the Trivy gate fails the build on a vulnerable base anyway.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      gha:
+        patterns: ["*"] # one grouped PR per week, not one per action
+    commit-message:
+      prefix: "build"
+      include: scope # → "build(deps): bump …" (conventional commits)

@@ -1,0 +1,149 @@
+name: Release
+
+# Tag-driven release (runbook: docs/releasing.md). On a vX.Y.Z tag push —
+# created by `mise run release -- X.Y.Z` — this workflow:
+#
+#   1. gates: the tag must match every recorded version (pyproject, uv.lock,
+#      Chart.yaml version/appVersion — dev/check_release_versions.sh);
+#   2. renders the release notes with git-cliff (cliff.toml);
+#   3. waits for release-image.yml (triggered by the same tag) to publish the
+#      container image — a failed image build (smoke test / Trivy gate) fails
+#      this run at the poll, so no release exists without its image;
+#   4. pushes the Helm chart to oci://ghcr.io/<owner>/charts and signs it with
+#      keyless cosign (same identity model as the image);
+#   5. creates the GitHub release with the chart .tgz, a CycloneDX SBOM of the
+#      locked dependencies, and a sha256 checksums file attached.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Changelog, chart & GitHub release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # gh release create
+      packages: write # helm push to ghcr.io (read side covers the image poll)
+      id-token: write # cosign keyless (OIDC)
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
+      CHART: ghcr.io/${{ github.repository_owner }}/charts/advisoryhub
+    steps:
+      - uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      # Full history + tags: git-cliff derives the release range from them.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # Installs the mise [tools] (helm, git-cliff, trivy, …). No uv sync: the
+      # gate script runs on the system python3 (stdlib tomllib only).
+      # cache: false — this workflow publishes release artifacts, so the tools
+      # it runs must not come from a poisonable actions cache (zizmor
+      # cache-poisoning). Releases are rare; the cold install is cheap.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          cache: false
+
+      - name: Gate — tag matches every recorded version
+        run: bash dev/check_release_versions.sh "$GITHUB_REF_NAME"
+
+      # The tag being released is the latest tag here, so --latest (inside the
+      # task) selects exactly this release's range.
+      - name: Release notes (git-cliff)
+        run: mise run changelog -- --output release-notes.md
+
+      - name: Wait for the container image (release-image.yml on this tag)
+        id: image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          VERSION="${GITHUB_REF_NAME#v}"
+          for i in $(seq 1 40); do # ~20 min budget
+            if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
+              digest=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{json .Manifest}}' | jq -r .digest)
+              echo "found ${IMAGE}:${VERSION}@${digest}"
+              echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "waiting for ${IMAGE}:${VERSION} ($i/40)…"
+            sleep 30
+          done
+          echo "::error::${IMAGE}:${VERSION} never appeared — check the 'Release image' run for this tag, fix, then re-run this workflow"
+          exit 1
+
+      - name: Package + push chart (OCI)
+        id: chart
+        env:
+          HELM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          helm package charts/advisoryhub --destination dist
+          echo "$HELM_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          helm push "dist/advisoryhub-${VERSION}.tgz" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts" 2>&1 | tee push.log
+          echo "digest=$(sed -n 's/^Digest: //p' push.log)" >> "$GITHUB_OUTPUT"
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign chart (cosign keyless)
+        env:
+          # env indirection — never expand step outputs inside run: (zizmor
+          # template-injection).
+          DIGEST: ${{ steps.chart.outputs.digest }}
+        run: cosign sign --yes "${CHART}@${DIGEST}"
+
+      - name: Dependency SBOM (CycloneDX from uv.lock)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mise run sbom
+          mv sbom.cdx.json "dist/advisoryhub-${VERSION}-deps.cdx.json"
+
+      - name: Checksums
+        run: cd dist && sha256sum -- * > checksums.txt
+
+      - name: Append artifacts section to the notes
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          CHART_DIGEST: ${{ steps.chart.outputs.digest }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo
+            echo "### Artifacts"
+            echo
+            echo "- Container image: \`${IMAGE}:${VERSION}@${IMAGE_DIGEST}\` (SBOM + SLSA provenance attached as attestations)"
+            echo "- Helm chart: \`oci://${CHART}\` version \`${VERSION}\` (\`${CHART_DIGEST}\`)"
+            echo
+            echo "Both are signed with keyless cosign; verify with:"
+            echo
+            echo '```sh'
+            echo "cosign verify '${IMAGE}@${IMAGE_DIGEST}' \\"
+            echo "  --certificate-identity-regexp 'https://github.com/${GITHUB_REPOSITORY}/\\.github/workflows/release-image\\.yml@.*' \\"
+            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com"
+            echo "cosign verify '${CHART}@${CHART_DIGEST}' \\"
+            echo "  --certificate-identity-regexp 'https://github.com/${GITHUB_REPOSITORY}/\\.github/workflows/release\\.yml@.*' \\"
+            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com"
+            echo '```'
+          } >> release-notes.md
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "advisoryhub ${VERSION}" \
+            --notes-file release-notes.md \
+            dist/*

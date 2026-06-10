@@ -89,6 +89,12 @@ description = "Fail on multi-line {# #} Django comments (they render as literal 
 # uv dev environment (a plain `uv run python …` would sync to the default group).
 run = "python3 dev/check_template_comments.py"
 
+[tasks.zizmor]
+description = "Security-audit the GitHub Actions workflows (mirrors CI's workflow-security job)"
+# Offline: the online audits need a GitHub token and would make local != CI;
+# action-version freshness is Dependabot's job. Config in .github/zizmor.yml.
+run = "uv run zizmor --offline .github/workflows"
+
 # ---- Helm chart (charts/advisoryhub) ---------------------------------------
 [tasks.helm-lint]
 description = "helm lint the chart against the default + every ci/ values fixture"

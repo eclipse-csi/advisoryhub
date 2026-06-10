@@ -1,0 +1,16 @@
+# zizmor (https://docs.zizmor.sh) configuration — the workflow security audit
+# run by `mise run zizmor`, the prek commit hook, and CI's workflow-security
+# job (all three run the same uv.lock-pinned zizmor, offline).
+rules:
+  cache-poisoning:
+    # release-image.yml writes the gha buildx cache on the local (smoke-test)
+    # build and replays it on the publish build, and publishes on tag pushes —
+    # the audit flags that combination. Deliberate: the cache replay is what
+    # guarantees the published image is byte-identical to the layer set that
+    # passed the smoke test and the Trivy gate (the two builds run in a
+    # docker-container builder with no shared local store). GHA cache isolation
+    # only lets main/tag runs restore caches written from main, and writing
+    # main's cache already requires push access to main — the same trust
+    # boundary as the release itself.
+    ignore:
+      - release-image.yml

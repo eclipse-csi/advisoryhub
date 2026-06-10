@@ -22,6 +22,9 @@ prek = "latest"   # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wire
 # not Python tools, so they belong here rather than in uv.lock.
 helm        = "latest"   # aqua:helm/helm
 kubeconform = "latest"   # aqua:yannh/kubeconform
+# Release toolchain (docs/releasing.md) — bootstrap binaries, same rationale.
+git-cliff   = "latest"   # aqua:orhun/git-cliff — release notes from conventional commits
+trivy       = "latest"   # aqua:aquasecurity/trivy — dependency SBOM (CycloneDX) for releases
 # NO python here  -> .python-version + uv own the interpreter.
 # NO ruff/mypy/pytest/ty here -> they live in uv.lock, run via `uv run`.
 
@@ -118,6 +121,23 @@ run = "bash dev/validate_chart.sh"
 [tasks.verify-chart-assets]
 description = "Chart copies of the observability assets match their dev/observability/ sources"
 run = "bash dev/check_chart_assets.sh"
+
+# ---- Release (tag-driven; see docs/releasing.md) ---------------------------
+[tasks.changelog]
+description = "Render release notes for the latest tag. Args pass through: `mise run changelog -- --unreleased --tag v0.2.0`"
+run = "git-cliff --latest --strip header"
+
+[tasks.sbom]
+description = "CycloneDX SBOM of the locked dependencies (uv.lock) -> sbom.cdx.json"
+run = "trivy fs --format cyclonedx --output sbom.cdx.json uv.lock"
+
+[tasks.release-check]
+description = "Gate: pyproject == uv.lock == Chart version/appVersion agree (optional arg: vX.Y.Z)"
+run = "bash dev/check_release_versions.sh"
+
+[tasks.release]
+description = "Cut a release: lockstep version bump, signed commit + signed tag. Usage: `mise run release -- X.Y.Z`"
+run = "bash dev/release.sh"
 
 # ---- Docker dev stack (verbatim wrappers of the README flow) --------------
 [tasks.kanidm-up]

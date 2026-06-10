@@ -20,13 +20,14 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a
 # the compose dev stage and of every build stage — uv sync, collectstatic,
 # and the runtime-deps harvest all need a shell. Nothing from it ships in
 # the deployed image except files explicitly COPY'd into `production`.
-# Patch version matches .python-version; bump both together.
-ARG DHI_DEV_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:a787019910f2bcf699178a28903ce40501db4e853ec09453815175ae46922d5e
+# Patch version matches .python-version; bump both together. Digests pin the
+# multi-arch *index* (amd64 CI + arm64 local), not a platform manifest.
+ARG DHI_DEV_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:37be3fa9f01d355e5e3b51a866c711ec3731999e6f537ebe97d41facc85a58b9
 # DHI runtime variant: what actually deploys. git/ssh/libnss_wrapper come
 # from the runtime-deps stage (same Debian 13 release line, so any
-# overwritten library is byte-identical). Pin a digest once resolved with
+# overwritten library is byte-identical). Digest re-resolvable with
 # dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.5-debian13
-ARG DHI_RUNTIME_IMAGE=dhi.io/python:3.14.5-debian13
+ARG DHI_RUNTIME_IMAGE=dhi.io/python:3.14.5-debian13@sha256:7b74640b7f36f4e32dccaddc497182f90f476f889323ab5626b7cffd67ba3c8a
 
 FROM ${UV_IMAGE} AS uv-dist
 
@@ -160,7 +161,6 @@ COPY --from=runtime-deps /staging/ /
 COPY --from=prod-deps /opt/venv /opt/venv
 COPY --from=prod-app /app /app
 COPY --from=prod-app /home/advisoryhub /home/advisoryhub
-COPY --chmod=0644 docker/entrypoint.py /usr/local/bin/entrypoint.py
 
 # config/celery.py defaults DJANGO_SETTINGS_MODULE to the *dev* settings; bake
 # prod so web, worker and beat are all correct without per-process wiring.
@@ -180,8 +180,12 @@ USER 1001
 EXPOSE 8000
 # Exec form end to end — the image has no shell. `python` resolves through
 # PATH to /opt/venv/bin/python; the entrypoint registers the runtime UID
-# (nss_wrapper) and then execs the command, keeping it PID 1.
-ENTRYPOINT ["python", "/usr/local/bin/entrypoint.py"]
+# (nss_wrapper) and then execs the command, keeping it PID 1. The script is
+# referenced from the /app source COPY (correct world-readable modes from
+# the chmod above) — a dedicated COPY into /usr/local/bin would *create*
+# that directory on this base, which doesn't ship it, with the file's own
+# --chmod mode and no traverse bit for non-root users.
+ENTRYPOINT ["python", "/app/docker/entrypoint.py"]
 # Web entrypoint. gunicorn sizes workers from the WEB_CONCURRENCY env var
 # (defaults to 1); worker/beat deployments override this CMD with the celery
 # command lines documented in docs/operations/running-in-production.md.

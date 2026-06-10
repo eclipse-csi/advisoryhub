@@ -133,20 +133,30 @@ The repository `Dockerfile` is multi-target:
 
 Production-image facts an operator needs:
 
-- **Base**: Docker Hardened Images (`dhi.io/python:…-debian13-dev`); pulling
-  the base for a local build requires `docker login dhi.io` (free Docker
-  account). The *published* image on ghcr.io needs no DHI credentials.
+- **Base**: the Docker Hardened Images *runtime* variant
+  (`dhi.io/python:…-debian13`) — **no shell, no package manager**. Build
+  stages use the `-dev` variant; `git`, `ssh`, and `libnss_wrapper` (plus
+  their shared-library closure and dpkg scanner metadata) are harvested by
+  `docker/collect-runtime-deps.sh` and COPY'd into the final stage, which
+  contains zero RUN instructions. Pulling either base for a local build
+  requires `docker login dhi.io` (free Docker account); the *published*
+  image on ghcr.io needs no DHI credentials.
+- **No shell inside**: `kubectl exec … -- sh` (or `bash`) cannot work.
+  Exec `python`, `git`, or `celery` directly, or use `kubectl debug` with
+  an ephemeral debug image for filesystem inspection.
 - **One image, three processes** — override the command for the task tier:
   - web (default CMD): `gunicorn config.wsgi -c gunicorn.conf.py --bind 0.0.0.0:8000`
     (worker count via the `WEB_CONCURRENCY` env var)
   - worker: `celery -A config worker -l info --pool=threads --concurrency=4`
   - beat: `celery -A config beat -l info --schedule=/tmp/celerybeat-schedule`
 - `DJANGO_SETTINGS_MODULE=config.settings.prod` is baked in (override-able).
-- **OpenShift-compatible**: runs as any non-root UID in group 0 (the
-  entrypoint registers the runtime UID, falling back to nss_wrapper on a
-  read-only root filesystem). Writable paths needed at runtime: `/tmp`, and
-  on web `PROMETHEUS_MULTIPROC_DIR` — mount emptyDirs there when running with
-  `readOnlyRootFilesystem`.
+- **OpenShift-compatible**: runs as any non-root UID in group 0. The
+  entrypoint (`docker/entrypoint.py` — plain Python, since the image has
+  no shell) registers the runtime UID through nss_wrapper (`/tmp/passwd`
+  + `LD_PRELOAD`); `/etc/passwd` is never modified, and the same code
+  path covers writable and read-only root filesystems. Writable paths
+  needed at runtime: `/tmp`, and on web `PROMETHEUS_MULTIPROC_DIR` —
+  mount emptyDirs there when running with `readOnlyRootFilesystem`.
 - Optional strict SSH host pinning: mount a pre-populated file at
   `/etc/ssh/ssh_known_hosts` (otherwise publication pushes trust the remote
   on first contact via `StrictHostKeyChecking=accept-new`).

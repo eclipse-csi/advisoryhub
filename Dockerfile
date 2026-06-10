@@ -6,20 +6,27 @@
 #                yields prod): source + baked static files, gunicorn CMD,
 #                OpenShift/OKD arbitrary-UID compatible.
 #
-# Production stages base on Docker Hardened Images (dhi.io — requires
+# Production builds on Docker Hardened Images (dhi.io — requires
 # `docker login dhi.io`); the dev stage stays on the public python:slim so
-# `docker compose up` needs no registry credentials.
+# `docker compose up` needs no registry credentials. The deployed stage is
+# the DHI *runtime* variant — no shell, no package manager — and contains
+# zero RUN instructions: everything it needs (venv, app, git/ssh) is COPY'd
+# from earlier stages.
 
 # uv as a static binary copied from its (digest-pinned) distroless image —
 # no pip bootstrap, identical mechanism in every stage.
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6
 # Patch version matches .python-version; bump both together.
 ARG DEV_BASE_IMAGE=python:3.14.5-slim@sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97
-# DHI "dev" variant: hardened Debian 13 + bash/apt (the runtime variant has no
-# shell or package manager, and the publication pipeline shells out to
-# git/ssh — see publication/git_service.py). Pin a digest here once resolved
-# with dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.5-debian13-dev
-ARG PROD_BASE_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:a787019910f2bcf699178a28903ce40501db4e853ec09453815175ae46922d5e
+# DHI "dev" variant (hardened Debian 13 + bash/apt): build stages only —
+# uv sync, collectstatic, and the runtime-deps harvest all need a shell.
+# Nothing from it ships except files explicitly COPY'd into `production`.
+ARG PROD_BUILD_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:a787019910f2bcf699178a28903ce40501db4e853ec09453815175ae46922d5e
+# DHI runtime variant: what actually deploys. git/ssh/libnss_wrapper come
+# from the runtime-deps stage (same Debian 13 release line, so any
+# overwritten library is byte-identical). Pin a digest once resolved with
+# dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.5-debian13
+ARG PROD_RUNTIME_IMAGE=dhi.io/python:3.14.5-debian13
 
 FROM ${UV_IMAGE} AS uv-dist
 
@@ -40,7 +47,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
-# git + ssh: publication pushes (GitPython shells out); curl: convenience.
+# git + ssh: publication pushes (publication/git_service.py shells out to
+# them); curl: convenience.
 # No build-essential/libpq-dev: uv.lock resolves to wheels only (psycopg-binary
 # bundles libpq) — if a future dependency ships sdist-only, uv sync fails
 # loudly here and the toolchain can be re-added.
@@ -65,9 +73,9 @@ EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # ---------------------------------------------------------------------------
-# prod-base — shared hardened base for the production stages
+# prod-base — shared build base for the production stages
 # ---------------------------------------------------------------------------
-FROM ${PROD_BASE_IMAGE} AS prod-base
+FROM ${PROD_BUILD_IMAGE} AS prod-base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -76,13 +84,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
-
-# git + ssh are runtime requirements (publication pushes); libnss-wrapper backs
-# the arbitrary-UID fallback in docker/entrypoint.sh when the root filesystem
-# is read-only (OpenShift restricted-v2 + readOnlyRootFilesystem).
-RUN apt-get update \
- && apt-get install -y --no-install-recommends git openssh-client libnss-wrapper \
- && rm -rf /var/lib/apt/lists/*
 
 COPY --from=uv-dist /uv /usr/local/bin/uv
 
@@ -97,18 +98,10 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project --python 3.14
 
 # ---------------------------------------------------------------------------
-# production — the deployable image (default target)
+# prod-app — source + baked assets, prepared for the arbitrary-UID runtime
 # ---------------------------------------------------------------------------
-FROM prod-base AS production
+FROM prod-deps AS prod-app
 
-# revision/version/created are stamped by CI (docker/metadata-action).
-LABEL org.opencontainers.image.title="AdvisoryHub" \
-      org.opencontainers.image.description="Security advisory authoring, review and publication for Eclipse Foundation projects" \
-      org.opencontainers.image.source="https://github.com/mbarbero/advisoryhub" \
-      org.opencontainers.image.vendor="Eclipse Foundation" \
-      org.opencontainers.image.licenses="EPL-2.0"
-
-COPY --from=prod-deps /opt/venv /opt/venv
 COPY . /app
 
 # COPY preserves build-context file modes; normalize so an arbitrary runtime
@@ -125,28 +118,70 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.prod \
     python manage.py collectstatic --noinput \
  && python -m compileall -q /app
 
-COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+# HOME for the runtime image. OpenShift restricted-v2 runs the container as
+# a random UID in group 0, so it must be group-0 writable: ssh writes
+# ~/.ssh/known_hosts there under StrictHostKeyChecking=accept-new. (The UID
+# itself is registered at startup by docker/entrypoint.py via nss_wrapper —
+# /etc/passwd is never modified.)
+RUN mkdir -p /home/advisoryhub/.ssh \
+ && chgrp -R 0 /home/advisoryhub && chmod -R g=u /home/advisoryhub
+
+# ---------------------------------------------------------------------------
+# runtime-deps — harvest git/ssh/nss_wrapper for the shell-less final stage
+# ---------------------------------------------------------------------------
+FROM ${PROD_BUILD_IMAGE} AS runtime-deps
+
+# git + ssh are runtime requirements (publication pushes shell out to them);
+# libnss-wrapper backs the arbitrary-UID registration in docker/entrypoint.py.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git openssh-client libnss-wrapper \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy the installed payloads + their shared-library closure + dpkg scanner
+# metadata into /staging, which the production stage COPYs onto /.
+COPY docker/collect-runtime-deps.sh /tmp/collect-runtime-deps.sh
+RUN bash /tmp/collect-runtime-deps.sh /staging
+
+# ---------------------------------------------------------------------------
+# production — the deployable image (default target; zero RUN instructions)
+# ---------------------------------------------------------------------------
+FROM ${PROD_RUNTIME_IMAGE} AS production
+
+# revision/version/created are stamped by CI (docker/metadata-action).
+LABEL org.opencontainers.image.title="AdvisoryHub" \
+      org.opencontainers.image.description="Security advisory authoring, review and publication for Eclipse Foundation projects" \
+      org.opencontainers.image.source="https://github.com/mbarbero/advisoryhub" \
+      org.opencontainers.image.vendor="Eclipse Foundation" \
+      org.opencontainers.image.licenses="EPL-2.0"
+
+# git/ssh/libnss_wrapper, their library closure, and /var/lib/dpkg/status.d
+# stanzas so scanners keep seeing the staged packages.
+COPY --from=runtime-deps /staging/ /
+COPY --from=prod-deps /opt/venv /opt/venv
+COPY --from=prod-app /app /app
+COPY --from=prod-app /home/advisoryhub /home/advisoryhub
+COPY --chmod=0644 docker/entrypoint.py /usr/local/bin/entrypoint.py
 
 # config/celery.py defaults DJANGO_SETTINGS_MODULE to the *dev* settings; bake
 # prod so web, worker and beat are all correct without per-process wiring.
-ENV DJANGO_SETTINGS_MODULE=config.settings.prod \
+# No UV_* here — uv exists only in the build stages.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=config.settings.prod \
     HOME=/home/advisoryhub
 
-# OpenShift restricted-v2 runs the container as a random UID in group 0:
-#  - HOME must be group-0 writable (ssh writes ~/.ssh/known_hosts under
-#    StrictHostKeyChecking=accept-new);
-#  - /etc/passwd group-writable lets the entrypoint register the runtime UID
-#    (ssh refuses to run for a UID with no passwd entry).
-RUN mkdir -p /home/advisoryhub/.ssh \
- && chgrp -R 0 /home/advisoryhub && chmod -R g=u /home/advisoryhub \
- && chmod g=u /etc/passwd
+WORKDIR /app
 
 # Non-root marker (satisfies runAsNonRoot admission); OpenShift replaces it
 # with a namespace-range UID — nothing may assume 1001 specifically.
 USER 1001
 
 EXPOSE 8000
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Exec form end to end — the image has no shell. `python` resolves through
+# PATH to /opt/venv/bin/python; the entrypoint registers the runtime UID
+# (nss_wrapper) and then execs the command, keeping it PID 1.
+ENTRYPOINT ["python", "/usr/local/bin/entrypoint.py"]
 # Web entrypoint. gunicorn sizes workers from the WEB_CONCURRENCY env var
 # (defaults to 1); worker/beat deployments override this CMD with the celery
 # command lines documented in docs/operations/running-in-production.md.

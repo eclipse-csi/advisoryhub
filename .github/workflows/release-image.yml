@@ -92,15 +92,25 @@ jobs:
           cache-to: type=gha,mode=max
 
       # The image must work as a random non-root UID in group 0 (OpenShift
-      # restricted-v2) — both with a writable root fs (passwd append) and a
-      # read-only one (nss_wrapper). /healthz is DB-free and exempt from the
-      # prod SSL redirect, so a plain-HTTP 200 proves the full gunicorn+Django
-      # stack booted.
+      # restricted-v2) — the entrypoint registers the UID through nss_wrapper,
+      # on writable and read-only root filesystems alike. The runtime base has
+      # no shell, so every check execs python/git/ssh directly. /healthz is
+      # DB-free and exempt from the prod SSL redirect, so a plain-HTTP 200
+      # proves the full gunicorn+Django stack booted.
       - name: Smoke test
         run: |
           set -eux
-          docker run --rm --user 10001:0 advisoryhub:smoke whoami | grep -x advisoryhub
-          docker run --rm --read-only --tmpfs /tmp --user 10002:0 advisoryhub:smoke whoami | grep -x advisoryhub
+          PWNAME='import pwd, os; print(pwd.getpwuid(os.getuid()).pw_name)'
+          docker run --rm --user 10001:0 advisoryhub:smoke python -c "$PWNAME" | grep -x advisoryhub
+          docker run --rm --read-only --tmpfs /tmp --user 10002:0 advisoryhub:smoke python -c "$PWNAME" | grep -x advisoryhub
+          # The venv was built on the -dev base; assert its python symlink
+          # resolves against the runtime variant's interpreter path.
+          docker run --rm --user 10001:0 advisoryhub:smoke python -c 'import sys; assert sys.prefix == "/opt/venv", sys.prefix; import django, celery, psycopg'
+          # Harvested git/ssh actually run; ls-remote proves the HTTPS remote
+          # helper and the CA bundle inside the shell-less runtime image.
+          docker run --rm --user 10001:0 advisoryhub:smoke git --version
+          docker run --rm --user 10001:0 advisoryhub:smoke ssh -V
+          docker run --rm --user 10001:0 advisoryhub:smoke git ls-remote https://github.com/CVEProject/cvelistV5.git HEAD
           docker run --rm --user 10001:0 -e DJANGO_SECRET_KEY=smoke advisoryhub:smoke python manage.py check
           docker run -d --name smoke --user 10001:0 -e DJANGO_SECRET_KEY=smoke -p 8000:8000 advisoryhub:smoke
           code=000

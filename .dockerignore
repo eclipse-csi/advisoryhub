@@ -1,0 +1,41 @@
+# Build-context hygiene: the production image COPYs the repo root, so keep
+# everything out that the running app doesn't need. The dev target only copies
+# pyproject.toml + uv.lock, so nothing here can break the compose workflow.
+# Runtime keeps: static/ (collectstatic input), templates, locale/,
+# publication/schemas/, gunicorn.conf.py, manage.py, pyproject.toml, uv.lock,
+# docker/.
+.git
+.github
+.claude
+.venv
+venv
+.env
+.env.*
+.env.example
+**/__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+staticfiles
+*.egg-info
+.DS_Store
+docs
+dev
+charts
+mise.toml
+mise.local.toml
+.pre-commit-config.yaml
+docker-compose.yml
+Dockerfile
+.dockerignore
+CLAUDE.md
+TODO.md
+README.md
+# Tests never run in the image (no pytest in the prod venv); no runtime module
+# imports the <app>/tests packages or test_*.py siblings.
+conftest.py
+**/tests
+**/test_*.py

@@ -155,7 +155,11 @@ services:
       start_period: 30s
 
   web:
-    build: .
+    build:
+      context: .
+      # The Dockerfile's default (last) target is the production image; the
+      # dev target is deps-only and expects the source bind-mounted at /app.
+      target: dev
     command: python manage.py runserver 0.0.0.0:8000
     environment: *django-env
     env_file:
@@ -175,7 +179,11 @@ services:
       - .:/app
 
   worker:
-    build: .
+    build:
+      context: .
+      # The Dockerfile's default (last) target is the production image; the
+      # dev target is deps-only and expects the source bind-mounted at /app.
+      target: dev
     # --pool=threads: all tasks run in one process (worker threads), so the
     # single metrics exporter on PROMETHEUS_WORKER_METRICS_PORT sees every
     # task's counts and --concurrency can be raised freely. Our tasks are
@@ -203,7 +211,11 @@ services:
   # gauge refresh, access-log partition maintenance, PMI sync). The dev stack
   # previously had no beat, so those tasks never ran locally.
   beat:
-    build: .
+    build:
+      context: .
+      # The Dockerfile's default (last) target is the production image; the
+      # dev target is deps-only and expects the source bind-mounted at /app.
+      target: dev
     command: celery -A config beat -l info --schedule=/tmp/celerybeat-schedule
     environment: *django-env
     env_file:

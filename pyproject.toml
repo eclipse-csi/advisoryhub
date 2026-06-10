@@ -3,6 +3,8 @@ name = "advisoryhub"
 version = "0.1.0"
 description = "Eclipse Foundation security advisory authoring, review, and publication system"
 readme = "README.md"
+license = "EPL-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "Django>=5.2,<5.3",

@@ -22,3 +22,5 @@ keywords:
   - security
   - advisories
   - django
+annotations:
+  artifacthub.io/license: EPL-2.0

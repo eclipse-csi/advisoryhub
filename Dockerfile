@@ -19,7 +19,7 @@ ARG DEV_BASE_IMAGE=python:3.14.5-slim@sha256:c845af9399020c7e562969a13689e929074
 # shell or package manager, and the publication pipeline shells out to
 # git/ssh — see publication/git_service.py). Pin a digest here once resolved
 # with dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.5-debian13-dev
-ARG PROD_BASE_IMAGE=dhi.io/python:3.14.5-debian13-dev
+ARG PROD_BASE_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:a787019910f2bcf699178a28903ce40501db4e853ec09453815175ae46922d5e
 
 FROM ${UV_IMAGE} AS uv-dist
 
@@ -105,7 +105,8 @@ FROM prod-base AS production
 LABEL org.opencontainers.image.title="AdvisoryHub" \
       org.opencontainers.image.description="Security advisory authoring, review and publication for Eclipse Foundation projects" \
       org.opencontainers.image.source="https://github.com/mbarbero/advisoryhub" \
-      org.opencontainers.image.vendor="Eclipse Foundation"
+      org.opencontainers.image.vendor="Eclipse Foundation" \
+      org.opencontainers.image.licenses="EPL-2.0"
 
 COPY --from=prod-deps /opt/venv /opt/venv
 COPY . /app

@@ -1,0 +1,4 @@
+# Bare-minimum render: an existing env Secret and nothing else (no exposure —
+# port-forward access). Exercises the "no hosts known" paths.
+secrets:
+  existingSecret: advisoryhub-env

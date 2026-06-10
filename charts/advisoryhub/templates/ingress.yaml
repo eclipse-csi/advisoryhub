@@ -1,0 +1,49 @@
+{{- if .Values.ingress.enabled }}
+# TLS redirect at the edge is the ingress controller's job (e.g.
+# ssl-redirect on ingress-nginx); the app's SECURE_SSL_REDIRECT is the
+# backstop and works because the chart sets USE_X_FORWARDED_PROTO.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- if $.Values.exposure.blockMetrics }}
+          # Public /metrics → endpoint-less blackhole Service (503); the app
+          # serves it unauthenticated and it must stay private.
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "advisoryhub.fullname" $ }}-metrics-blackhole
+                port:
+                  name: http
+          {{- end }}
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "advisoryhub.fullname" $ }}-web
+                port:
+                  name: http
+          {{- end }}
+    {{- end }}
+{{- end }}

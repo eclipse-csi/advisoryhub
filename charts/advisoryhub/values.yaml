@@ -1,0 +1,431 @@
+# Default values for the AdvisoryHub chart.
+#
+# External prerequisites (this chart deploys NONE of them):
+#   - PostgreSQL (DATABASE_URL)            — the only stateful store
+#   - Valkey/Redis with maxmemory-policy noeviction (broker/results/cache)
+#   - an OIDC provider (confidential client)
+#   - an SMTP relay (notifications)
+#   - the publication Git repository (SSH key or token)
+#
+# Secret material NEVER goes through these values in production — point
+# secrets.existingSecret / secrets.files.existingSecret at Secrets you manage
+# (see the chart README for the expected keys).
+
+image:
+  repository: ghcr.io/mbarbero/advisoryhub
+  # Defaults to the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# ghcr.io images for private repos need a pull secret.
+imagePullSecrets: []
+#  - name: ghcr-pull
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # Defaults to the release fullname.
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# Pod security
+# ---------------------------------------------------------------------------
+# Defaults target OpenShift/OKD restricted-v2: leave runAsUser/runAsGroup/
+# fsGroup null so the SCC assigns them from the namespace range. On vanilla
+# Kubernetes set all three (e.g. 10001/0/0 — the image is built for an
+# arbitrary UID in group 0; fsGroup makes Secret-file mounts group-readable).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: null
+  runAsGroup: null
+  fsGroup: null
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  # The image supports this (writes go to /tmp and the metrics emptyDir; the
+  # entrypoint falls back to nss_wrapper for the arbitrary-UID passwd entry).
+  readOnlyRootFilesystem: true
+
+# ---------------------------------------------------------------------------
+# Django / app-wide configuration (non-secret; rendered into the ConfigMap)
+# ---------------------------------------------------------------------------
+django:
+  # Hostnames the app serves. Empty → derived from route.host / ingress.hosts.
+  allowedHosts: []
+  # CSRF origins. Empty → https://<host> for each derived host.
+  csrfTrustedOrigins: []
+  # Absolute-URL base for links in notification emails.
+  # Empty → https://<primary host>.
+  baseUrl: ""
+  timeZone: UTC
+  logLevel: INFO
+  # TLS terminates at the Route/Ingress → trust its X-Forwarded-Proto.
+  useXForwardedProto: true
+  # Proxy depth in front of the app (per-IP rate limits / audit IPs).
+  trustedProxyCount: 1
+
+oidc:
+  # Client id may live here or in the env Secret (key OIDC_RP_CLIENT_ID);
+  # the ConfigMap omits it when empty. The client SECRET always comes from
+  # the env Secret.
+  clientId: ""
+  authorizationEndpoint: ""
+  tokenEndpoint: ""
+  userEndpoint: ""
+  jwksEndpoint: ""
+  logoutEndpoint: ""
+  signAlgo: RS256
+  groupClaim: groups
+  adminGroup: advisoryhub-security
+
+email:
+  backend: django.core.mail.backends.smtp.EmailBackend
+  defaultFrom: "AdvisoryHub <noreply@example.org>"
+  host: ""
+  port: 587
+  useTls: true
+  useSsl: false
+  # EMAIL_HOST_USER / EMAIL_HOST_PASSWORD belong in the env Secret.
+
+pubRepo:
+  # e.g. git@github.com:example/advisories.git (ssh) or https://… (token)
+  url: ""
+  branch: main
+  # ssh | token. ssh reads the key from the files Secret; token reads
+  # PUB_REPO_TOKEN from the env Secret.
+  auth: ssh
+  commitAuthorName: AdvisoryHub Bot
+  commitAuthorEmail: advisoryhub-bot@example.org
+  osvPathTemplate: "osv/{year}/{advisory_id}.json"
+  csafPathTemplate: "csaf/{year}/{advisory_id}.json"
+  cvePathTemplate: "cves/{year}/{bucket}/{cve_id}.json"
+  # REQUIRED before publishing CVE-assigned advisories (the EF CNA org UUID).
+  cveAssignerOrgId: ""
+  cveAssignerShortName: eclipse
+  # Optional ssh_known_hosts content (e.g. `ssh-keyscan github.com`). Mounted
+  # at /etc/ssh/ssh_known_hosts: first contact is then verified instead of
+  # trusted via StrictHostKeyChecking=accept-new.
+  knownHosts: ""
+
+ghsa:
+  enabled: false
+  appId: 0
+  apiBaseUrl: https://api.github.com
+  # Private key: files Secret (key github-app-private-key);
+  # webhook secret: env Secret (GITHUB_APP_WEBHOOK_SECRET).
+
+pmi:
+  apiBaseUrl: https://projects.eclipse.org/api
+  syncIntervalHours: 6
+
+rosterSync:
+  enabled: false
+  intervalHours: 24
+  eclipseApiBaseUrl: https://api.eclipse.org
+  tokenUrl: https://auth.eclipse.org/auth/realms/eclipse/protocol/openid-connect/token
+  scope: ""
+  # ECLIPSE_API_CLIENT_ID / _SECRET belong in the env Secret.
+
+intake:
+  disabled: false
+  retentionDays: 365
+  ratelimitAnon: 5/h
+  ratelimitUser: 20/h
+  # hCaptcha keys belong in the env Secret (HCAPTCHA_SITE_KEY/_SECRET_KEY).
+
+audit:
+  accessLogRetentionDays: 90
+  accessLogRetentionEnabled: true
+
+sentry:
+  # SENTRY_DSN belongs in the env Secret; empty DSN disables Sentry.
+  environment: production
+  tracesSampleRate: "0"
+
+readyz:
+  # Probe the Celery broker from /readyz. The repo docs recommend it, but it
+  # couples web readiness to Valkey: a broker outage then pulls web pods out
+  # of rotation entirely.
+  includeBroker: true
+  # git ls-remote of the publication repo on every probe — egress + key needed
+  # on web pods; keep off unless you accept that.
+  includePubRepo: false
+
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+secrets:
+  # PRODUCTION PATH: name of an existing Secret applied via envFrom to every
+  # pod. Expected/possible keys (see README): DJANGO_SECRET_KEY, DATABASE_URL,
+  # CELERY_BROKER_URL, CELERY_RESULT_BACKEND, CACHE_URL, OIDC_RP_CLIENT_ID,
+  # OIDC_RP_CLIENT_SECRET, PUB_REPO_TOKEN, GITHUB_APP_WEBHOOK_SECRET,
+  # ECLIPSE_API_CLIENT_ID, ECLIPSE_API_CLIENT_SECRET, SENTRY_DSN,
+  # HCAPTCHA_SITE_KEY, HCAPTCHA_SECRET_KEY, EMAIL_HOST_USER,
+  # EMAIL_HOST_PASSWORD, PMI_API_TOKEN.
+  existingSecret: ""
+  # Dev/eval convenience: render `values` below into a chart-managed Secret.
+  # Anything in a values file ends up in your release history — use
+  # existingSecret in production.
+  create: false
+  values: {}
+  #  DJANGO_SECRET_KEY: "…"
+  #  DATABASE_URL: "postgres://…"
+
+  # Key files mounted read-only at `mountPath`; the ConfigMap points
+  # PUB_REPO_SSH_KEY_PATH / GITHUB_APP_PRIVATE_KEY_PATH at them.
+  files:
+    # Existing Secret with keys `pub-repo-ssh-key` and/or
+    # `github-app-private-key`.
+    existingSecret: ""
+    create: false
+    pubRepoSshKey: ""
+    githubAppPrivateKey: ""
+    mountPath: /etc/advisoryhub/keys
+    # 0440, not 0400: files in Secret volumes are root-owned; the arbitrary
+    # runtime UID reads them via the fsGroup the SCC assigns. ssh's strict
+    # key-permission check only applies to keys owned by the calling UID.
+    defaultMode: 0440
+
+# Extra environment for every container (web, worker, beat, migrate).
+extraEnv: []
+#  - name: SOME_FLAG
+#    value: "True"
+extraEnvFrom: []
+#  - secretRef:
+#      name: another-secret
+
+# ---------------------------------------------------------------------------
+# Workloads
+# ---------------------------------------------------------------------------
+web:
+  replicaCount: 2
+  # Exported as WEB_CONCURRENCY (gunicorn's native worker-count knob).
+  gunicornWorkers: 4
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  # /tmp emptyDir (HOME, scratch).
+  tmpSizeLimit: 256Mi
+  # prometheus_client multiprocess dir — an emptyDir is empty-at-boot by
+  # construction, exactly what gunicorn multiprocess metrics need.
+  prometheusMultiprocDir:
+    path: /run/prometheus
+    sizeLimit: 64Mi
+  probes:
+    # Probes send an explicit Host header (kubelet uses the pod IP, which
+    # ALLOWED_HOSTS would reject with a 400). Defaults to the primary host.
+    liveness:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readiness:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startup:
+      periodSeconds: 5
+      failureThreshold: 30
+  pdb:
+    # Rendered only when more than one replica can exist.
+    enabled: true
+    minAvailable: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 75
+  terminationGracePeriodSeconds: 60
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+worker:
+  replicaCount: 1
+  # Celery thread-pool size. --pool=threads is fixed: it is what lets the
+  # single per-pod exporter see every task thread's metrics.
+  concurrency: 4
+  logLevel: info
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  # Publication pushes clone the publish repo into /tmp.
+  tmpSizeLimit: 1Gi
+  probes:
+    # Off by default: each probe run boots a full Django/Celery process and
+    # round-trips the broker. The TCP probe on the metrics port (when metrics
+    # are enabled) covers liveness cheaply.
+    celeryInspectPing:
+      enabled: false
+      periodSeconds: 60
+      timeoutSeconds: 15
+      failureThreshold: 3
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    # CPU is a weak proxy for queue depth — consider KEDA for queue-based
+    # scaling instead.
+    targetCPUUtilizationPercentage: 75
+  # Celery warm shutdown: in-flight publication pushes get this long to
+  # finish. acks_late + the 1h broker visibility timeout make a hard kill
+  # safe (redelivery), so this is a drain-speed compromise, not a safety one.
+  terminationGracePeriodSeconds: 120
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+beat:
+  # NOTE: no replicaCount on purpose — beat is a hardcoded singleton
+  # (deployment-beat.yaml pins replicas: 1 + strategy Recreate); two beats
+  # double-fire every periodic task.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  tmpSizeLimit: 64Mi
+  terminationGracePeriodSeconds: 30
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+# Database migrations as a pre-install/pre-upgrade Helm hook Job. Migrations
+# must stay backward-compatible one release back: old pods serve while the
+# new schema applies (see README).
+migrate:
+  enabled: true
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  resources: {}
+
+# ---------------------------------------------------------------------------
+# Exposure
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 8000
+
+# OpenShift Route (OKD). Mutually compatible with ingress.* — enable exactly
+# one in practice.
+route:
+  enabled: false
+  host: ""
+  annotations: {}
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+    # Leave empty to use the router's default (wildcard) certificate.
+    certificate: ""
+    key: ""
+    caCertificate: ""
+
+# Kubernetes Ingress (vanilla clusters). TLS redirect is the controller's
+# job; the app's SECURE_SSL_REDIRECT is the backstop.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  #  - host: advisoryhub.example.org
+  #    paths:
+  #      - path: /
+  #        pathType: Prefix
+  tls: []
+  #  - secretName: advisoryhub-tls
+  #    hosts: [advisoryhub.example.org]
+
+exposure:
+  # /metrics is unauthenticated on the app port and must not be public:
+  # route/ingress send /metrics to a selector-less (endpoint-less) Service so
+  # the edge answers 503 while in-cluster scrapes keep working.
+  blockMetrics: true
+
+# ---------------------------------------------------------------------------
+# Observability
+# ---------------------------------------------------------------------------
+metrics:
+  # Worker Prometheus exporter on :9808 (+ its Service).
+  enabled: true
+  workerPort: 9808
+  serviceMonitor:
+    # Requires the prometheus-operator CRDs.
+    enabled: false
+    interval: 30s
+    # Extra labels for Prometheus discovery (e.g. release: kube-prometheus-stack).
+    labels: {}
+  prometheusRule:
+    enabled: false
+    labels: {}
+  grafanaDashboards:
+    # Ship the bundled dashboards as ConfigMaps for the Grafana sidecar.
+    enabled: false
+    labels: {}
+    annotations: {}
+    # The JSONs reference datasource uid "advisoryhub-prometheus"; it is
+    # rewritten to this value ("" keeps it as-is).
+    datasourceUid: prometheus
+
+# ---------------------------------------------------------------------------
+# NetworkPolicy
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: false
+  # Peers allowed to reach web:8000. Defaults cover the OpenShift router on
+  # both OVN and SDN clusters; replace with your ingress controller's
+  # namespace selector on vanilla Kubernetes.
+  ingressControllerPeers:
+    - namespaceSelector:
+        matchLabels:
+          policy-group.network.openshift.io/ingress: ""
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: ingress
+  # Peers allowed to scrape metrics (web:8000, worker:9808).
+  monitoringPeers:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-monitoring
+  # Optional raw egress rules; non-empty adds Egress to policyTypes. Left
+  # open by default — the app needs PostgreSQL, Valkey, OIDC, SMTP, the
+  # publication remote and (optionally) GitHub/Eclipse APIs.
+  egress: []
+
+# helm test pod (curls /healthz through the web Service).
+tests:
+  enabled: true
+  image: curlimages/curl:8.8.0

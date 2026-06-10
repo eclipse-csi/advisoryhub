@@ -1,0 +1,75 @@
+{{- if .Values.migrate.enabled }}
+# Database migrations as a Helm hook Job — runs exactly once per
+# install/upgrade, before the new pods roll out (an initContainer would run
+# once per pod per restart and race across replicas). Old pods keep serving
+# while migrations apply: migrations must stay backward-compatible one
+# release back (see the chart README).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-migrate
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    # Failed Jobs persist for debugging; the next attempt replaces them.
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrate.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrate.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "advisoryhub.serviceAccountName" . }}
+      securityContext:
+        {{- include "advisoryhub.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "advisoryhub.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          securityContext:
+            {{- include "advisoryhub.containerSecurityContext" . | nindent 12 }}
+          # Pre-install hooks run before regular release resources exist, so
+          # the ConfigMap can't be envFrom'd — the same env map is inlined.
+          env:
+            - name: HOME
+              value: /tmp
+            {{- range $key, $value := include "advisoryhub.envMap" . | fromYaml }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- $envSecret := include "advisoryhub.envSecretName" . }}
+          {{- if or $envSecret .Values.extraEnvFrom }}
+          envFrom:
+            {{- with $envSecret }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+            {{- with .Values.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.migrate.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

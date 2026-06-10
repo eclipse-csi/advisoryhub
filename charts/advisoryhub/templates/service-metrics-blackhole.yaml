@@ -1,0 +1,19 @@
+{{- if and .Values.exposure.blockMetrics (or .Values.route.enabled .Values.ingress.enabled) }}
+# Selector-less Service: zero endpoints, so edge traffic routed here gets a
+# 503. The Route/Ingress send the public /metrics path to it — /metrics is
+# unauthenticated on the app port and must stay private (in-cluster scrapes
+# via the regular Services are unaffected).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-metrics-blackhole
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: 8000
+      protocol: TCP
+{{- end }}

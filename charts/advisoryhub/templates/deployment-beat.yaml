@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-beat
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: beat
+spec:
+  # Hardcoded singleton: two beats double-fire every periodic task (PMI sync,
+  # partition maintenance, roster sync, gauge refresh). Recreate prevents an
+  # old and new beat overlapping during upgrades; the schedule file is
+  # throwaway interval state on /tmp.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "beat") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "beat") | nindent 8 }}
+        {{- with .Values.beat.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "advisoryhub.checksumAnnotations" . | nindent 8 }}
+        {{- with .Values.beat.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "advisoryhub.serviceAccountName" . }}
+      securityContext:
+        {{- include "advisoryhub.podSecurityContext" . | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.beat.terminationGracePeriodSeconds }}
+      containers:
+        - name: beat
+          image: {{ include "advisoryhub.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["celery"]
+          args:
+            - "-A"
+            - "config"
+            - "beat"
+            - "-l"
+            - "info"
+            - "--schedule=/tmp/celerybeat-schedule"
+          securityContext:
+            {{- include "advisoryhub.containerSecurityContext" . | nindent 12 }}
+          envFrom:
+            {{- include "advisoryhub.envFrom" . | nindent 12 }}
+          env:
+            - name: HOME
+              value: /tmp
+            {{- with .Values.beat.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          # No probes on purpose: beat exposes no HTTP/TCP surface and
+          # `celery inspect` targets workers. Its failure mode is crashing —
+          # which the kubelet restarts — not hanging; an exec probe would cost
+          # a full Django boot per run for near-zero signal.
+          resources:
+            {{- toYaml .Values.beat.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.beat.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ .Values.beat.tmpSizeLimit }}
+        {{- with .Values.beat.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.beat.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.beat.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.beat.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.beat.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}

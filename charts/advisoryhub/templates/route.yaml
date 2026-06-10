@@ -1,0 +1,61 @@
+{{- if .Values.route.enabled }}
+# OpenShift Route (no Capabilities auto-detection on purpose: exposure is an
+# explicit values decision, and `helm template` renders identically with or
+# without a cluster). Enabling this on vanilla Kubernetes fails at apply time.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  host: {{ required "route.host is required when route.enabled" .Values.route.host }}
+  to:
+    kind: Service
+    name: {{ include "advisoryhub.fullname" . }}-web
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: {{ .Values.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
+    {{- with .Values.route.tls.certificate }}
+    certificate: |
+      {{- . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.route.tls.key }}
+    key: |
+      {{- . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.route.tls.caCertificate }}
+    caCertificate: |
+      {{- . | nindent 6 }}
+    {{- end }}
+{{- if .Values.exposure.blockMetrics }}
+---
+# Longest-path match wins: the public /metrics lands on the endpoint-less
+# blackhole Service (503) while everything else reaches the app.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-metrics-blackhole
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.route.host }}
+  path: /metrics
+  to:
+    kind: Service
+    name: {{ include "advisoryhub.fullname" . }}-metrics-blackhole
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: {{ .Values.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,32 @@
+{{- if .Values.tests.enabled }}
+# `helm test <release>`: /healthz through the web Service proves Service →
+# pod → gunicorn → Django wiring end to end. /healthz is DB-free and exempt
+# from the SSL redirect, so plain HTTP returns a real 200.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-test-connection
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  securityContext:
+    {{- include "advisoryhub.podSecurityContext" . | nindent 4 }}
+  containers:
+    - name: healthz
+      image: {{ .Values.tests.image }}
+      securityContext:
+        {{- include "advisoryhub.containerSecurityContext" . | nindent 8 }}
+      command:
+        - curl
+        - -fsS
+        {{- with include "advisoryhub.primaryHost" . }}
+        - -H
+        - "Host: {{ . }}"
+        {{- end }}
+        - http://{{ include "advisoryhub.fullname" . }}-web:{{ .Values.service.port }}/healthz
+{{- end }}

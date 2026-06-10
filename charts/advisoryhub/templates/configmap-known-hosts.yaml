@@ -1,0 +1,14 @@
+{{- if .Values.pubRepo.knownHosts }}
+# Pinned SSH host keys for the publication remote, mounted at the system-wide
+# /etc/ssh/ssh_known_hosts. Without it the publication push trusts the remote
+# on first contact (StrictHostKeyChecking=accept-new).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-known-hosts
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+data:
+  ssh_known_hosts: |
+    {{- .Values.pubRepo.knownHosts | nindent 4 }}
+{{- end }}

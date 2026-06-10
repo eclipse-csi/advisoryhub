@@ -1,0 +1,48 @@
+# OKD/OpenShift persona: Route with edge TLS, restricted-v2 security contexts
+# (uid/fsGroup left to the SCC), full observability stack, NetworkPolicies,
+# existing Secrets, pinned publication host keys.
+route:
+  enabled: true
+  host: advisoryhub.apps.okd.example.org
+
+secrets:
+  existingSecret: advisoryhub-env
+  files:
+    existingSecret: advisoryhub-keys
+
+oidc:
+  clientId: advisoryhub
+  authorizationEndpoint: https://idp.example.org/oauth2/authorize
+  tokenEndpoint: https://idp.example.org/oauth2/token
+  userEndpoint: https://idp.example.org/oauth2/userinfo
+  jwksEndpoint: https://idp.example.org/oauth2/jwks
+
+email:
+  host: smtp.example.org
+
+pubRepo:
+  url: git@github.com:example/advisories.git
+  cveAssignerOrgId: 00000000-0000-4000-8000-000000000000
+  knownHosts: |
+    github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+
+ghsa:
+  enabled: true
+  appId: 12345
+
+rosterSync:
+  enabled: true
+
+metrics:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+  grafanaDashboards:
+    enabled: true
+
+networkPolicy:
+  enabled: true
+
+imagePullSecrets:
+  - name: ghcr-pull

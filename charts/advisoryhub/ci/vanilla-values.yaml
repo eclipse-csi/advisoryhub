@@ -1,0 +1,51 @@
+# Vanilla-Kubernetes persona: Ingress, explicit uid/gid/fsGroup (no SCC to
+# assign them), chart-managed Secrets (dev/eval path), web autoscaling.
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: advisoryhub.example.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: advisoryhub-tls
+      hosts:
+        - advisoryhub.example.org
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 0
+  fsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+
+secrets:
+  create: true
+  values:
+    DJANGO_SECRET_KEY: ci-fixture-not-a-secret
+    DATABASE_URL: postgres://advisoryhub:pw@postgres.example.org:5432/advisoryhub
+    CELERY_BROKER_URL: redis://valkey.example.org:6379/0
+    CELERY_RESULT_BACKEND: redis://valkey.example.org:6379/1
+    CACHE_URL: redis://valkey.example.org:6379/2
+    OIDC_RP_CLIENT_ID: advisoryhub
+    OIDC_RP_CLIENT_SECRET: ci-fixture-not-a-secret
+  files:
+    create: true
+    # Deliberately NOT key-shaped (no BEGIN/END markers): a real-looking
+    # placeholder would trip the detect-private-key pre-commit guard.
+    pubRepoSshKey: ci-fixture-placeholder-not-a-real-key
+
+pubRepo:
+  url: git@github.com:example/advisories.git
+
+web:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+
+metrics:
+  serviceMonitor:
+    enabled: true

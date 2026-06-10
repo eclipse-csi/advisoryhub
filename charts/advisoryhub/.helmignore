@@ -1,0 +1,6 @@
+# Patterns to ignore when packaging the chart.
+.DS_Store
+*.swp
+*.tmp
+# CI render fixtures are repo tooling, not chart payload.
+ci/

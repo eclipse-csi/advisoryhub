@@ -1,0 +1,31 @@
+{{- if .Values.metrics.grafanaDashboards.enabled }}
+{{- $root := . }}
+{{- range $path, $_ := .Files.Glob "files/dashboards/*.json" }}
+{{- $name := base $path | trimSuffix ".json" }}
+---
+# Grafana-sidecar dashboard ConfigMap (label grafana_dashboard: "1"). The
+# JSON is a verbatim copy of dev/observability/grafana/dashboards/ except the
+# datasource uid, rewritten to metrics.grafanaDashboards.datasourceUid.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "advisoryhub.fullname" $root }}-{{ $name }}
+  labels:
+    {{- include "advisoryhub.labels" $root | nindent 4 }}
+    grafana_dashboard: "1"
+    {{- with $root.Values.metrics.grafanaDashboards.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $root.Values.metrics.grafanaDashboards.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{ base $path }}: |-
+    {{- $json := $root.Files.Get $path }}
+    {{- with $root.Values.metrics.grafanaDashboards.datasourceUid }}
+    {{- $json = replace "\"uid\": \"advisoryhub-prometheus\"" (printf "\"uid\": %q" .) $json }}
+    {{- end }}
+    {{- $json | nindent 4 }}
+{{- end }}
+{{- end }}

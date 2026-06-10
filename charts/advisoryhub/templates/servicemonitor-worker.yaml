@@ -1,0 +1,25 @@
+{{- if and .Values.metrics.serviceMonitor.enabled .Values.metrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-worker
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "worker") | nindent 6 }}
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      relabelings:
+        # See servicemonitor-web.yaml — job label pinned for the bundled
+        # rules/dashboards.
+        - action: replace
+          targetLabel: job
+          replacement: advisoryhub-worker
+{{- end }}

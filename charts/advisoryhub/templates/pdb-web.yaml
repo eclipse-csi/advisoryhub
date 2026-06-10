@@ -1,0 +1,17 @@
+{{- $replicas := .Values.web.autoscaling.enabled | ternary .Values.web.autoscaling.minReplicas .Values.web.replicaCount }}
+{{- if and .Values.web.pdb.enabled (gt (int $replicas) 1) }}
+# Only rendered when more than one replica can exist — a PDB on a singleton
+# would block node drains outright.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-web
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  minAvailable: {{ .Values.web.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "web") | nindent 6 }}
+{{- end }}

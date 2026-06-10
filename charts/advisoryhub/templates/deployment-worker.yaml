@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-worker
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  {{- if not .Values.worker.autoscaling.enabled }}
+  replicas: {{ .Values.worker.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "worker") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "worker") | nindent 8 }}
+        {{- with .Values.worker.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "advisoryhub.checksumAnnotations" . | nindent 8 }}
+        {{- with .Values.worker.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "advisoryhub.serviceAccountName" . }}
+      securityContext:
+        {{- include "advisoryhub.podSecurityContext" . | nindent 8 }}
+      # Celery warm shutdown: SIGTERM lets in-flight publication pushes finish.
+      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
+      containers:
+        - name: worker
+          image: {{ include "advisoryhub.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # --pool=threads is load-bearing: all tasks run as threads of one
+          # process, so the single exporter on the metrics port sees every
+          # task's counts (raise --concurrency freely instead).
+          command: ["celery"]
+          args:
+            - "-A"
+            - "config"
+            - "worker"
+            - "-l"
+            - {{ .Values.worker.logLevel | quote }}
+            - "--pool=threads"
+            - "--concurrency={{ .Values.worker.concurrency }}"
+          securityContext:
+            {{- include "advisoryhub.containerSecurityContext" . | nindent 12 }}
+          envFrom:
+            {{- include "advisoryhub.envFrom" . | nindent 12 }}
+          env:
+            # Writable HOME under readOnlyRootFilesystem — ssh writes
+            # ~/.ssh/known_hosts here under StrictHostKeyChecking=accept-new.
+            - name: HOME
+              value: /tmp
+            # Worker only (web uses PROMETHEUS_MULTIPROC_DIR instead).
+            - name: PROMETHEUS_WORKER_METRICS_PORT
+              value: {{ ternary (.Values.metrics.workerPort | toString) "0" .Values.metrics.enabled | quote }}
+            {{- with .Values.worker.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.metrics.enabled }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metrics.workerPort }}
+              protocol: TCP
+          # The exporter binds once the Celery app booted — a cheap signal
+          # that the process is alive without round-tripping the broker.
+          livenessProbe:
+            tcpSocket:
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          {{- else if .Values.worker.probes.celeryInspectPing.enabled }}
+          # Costly: each run boots a full Django/Celery process and round-trips
+          # the broker — hence the long period and off-by-default.
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - exec celery -A config inspect ping -d "celery@$HOSTNAME" --timeout 10
+            periodSeconds: {{ .Values.worker.probes.celeryInspectPing.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.probes.celeryInspectPing.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.probes.celeryInspectPing.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            # Publication pushes clone the publish repo into /tmp
+            # (tempfile.TemporaryDirectory) — size accordingly.
+            - name: tmp
+              mountPath: /tmp
+            {{- include "advisoryhub.keyVolumeMounts" . | nindent 12 }}
+            {{- with .Values.worker.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ .Values.worker.tmpSizeLimit }}
+        {{- include "advisoryhub.keyVolumes" . | nindent 8 }}
+        {{- with .Values.worker.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}

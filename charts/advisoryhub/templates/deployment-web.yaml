@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-web
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  {{- if not .Values.web.autoscaling.enabled }}
+  replicas: {{ .Values.web.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "web") | nindent 8 }}
+        {{- with .Values.web.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "advisoryhub.checksumAnnotations" . | nindent 8 }}
+        {{- with .Values.web.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "advisoryhub.serviceAccountName" . }}
+      securityContext:
+        {{- include "advisoryhub.podSecurityContext" . | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.web.terminationGracePeriodSeconds }}
+      containers:
+        - name: web
+          image: {{ include "advisoryhub.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Image CMD: gunicorn config.wsgi -c gunicorn.conf.py --bind 0.0.0.0:8000
+          securityContext:
+            {{- include "advisoryhub.containerSecurityContext" . | nindent 12 }}
+          envFrom:
+            {{- include "advisoryhub.envFrom" . | nindent 12 }}
+          env:
+            # Writable HOME under readOnlyRootFilesystem (entrypoint passwd
+            # registration, gunicorn control socket).
+            - name: HOME
+              value: /tmp
+            # gunicorn worker count (read natively by gunicorn).
+            - name: WEB_CONCURRENCY
+              value: {{ .Values.web.gunicornWorkers | quote }}
+            # Web only: prometheus_client multiprocess mode so the custom
+            # advisoryhub_* counters aggregate across gunicorn workers.
+            # NEVER set this on the worker — it would corrupt its
+            # single-process exporter (common/celery_metrics.py).
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: {{ .Values.web.prometheusMultiprocDir.path | quote }}
+            {{- with .Values.web.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          {{- $host := include "advisoryhub.primaryHost" . }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+              {{- if $host }}
+              # kubelet sends the pod IP as Host, which ALLOWED_HOSTS rejects.
+              httpHeaders:
+                - name: Host
+                  value: {{ $host | quote }}
+              {{- end }}
+            {{- toYaml .Values.web.probes.liveness | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+              {{- if $host }}
+              httpHeaders:
+                - name: Host
+                  value: {{ $host | quote }}
+              {{- end }}
+            {{- toYaml .Values.web.probes.readiness | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+              {{- if $host }}
+              httpHeaders:
+                - name: Host
+                  value: {{ $host | quote }}
+              {{- end }}
+            {{- toYaml .Values.web.probes.startup | nindent 12 }}
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: prometheus-multiproc
+              mountPath: {{ .Values.web.prometheusMultiprocDir.path }}
+            {{- include "advisoryhub.keyVolumeMounts" . | nindent 12 }}
+            {{- with .Values.web.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ .Values.web.tmpSizeLimit }}
+        - name: prometheus-multiproc
+          emptyDir:
+            sizeLimit: {{ .Values.web.prometheusMultiprocDir.sizeLimit }}
+        {{- include "advisoryhub.keyVolumes" . | nindent 8 }}
+        {{- with .Values.web.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.web.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}

@@ -1,0 +1,54 @@
+{{ .Chart.Name }} {{ .Chart.AppVersion }} deployed as release {{ .Release.Name }}.
+
+{{- $host := include "advisoryhub.primaryHost" . }}
+
+{{- if and .Values.route.enabled .Values.route.host }}
+
+URL: https://{{ .Values.route.host }}/  (OpenShift Route, {{ .Values.route.tls.termination }} TLS)
+{{- else if and .Values.ingress.enabled .Values.ingress.hosts }}
+
+URL: https://{{ (first .Values.ingress.hosts).host }}/  (Ingress)
+{{- else }}
+
+No Route or Ingress is enabled — reach the app with a port-forward:
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "advisoryhub.fullname" . }}-web {{ .Values.service.port }}:{{ .Values.service.port }}
+
+WARNING: without route.host / ingress.hosts the ConfigMap omits
+DJANGO_ALLOWED_HOSTS and the app falls back to '*'. Set django.allowedHosts
+(or enable an exposure) for production.
+{{- end }}
+
+{{- if not (include "advisoryhub.envSecretName" .) }}
+
+WARNING: no environment Secret is configured (secrets.existingSecret is empty
+and secrets.create is false). The app is running on insecure defaults —
+DJANGO_SECRET_KEY, DATABASE_URL, CELERY_BROKER_URL, CACHE_URL and the OIDC
+client credentials all need real values. Create a Secret and set
+secrets.existingSecret (see the chart README for the expected keys).
+{{- end }}
+
+{{- if .Values.secrets.create }}
+
+NOTE: secrets.create renders secret material from your values file into the
+cluster — fine for dev/eval, use secrets.existingSecret in production.
+{{- end }}
+
+{{- if .Values.migrate.enabled }}
+
+Migrations ran as a pre-install/pre-upgrade hook Job. Inspect the last run:
+
+  kubectl -n {{ .Release.Namespace }} logs job/{{ include "advisoryhub.fullname" . }}-migrate
+{{- end }}
+
+Verify health:
+
+  kubectl -n {{ .Release.Namespace }} get deploy -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- if $host }}
+  curl -H 'Host: {{ $host }}' http://<pod-ip>:8000/readyz
+{{- end }}
+
+Next steps (first install): register the OIDC redirect URI
+{{- if $host }} (https://{{ $host }}/oidc/callback/){{ end }} with your
+provider, and see docs/operations/deploy-kubernetes.md for the full
+walkthrough.

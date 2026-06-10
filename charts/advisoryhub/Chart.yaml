@@ -1,0 +1,24 @@
+apiVersion: v2
+name: advisoryhub
+description: >-
+  AdvisoryHub — security advisory authoring, review and publication for
+  Eclipse Foundation projects. Deploys the web (gunicorn), Celery worker and
+  Celery beat processes from a single image; PostgreSQL and Valkey are
+  external prerequisites.
+type: application
+# Chart version — bump on any chart change.
+version: 0.1.0
+# Tracks the application image tag (image.tag defaults to this).
+appVersion: "0.1.0"
+# The trailing -0 matters: OKD/OpenShift report pre-release-suffixed server
+# versions (e.g. 1.29.5+9d3d2cb) that a bare >=1.25.0 would reject.
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/mbarbero/advisoryhub
+sources:
+  - https://github.com/mbarbero/advisoryhub
+maintainers:
+  - name: Eclipse Foundation Security Team
+keywords:
+  - security
+  - advisories
+  - django

@@ -1,0 +1,90 @@
+{{- if .Values.networkPolicy.enabled }}
+# Ingress-only by default: egress stays open because the app needs
+# PostgreSQL, Valkey, the OIDC provider, SMTP, the publication Git remote and
+# (optionally) the GitHub/Eclipse APIs — a default-deny egress would brick
+# every external-service deployment. Populate networkPolicy.egress to
+# restrict it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-web
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "web") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    {{- if .Values.networkPolicy.egress }}
+    - Egress
+    {{- end }}
+  ingress:
+    # Router/ingress-controller → web (app traffic).
+    - from:
+        {{- toYaml .Values.networkPolicy.ingressControllerPeers | nindent 8 }}
+      ports:
+        - port: 8000
+          protocol: TCP
+    # Prometheus → web /metrics.
+    - from:
+        {{- toYaml .Values.networkPolicy.monitoringPeers | nindent 8 }}
+      ports:
+        - port: 8000
+          protocol: TCP
+  {{- with .Values.networkPolicy.egress }}
+  egress:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-worker
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "worker") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    {{- if .Values.networkPolicy.egress }}
+    - Egress
+    {{- end }}
+  ingress:
+    {{- if .Values.metrics.enabled }}
+    # Prometheus → worker exporter; nothing else may connect.
+    - from:
+        {{- toYaml .Values.networkPolicy.monitoringPeers | nindent 8 }}
+      ports:
+        - port: {{ .Values.metrics.workerPort }}
+          protocol: TCP
+    {{- end }}
+  {{- with .Values.networkPolicy.egress }}
+  egress:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-beat
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "beat") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    {{- if .Values.networkPolicy.egress }}
+    - Egress
+    {{- end }}
+  # No ingress rules: nothing connects to beat.
+  ingress: []
+  {{- with .Values.networkPolicy.egress }}
+  egress:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

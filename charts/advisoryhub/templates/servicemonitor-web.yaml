@@ -1,0 +1,28 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "advisoryhub.fullname" . }}-web
+  labels:
+    {{- include "advisoryhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "advisoryhub.selectorLabels" (dict "ctx" . "component" "web") | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      relabelings:
+        # The bundled alert rules and dashboards select on
+        # job=~"advisoryhub-.*" (see files/prometheus-rules.yaml); without
+        # this pin the operator-default job label (the Service name,
+        # release-prefixed) never matches and the rules silently go dead.
+        - action: replace
+          targetLabel: job
+          replacement: advisoryhub-web
+{{- end }}

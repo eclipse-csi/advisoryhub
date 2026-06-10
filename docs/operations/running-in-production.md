@@ -59,9 +59,17 @@ is read-only or ephemeral, point its schedule file somewhere writable with
 
 - Terminate HTTPS upstream and forward to gunicorn.
 - Set **`DJANGO_ALLOWED_HOSTS`** to your real hostname(s).
-- `prod.py` enables **`SECURE_SSL_REDIRECT`** and HSTS — make sure the proxy
-  forwards the original scheme (and configure Django's standard proxy-SSL header
-  handling if TLS is terminated at the proxy) so you don't get a redirect loop.
+- `prod.py` enables **`SECURE_SSL_REDIRECT`** and HSTS. Because TLS terminates
+  at the proxy, set **`USE_X_FORWARDED_PROTO=True`** so Django trusts the
+  proxy's `X-Forwarded-Proto` — without it every request 301-loops. Only enable
+  it when all traffic passes a proxy that sets (never forwards) that header.
+- Set **`CSRF_TRUSTED_ORIGINS`** to the public origin(s), e.g.
+  `https://advisoryhub.example.org`, so CSRF origin checking accepts form posts
+  arriving via the proxy.
+- `/healthz`, `/readyz` and `/metrics` are exempt from the SSL redirect
+  (`SECURE_REDIRECT_EXEMPT`): plain-HTTP kubelet probes and Prometheus scrapes
+  get real status codes — a 301 would count as a passing probe while skipping
+  the actual readiness checks.
 - Set **`TRUSTED_PROXY_COUNT`** to the number of proxies in front of the app so
   per-IP rate limits and audit-log client IPs use the true client address and
   can't be spoofed via a forged `X-Forwarded-For`.

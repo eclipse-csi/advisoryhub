@@ -17,6 +17,14 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, ["*"]),
     DJANGO_SECRET_KEY=(str, "insecure-change-me"),
     DJANGO_TIME_ZONE=(str, "UTC"),
+    # Reverse proxy / edge TLS. USE_X_FORWARDED_PROTO makes Django trust the
+    # X-Forwarded-Proto header set by a TLS-terminating proxy (ingress/Route);
+    # only enable when every request path goes through such a proxy.
+    USE_X_FORWARDED_PROTO=(bool, False),
+    CSRF_TRUSTED_ORIGINS=(list, []),
+    # Absolute-URL base for links in outbound email (notifications.recipients),
+    # e.g. https://advisoryhub.example.org. Empty keeps links site-relative.
+    ADVISORYHUB_BASE_URL=(str, ""),
     # Database
     DATABASE_URL=(str, "postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub"),
     # OIDC
@@ -35,9 +43,16 @@ env = environ.Env(
     CELERY_BROKER_URL=(str, "redis://localhost:6379/0"),
     CELERY_RESULT_BACKEND=(str, "redis://localhost:6379/1"),
     CELERY_TASK_ALWAYS_EAGER=(bool, False),
-    # Email
+    # Email. The EMAIL_HOST* knobs only matter with the smtp backend; the
+    # defaults mirror Django's own (localhost:25, no auth, no TLS).
     EMAIL_BACKEND=(str, "django.core.mail.backends.console.EmailBackend"),
     DEFAULT_FROM_EMAIL=(str, "AdvisoryHub <noreply@example.org>"),
+    EMAIL_HOST=(str, "localhost"),
+    EMAIL_PORT=(int, 25),
+    EMAIL_HOST_USER=(str, ""),
+    EMAIL_HOST_PASSWORD=(str, ""),  # SECRET
+    EMAIL_USE_TLS=(bool, False),
+    EMAIL_USE_SSL=(bool, False),
     # Publication Git repository
     PUB_REPO_URL=(str, ""),
     PUB_REPO_BRANCH=(str, "main"),
@@ -359,6 +374,14 @@ PROMETHEUS_WORKER_METRICS_PORT = env("PROMETHEUS_WORKER_METRICS_PORT")
 # ---------------------------------------------------------------------------
 EMAIL_BACKEND = env("EMAIL_BACKEND")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS")
+EMAIL_USE_SSL = env("EMAIL_USE_SSL")
+# Base URL for absolute links in outbound email (see notifications.recipients).
+ADVISORYHUB_BASE_URL = env("ADVISORYHUB_BASE_URL")
 
 # ---------------------------------------------------------------------------
 # Publication Git repository
@@ -518,6 +541,26 @@ else:
 # direct peer (REMOTE_ADDR); raise to the number of trusted proxies that
 # append to X-Forwarded-For in front of the app.
 TRUSTED_PROXY_COUNT = env("TRUSTED_PROXY_COUNT")
+
+# ---------------------------------------------------------------------------
+# Reverse proxy / edge TLS
+# ---------------------------------------------------------------------------
+# Behind a TLS-terminating proxy (OpenShift Route, Ingress, LB) the app sees
+# plain HTTP; trusting the proxy's X-Forwarded-Proto is what lets
+# request.is_secure() — and with it SECURE_SSL_REDIRECT, secure cookies and
+# CSRF origin checking — work. Only enable when ALL traffic reaches the app
+# through a proxy that sets (never forwards) this header, otherwise a client
+# can forge it. Pair with TRUSTED_PROXY_COUNT and CSRF_TRUSTED_ORIGINS.
+if env("USE_X_FORWARDED_PROTO"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# e.g. CSRF_TRUSTED_ORIGINS=https://advisoryhub.example.org
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
+# Probes and metrics scrapes arrive as plain in-cluster HTTP without
+# X-Forwarded-Proto. Exempting them from SECURE_SSL_REDIRECT (prod) keeps
+# /readyz returning its real status instead of a 301 — kubelet counts any
+# 3xx as success, which would silently disable readiness checking — and
+# keeps Prometheus (which doesn't follow redirects) able to scrape /metrics.
+SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$", r"^metrics$"]
 
 # ---------------------------------------------------------------------------
 # Logging — single-line JSON to stderr, with the current request id on

@@ -93,8 +93,15 @@ end-to-end setup. All endpoints come from your provider's discovery document.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `EMAIL_BACKEND` | `…console.EmailBackend` | Set to `django.core.mail.backends.smtp.EmailBackend` in prod (configure the standard Django `EMAIL_HOST*` knobs via your platform as needed). |
+| `EMAIL_BACKEND` | `…console.EmailBackend` | Set to `django.core.mail.backends.smtp.EmailBackend` in prod, then configure the `EMAIL_HOST*` knobs below. |
 | `DEFAULT_FROM_EMAIL` | `AdvisoryHub <noreply@example.org>` | From-address on outbound notifications. |
+| `EMAIL_HOST` | `localhost` | SMTP relay host (smtp backend only). |
+| `EMAIL_PORT` | `25` | SMTP port — typically `587` with STARTTLS. |
+| `EMAIL_HOST_USER` | *(empty)* | SMTP auth username; empty disables auth. |
+| `EMAIL_HOST_PASSWORD` | *(empty)* | **Secret.** SMTP auth password. |
+| `EMAIL_USE_TLS` | `False` | STARTTLS on connect (mutually exclusive with `EMAIL_USE_SSL`). |
+| `EMAIL_USE_SSL` | `False` | Implicit TLS (usually port `465`). |
+| `ADVISORYHUB_BASE_URL` | *(empty)* | Absolute-URL base for links in notification emails, e.g. `https://advisoryhub.example.org`. Empty keeps links site-relative (they won't resolve from a mail client). |
 
 ## 8. Publication Git repository
 
@@ -156,13 +163,19 @@ Off by default. See [integrations.md §4](./integrations.md#4-security-team-rost
 | `INTAKE_REPORT_RETENTION_DAYS` † | `365` | Horizon after which intake PII is scrubbed (see `prune_reports`). |
 | `INTAKE_DISABLED` † | `False` | Kill switch for the public `/report/` form. |
 
-## 12. Logging & proxy
+## 12. Logging & reverse proxy
 
 | Variable | Default | Notes |
 |---|---|---|
 | `LOG_FORMAT` † | `json` | `json` (prod) or `plain` (dev). |
 | `LOG_LEVEL` † | `INFO` | Root log level. |
 | `TRUSTED_PROXY_COUNT` | `0` | Number of trusted proxies appending to `X-Forwarded-For`. Set to your real proxy depth (e.g. `1`) so per-IP rate limits and audit IPs reflect the true client and can't be spoofed. `0` ignores the header. |
+| `USE_X_FORWARDED_PROTO` | `False` | Trust the proxy's `X-Forwarded-Proto` (sets `SECURE_PROXY_SSL_HEADER`). **Required when TLS terminates at the proxy** — without it `SECURE_SSL_REDIRECT` loops and secure cookies/CSRF never engage. Only enable when *all* traffic passes a proxy that sets (never forwards) the header. |
+| `CSRF_TRUSTED_ORIGINS` | *(empty)* | Comma-separated origins for CSRF origin checking behind a proxy, e.g. `https://advisoryhub.example.org`. Pair with `USE_X_FORWARDED_PROTO`. |
+
+> `/healthz`, `/readyz` and `/metrics` are exempt from the prod SSL redirect
+> (`SECURE_REDIRECT_EXEMPT` in `base.py`) so plain-HTTP kubelet probes and
+> Prometheus scrapes see real status codes instead of 301s.
 
 ## 13. Observability
 

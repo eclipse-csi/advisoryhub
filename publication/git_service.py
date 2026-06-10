@@ -13,9 +13,12 @@ are not enforced under the threads pool the production worker runs with.
 
 Auth modes:
 
-* ``ssh``: set ``GIT_SSH_COMMAND`` for the git subprocesses so the SSH
-  client uses a specific identity file and skips host-key prompts. The
-  configured ``ssh_key_path`` is used as ``-i``.
+* ``ssh``: point ``GIT_SSH`` at a per-call generated wrapper that execs
+  the SSH client with a specific identity file (the configured
+  ``ssh_key_path`` as ``-i``) and no prompts. ``GIT_SSH`` is the one ssh
+  hook git execs *directly* — ``GIT_SSH_COMMAND``/``core.sshCommand``
+  are run through ``/bin/sh`` whenever they carry arguments, and the
+  production image has no shell.
 * ``token``: rewrite the HTTPS URL to embed ``x-access-token:<TOKEN>@``.
   The token never appears in repo state, audit metadata, or last_error
   (error messages are built from git's output — never the argument list —
@@ -29,6 +32,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,7 +80,10 @@ def publish_files(
         raise GitPublicationError("publication repository URL is not configured")
 
     env = _git_env(config)
-    with tempfile.TemporaryDirectory(prefix="advisoryhub-pub-") as workdir:
+    with tempfile.TemporaryDirectory(prefix="advisoryhub-pub-") as scratch:
+        if config.auth_method == "ssh" and config.ssh_key_path:
+            env["GIT_SSH"] = _write_ssh_wrapper(Path(scratch), config)
+        workdir = str(Path(scratch) / "repo")
         # The token-embedded URL only ever appears in this argument list;
         # _run_git never quotes the argument list in error messages.
         _run_git(
@@ -201,7 +208,7 @@ def _git_env(config: RepoConfig) -> dict[str, str]:
     (``LD_PRELOAD``/``NSS_WRAPPER_*``) have to reach the git → ssh child
     processes for ssh to work under an arbitrary OpenShift UID.
     """
-    env = {
+    return {
         **os.environ,
         # Fail fast instead of waiting on an interactive credential prompt.
         "GIT_TERMINAL_PROMPT": "0",
@@ -210,14 +217,40 @@ def _git_env(config: RepoConfig) -> dict[str, str]:
         "GIT_COMMITTER_NAME": config.commit_author_name,
         "GIT_COMMITTER_EMAIL": config.commit_author_email,
     }
-    if config.auth_method == "ssh" and config.ssh_key_path:
-        env["GIT_SSH_COMMAND"] = (
-            f"ssh -i {config.ssh_key_path} "
-            "-o IdentitiesOnly=yes "
-            "-o StrictHostKeyChecking=accept-new "
-            "-o BatchMode=yes"
-        )
-    return env
+
+
+def _write_ssh_wrapper(scratch: Path, config: RepoConfig) -> str:
+    """Generate the per-call ``GIT_SSH`` program for ssh auth.
+
+    git execs ``GIT_SSH`` directly, while ``GIT_SSH_COMMAND`` (and
+    ``core.sshCommand``) are run through ``/bin/sh`` whenever they carry
+    arguments — and the production image has no shell. The wrapper pins
+    the identity file and disables every prompt, then hands over to the
+    real ssh. Its shebang is this very interpreter, so it works in the
+    venv-only production image and on dev hosts alike. It is named
+    ``ssh`` so git recognises the OpenSSH option variant from the
+    basename (no extra ``-G`` probe), and it lives in the private
+    per-call scratch dir — no cross-call races under the threaded
+    Celery pool, gone when the publication finishes.
+    """
+    wrapper = scratch / "ssh"
+    wrapper.write_text(
+        f"#!{sys.executable}\n"
+        "import os, sys\n"
+        "os.execvp(\n"
+        '    "ssh",\n'
+        "    [\n"
+        '        "ssh",\n'
+        f'        "-i", {config.ssh_key_path!r},\n'
+        '        "-o", "IdentitiesOnly=yes",\n'
+        '        "-o", "StrictHostKeyChecking=accept-new",\n'
+        '        "-o", "BatchMode=yes",\n'
+        "        *sys.argv[1:],\n"
+        "    ],\n"
+        ")\n"
+    )
+    wrapper.chmod(0o700)
+    return str(wrapper)
 
 
 def _embed_token(config: RepoConfig) -> str:

@@ -313,10 +313,13 @@ pool. For each call:
    between concurrent publications under a threaded Celery pool;
    extending rather than replacing matters so the container
    entrypoint's nss_wrapper variables reach the git → ssh child
-   processes): `GIT_TERMINAL_PROMPT=0`, the
-   `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity from the config, and —
-   when auth mode is `ssh` — `GIT_SSH_COMMAND` set to
-   `ssh -i <key> -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o BatchMode=yes`
+   processes): `GIT_TERMINAL_PROMPT=0` and the
+   `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity from the config. When auth
+   mode is `ssh`, `GIT_SSH` is pointed at a per-call wrapper script
+   (generated into the scratch directory) that execs
+   `ssh -i <key> -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o BatchMode=yes` —
+   `GIT_SSH` is exec'd directly by git, whereas `GIT_SSH_COMMAND` is run
+   through `/bin/sh`, which the production image doesn't have
    ([INV-SECRET-2](./invariant.md#inv-secret-2)).
 2. A fresh `tempfile.TemporaryDirectory(prefix="advisoryhub-pub-")`
    ([INV-PUB-1](./invariant.md#inv-pub-1)).

@@ -65,8 +65,11 @@ the CVE-assigner identity. The worker image ships `git` + `openssh-client`.
 - Use an SSH URL (`git@github.com:eclipse/advisories.git`).
 - Mount the deploy **private key** as a file and point `PUB_REPO_SSH_KEY_PATH` at
   it (e.g. `/run/secrets/pub_repo_ssh_key`).
-- AdvisoryHub invokes git with `GIT_SSH_COMMAND = ssh -i <key> -o
-  IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o BatchMode=yes`.
+- AdvisoryHub points git's `GIT_SSH` hook at a per-publication generated
+  wrapper that execs `ssh -i <key> -o IdentitiesOnly=yes -o
+  StrictHostKeyChecking=accept-new -o BatchMode=yes`. (`GIT_SSH` is exec'd
+  directly by git; `GIT_SSH_COMMAND` would be run through a shell, which
+  the production image doesn't have.)
 - `accept-new` trusts the remote host key on first contact. For strict checking,
   **pre-populate a `known_hosts`** (e.g. bake one into the image) so a changed host
   key is rejected.

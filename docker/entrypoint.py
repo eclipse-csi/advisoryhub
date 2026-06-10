@@ -1,9 +1,10 @@
 """Container entrypoint: register the runtime UID, then exec the command.
 
 OpenShift's restricted-v2 SCC runs containers as a random UID in group 0
-with no /etc/passwd entry. ssh — used by publication pushes via
-GIT_SSH_COMMAND (publication/git_service.py) — hard-fails for such a UID
-("No user exists for uid"). Register the runtime UID before handing off
+with no /etc/passwd entry. ssh — used by publication pushes via the
+per-call GIT_SSH wrapper (publication/git_service.py) — hard-fails for
+such a UID ("No user exists for uid"). Register the runtime UID before
+handing off
 by pointing glibc at a passwd copy under /tmp via nss_wrapper; /tmp is
 always writable (an emptyDir under the Helm chart's default
 readOnlyRootFilesystem), so one code path covers writable and read-only

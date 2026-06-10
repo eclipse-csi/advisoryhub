@@ -6,8 +6,10 @@ is missing.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -15,6 +17,7 @@ from publication.git_service import (
     GitPublicationError,
     WrittenFile,
     _git_env,
+    _write_ssh_wrapper,
     publish_files,
 )
 from publication.repo_config import RepoConfig
@@ -190,3 +193,39 @@ def test_git_env_extends_process_environment(config, monkeypatch):
     assert env["GIT_TERMINAL_PROMPT"] == "0"
     assert env["GIT_AUTHOR_NAME"] == config.commit_author_name
     assert env["GIT_COMMITTER_EMAIL"] == config.commit_author_email
+
+
+def test_ssh_wrapper_is_directly_executable(tmp_path):
+    """The ssh-auth hook must be a ``GIT_SSH`` program, never a shell line.
+
+    git execs ``GIT_SSH`` directly; ``GIT_SSH_COMMAND`` is run through
+    ``/bin/sh`` whenever it carries arguments, and the production image
+    has no shell.
+    """
+    config = RepoConfig(
+        repo_url="ssh://git@git.example.org/pub.git",
+        branch="main",
+        auth_method="ssh",
+        ssh_key_path="/etc/advisoryhub/keys/pub-repo-ssh-key",
+        token="",
+        commit_author_name="AdvisoryHub Test",
+        commit_author_email="bot@example.org",
+        osv_path_template="osv/{year}/{advisory_id}.json",
+        csaf_path_template="csaf/{year}/{advisory_id}.json",
+        cve_path_template="cves/{year}/{bucket}/{cve_id}.json",
+        cve_assigner_org_id="",
+        cve_assigner_short_name="eclipse",
+    )
+    wrapper = _write_ssh_wrapper(tmp_path, config)
+    assert Path(wrapper).name == "ssh"  # basename drives git's variant detection
+    assert os.access(wrapper, os.X_OK)
+    content = Path(wrapper).read_text()
+    assert config.ssh_key_path in content
+    assert "BatchMode=yes" in content
+
+    if shutil.which("ssh"):
+        # ssh -G resolves the config without contacting anything; a zero
+        # exit proves the wrapper execs (shebang + execvp) without a shell.
+        out = subprocess.run([wrapper, "-G", "git.example.org"], capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert "batchmode yes" in out.stdout

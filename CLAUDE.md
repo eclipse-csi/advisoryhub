@@ -159,7 +159,7 @@ Untrusted public submissions land in `Advisory(state=triage)` via `advisories.se
 Entry: `publication.services.publish(advisory, by=user)` — pins the latest `AdvisoryVersion` on a new `PublicationTask` and enqueues `publication.tasks.run_publication` via `transaction.on_commit`. Full pipeline (build OSV/CSAF, validate against vendored schemas, persist `PublicationArtifact`, clone into a fresh tempdir, write, commit, push, atomic finalisation under `select_for_update`, failure handling) in [`docs/specification/architecture.md §4`](docs/specification/architecture.md). Failed exports surface in the Admin Console's Publication page (`/admin/publications/`).
 
 **Auth modes** for the publication repo:
-- `PUB_REPO_AUTH=ssh` — `GIT_SSH_COMMAND` with `IdentitiesOnly=yes`, `BatchMode=yes`, `StrictHostKeyChecking=accept-new`. Use a pre-populated known_hosts image in prod for strict checking.
+- `PUB_REPO_AUTH=ssh` — a per-call `GIT_SSH` wrapper execs ssh with `IdentitiesOnly=yes`, `BatchMode=yes`, `StrictHostKeyChecking=accept-new` (`GIT_SSH_COMMAND` would need the shell the production image doesn't have). Use a pre-populated known_hosts image in prod for strict checking.
 - `PUB_REPO_AUTH=token` — rewrites HTTPS URL with `https://x-access-token:$PUB_REPO_TOKEN@…`; token stripped from every error/audit/artifact/notification surface.
 
 ## Frontend / CSP

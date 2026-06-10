@@ -583,9 +583,11 @@ prior `AdvisoryVersion` and `PublicationArtifact` remains immutable.
 Two authentication modes are supported, mutually exclusive
 ([INV-PUB-2](./invariant.md#inv-pub-2)):
 
-- `ssh` — `GIT_SSH_COMMAND` is set with `IdentitiesOnly=yes`,
-  `BatchMode=yes`, `StrictHostKeyChecking=accept-new`, and restored
-  on exit ([INV-SECRET-2](./invariant.md#inv-secret-2)).
+- `ssh` — git's `GIT_SSH` hook is pointed at a per-call generated
+  wrapper that execs ssh with `IdentitiesOnly=yes`, `BatchMode=yes`,
+  `StrictHostKeyChecking=accept-new`; the wrapper lives in the call's
+  scratch directory and vanishes with it
+  ([INV-SECRET-2](./invariant.md#inv-secret-2)).
 - `token` — the HTTPS URL is rewritten with
   `https://x-access-token:$PUB_REPO_TOKEN@…` for the duration of the
   clone; the token never appears in repo state, audit metadata, task

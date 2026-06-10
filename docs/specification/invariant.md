@@ -922,16 +922,18 @@ and into e-mail; tokens embedded there would leak immediately.
 ### INV-SECRET-2 — Tokenised URLs and SSH key paths never persisted   [Critical]
 
 **Statement.** Token-embedded clone URLs exist only in process memory for the
-duration of a `publish_files` call. `GIT_SSH_COMMAND` is set in the environment
-only inside the `_ssh_env` context manager and restored / unset afterwards. Neither
-is written to any model.
+duration of a `publish_files` call. SSH identity wiring exists only as a per-call
+`GIT_SSH` wrapper script inside the call's private scratch `TemporaryDirectory`,
+passed via a per-call environment dict (the global `os.environ` is never
+mutated), and is deleted with the scratch directory. Neither is written to any
+model.
 
 **Rationale.** Even in-memory exposure has to be bounded; persistence makes a
 single forensic dump catastrophic.
 
 **Enforced in.**
-- `publication/git_service.py` — `_embed_token` is transient; `_ssh_env` is a
-  context manager that restores `GIT_SSH_COMMAND` on exit.
+- `publication/git_service.py` — `_embed_token` is transient; `_write_ssh_wrapper`
+  writes into the per-call scratch dir and `_git_env` builds a per-call env dict.
 
 **Violation impact.** Long-lived tokens / key paths accessible via DB dump or env
 inspection of long-running workers.

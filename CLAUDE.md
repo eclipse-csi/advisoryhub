@@ -50,6 +50,7 @@ Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/k
 - `mise run lint` / `fix` / `typecheck` / `ty` — ruff + mypy + advisory ty
 - `mise run check` / `makemigrations-check` / `audit` — Django checks + pip-audit
 - `mise run verify-vendor` / `check-templates` — vendored-asset checksum + template-comment guards (also run by prek/CI)
+- `mise run helm-lint` / `helm-template` / `helm-validate` / `verify-chart-assets` — Helm chart gates for `charts/advisoryhub` (lint + kubeconform render validation + observability-asset sync; also run by CI)
 
 mise pins only the bootstrap `uv` + `prek` (in `mise.toml`); all dev tool versions stay in `uv.lock`, the Python version in `.python-version`. CI runs these same tasks. Raw `uv`/`docker compose` commands remain canonical.
 

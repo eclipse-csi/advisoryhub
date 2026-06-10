@@ -42,6 +42,9 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=1024]
       - id: check-yaml
+        # Helm templates are Go-templated YAML — not parseable pre-render
+        # (everything else under charts/ stays checked).
+        exclude: '^charts/[^/]+/templates/'
       - id: check-toml
       - id: check-json
       - id: debug-statements
@@ -73,6 +76,13 @@ repos:
       - id: verify-vendored-assets
         name: vendored asset checksums (htmx matches static/htmx.VERSION)
         entry: dev/check_vendored_assets.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: verify-chart-assets
+        name: chart copies of observability assets match dev/observability/
+        entry: dev/check_chart_assets.sh
         language: system
         pass_filenames: false
         always_run: true

@@ -126,6 +126,17 @@ jobs:
       # tool, resolving imports against the project venv mise run sync populated.
       - run: mise run ty
 
+  helm:
+    name: Helm chart (lint + render + kubeconform)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v4
+      # No uv cache: the helm tasks need no Python environment.
+      - run: mise run verify-chart-assets
+      - run: mise run helm-lint
+      - run: mise run helm-validate
+
   security:
     name: Dependency audit (pip-audit)
     runs-on: ubuntu-latest

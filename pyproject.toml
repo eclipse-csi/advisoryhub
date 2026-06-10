@@ -25,6 +25,7 @@ dependencies = [
     "django-hcaptcha>=0.2",
     "django-csp>=4.0",
     "whitenoise[brotli]>=6.6",
+    "gunicorn>=23",
 ]
 
 [tool.setuptools]

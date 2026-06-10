@@ -1,0 +1,159 @@
+name: Release image
+
+# Builds the production container image, smoke-tests it under an
+# OpenShift-style arbitrary UID, gates on a Trivy scan, then (on main/tag
+# pushes) publishes to ghcr.io with an SBOM + SLSA provenance attestations and
+# a keyless cosign signature.
+#
+# Required repository secrets:
+#   DHI_REGISTRY_USERNAME / DHI_REGISTRY_TOKEN — Docker ID + PAT for dhi.io
+#   (the hardened base image registry; anonymous pulls are refused). Needed on
+#   pull_request builds too — fork PRs don't receive secrets and will fail at
+#   the base pull, which is acceptable for this private repo.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - docker/**
+      - pyproject.toml
+      - uv.lock
+      - gunicorn.conf.py
+      - .github/workflows/release-image.yml
+
+concurrency:
+  group: release-image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  image:
+    name: Build, scan & publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io
+      id-token: write # cosign keyless (OIDC)
+      security-events: write # Trivy SARIF upload
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-buildx-action@v4
+
+      # The production base (dhi.io) refuses anonymous pulls — login is needed
+      # even for PR builds that never push.
+      - name: Log in to dhi.io (hardened base images)
+        uses: docker/login-action@v4
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DHI_REGISTRY_USERNAME }}
+          password: ${{ secrets.DHI_REGISTRY_TOKEN }}
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          # main → :main + :latest + :sha-<short>; tag vX.Y.Z → :X.Y.Z + :X.Y.
+          # metadata-action also emits the org.opencontainers.image.* labels
+          # (revision/version/created) the Dockerfile leaves to CI.
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # First build lands in the local docker store for the smoke test and the
+      # scan (attestation-bearing builds can't be load:true'd); the publish
+      # build below replays it from the gha cache.
+      - name: Build (local, for smoke test + scan)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: production
+          load: true
+          tags: advisoryhub:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The image must work as a random non-root UID in group 0 (OpenShift
+      # restricted-v2) — both with a writable root fs (passwd append) and a
+      # read-only one (nss_wrapper). /healthz is DB-free and exempt from the
+      # prod SSL redirect, so a plain-HTTP 200 proves the full gunicorn+Django
+      # stack booted.
+      - name: Smoke test
+        run: |
+          set -eux
+          docker run --rm --user 10001:0 advisoryhub:smoke whoami | grep -x advisoryhub
+          docker run --rm --read-only --tmpfs /tmp --user 10002:0 advisoryhub:smoke whoami | grep -x advisoryhub
+          docker run --rm --user 10001:0 -e DJANGO_SECRET_KEY=smoke advisoryhub:smoke python manage.py check
+          docker run -d --name smoke --user 10001:0 -e DJANGO_SECRET_KEY=smoke -p 8000:8000 advisoryhub:smoke
+          code=000
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/healthz || true)
+            [ "$code" = "200" ] && break
+            sleep 1
+          done
+          [ "$code" = "200" ] || { docker logs smoke; exit 1; }
+          docker rm -f smoke
+
+      - name: Trivy scan (gate on fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: advisoryhub:smoke
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+
+      - name: Push (with SBOM + provenance attestations)
+        id: push
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: production
+          # amd64 only (the OKD target); add linux/arm64 here if ever needed —
+          # uv.lock is wheels-only on both, so it Just Builds.
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v4
+
+      # Keyless signing against the GitHub OIDC identity of this workflow.
+      # Verify with:
+      #   cosign verify ghcr.io/<owner>/advisoryhub@<digest> \
+      #     --certificate-identity-regexp 'https://github.com/<owner>/advisoryhub/\.github/workflows/release-image\.yml@.*' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign image (cosign keyless)
+        if: github.event_name != 'pull_request'
+        run: cosign sign --yes "${IMAGE}@${{ steps.push.outputs.digest }}"

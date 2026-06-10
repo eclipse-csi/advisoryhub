@@ -13,6 +13,10 @@ stack** — they bundle PostgreSQL, Valkey, and a Kanidm OIDC provider, and need
 `.env` editing. They are **not** a production deployment (see §3).
 
 ```sh
+# 0. One time: the app images base on Docker Hardened Images, whose registry
+#    refuses anonymous pulls (free Docker account).
+docker login dhi.io
+
 # 1. Start the bundled OIDC provider, then bootstrap it (one time).
 docker compose up -d kanidm
 bash dev/kanidm/setup.sh          # mints the OIDC client secret into dev/kanidm/.env.kanidm
@@ -138,9 +142,10 @@ Production-image facts an operator needs:
   stages use the `-dev` variant; `git`, `ssh`, and `libnss_wrapper` (plus
   their shared-library closure and dpkg scanner metadata) are harvested by
   `docker/collect-runtime-deps.sh` and COPY'd into the final stage, which
-  contains zero RUN instructions. Pulling either base for a local build
-  requires `docker login dhi.io` (free Docker account); the *published*
-  image on ghcr.io needs no DHI credentials.
+  contains zero RUN instructions. The compose `dev` target bases on the
+  `-dev` variant too, so every local build — including `docker compose up`
+  — needs a one-time `docker login dhi.io` (free Docker account); the
+  *published* image on ghcr.io needs no DHI credentials.
 - **No shell inside**: `kubectl exec … -- sh` (or `bash`) cannot work.
   Exec `python`, `git`, or `celery` directly, or use `kubectl debug` with
   an ephemeral debug image for filesystem inspection.

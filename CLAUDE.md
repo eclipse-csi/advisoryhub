@@ -23,6 +23,9 @@ Authoritative source of truth for what this system *is* and *does* lives in `doc
 Dev environment is **docker-compose driven** and self-contained — no `.env` editing required.
 
 ```sh
+# One time: the app images base on Docker Hardened Images (free Docker account)
+docker login dhi.io
+
 # First run (mints OIDC client secret)
 docker compose up -d kanidm
 bash dev/kanidm/setup.sh

@@ -6,34 +6,34 @@
 #                yields prod): source + baked static files, gunicorn CMD,
 #                OpenShift/OKD arbitrary-UID compatible.
 #
-# Production builds on Docker Hardened Images (dhi.io — requires
-# `docker login dhi.io`); the dev stage stays on the public python:slim so
-# `docker compose up` needs no registry credentials. The deployed stage is
-# the DHI *runtime* variant — no shell, no package manager — and contains
+# Every stage bases on Docker Hardened Images (dhi.io — pulls need a
+# one-time `docker login dhi.io`, free Docker account), so even
+# `docker compose up` requires that login once. The deployed stage is the
+# DHI *runtime* variant — no shell, no package manager — and contains
 # zero RUN instructions: everything it needs (venv, app, git/ssh) is COPY'd
 # from earlier stages.
 
 # uv as a static binary copied from its (digest-pinned) distroless image —
 # no pip bootstrap, identical mechanism in every stage.
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6
+# DHI "dev" variant (hardened Debian 13 + bash/apt, runs as root): base of
+# the compose dev stage and of every build stage — uv sync, collectstatic,
+# and the runtime-deps harvest all need a shell. Nothing from it ships in
+# the deployed image except files explicitly COPY'd into `production`.
 # Patch version matches .python-version; bump both together.
-ARG DEV_BASE_IMAGE=python:3.14.5-slim@sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97
-# DHI "dev" variant (hardened Debian 13 + bash/apt): build stages only —
-# uv sync, collectstatic, and the runtime-deps harvest all need a shell.
-# Nothing from it ships except files explicitly COPY'd into `production`.
-ARG PROD_BUILD_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:a787019910f2bcf699178a28903ce40501db4e853ec09453815175ae46922d5e
+ARG DHI_DEV_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:a787019910f2bcf699178a28903ce40501db4e853ec09453815175ae46922d5e
 # DHI runtime variant: what actually deploys. git/ssh/libnss_wrapper come
 # from the runtime-deps stage (same Debian 13 release line, so any
 # overwritten library is byte-identical). Pin a digest once resolved with
 # dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.5-debian13
-ARG PROD_RUNTIME_IMAGE=dhi.io/python:3.14.5-debian13
+ARG DHI_RUNTIME_IMAGE=dhi.io/python:3.14.5-debian13
 
 FROM ${UV_IMAGE} AS uv-dist
 
 # ---------------------------------------------------------------------------
 # dev — used by docker-compose (build target: dev)
 # ---------------------------------------------------------------------------
-FROM ${DEV_BASE_IMAGE} AS dev
+FROM ${DHI_DEV_IMAGE} AS dev
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -48,12 +48,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
 # git + ssh: publication pushes (publication/git_service.py shells out to
-# them); curl: convenience.
+# them); curl: convenience. DHI apt repos are GPG-signed dhi.io mirrors —
+# no https source rewrite needed (that was a python:slim-ism).
 # No build-essential/libpq-dev: uv.lock resolves to wheels only (psycopg-binary
 # bundles libpq) — if a future dependency ships sdist-only, uv sync fails
 # loudly here and the toolchain can be re-added.
-RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
- && apt-get update \
+RUN apt-get update \
  && apt-get install -y --no-install-recommends git openssh-client curl \
  && rm -rf /var/lib/apt/lists/*
 
@@ -75,7 +75,7 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 # ---------------------------------------------------------------------------
 # prod-base — shared build base for the production stages
 # ---------------------------------------------------------------------------
-FROM ${PROD_BUILD_IMAGE} AS prod-base
+FROM ${DHI_DEV_IMAGE} AS prod-base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -129,7 +129,7 @@ RUN mkdir -p /home/advisoryhub/.ssh \
 # ---------------------------------------------------------------------------
 # runtime-deps — harvest git/ssh/nss_wrapper for the shell-less final stage
 # ---------------------------------------------------------------------------
-FROM ${PROD_BUILD_IMAGE} AS runtime-deps
+FROM ${DHI_DEV_IMAGE} AS runtime-deps
 
 # git + ssh are runtime requirements (publication pushes shell out to them);
 # libnss-wrapper backs the arbitrary-UID registration in docker/entrypoint.py.
@@ -145,7 +145,7 @@ RUN bash /tmp/collect-runtime-deps.sh /staging
 # ---------------------------------------------------------------------------
 # production — the deployable image (default target; zero RUN instructions)
 # ---------------------------------------------------------------------------
-FROM ${PROD_RUNTIME_IMAGE} AS production
+FROM ${DHI_RUNTIME_IMAGE} AS production
 
 # revision/version/created are stamped by CI (docker/metadata-action).
 LABEL org.opencontainers.image.title="AdvisoryHub" \

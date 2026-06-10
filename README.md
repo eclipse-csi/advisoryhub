@@ -54,6 +54,7 @@ bootstrap script and written to a file compose loads automatically.
 First-run flow:
 
 ```sh
+docker login dhi.io                        # one-time: app images base on DHI (free Docker account)
 docker compose up -d kanidm                # start the dev OIDC provider
 bash dev/kanidm/setup.sh                   # one-time: cert, users, OAuth2 client
 docker compose up                          # web + worker pick up the secret

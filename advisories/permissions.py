@@ -185,6 +185,10 @@ def can_see_internal_comment(user, advisory: Advisory) -> bool:
 
 
 def can_edit(user, advisory: Advisory) -> bool:
+    # Dismissed advisories are read-only for every role, admins included
+    # (permissions.md §6): corrections go through reopen → edit → dismiss.
+    if advisory.state == State.DISMISSED:
+        return False
     perm = resolved_permission(user, advisory)
     if perm is None or _RANK[perm] < _RANK["collaborator"]:
         return False
@@ -223,7 +227,10 @@ def can_grant_access(user, advisory: Advisory) -> bool:
 def can_request_cve(user, advisory: Advisory) -> bool:
     from workflows.models import CveRequestStatus
 
-    if advisory.state == State.TRIAGE:
+    # CVE requests are meaningful on draft and published advisories only:
+    # triage rows must be promoted first, and dismissal auto-cancels open
+    # requests (permissions.md §6 — re-requesting requires a reopen).
+    if advisory.state in (State.TRIAGE, State.DISMISSED):
         return False
     if resolved_permission(user, advisory) != "owner":
         return False

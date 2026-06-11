@@ -220,6 +220,18 @@ def test_collaborator_cannot_request_cve(world, make_user):
     assert not perms.can_request_cve(collab, world["advisory"])
 
 
+@pytest.mark.django_db
+def test_request_cve_blocked_for_dismissed(world):
+    """Dismissal auto-cancels open CVE requests; re-requesting needs a reopen
+    first (permissions.md §6) — blocked for every role, admins included."""
+    a = world["advisory"]
+    a.state = State.DISMISSED
+    a.dismissed_reason = "x"
+    a.save()
+    assert not perms.can_request_cve(world["member"], a)
+    assert not perms.can_request_cve(world["admin"], a)
+
+
 # ---- can_edit (security team / admin) --------------------------------------
 
 
@@ -243,6 +255,24 @@ def test_edit_frozen_during_review(world):
     assert not perms.can_edit(world["member"], a)
     # Admins can still edit (e.g. to fix typos before approval if needed)
     assert perms.can_edit(world["admin"], a)
+
+
+@pytest.mark.django_db
+def test_edit_blocked_for_dismissed(world, make_user):
+    """Dismissed advisories are read-only for every role (permissions.md §6):
+    corrections go through reopen → edit → dismiss."""
+    from access.models import Permission as AccessPermission
+    from access.services import grant_to_user
+
+    collab = make_user(email="collab-dismissed@example.org")
+    grant_to_user(world["advisory"], collab, AccessPermission.COLLABORATOR, by=world["admin"])
+    a = world["advisory"]
+    a.state = State.DISMISSED
+    a.dismissed_reason = "x"
+    a.save()
+    assert not perms.can_edit(collab, a)
+    assert not perms.can_edit(world["member"], a)
+    assert not perms.can_edit(world["admin"], a)
 
 
 # ---- Owner-only governance actions on security-team members ----------------

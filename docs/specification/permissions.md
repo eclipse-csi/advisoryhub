@@ -209,7 +209,9 @@ take). Admins may dismiss even with an assigned CVE.
 
 ³ Owner-only **and** the advisory must not have an open
 `CveRequestTask`, an `assigned_cve_id`, or `cve_requests_banned=True`
-([INV-CVE-1]).
+([INV-CVE-1]). Available while the lifecycle state is `draft` or
+`published`; blocked in `triage` (promote first) and `dismissed`
+(reopen first — dismissal auto-cancels open requests, §6).
 
 ⁴ Admins are the reviewers and cannot submit or withdraw submissions —
 this avoids self-review ([INV-REVIEW-3]).
@@ -252,8 +254,8 @@ the matrix:
   viewer can therefore read and comment on their report, but cannot
   edit, publish, or request a CVE on it ([INV-AUTH-5]). Internal
   comments still require collaborator+. In addition: `Submit advisory
-  for review` and `Publish` are blocked for everyone (advisories must
-  be promoted to `draft` first). The triage-specific actions
+  for review`, `Publish`, and `Request a CVE` are blocked for everyone
+  (advisories must be promoted to `draft` first). The triage-specific actions
   `promote_triage_to_draft`, `dismiss_triage`, and
   `flag_for_admin_routing` follow the `owner` column, with the
   asymmetry that admins cannot flag (their queue is the destination).

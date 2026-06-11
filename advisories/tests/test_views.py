@@ -323,6 +323,18 @@ def test_edit_blocked_for_outsider(client, outsider, project_a):
 
 
 @pytest.mark.django_db
+def test_edit_blocked_for_dismissed(client, member_a, project_a):
+    """Dismissed advisories are read-only for every role (permissions.md §6) —
+    even the project security team must reopen before editing."""
+    advisory = Advisory.objects.create(
+        project=project_a, state=State.DISMISSED, dismissed_reason="x"
+    )
+    client.force_login(member_a)
+    response = client.get(reverse("advisories:edit", args=[advisory.advisory_id]))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
 def test_edit_cannot_change_project_to_unauthorized(client, member_a, project_a, project_b):
     advisory = Advisory.objects.create(project=project_a, summary="x")
     client.force_login(member_a)

@@ -58,6 +58,20 @@ def test_request_cve_blocked_for_collaborator(setup, make_user):
 
 
 @pytest.mark.django_db
+def test_request_cve_blocked_for_dismissed(setup):
+    """Dismissal auto-cancels open CVE requests; a fresh request requires a
+    reopen first (permissions.md §6) — blocked even for owners and admins."""
+    advisory = setup["advisory"]
+    advisory.state = State.DISMISSED
+    advisory.dismissed_reason = "x"
+    advisory.save()
+    with pytest.raises(PermissionDenied):
+        wf.request_cve(advisory, by=setup["member"])
+    with pytest.raises(PermissionDenied):
+        wf.request_cve(advisory, by=setup["admin"])
+
+
+@pytest.mark.django_db
 def test_cve_transition_only_admin(setup):
     task = wf.request_cve(setup["advisory"], by=setup["member"])
     with pytest.raises(PermissionDenied):

@@ -324,7 +324,7 @@ stateDiagram-v2
 
 | From | To | Trigger | Actor | Preconditions | Audit action(s) | Notes |
 |---|---|---|---|---|---|---|
-| — | `queued` | `workflows.services.request_cve` | Owner (security team) on a draft | `can_request_cve`: lifecycle is `draft`, no `assigned_cve_id` ([INV-CVE-2]), no other open task ([INV-CVE-1]), `cve_requests_banned=False` ([INV-CVE-3]) | `CVE_REQUESTED` | — |
+| — | `queued` | `workflows.services.request_cve` | Owner (security team) on a draft or published advisory | `can_request_cve`: lifecycle is `draft` or `published` (blocked in `triage` and `dismissed`), no `assigned_cve_id` ([INV-CVE-2]), no other open task ([INV-CVE-1]), `cve_requests_banned=False` ([INV-CVE-3]) | `CVE_REQUESTED` | — |
 | `queued` | `reserved` | `workflows.services.transition_cve_request(..., new_status=RESERVED, cve_id=...)` | Admin (CNA-side reviewer) | `can_review(by)`; valid `CVE-YYYY-NNNN…` format ([INV-ID-3]) | `CVE_TASK_STATUS_CHANGED` | Sets `Advisory.assigned_cve_id`; if the advisory is already `published`, also sets `republish_required=True` |
 | `queued` | `rejected` | `workflows.services.transition_cve_request(..., new_status=REJECTED, notes=...)` | Admin | `can_review(by)`; non-empty `notes` | `CVE_TASK_STATUS_CHANGED`, optional `CVE_REQUEST_BANNED` | Posts a comment to the advisory; admin may also flip `cve_requests_banned=True` ([INV-CVE-3]) |
 | `queued` | `cancelled` | `workflows.services.cancel_open_cve_request` | System (called from the dismiss-from-draft flow) | Advisory is being dismissed | `CVE_REQUEST_CANCELLED` | Not user-callable; runs inside the dismissal atomic block |

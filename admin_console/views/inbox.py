@@ -118,7 +118,7 @@ def _review_items(see_more_url: str) -> list[InboxItem]:
             badge_class="inbox-badge--review",
             title=t.advisory.advisory_id,
             subtitle=f"submitted by {t.submitted_by.email}"
-            if t.submitted_by_id
+            if t.submitted_by
             else t.advisory.project.slug,
             age_dt=t.created_at,
             url=reverse("advisories:detail", args=[t.advisory.advisory_id]),
@@ -160,8 +160,7 @@ def _triage_items(see_more_url: str) -> list[InboxItem]:
     items: list[InboxItem] = []
     for a in qs:
         intake = getattr(a, "intake", None)
-        flagged = bool(intake and intake.needs_admin_routing)
-        if flagged:
+        if intake is not None and intake.needs_admin_routing:
             note = _truncate(intake.admin_routing_note, 70)
             subtitle = f"{a.project.slug} · {note}" if note else a.project.slug
             badge = "Routing"

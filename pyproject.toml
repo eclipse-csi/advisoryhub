@@ -106,9 +106,9 @@ omit = [
 python_version = "3.14"
 plugins = ["mypy_django_plugin.main"]
 files = [
-    "accounts", "access", "advisories", "api", "audit", "comments",
-    "common", "config", "ghsa", "intake", "notifications", "projects",
-    "publication", "workflows",
+    "accounts", "access", "admin_console", "advisories", "api", "audit",
+    "comments", "common", "config", "ghsa", "intake", "notifications",
+    "projects", "publication", "similarity", "workflows",
 ]
 # Pragmatic baseline: resolve Django ORM dynamics via django-stubs, but don't
 # force annotations on every function or chase third-party stub gaps. Tighten

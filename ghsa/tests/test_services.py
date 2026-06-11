@@ -13,7 +13,8 @@ from unittest.mock import patch
 import pytest
 from django.core.exceptions import PermissionDenied
 
-from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, State
+from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, ReviewStatus, State
+from audit.models import Action, AuditLogEntry
 from ghsa import services
 from ghsa.models import GhsaCvePushTaskStatus
 from projects.models import ProjectGitHubRepository
@@ -114,6 +115,88 @@ def test_sync_single_ghsa_handles_upstream_deletion(project_with_repo, ghsa_sett
     advisory.refresh_from_db()
     assert result["missing_upstream"] is True
     assert advisory.ghsa_state == GhsaState.CLOSED
+
+
+@pytest.mark.django_db
+def test_sync_single_ghsa_invalidates_approval_on_content_change(
+    project_with_repo, ghsa_payload, ghsa_settings
+):
+    """A sync that changes payload fields voids a standing approval (INV-REVIEW-4).
+
+    No admin carve-out applies: the content author is upstream GHSA, not the
+    person who pressed Sync (advisory-lifecycle.md §9).
+    """
+    advisory = Advisory.objects.create(
+        project=project_with_repo,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-abcd-1234-efgh",
+        ghsa_owner="eclipse",
+        ghsa_repo="example",
+        review_status=ReviewStatus.APPROVED,
+    )
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = ghsa_payload
+        result = services.sync_single_ghsa(advisory, by=None)
+    advisory.refresh_from_db()
+    assert result["changed"]
+    assert advisory.review_status == ReviewStatus.NONE
+    assert AuditLogEntry.objects.filter(
+        advisory=advisory,
+        action=Action.ADVISORY_REVIEW_APPROVAL_INVALIDATED,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_sync_single_ghsa_preserves_approval_on_heartbeat(
+    project_with_repo, ghsa_payload, ghsa_settings
+):
+    """A heartbeat sync (no payload change) leaves an approval standing."""
+    advisory = Advisory.objects.create(
+        project=project_with_repo,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-abcd-1234-efgh",
+        ghsa_owner="eclipse",
+        ghsa_repo="example",
+    )
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = ghsa_payload
+        services.sync_single_ghsa(advisory, by=None)
+        advisory.refresh_from_db()
+        advisory.review_status = ReviewStatus.APPROVED
+        advisory.save(update_fields=["review_status", "modified_at"])
+        result = services.sync_single_ghsa(advisory, by=None)
+    advisory.refresh_from_db()
+    assert result["changed"] == []
+    assert advisory.review_status == ReviewStatus.APPROVED
+    assert not AuditLogEntry.objects.filter(
+        advisory=advisory,
+        action=Action.ADVISORY_REVIEW_APPROVAL_INVALIDATED,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_sync_single_ghsa_leaves_submitted_review_alone(
+    project_with_repo, ghsa_payload, ghsa_settings
+):
+    """Only APPROVED resets — a pending review pins its version and survives."""
+    advisory = Advisory.objects.create(
+        project=project_with_repo,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-abcd-1234-efgh",
+        ghsa_owner="eclipse",
+        ghsa_repo="example",
+        review_status=ReviewStatus.SUBMITTED,
+    )
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = ghsa_payload
+        result = services.sync_single_ghsa(advisory, by=None)
+    advisory.refresh_from_db()
+    assert result["changed"]
+    assert advisory.review_status == ReviewStatus.SUBMITTED
+    assert not AuditLogEntry.objects.filter(
+        advisory=advisory,
+        action=Action.ADVISORY_REVIEW_APPROVAL_INVALIDATED,
+    ).exists()
 
 
 @pytest.mark.django_db

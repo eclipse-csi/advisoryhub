@@ -509,11 +509,15 @@ laundering content before promotion.
 ### INV-AUTH-6 — Admin-routing-flagged advisories are admin-only   [High]
 
 **Statement.** When `AdvisoryIntakeMetadata.needs_admin_routing=True`, only global
-admins can edit, triage, or unflag the advisory. Project owners may *flag* a
-misrouted advisory but may not unflag it.
+admins can edit or triage the advisory. Project owners may *flag* a misrouted
+advisory (admins cannot — their queue is the destination) and may also *clear*
+the flag, retracting their own handoff; while the flag stands, every other
+mutation is admin-only.
 
-**Rationale.** Misrouted reports must reach an admin for re-routing; otherwise a
-project team could quietly close a report that should have gone elsewhere.
+**Rationale.** Misrouted reports must reach an admin for re-routing without the
+row being mutated underneath them. Flagging is a voluntary handoff: letting the
+flagging team unflag gives it no suppression power it didn't already have (it
+could have dismissed instead of flagging), and both directions are audited.
 
 **Enforced in.**
 - `advisories/permissions.py` — `can_edit`, `can_triage`,

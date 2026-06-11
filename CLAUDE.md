@@ -10,7 +10,11 @@ Stack: Python 3.14, Django 5.2 LTS, PostgreSQL (required in prod — append-only
 
 ## Specifications
 
-Authoritative source of truth for what this system *is* and *does* lives in `docs/specification/`. Read the relevant file before making non-trivial changes; cite `INV-*` IDs in commits and PRs.
+The specification set in `docs/specification/` is the **single source of truth** for what this system *is* and *does* (verified against the code and aligned on 2026-06-11). All development MUST conform to it:
+
+- Read the relevant file before making non-trivial changes; cite `INV-*` IDs in commits and PRs.
+- Any deviation from the spec requires **explicit maintainer confirmation before implementation** — never silently implement behavior the spec contradicts or forbids.
+- Every behavior change must update the affected spec file(s) **in the same commit/PR**; a code/spec mismatch is a defect in whichever side drifted.
 
 - [`docs/specification/invariant.md`](docs/specification/invariant.md) — load-bearing rules with stable `INV-*` IDs, severity tiers, enforcement file paths, and test pointers.
 - [`docs/specification/architecture.md`](docs/specification/architecture.md) — tech stack, full app layout, architectural patterns, publication & GHSA pipelines, Celery beat schedule, env-var inventory, operations, testing strategy.
@@ -149,7 +153,7 @@ Fourteen Django apps under the project root (plus the `config` project package a
 - `audit/` — append-only `AuditLogEntry`, Postgres triggers, `redact_secrets`.
 - `publication/` — OSV+CSAF builders, vendored JSON schemas in `publication/schemas/`, Git push service, Celery task.
 - `workflows/` — `CveRequestTask` + `ReviewTask` state machines.
-- `admin_console/` — sidebar shell at `/admin/` (Inbox, Projects, CVE, Reviews, Publication, Audit, Maintenance); views split into `admin_console/views/<section>.py`. Django admin itself is at `/django-admin/`.
+- `admin_console/` — sidebar shell at `/admin/` (Inbox, Projects, CVE, Reviews, Publication, Audit, Access log, Users, Maintenance); views split into `admin_console/views/<section>.py`. Django admin itself is at `/django-admin/`.
 - `intake/` — public `POST /report/` + `HoneypotSubmission` table. Triage UI lives in `advisories.views_triage`.
 - `similarity/` — LLM-assisted duplicate detection: `SimilarityCheck`/`SimilarityCandidate` task rows + `AdvisoryFingerprint` cache, Postgres prefilter + provider-agnostic LLM judge (`similarity/llm/` — Anthropic or any OpenAI-compatible endpoint, raw `requests`), owner-only HTMX panel on the advisory page, `backfill_fingerprints` command. Dormant unless `SIMILARITY_CHECK_ENABLED` (INV-SIM-2: enabling it is the consent for advisory content to reach the LLM provider).
 

@@ -290,14 +290,19 @@ either succeeds or marks the task `failed` and returns):
    validate against the vendored schema; emit
    `PUBLICATION_OSV_GENERATED`. Same for CSAF
    (`publication.csaf.build_csaf` + `validate_csaf` +
-   `PUBLICATION_CSAF_GENERATED`).
+   `PUBLICATION_CSAF_GENERATED`). When the pinned version carries an
+   `assigned_cve_id`, additionally build a CVE Record
+   (`publication.cve.build_cve` + `validate_cve` +
+   `PUBLICATION_CVE_GENERATED`) — EF-assigned CVEs only, read from the
+   pinned payload, never live data ([INV-VERSION-3](./invariant.md#inv-version-3)).
    Validation is schema-based against the JSON Schemas vendored in
    `publication/schemas/` ([INV-PUB-6](./invariant.md#inv-pub-6)).
-5. Persist `PublicationArtifact` rows for each kind via
-   `update_or_create` keyed on `(task, kind)`, carrying the
-   serialised path and the validated JSON content. This is the
-   source of truth for the admin-console preview screens.
-6. Hand the two serialised documents to
+5. Persist `PublicationArtifact` rows for each kind (`osv`, `csaf`,
+   and `cve` when present) via `update_or_create` keyed on
+   `(task, kind)`, carrying the serialised path and the validated
+   JSON content. This is the source of truth for the admin-console
+   preview screens.
+6. Hand the serialised documents to
    `publication.git_service.publish_files`.
 
 ### 4.3 Git layer (`publication.git_service.publish_files`)
@@ -575,13 +580,16 @@ user-triggered, scoped (project or all), and recorded as a
 | `similarity` | `run_similarity_check` | Prefilter → fingerprint → LLM judge → persist top-5 potential duplicates. `rate_limit="6/m"` absorbs GHSA bulk-sync bursts. |
 | `notifications` | `send_advisory_event_email` | Lifecycle events (created, submitted for review, published, publication export status). |
 | `notifications` | `send_comment_email` | Comment + mention notifications. |
+| `notifications` | `send_comment_mention_email` | Delta @-mentions added by a comment *edit* (including newly-mentioned `@team` shadow roster members); visibility re-checked at send time. |
 | `notifications` | `send_advisory_triage_event_email` | Triage-flow events to the project security team or admins. |
 | `notifications` | `send_intake_event_email` | Legacy no-op to drain queues from before the triage refactor. |
 | `notifications` | `send_invitation_email` | Invitation delivery. |
 | `ghsa` | `run_pmi_repo_sync` | Beat-scheduled PMI mirror refresh. |
 | `ghsa` | `run_ghsa_sync_project` | On-demand GHSA discovery for one project. |
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
+| `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button). |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
+| `ghsa` | `process_webhook` | Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread. |
 | `audit` | `maintain_access_log_partitions` | Beat-scheduled `AccessLogEntry` partition create-ahead + drop-expired. |
 | `audit` | `refresh_backlog_gauges` | Beat-scheduled refresh of the `advisoryhub_backlog` Prometheus gauge from live queue depths. |
 | `projects` | `run_roster_sync` | Beat-scheduled security-team roster sync (shadow-user provisioning); no-op unless `PMI_ROSTER_SYNC_ENABLED`. |
@@ -691,7 +699,14 @@ types.
 **Django core.** `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`,
 `DJANGO_SECRET_KEY`, `DJANGO_TIME_ZONE`, `DATABASE_URL`,
 `CACHE_URL` (optional — falls back to LocMem), `LOG_FORMAT`
-(`json`/`plain`), `LOG_LEVEL`.
+(`json`/`plain`), `LOG_LEVEL`, `CSRF_TRUSTED_ORIGINS`.
+
+**Reverse proxy / edge TLS.** `USE_X_FORWARDED_PROTO` (default False —
+trust the edge's `X-Forwarded-Proto` so `request.is_secure()` works
+behind TLS termination) and `TRUSTED_PROXY_COUNT` (default 0 — number
+of trusted reverse-proxy hops `common.net` strips from
+`X-Forwarded-For` when resolving the client IP recorded in audit
+entries).
 
 **OIDC.** `OIDC_RP_CLIENT_ID`, `OIDC_RP_CLIENT_SECRET`,
 `OIDC_OP_AUTHORIZATION_ENDPOINT`, `OIDC_OP_TOKEN_ENDPOINT`,
@@ -723,7 +738,9 @@ add optional dependency checks to `/readyz`.
 
 **Email.** `EMAIL_BACKEND` (default console),
 `DEFAULT_FROM_EMAIL`, optional `ADVISORYHUB_BASE_URL` used to
-construct absolute URLs in notification bodies.
+construct absolute URLs in notification bodies; SMTP transport:
+`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`,
+`EMAIL_HOST_PASSWORD` (secret), `EMAIL_USE_TLS`, `EMAIL_USE_SSL`.
 
 **Publication Git repo.** `PUB_REPO_URL`, `PUB_REPO_BRANCH`
 (default `main`), `PUB_REPO_AUTH` (`ssh`|`token`),
@@ -732,7 +749,12 @@ construct absolute URLs in notification bodies.
 `PUB_OSV_PATH_TEMPLATE` (default `osv/{year}/{advisory_id}.json`),
 `PUB_CSAF_PATH_TEMPLATE` (default `csaf/{year}/{advisory_id}.json`)
 — bucketed by the advisory's publication year (`{year}` = year of first
-publication; the advisory id carries no year of its own).
+publication; the advisory id carries no year of its own). CVE Records:
+`PUB_CVE_PATH_TEMPLATE` (default `cves/{year}/{bucket}/{cve_id}.json` —
+cvelistV5 layout, `{year}`/`{bucket}` derived from the CVE id, e.g.
+`CVE-2026-12345` → `2026/12xxx`), `PUB_CVE_ASSIGNER_ORG_ID` and
+`PUB_CVE_ASSIGNER_SHORT_NAME` (default `eclipse`) — the CNA identity
+stamped into generated CVE Records.
 
 **GHSA / GitHub App / PMI.** `GHSA_FEATURE_ENABLED` (default False),
 `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH` (preferred in prod),
@@ -772,8 +794,10 @@ default; set for OpenAI-compatible/local servers),
 **Rate-limit master switch.** `RATELIMIT_ENABLE` (default True;
 forced False in `test`).
 
-**Health.** `READYZ_INCLUDE_PUB_REPO` (default False — opt-in
-because it is a network round-trip).
+**Access-log retention.** `AUDIT_ACCESS_LOG_RETENTION_ENABLED` (default
+True), `AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90) — drive the
+beat-scheduled `AccessLogEntry` partition maintenance (§6.2, §8.6,
+INV-AUDIT-5).
 
 **Observability.** `SENTRY_DSN` (optional — enables Sentry via
 `common.sentry.init_from_env`). `PROMETHEUS_WORKER_METRICS_PORT`

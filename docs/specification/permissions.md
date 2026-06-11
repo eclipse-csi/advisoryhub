@@ -258,11 +258,12 @@ the matrix:
   `flag_for_admin_routing` follow the `owner` column, with the
   asymmetry that admins cannot flag (their queue is the destination).
 
-- **`triage` with `needs_admin_routing=True`.** Further restricted to
-  **global admins only** for edit, triage decisions, and clearing the
-  flag. Project owners may *flag* a misrouted report (only when not
-  already flagged and not on the `unsorted` sentinel project) but may
-  not *unflag* it ([INV-AUTH-6], [INV-INTAKE-4]).
+- **`triage` with `needs_admin_routing=True`.** Edit and triage
+  decisions are further restricted to **global admins only**. Clearing
+  the flag is owner-level: a global admin *or* the project's security
+  team may unflag, retracting their own handoff. Project owners may
+  *flag* a misrouted report only when not already flagged and not on
+  the `unsorted` sentinel project ([INV-AUTH-6], [INV-INTAKE-4]).
 
 - **`review_status=submitted`.** `Edit advisory content` is blocked for
   every role except global admin. `Publish` is blocked for **everyone,

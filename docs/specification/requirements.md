@@ -17,9 +17,12 @@ to it:
 - [`permissions.md`](./permissions.md) — actors, roles, capability
   matrix, enforcement surfaces.
 
-The single source of truth is always the code; if this document and
-`advisories/permissions.py` (or the corresponding `services.py`)
-disagree, the code wins and this document is wrong.
+The specification set under `docs/specification/` is the single
+source of truth: code must conform to it. If this document and the
+code disagree, that is a defect — either the code drifted (fix the
+code) or the behavior changed deliberately without a spec update
+(fix the document in the same change). Deviating from the spec
+requires explicit maintainer confirmation *before* implementation.
 
 ---
 
@@ -155,6 +158,15 @@ construction ([INV-PROJECT-2](./invariant.md#inv-project-2)).
 declares for a project. The mirror is refreshed by a Celery beat task
 and used by the GHSA discovery flow to know which repos to query.
 
+`SecurityTeamRosterEntry` mirrors the PMI security-team roster for a
+project (dormant unless `PMI_ROSTER_SYNC_ENABLED`). The roster sync
+pre-provisions notification-only *shadow* users
+(`User.is_provisioned=True`) so triage events and `@team` mentions
+reach members who have never logged in; shadows belong to no group,
+hold no authorization, and are linked to the real account on first
+login ([INV-OIDC-5](./invariant.md#inv-oidc-5),
+[INV-ROSTER-1](./invariant.md#inv-roster-1)).
+
 ### AdvisoryAccessGrant & PendingInvitation
 
 `AdvisoryAccessGrant` carries one grant per `(advisory, principal_type,
@@ -185,7 +197,7 @@ resolve to users by full email or local-part.
 place in the timeline ([INV-COMMENT-3](./invariant.md#inv-comment-3),
 [INV-COMMENT-4](./invariant.md#inv-comment-4)).
 
-### AuditLogEntry
+### AuditLogEntry & AccessLogEntry
 
 One append-only row per governance action, recording the actor,
 timestamp, action type, advisory (and optionally the comment id),
@@ -195,35 +207,55 @@ Both the application layer and a Postgres trigger refuse `UPDATE` and
 user/CI-supplied strings pass through `audit.services.redact_secrets`
 before persistence ([INV-AUDIT-2](./invariant.md#inv-audit-2)).
 
-### NotificationPreference & AdvisoryNotificationPreference
+`AccessLogEntry` is the companion high-volume table for *ephemeral*
+events that never appear on an advisory timeline — advisory views,
+auth events (login, logout, failed login, step-up re-auth),
+notification deliveries, and GHSA/PMI machine chatter. Unlike the
+durable ledger it is range-partitioned by month and
+retention-managed: partitions older than
+`AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90) are dropped by a beat
+task ([INV-AUDIT-5](./invariant.md#inv-audit-5)).
+
+### NotificationPreference, AdvisoryNotificationPreference, Notification
 
 `NotificationPreference` is one row per user holding the global
 notification defaults; `AdvisoryNotificationPreference` is a *sparse*
 per-advisory override (any field at its inherit sentinel uses the
 global setting; rows with every field at the sentinel are deleted).
 
-### CveRequestTask, ReviewTask, OrphanCve
+`Notification` is the per-recipient in-app inbox row created alongside
+each delivered email; users mark entries read explicitly or implicitly
+by visiting the page the notification points at. `AdvisoryVisit` (one
+row per user/advisory) records the last visit and powers the
+"changed since last visit" markers on advisory lists.
 
-The two workflow queues attached to an advisory. `CveRequestTask`
+### CveRequestTask, ReviewTask, OrphanCve, OrphanCveReassignmentTask
+
+The workflow queues attached to an advisory. `CveRequestTask`
 tracks the request lifecycle (`queued` → `reserved | rejected |
 cancelled`) with at most one open task per advisory
 ([INV-CVE-1](./invariant.md#inv-cve-1)). `ReviewTask` pins the exact
 `AdvisoryVersion` a reviewer is judging
 ([INV-REVIEW-2](./invariant.md#inv-review-2)). `OrphanCve` records
 admin-initiated CVE unassignments so admins remember to mark the CVE
-rejected at cve.org.
+rejected at cve.org. `OrphanCveReassignmentTask` queues admin
+follow-up when an advisory is reopened after its orphaned CVE was
+already marked rejected — the admin either reattaches the CVE or
+replaces it with a fresh request (see
+[`advisory-lifecycle.md` §3.1](./advisory-lifecycle.md)).
 
 ### PublicationTask, PublicationArtifact, PublicationRepositoryConfig
 
 `PublicationTask` is one row per publish or re-publish attempt,
 pinning the `AdvisoryVersion` that was (or will be) exported, with a
 status of `queued` / `running` / `succeeded` / `failed`.
-`PublicationArtifact` is one row per `(task, kind ∈ {osv, csaf})`
-holding the validated JSON document that was pushed; it is also the
-data source for the admin-console preview screens.
+`PublicationArtifact` is one row per `(task, kind ∈ {osv, csaf,
+cve})` holding the validated JSON document that was pushed (the `cve`
+kind exists only when the advisory carries an EF-assigned CVE); it is
+also the data source for the admin-console preview screens.
 `PublicationRepositoryConfig` carries the per-repository settings
-(URL, branch, auth method, key/token, commit author, OSV and CSAF
-path templates).
+(URL, branch, auth method, key/token, commit author, OSV / CSAF /
+CVE-record path templates, and the CVE assigner identity).
 
 ### GHSA integration objects
 
@@ -240,6 +272,19 @@ counts and last-error redaction.
 One row per honeypot trip on the public intake form. No `Advisory` is
 created; the response page is identical to a real submission so bots
 learn nothing ([INV-INTAKE-1](./invariant.md#inv-intake-1)).
+
+### SimilarityCheck, SimilarityCandidate, AdvisoryFingerprint
+
+The duplicate-detection rows (`similarity` app; dormant unless
+`SIMILARITY_CHECK_ENABLED` — see §4.13). `SimilarityCheck` is one row
+per LLM-assisted duplicate check, pinning the `AdvisoryVersion`
+payload it judged ([INV-SIM-4](./invariant.md#inv-sim-4)) with a
+queued/running/succeeded/failed status and a redacted `last_error`
+([INV-SIM-3](./invariant.md#inv-sim-3)). `SimilarityCandidate` stores
+the judged matches (a 0–100 confidence plus a one-line rationale,
+top five per check). `AdvisoryFingerprint` caches the per-advisory
+LLM digest, keyed on a content hash so unchanged content is never
+re-digested.
 
 ---
 
@@ -287,7 +332,7 @@ Lifecycle states are exactly four
 | `triage` | Untrusted incoming report awaiting promotion. | Public intake only ([INV-LIFECYCLE-2](./invariant.md#inv-lifecycle-2)). |
 | `draft` | Curated content being prepared for publication. | `advisory_create` view, GHSA link, or promotion from triage. |
 | `published` | Successfully pushed to the publication Git repo. | Only via the publication worker's success branch ([INV-LIFECYCLE-3](./invariant.md#inv-lifecycle-3)). |
-| `dismissed` | Terminal rejection (duplicate, not-a-vuln, out-of-scope). | `dismiss_triage` (from triage) or `advisory_dismiss` (from draft). |
+| `dismissed` | Rejection (duplicate, not-a-vuln, out-of-scope) — reversible, not terminal ([INV-LIFECYCLE-4](./invariant.md#inv-lifecycle-4)). | `dismiss_triage` (from triage) or `advisory_dismiss` (from draft). |
 
 Three orthogonal status machines ride alongside the lifecycle and are
 documented in full in
@@ -310,6 +355,14 @@ documented in full in
   inside the success branch, only after `git push` returns clean
   ([INV-LIFECYCLE-3](./invariant.md#inv-lifecycle-3),
   [INV-PUB-4](./invariant.md#inv-pub-4)).
+
+**Reopen.** Dismissal is reversible: `reopen_advisory` (owner-gated)
+returns the advisory to `Advisory.dismissed_from_state` (`draft` or
+`triage`), audited as `ADVISORY_REOPENED`
+([INV-LIFECYCLE-4](./invariant.md#inv-lifecycle-4)). If the advisory
+had a CVE that was orphaned on dismissal, reopening either reattaches
+it directly or — when the orphan was already marked rejected at
+cve.org — queues an `OrphanCveReassignmentTask` for admin resolution.
 
 The full state diagrams, transition tables, and the publication
 sequence diagram are in
@@ -421,6 +474,10 @@ catalogue of recordable actions is the `Action` enum in
 - Triage: triage submitted, promoted, dismissed (legacy
   `report.*` actions remain in the enum read-only for historical
   rows but are not emitted by new code).
+- Authentication: login, logout, failed login, step-up re-auth
+  completed.
+- Notification delivery: one `notification.sent` row per recipient.
+- User governance: account banned / unbanned.
 
 Each row carries the actor (nullable for system actions), the action
 type, the affected advisory (when applicable), an optional
@@ -435,6 +492,13 @@ All user/CI-supplied strings are funnelled through
 append-only at both layers (model `save`/`delete` guards plus
 Postgres triggers; [INV-AUDIT-1](./invariant.md#inv-audit-1),
 [INV-IMPL-2](./invariant.md#inv-impl-2)).
+
+Ephemeral events — advisory views, the auth events, notification
+deliveries, and GHSA/PMI machine chatter — are routed to the
+partitioned `AccessLogEntry` table instead of the durable ledger;
+they are retention-bounded (default 90 days) and browsable by admins
+at `/admin/access-log/`
+([INV-AUDIT-5](./invariant.md#inv-audit-5)).
 
 ### 4.6 Access management
 
@@ -497,6 +561,17 @@ comments, users who cannot see internal comments are dropped even
 when mentioned. Body templates are deliberately sparse — recipients
 see what changed and a link back into the authenticated app, never
 private advisory content directly in the email.
+
+When `PMI_ROSTER_SYNC_ENABLED` is on, the security-team roster sync
+pre-provisions notification-only shadow users so triage events and
+`@team` mentions also reach security-team members who have never
+logged in ([INV-OIDC-5](./invariant.md#inv-oidc-5),
+[INV-ROSTER-1](./invariant.md#inv-roster-1)).
+
+Every delivered email also lands in the recipient's in-app inbox
+(`Notification` rows, §3), where entries are marked read explicitly
+or by visiting the linked page; each delivery is recorded in the
+access log (`notification.sent`).
 
 Changes to a user's `NotificationPreference` are audited
 (`NOTIFICATION_PREFS_CHANGED`).
@@ -655,6 +730,21 @@ sections:
   `Project` rows (security team, mature-publisher flag, PMI sync
   status).
 - **Audit** (`/admin/audit/`) — filterable read of the audit log.
+- **Access log** (`/admin/access-log/`) — filtered read of the
+  ephemeral access-log events (advisory views, auth events,
+  notification deliveries), retention-bounded
+  ([INV-AUDIT-5](./invariant.md#inv-audit-5)).
+- **Users** (`/admin/users/`) — read-only directory of accounts
+  (groups, per-advisory grants, notification settings) with admin
+  ban / unban and the `forget` retention action; a banned account is
+  denied login and dropped mid-session
+  ([INV-AUTH-8](./invariant.md#inv-auth-8)).
+- **Maintenance** (`/admin/maintenance/`) — single-button
+  maintenance-mode toggle with an admin-configurable banner message.
+  While on, only global admins may mutate state; every other user's
+  writes are paused server-side by
+  `common.middleware.MaintenanceModeMiddleware`
+  ([INV-MAINT-1](./invariant.md#inv-maint-1)).
 
 Every admin-console view is wrapped with `@admin_required`, which is
 `can_review` (global admin only) — see
@@ -679,6 +769,38 @@ The complete enforcement map is in
 endpoint re-evaluates the predicate from `advisories/permissions.py`
 that the corresponding HTML view does; list endpoints filter their
 querysets through `can_view`.
+
+### 4.13 Duplicate detection (similarity)
+
+Off by default; enabling `SIMILARITY_CHECK_ENABLED` is the explicit
+consent for advisory content to leave the deployment for the
+configured LLM provider ([INV-SIM-2](./invariant.md#inv-sim-2)).
+When enabled:
+
+- Every advisory-creation path (public intake, manual creation, GHSA
+  import) enqueues a background `SimilarityCheck`; owners can re-run
+  the check on demand from the advisory page.
+- A Postgres prefilter (trigram similarity over summary/details plus
+  exact alias / CVE / GHSA-id and affected-package overlap) selects
+  up to `SIMILARITY_CANDIDATE_LIMIT` same-project candidates. The
+  pipeline then spends at most two LLM calls per check regardless of
+  corpus size: one to fingerprint the new report (cached in
+  `AdvisoryFingerprint`, keyed on a content hash) and one to judge
+  all candidates.
+- The top five matches scoring at least `SIMILARITY_MIN_CONFIDENCE`
+  are stored with a 0–100 confidence and a one-line rationale.
+- Results (including the in-progress state) are visible to owners
+  only — global admins and the project security team — in a polling
+  panel on the advisory page; collaborators and viewers never see
+  the surface ([INV-SIM-1](./invariant.md#inv-sim-1)).
+- Checks judge the pinned `AdvisoryVersion` payload, never live form
+  data ([INV-SIM-4](./invariant.md#inv-sim-4)); provider errors are
+  redacted before persistence
+  ([INV-SIM-3](./invariant.md#inv-sim-3)).
+- The provider client is a thin, SDK-free abstraction: the Anthropic
+  Messages API or any OpenAI-compatible Chat Completions endpoint
+  (including local servers — the on-prem option for embargoed
+  content).
 
 ---
 
@@ -909,6 +1031,11 @@ is required.
 - Cookies are secure in production (`SESSION_COOKIE_SECURE`,
   `CSRF_COOKIE_SECURE`), `X_FRAME_OPTIONS=DENY`, content-type
   sniffing is disabled.
+- A nonce-based `script-src 'strict-dynamic'` Content-Security-Policy
+  (django-csp) is **enforced by default**; `style-src 'self'`
+  additionally forbids inline styles, and a fixed `Permissions-Policy`
+  is emitted alongside. `CSP_REPORT_ONLY=True` falls back to
+  Report-Only while diagnosing a violation.
 - Secrets — Git tokens, SSH key paths, GitHub App private keys,
   hCaptcha keys, OIDC client secrets — are never persisted into
   audit metadata, task error strings, notification bodies, or
@@ -934,6 +1061,12 @@ is required.
 - Intake-only PII (submitter IP, User-Agent, display name) lives on
   the `AdvisoryIntakeMetadata` sidecar and can be cleared via the
   `forget_user` retention command without removing the advisory.
+- Other users' email addresses are owner-only: collaborators and
+  viewers see display names, with the email rendered masked
+  (`a•••@example.org`) on every surface — rendered pages, the
+  `@`-mention autocomplete, and the JSON API. A user always sees
+  their own email
+  ([INV-PRIVACY-4](./invariant.md#inv-privacy-4)).
 
 ### 7.3 Auditability
 

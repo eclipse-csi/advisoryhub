@@ -238,6 +238,10 @@ but `Advisory.state` itself is unchanged:
   the advisory's `state` (§6).
 - Flagging / un-flagging an advisory for admin routing — toggles
   `AdvisoryIntakeMetadata.needs_admin_routing`, not `state` ([INV-AUTH-6]).
+- Running a duplicate-detection check (`similarity` app) — enqueued on every
+  advisory-creation path and re-runnable by owners; it reads the pinned
+  `AdvisoryVersion` payload and writes only its own `SimilarityCheck` /
+  `SimilarityCandidate` rows, never the advisory ([INV-SIM-4]).
 
 Adding a new payload-visible field to `Advisory.to_payload()` is therefore a
 load-bearing decision: the field will start being versioned automatically
@@ -466,7 +470,7 @@ into the orthogonal machines and the version log:
 | PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1]) | new row appended (`project_slug` is payload-visible) | **unchanged** — approval is preserved | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment` |
 | Non-payload save (state-only flip, heartbeat sync, `republish_required` toggle, `access_review_required_at` stamp) | **no row** ([INV-VERSION-1]) | unchanged | depends on the field | — |
 | GHSA heartbeat sync that returned no payload changes | **no row** | unchanged | unchanged | `ghsa_metadata_synced_at` refreshed |
-| GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | reset to `none` if `approved` and editor is non-admin (system actor is treated as non-admin here) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
+| GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | reset to `none` if `approved`, audit `ADVISORY_REVIEW_APPROVAL_INVALIDATED` — no admin carve-out: the content author is upstream GHSA, not whoever pressed Sync ([INV-REVIEW-4]) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
 
 The two key invariants in this table:
 
@@ -491,7 +495,7 @@ mutate intake metadata without changing `state`:
 | Trigger | Actor | Preconditions | Audit action | Effect |
 |---|---|---|---|---|
 | `advisories.services.flag_for_admin_routing` | Owner (project security team) | Lifecycle `state=triage`; not already flagged; advisory not on the `unsorted` sentinel project; non-empty note | `ADVISORY_FLAGGED_FOR_ROUTING` | Sets `AdvisoryIntakeMetadata.needs_admin_routing=True`; advisory becomes admin-only for edit / triage decisions ([INV-AUTH-6]) |
-| `advisories.services.clear_admin_routing_flag` | Admin only | Lifecycle `state=triage`; currently flagged | `ADVISORY_ROUTING_FLAG_CLEARED` | Sets `needs_admin_routing=False`; project owners regain triage capability |
+| `advisories.services.clear_admin_routing_flag` | Owner (project security team or admin) — the flagging team may retract its own handoff ([INV-AUTH-6]) | Lifecycle `state=triage`; currently flagged | `ADVISORY_ROUTING_FLAG_CLEARED` | Sets `needs_admin_routing=False`; project owners regain triage capability |
 | `advisories.services.reassign_triage_project` | Admin or member of destination project's security team | Lifecycle `state=triage`; destination membership for non-admin | `ADVISORY_PROJECT_CHANGED` | Moves the advisory to a different project; useful when routing a misrouted report |
 
 Once promoted to `draft` (row 4 in §3.1), these triage-specific affordances
@@ -565,6 +569,7 @@ CVE, and publication tables are cited by their section.
 [INV-ID-3]: ./invariant.md#inv-id-3
 [INV-IMPL-5]: ./invariant.md#inv-impl-5
 [INV-PROJECT-2]: ./invariant.md#inv-project-2
+[INV-SIM-4]: ./invariant.md#inv-sim-4
 
 ---
 

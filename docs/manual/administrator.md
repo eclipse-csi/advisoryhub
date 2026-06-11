@@ -16,7 +16,7 @@ concepts, see the [manual index](./README.md).
 
 You become an administrator by being in the admin group in the Eclipse Foundation
 identity provider; membership is mirrored on every login ([INV-OIDC-3]). That
-same membership also grants you Django's low-level admin site (§11). As with all
+same membership also grants you Django's low-level admin site (§12). As with all
 roles, you cannot grant admin from inside AdvisoryHub — it is managed in the
 identity provider.
 
@@ -24,9 +24,12 @@ What only administrators can do (everything else is shared with owners):
 
 - Review advisories — approve, request changes, revoke an approval.
 - Reserve/reject CVEs and reconcile unassigned ("orphan") CVEs.
-- Retry failed publications.
+- Oversee publication failures across every project (owners can re-publish
+  their own from the advisory page; only you see them all in one place).
 - Re-home misrouted triage reports.
 - Manage projects (including the mature-publisher flag) and sync rosters.
+- Manage the GitHub App integration — org-wide GHSA syncs, CVE-push retries.
+- Redact anyone's comment (authors can redact only their own).
 - Ban/unban users and run GDPR "forget user".
 - Turn maintenance mode on and off.
 - Read the audit and access logs.
@@ -36,7 +39,7 @@ What only administrators can do (everything else is shared with owners):
 ## 2. The Admin Console
 
 The Admin Console lives at **`/admin/`** (this is *not* the Django admin site at
-`/django-admin/` — see §11). Its landing page is the **Inbox**: a single,
+`/django-admin/` — see §12). Its landing page is the **Inbox**: a single,
 unified work queue that gathers everything waiting on an administrator:
 
 - triage reports needing a decision (and the subset flagged as misrouted),
@@ -46,9 +49,9 @@ unified work queue that gathers everything waiting on an administrator:
 - orphan CVEs awaiting reconciliation, and their reassignment tasks.
 
 Use the category filter to focus on one kind of work. The Console's left nav also
-links directly to the **CVEs**, **Publications**, **Audit**, **Access log**,
-**Projects**, **Users**, **Groups**, and **Maintenance** sections described
-below.
+links directly to the **Projects**, **Users**, **Groups**, **CVE Assignment**,
+**Publication**, **Audit logs**, **Access log**, and **Maintenance** sections
+described below.
 
 ---
 
@@ -78,7 +81,7 @@ See the owner's side of this in the
 
 ## 4. Managing CVEs
 
-The **CVEs** page (`/admin/cves/`) is the internal CVE queue. (AdvisoryHub does
+The **CVE Assignment** page (`/admin/cves/`) is the internal CVE queue. (AdvisoryHub does
 **not** call MITRE; this is an internal workflow — the actual reservation at
 cve.org is something you do out-of-band and then record here.)
 
@@ -98,9 +101,15 @@ but no longer belongs to a live advisory and must be reconciled at cve.org.
 - **Mark an orphan rejected** (`/admin/orphans/<id>/mark-rejected/`) — record that
   you have marked it rejected at cve.org.
 - **Resolve a reassignment task** (`/admin/orphans/reassignment/<id>/resolve/`) —
-  when a dismissed advisory that owned an orphan CVE is **reopened**, you decide
-  whether to **reassign** the same CVE back to it or **replace** it with a new
-  one.
+  created when a dismissed advisory whose orphan CVE you had already **marked
+  rejected** is **reopened**: you decide whether to **reassign** that CVE back
+  to it or **replace** it with a new one. (A CVE that was still merely orphaned
+  at reopen time is re-attached automatically — no task appears.)
+
+On a **GHSA-linked** advisory, reserving a CVE also pushes the id to the GHSA on
+GitHub. The advisory's GHSA panel shows the push status; failed pushes can be
+retried (`/ghsa/cve-push/<id>/retry/`), and if upstream already carries a
+*different* CVE id, publication is blocked until you reconcile (§11).
 
 The full CVE-request and orphan state machines are in
 [`advisory-lifecycle.md`](../specification/advisory-lifecycle.md).
@@ -109,16 +118,17 @@ The full CVE-request and orphan state machines are in
 
 ## 5. Publication oversight
 
-The **Publications** page (`/admin/publications/`) lists publication attempts —
+The **Publication** page (`/admin/publications/`) lists publication attempts —
 in particular the **failed** ones. For each you can:
 
 - read the (secret-redacted) error message — tokens and credentials never appear
   here ([INV-SECRET-1]);
 - **retry** the publication (`/publication/tasks/<id>/retry/`), which is the right
   move for a transient failure such as a network blip or a momentary push
-  rejection;
-- preview or download the generated **OSV** and **CSAF** artifacts
-  (`/publication/tasks/<id>/artifact/<kind>/`).
+  rejection (owners can equally re-publish from the advisory page — this page
+  is where *every* project's failures gather);
+- preview or download the generated **OSV**, **CSAF**, and — when a CVE is
+  assigned — **CVE** artifacts (`/publication/tasks/<id>/artifact/<kind>/`).
 
 Remember an advisory flips to *published* only after a successful Git push
 ([INV-LIFECYCLE-3]); a failed task leaves the state untouched, so retrying is
@@ -131,8 +141,10 @@ safe.
 Reports submitted with **"I don't know"** as the project, or flagged by an owner
 as misrouted, land in your Inbox for routing. Open such a report and **promote**
 it — because it isn't yet on a real project, promotion requires you to **choose
-the destination project**. Only administrators can clear a routing flag and
-decide where one of these reports belongs ([INV-INTAKE-4]).
+the destination project**. Only administrators can route these reports — while
+flagged, they are locked to you ([INV-INTAKE-4]). The flag itself is not a
+one-way door, though: the owner who raised it can retract it to take the report
+back, and you can clear it without promoting if it was raised in error.
 
 ---
 
@@ -146,8 +158,11 @@ The **Projects** page (`/admin/projects/`) lists every project. You can:
   publish drafts **without** a per-advisory approval ([INV-PERM-2]). This flag
   lives on the project (not in the identity provider), precisely so you can change
   it here and have the change audited.
-- **Sync the security-team roster** (`/admin/projects/<id>/sync-roster/`) — refresh
-  the project's team membership from the Eclipse roster.
+- **Sync the security-team roster** (`/admin/projects/<id>/sync-roster/`) —
+  pre-provision notification-only ("shadow") accounts for Eclipse roster members
+  who haven't signed in yet, so `@team` mentions and alerts reach them. It
+  confers no in-app access ([INV-OIDC-5]), and the button appears only on
+  deployments that enable roster sync.
 
 ---
 
@@ -168,7 +183,8 @@ From there you can:
 
 The **Groups** page (`/admin/groups/`) is **read-only**: groups and their
 membership are owned by the identity provider, which AdvisoryHub only mirrors
-([INV-OIDC-2]). To change who is in a group, change it in the identity provider.
+([INV-OIDC-2]). Each group has a read-only detail page (`/admin/groups/<id>/`).
+To change who is in a group, change it in the identity provider.
 
 ---
 
@@ -192,7 +208,31 @@ to restore normal operation.
 
 ---
 
-## 11. Django admin
+## 11. GitHub (GHSA) integration
+
+On deployments that enable the GHSA integration, projects using GitHub's
+private vulnerability reporting get **GHSA-linked** advisories whose content
+syncs from GitHub (the team-facing side is in the
+[Security-Team Guide §10](./security-team.md#10-ghsa-linked-advisories)). The
+integration-admin controls are yours alone:
+
+- **Connect the GitHub App** at **`/ghsa/connect/`** (not in the left nav — go
+  there directly). The page shows the installation state, lets you **rescan
+  installations**, and displays the webhook URL to configure on GitHub.
+- **Org-wide GHSA sync** (`/ghsa/sync-all/`) — refresh every GHSA-linked
+  advisory across all projects in one go. (Per-advisory refresh is available to
+  the teams themselves on the advisory page.)
+- **Retry a failed CVE push** (`/ghsa/cve-push/<id>/retry/`) — when a CVE is
+  reserved on a GHSA-linked advisory, AdvisoryHub pushes the id to GitHub; a
+  failed push surfaces for retry, and a conflicting upstream CVE id blocks
+  publication until you reconcile it (§4).
+
+Connecting, rescanning, org-wide syncs, and CVE-push retries all require
+step-up authentication (§13).
+
+---
+
+## 12. Django admin
 
 Your admin membership also gives you Django's built-in admin at
 **`/django-admin/`**. This is a low-level, direct view of the database models. It
@@ -202,13 +242,16 @@ Admin Console (§2) is the right tool for day-to-day administration.
 
 ---
 
-## 12. Step-up authentication
+## 13. Step-up authentication
 
-A couple of sensitive actions require a **recent re-login** even though you're
+Some sensitive actions require a **recent re-login** even though you're
 already signed in ([permissions.md §8](../specification/permissions.md)):
 
-- **Publishing** an advisory.
-- **Connecting or modifying the GitHub App** integration.
+- **Publishing** an advisory (including re-publishing and retrying a failed
+  publication).
+- **Connecting the GitHub App** or rescanning its installations.
+- **Org-wide GHSA syncs** and **CVE-push retries** (project- and
+  advisory-scoped syncs are not gated).
 
 If prompted, complete the quick re-authentication and the action proceeds.
 

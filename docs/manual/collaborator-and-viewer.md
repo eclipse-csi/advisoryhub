@@ -72,14 +72,15 @@ timeline. As a viewer or collaborator you can:
 - **Browse the version history** — open the history view (`…/history/`) to see
   every past version, and open a diff to compare two versions
   (`…/versions/<n>/diff/`). Nothing is ever silently overwritten.
-- **Follow the timeline** (`…/timeline/`) — a merged, chronological view of
-  comments and recorded actions.
+- **Follow the Activity timeline** — the advisory page ends with a merged,
+  chronological view of comments and recorded actions.
 
 ---
 
 ## 4. Commenting
 
-Open the comment thread (`…/comments/`) or the timeline and use the comment box.
+Scroll to the **Activity** timeline at the end of the advisory page and use the
+comment box.
 
 - **Public vs internal.** Public comments are visible to everyone who can see the
   advisory. **Internal** comments are visible only to collaborators, owners, and
@@ -89,9 +90,12 @@ Open the comment thread (`…/comments/`) or the timeline and use the comment bo
   changed afterward.
 - **Mentions.** Type `@` and a name to notify a specific person, or `@team` to
   notify a project's security team. Mentioned people are emailed.
-- **Editing your comments.** You can edit a comment you wrote (`…/comments/<id>/edit/`);
-  edits are versioned and you can view a comment's history. Newly added mentions in
-  an edit notify the newly mentioned people.
+- **Editing your comments.** You can edit a comment you wrote; edits are
+  versioned and you can view a comment's history. Newly added mentions in an
+  edit notify the newly mentioned people.
+- **Redacting comments.** You can redact a comment you wrote (administrators
+  can redact any comment). Redaction hides the text for everyone but keeps the
+  entry visible in the timeline; a redacted comment can no longer be edited.
 
 ---
 
@@ -127,9 +131,14 @@ a fault.
 AdvisoryHub keeps you informed about advisories you're involved with:
 
 - **In-app inbox:** `/notifications/inbox/` (mark items read, or mark all read).
-- **Email:** sent for relevant events on your advisories.
-- **Preferences:** tune what you receive at `/notifications/preferences/`, with
-  per-advisory overrides at each advisory's notification settings.
+- **Email:** sent for relevant events on your advisories. Emails deliberately
+  carry no advisory content — just the event, the advisory id, the project,
+  and a footer explaining why you received it and where to change settings.
+- **Preferences:** set your defaults at `/notifications/preferences/`. Each
+  advisory page also has a **Notifications** panel to override them with a
+  preset — follow your defaults, everything, important only, unsubscribe, or
+  custom per-event choices. "Only when mentioned" is the lowest level: mentions
+  always notify, and there is no "never".
 
 ---
 

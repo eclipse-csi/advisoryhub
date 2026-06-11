@@ -17,9 +17,9 @@ code ever disagree, the code (and the specs that track it) win.
 AdvisoryHub is the **private authoring system** for security advisories covering
 Eclipse Foundation projects. Project security teams use it to triage incoming
 reports, write and review advisories, request CVEs, and publish. Publishing
-exports an advisory to standard **OSV** and **CSAF** JSON and pushes it to a
-separate publication Git repository; that repository's own pipeline renders the
-public advisory website.
+exports an advisory to standard **OSV** and **CSAF** JSON — plus a **CVE
+record** when a CVE is assigned — and pushes them to a separate publication Git
+repository; that repository's own pipeline renders the public advisory website.
 
 There is **no public reading surface inside AdvisoryHub.** Everything here is
 gated by login and per-advisory access — even a *published* advisory is visible
@@ -78,6 +78,10 @@ next login.
 > granted access to, or advisories belonging to a project whose security team
 > you are on. A brand-new account with no grants sees an empty list — that is
 > expected, not a bug.
+
+The **account menu** (top right) is where your personal pages live: **Settings**
+(`/accounts/me/` — your email, display name, groups, and whether you are an
+administrator), **Notification settings**, and **Sign out**.
 
 **Signing out** ends your session; you land on a signed-out confirmation page.
 
@@ -161,8 +165,19 @@ perspective, but here is the shared vocabulary.
   versions.
 - **Notifications.** The app emails you about events on advisories you are
   involved with, and keeps an in-app notification inbox at
-  `/notifications/inbox/`. Tune what you receive at
-  `/notifications/preferences/` (and per-advisory overrides).
+  `/notifications/inbox/`. Set your defaults at `/notifications/preferences/`;
+  each advisory page also has a **Notifications** panel with per-advisory
+  presets (follow your defaults, everything, important only, unsubscribe, or
+  custom). "Only when mentioned" is the floor — mentions always notify, and
+  there is no "never". Notification emails deliberately carry no advisory
+  content: just the event, the advisory id, the project, and a footer
+  explaining why you received it.
+- **New / changed markers.** List pages (and the compact left-hand rail on
+  every advisory page) mark advisories that are **new** or have **changed**
+  since you last viewed them, so you can pick up where you left off.
+- **Maintenance mode.** When an administrator turns maintenance mode on, a
+  banner with their message appears and every write action is refused until it
+  is over; reading keeps working.
 - **Audit log.** Every governance action (create, edit, grant, publish, …) is
   recorded in an append-only audit log that administrators can review.
 
@@ -172,19 +187,21 @@ perspective, but here is the shared vocabulary.
 
 | Term | Meaning |
 |---|---|
-| **Advisory** | A security advisory record, identified like `ECL-2025-0001`. |
+| **Advisory** | A security advisory record, identified like `ECL-cf23-gh45-jm67` — three groups of four characters from a reduced, unambiguous alphabet. |
 | **Triage** | The state for untrusted incoming reports, and the act of accepting or rejecting them. |
 | **Draft / Published / Dismissed** | The other three lifecycle states (see §4). |
 | **Security team** | A project's group of owners, mirrored from the Eclipse roster / identity provider. |
 | **Owner / Collaborator / Viewer** | The three access roles (see §5). |
 | **Global administrator / Reviewer** | Member of the admin group; owner everywhere and the only reviewer. |
-| **Admin Console** | The administrator dashboard at `/admin/` (Inbox, CVEs, Publications, Audit, Projects, Users, Maintenance). Distinct from Django admin at `/django-admin/`. |
+| **Admin Console** | The administrator dashboard at `/admin/` (Inbox, Projects, Users, Groups, CVE Assignment, Publication, Audit logs, Access log, Maintenance). Distinct from Django admin at `/django-admin/`. |
 | **Inbox** | The Admin Console's unified work queue. (Not to be confused with your personal notifications inbox.) |
 | **CVE request** | A request, queued internally, for a CVE identifier to be reserved for an advisory. |
 | **Review** | The approval step: an owner submits a draft and an administrator approves it or requests changes. |
 | **Mature publisher** | A project flag that lets its team publish without a per-advisory approval. |
-| **Publication** | Exporting an advisory to OSV + CSAF JSON and pushing it to the publication Git repository. |
-| **OSV / CSAF** | The two standard JSON formats AdvisoryHub publishes (Open Source Vulnerability and Common Security Advisory Framework). |
+| **Publication** | Exporting an advisory to OSV + CSAF JSON (plus a CVE record when a CVE is assigned) and pushing it to the publication Git repository. |
+| **OSV / CSAF** | The two standard JSON formats AdvisoryHub always publishes (Open Source Vulnerability and Common Security Advisory Framework). |
+| **CVE record** | A third published artifact in the CVE JSON record format, generated alongside OSV/CSAF when the advisory has an assigned CVE. |
+| **Possible duplicates** | An owner-only panel listing advisories similar to the one you're viewing, computed in the background (only on deployments that enable it). |
 | **GHSA-linked** | An advisory whose content is synced from a GitHub Security Advisory and is read-only here. |
 | **Orphan CVE** | A CVE that was assigned but then unassigned, which an administrator must reconcile at cve.org. |
 | **Access grant / Invitation** | An explicit per-advisory permission for a user or group; an invitation is a grant pending the recipient's first login. |

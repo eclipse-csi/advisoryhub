@@ -36,7 +36,10 @@ reviewing/approving, maintenance).
 
 Your work surface is the advisory list at `/advisories/`: search with the `q`
 box, switch the **state tabs** (All / triage / draft / published / dismissed),
-sort the columns, and click into any advisory.
+sort the columns, and click into any advisory. Rows are marked **new** or
+**changed** when something happened since your last visit, and every advisory
+page keeps a compact left-hand rail of the advisories you can see, for quick
+jumps.
 
 ```mermaid
 stateDiagram-v2
@@ -64,18 +67,28 @@ Public reports for your project arrive in the **triage** state. Find them via th
   scope). You must give a reason. Dismissed reports are reversible later (§9).
 - **Flag for admin routing** (`…/flag/`) — if the report clearly belongs to a
   *different* project, flag it with a note. It then moves to the administrators'
-  queue for re-homing. You can flag a misrouted report, but only administrators
-  can clear that flag and reassign it ([INV-INTAKE-4]).
+  queue for re-homing ([INV-INTAKE-4]): while flagged, the report is locked to
+  administrators, who alone can promote it (choosing its real project) or
+  dismiss it. If you flagged it by mistake, clear your own flag
+  (`…/clear-routing-flag/`) to take the report back.
 
 While an advisory is in triage, owners are the only people who can act on it; the
 reporter (and any viewer) can read it and post public comments but nothing more.
+
+> **Possible duplicates.** On deployments that enable it, the advisory page
+> shows owners a **Possible duplicates** panel: a background check compares the
+> report against your project's existing advisories and lists up to five
+> similar ones with a confidence score. It is a triage aid, not a verdict — use
+> it to spot duplicates before promoting, and cite the original when you
+> dismiss one. Collaborators and viewers never see this panel.
 
 ---
 
 ## 3. Creating an advisory
 
-You don't have to start from a report — you can author directly. Click **New
-advisory** (`/advisories/new/`) and fill in:
+You don't have to start from a report — you can author directly. Open **New →
+New advisory** in the top navigation (`/advisories/new/`; the menu appears only
+for security-team members and administrators) and fill in:
 
 **Basics**
 
@@ -116,7 +129,10 @@ Open an advisory and choose **Edit** (`…/edit/`). Key behaviours:
   in review invalidates that approval — you'll need to resubmit (§7).
 - **Changing the project.** Owners can move a *native* advisory to another
   project, but only to a project whose security team you're also on. (GHSA-linked
-  advisories follow their source repository and are never moved by hand.)
+  advisories follow their source repository and are never moved by hand.) After
+  a move the advisory shows a banner asking you to **review its access grants**
+  — people invited in the old project's context may no longer belong; dismiss
+  the banner once you've checked.
 
 ---
 
@@ -147,9 +163,10 @@ queue; an administrator then **reserves** a CVE (which attaches it to your
 advisory) or **rejects** the request with a reason — see the
 [Administrator & Reviewer Guide](./administrator.md#4-managing-cves).
 
-You can request a CVE only when the advisory has **no open request already, no CVE
-already assigned, and isn't barred from requesting** ([INV-CVE-1]). Once a CVE is
-assigned, only an administrator can unassign it (that's a CNA-side action).
+You can request a CVE on a **draft or published** advisory — not in triage, not
+dismissed — when it has **no open request already, no CVE already assigned, and
+isn't barred from requesting** ([INV-CVE-1]). Once a CVE is assigned, only an
+administrator can unassign it (that's a CNA-side action).
 
 ---
 
@@ -173,16 +190,19 @@ that rides alongside the draft:
 stateDiagram-v2
     none --> submitted : submit for review
     submitted --> approved : administrator approves
-    submitted --> none : administrator requests changes / you withdraw
-    approved --> none : a non-admin edit invalidates approval
+    submitted --> changes_requested : administrator requests changes
+    submitted --> none : you withdraw
+    changes_requested --> none : you reopen the review
+    approved --> none : a non-admin edit (or a revoked approval)
 ```
 
 ---
 
 ## 8. Publishing
 
-Publishing exports the advisory to **OSV** and **CSAF** JSON and pushes it to the
-publication Git repository, which renders the public site.
+Publishing exports the advisory to **OSV** and **CSAF** JSON — plus a **CVE
+record** when a CVE is assigned — and pushes them to the publication Git
+repository, which renders the public site.
 
 **Before you can publish**, both of these gates apply:
 
@@ -207,7 +227,7 @@ sequenceDiagram
     Owner->>Hub: Publish (re-authenticate if prompted)
     Hub->>Hub: Pin current version, queue a publication task
     Hub->>Worker: Run publication
-    Worker->>Worker: Build OSV + CSAF, validate against schemas
+    Worker->>Worker: Build OSV + CSAF (+ CVE record), validate against schemas
     Worker->>Repo: Commit & push
     Repo-->>Worker: Push succeeds
     Worker->>Hub: Flip state to published
@@ -219,10 +239,13 @@ A few things to expect:
 - **The advisory becomes "published" only after the Git push succeeds**
   ([INV-LIFECYCLE-3]). If anything fails (validation, network, the push), the
   state does **not** change and the attempt is recorded as **failed**.
-- **Failures are visible to administrators**, who can retry them from the Admin
-  Console's Publications page (see the
+- **Failures land back on the advisory page.** The sidebar's **Publication**
+  card shows the latest run — its status, a secret-redacted error message, the
+  generated artifacts, and a diff against the current content. Because the
+  state didn't change, you can fix the cause and press **Publish** again
+  yourself. Administrators also see every failed task fleet-wide on the Admin
+  Console's Publication page (see the
   [Administrator & Reviewer Guide](./administrator.md#5-publication-oversight)).
-  If your publish doesn't complete, that's where it ends up.
 - **Re-publishing.** After you edit a published advisory (or a CVE is assigned to
   it), it is marked as needing re-publication; choose **Re-publish** to push the
   update.
@@ -232,9 +255,13 @@ A few things to expect:
 ## 9. Dismissing and reopening
 
 - **Dismiss** (`…/dismiss/`) — close an advisory without publishing, with a
-  required reason. You can dismiss from triage or draft. **You cannot dismiss an
-  advisory that currently has a CVE assigned** — the CVE has to be pulled first,
-  which is an administrator action; ask an administrator to handle it.
+  required reason. You can dismiss from triage or draft. An open CVE *request*
+  is cancelled automatically when you dismiss (and restored if you reopen).
+  **If a CVE is already assigned you cannot dismiss the advisory yourself** —
+  pulling a reserved CVE is a CNA-side action, so ask an administrator: when
+  *they* dismiss it, the CVE is automatically unassigned into their orphan-CVE
+  queue. While dismissed, the content is read-only for every role (comments
+  stay open).
 - **Reopen** (`…/reopen/`) — bring a dismissed advisory back. It returns to
   whatever state it was in before (triage or draft), and the normal review and
   publish gates apply again from there ([INV-LIFECYCLE-4]). A dismissed advisory
@@ -246,19 +273,37 @@ A few things to expect:
 
 Some advisories are **linked to a GitHub Security Advisory (GHSA)**. Their content
 is synced from GitHub and is **read-only** inside AdvisoryHub — you won't edit the
-fields here. You can trigger a metadata sync for a single advisory or across your
-project to pull the latest from upstream (when the GHSA integration is enabled).
-Because their project follows the source repository, GHSA-linked advisories are
-never moved between projects by hand.
+fields here. The advisory page shows a **Linked GitHub Security Advisory** panel
+with the upstream id, repository, state, and last-sync time, plus a **Refresh
+from GHSA** button to pull the latest on demand (when the GHSA integration is
+enabled; wider project- and organisation-level syncs are administrator
+operations). Because their project follows the source repository, GHSA-linked
+advisories are never moved between projects by hand.
+
+Three behaviours to expect:
+
+- **A sync counts as an edit.** If a refresh brings changed content, it appends
+  a version like any edit — invalidating an existing review approval and, on a
+  published advisory, flagging it for re-publication.
+- **Publishing follows upstream.** A GHSA-linked advisory can be published only
+  once the GHSA itself is published on GitHub, and publishing re-fetches the
+  upstream metadata first so the export is current.
+- **CVEs flow back to GitHub.** When an administrator reserves a CVE for a
+  GHSA-linked advisory, AdvisoryHub pushes the id to the GHSA; the panel shows
+  the push status. If upstream already carries a *different* CVE id, the panel
+  warns about the conflict and publication is blocked until an administrator
+  reconciles it.
 
 ---
 
 ## 11. Comments and notifications
 
-- **Comments.** Use the comment thread (`…/comments/`) or timeline
-  (`…/timeline/`). As an owner you can post **public** and **internal** comments
-  and `@`-mention people or a whole `@team`. Whether a comment is internal is
-  fixed when posted.
+- **Comments.** The advisory page ends with the **Activity** timeline — comments
+  merged chronologically with recorded actions — and the comment box lives
+  there. As an owner you can post **public** and **internal** comments and
+  `@`-mention people or a whole `@team`. Whether a comment is internal is fixed
+  when posted. Authors can edit their comments (history is kept) or **redact**
+  them; redaction hides the text but leaves the entry visible in the timeline.
 - **Notifications.** Watch the in-app inbox at `/notifications/inbox/` and tune
   delivery at `/notifications/preferences/` (with per-advisory overrides).
 

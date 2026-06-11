@@ -36,10 +36,18 @@ vulnerability"). Fill in the form:
 3. **Details** — the full write-up: what the vulnerability is, how to reproduce
    it, affected versions, and any proof of concept. **Markdown is supported**,
    and you have plenty of room (up to ~16,000 characters).
-4. **Your name (optional)** — only used to credit you on the resulting advisory.
-   It is **not** used to contact you.
+4. **Preferred name for recognition (optional)** — shown only when you are *not*
+   signed in; used solely to credit you on the resulting advisory. It is **not**
+   used to contact you. (Signed-in reporters are credited through their account
+   instead — see §5.)
 
-Then submit. That's the whole form — there are deliberately no other fields.
+Below these sits a collapsed, entirely optional **Advanced** section — aliases,
+CWE ids, affected packages, severity, references, credits — mirroring the
+structured fields of a full advisory. Fill in only what you are confident
+about; the security team refines these during triage.
+
+Then submit. Beyond that there are deliberately no other fields — in
+particular, nothing that asks for contact details.
 
 > **Reporting privately.** AdvisoryHub never asks for your email or a PGP key on
 > this form. If you report **anonymously**, there is no way for the team to reply
@@ -48,8 +56,9 @@ Then submit. That's the whole form — there are deliberately no other fields.
 > reachable and able to follow progress, sign in *before* submitting (see §5).
 
 > **Spam protection.** The form has invisible anti-abuse measures and submission
-> rate limits ([INV-INTAKE-1]). Ordinary reporters never notice them; you don't
-> need to do anything special.
+> rate limits ([INV-INTAKE-1]), and some deployments add a visible CAPTCHA.
+> Ordinary reporters rarely notice any of it; you don't need to do anything
+> special.
 
 ---
 

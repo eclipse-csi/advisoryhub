@@ -33,6 +33,7 @@ urlpatterns = [
     path("advisories/", include("advisories.urls")),
     path("advisories/", include("comments.urls")),
     path("advisories/", include("access.urls")),
+    path("advisories/", include("similarity.urls")),
     path("accounts/", include("accounts.urls")),
     path("notifications/", include("notifications.urls")),
     path("admin/", include("admin_console.urls")),

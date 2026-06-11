@@ -44,6 +44,17 @@ publication_duration_seconds = Histogram(
 )
 
 # ---------------------------------------------------------------------------
+# LLM-assisted duplicate detection (incremented in similarity/services.py).
+# Per-run duration is covered by the generic celery_task_duration_seconds
+# series below (task="similarity.run_similarity_check").
+# ---------------------------------------------------------------------------
+similarity_check_total = Counter(
+    "advisoryhub_similarity_check_total",
+    "Similarity (duplicate-detection) checks by lifecycle status.",
+    ["status"],  # started | succeeded | failed
+)
+
+# ---------------------------------------------------------------------------
 # Celery tasks (set from signal handlers in common/celery_metrics.py)
 # ---------------------------------------------------------------------------
 celery_task_total = Counter(

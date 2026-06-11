@@ -219,6 +219,17 @@ ECLIPSE_API_TOKEN_URL: {{ .Values.rosterSync.tokenUrl | quote }}
 ECLIPSE_API_SCOPE: {{ .Values.rosterSync.scope | quote }}
 {{- end }}
 {{- end }}
+SIMILARITY_CHECK_ENABLED: {{ ternary "True" "False" .Values.similarity.enabled | quote }}
+{{- if .Values.similarity.enabled }}
+SIMILARITY_LLM_PROVIDER: {{ .Values.similarity.provider | quote }}
+SIMILARITY_LLM_MODEL: {{ .Values.similarity.model | quote }}
+{{- if .Values.similarity.baseUrl }}
+SIMILARITY_LLM_BASE_URL: {{ .Values.similarity.baseUrl | quote }}
+{{- end }}
+SIMILARITY_LLM_TIMEOUT: {{ .Values.similarity.timeout | quote }}
+SIMILARITY_CANDIDATE_LIMIT: {{ .Values.similarity.candidateLimit | quote }}
+SIMILARITY_MIN_CONFIDENCE: {{ .Values.similarity.minConfidence | quote }}
+{{- end }}
 INTAKE_DISABLED: {{ ternary "True" "False" .Values.intake.disabled | quote }}
 INTAKE_REPORT_RETENTION_DAYS: {{ .Values.intake.retentionDays | quote }}
 RATELIMIT_INTAKE_ANON: {{ .Values.intake.ratelimitAnon | quote }}

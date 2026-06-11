@@ -10,6 +10,7 @@ import uuid
 from functools import partial
 from typing import cast
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -391,6 +392,10 @@ def advisory_detail(request, advisory_id: str):
             and intake.needs_admin_routing
             and perms.can_clear_admin_routing_flag(request.user, advisory),
             "is_unsorted": is_triage and advisory.project.slug == UNSORTED_PROJECT_SLUG,
+            # Display-only gate for the duplicate-check panel loader; the
+            # similarity endpoints re-enforce the owner check server-side.
+            "similarity_enabled": settings.SIMILARITY_CHECK_ENABLED
+            and perms.resolved_permission(request.user, advisory) == "owner",
             "details_edit_count": details_edit_count,
             **_lifecycle_hints(advisory, last_publication_task=last_publication_task),
         },
@@ -536,6 +541,11 @@ def advisory_create(request):
                     },
                 )
                 transaction.on_commit(partial(_queue_advisory_created, advisory.pk))
+                # Best-effort duplicate detection (no-op while disabled,
+                # never fails creation).
+                from similarity.services import request_check_safe
+
+                request_check_safe(advisory, by=user)
                 messages.success(request, "Advisory created.")
                 return redirect("advisories:detail", advisory_id=advisory.advisory_id)
     else:

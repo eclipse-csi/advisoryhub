@@ -371,6 +371,12 @@ def create_ghsa_linked_advisory(
         # the row itself is still useful (admins can retry).
         advisory.ghsa_metadata = {"sync_error": redact_secrets(str(exc))}
         advisory.save(update_fields=["ghsa_metadata", "modified_at"])
+    # Best-effort duplicate detection on the freshly synced content (no-op
+    # while disabled, never fails the sync). The idempotent `return existing`
+    # above keeps re-discovered GHSAs from re-triggering checks.
+    from similarity.services import request_check_safe
+
+    request_check_safe(advisory, by=by)
     return advisory
 
 

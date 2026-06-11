@@ -142,7 +142,7 @@ Capability matrix per role, state-conditioned overrides (triage, admin-routing-f
 
 ## App layout
 
-Thirteen Django apps under the project root (plus the `config` project package and the `common` helper module, which are not installed apps). Full per-app inventory in [`docs/specification/architecture.md §2`](docs/specification/architecture.md). The apps you'll touch most:
+Fourteen Django apps under the project root (plus the `config` project package and the `common` helper module, which are not installed apps). Full per-app inventory in [`docs/specification/architecture.md §2`](docs/specification/architecture.md). The apps you'll touch most:
 
 - `advisories/` — `Advisory` (incl. `triage` state) + append-only `AdvisoryVersion` + `AdvisoryIntakeMetadata` sidecar; permissions, services (`promote_triage_to_draft`, `record_advisory_version`), forms, HTMX views.
 - `access/` — `AdvisoryAccessGrant`, `PendingInvitation`, grant services.
@@ -151,6 +151,7 @@ Thirteen Django apps under the project root (plus the `config` project package a
 - `workflows/` — `CveRequestTask` + `ReviewTask` state machines.
 - `admin_console/` — sidebar shell at `/admin/` (Inbox, Projects, CVE, Reviews, Publication, Audit, Maintenance); views split into `admin_console/views/<section>.py`. Django admin itself is at `/django-admin/`.
 - `intake/` — public `POST /report/` + `HoneypotSubmission` table. Triage UI lives in `advisories.views_triage`.
+- `similarity/` — LLM-assisted duplicate detection: `SimilarityCheck`/`SimilarityCandidate` task rows + `AdvisoryFingerprint` cache, Postgres prefilter + provider-agnostic LLM judge (`similarity/llm/` — Anthropic or any OpenAI-compatible endpoint, raw `requests`), owner-only HTMX panel on the advisory page, `backfill_fingerprints` command. Dormant unless `SIMILARITY_CHECK_ENABLED` (INV-SIM-2: enabling it is the consent for advisory content to reach the LLM provider).
 
 ## Triage flow
 
@@ -179,7 +180,7 @@ Server-rendered Django templates + HTMX, one stylesheet (`static/advisoryhub.css
 
 `docker-compose.yml`'s `x-django-env` anchor is the canonical dev configuration (reused by `web` and `worker`); **don't edit env files for dev**. `.env.example` documents every prod knob and is reference-only — it is *not* loaded by docker-compose. `dev/kanidm/.env.kanidm` is the only file compose actually loads at runtime (for the OIDC client secret minted by the bootstrap script).
 
-Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP is enforced by default; set `True` for Report-Only) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`, `PMI_ROSTER_SYNC_ENABLED` (+ `ECLIPSE_API_*` OAuth2 creds — security-team roster sync, off by default).
+Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-auth gate before publish), `CSP_REPORT_ONLY` (CSP is enforced by default; set `True` for Report-Only) + `CSP_REPORT_URI`, `READYZ_INCLUDE_PUB_REPO` / `READYZ_INCLUDE_BROKER` (extra `/readyz` probes), `RATELIMIT_ENABLE`, `PMI_ROSTER_SYNC_ENABLED` (+ `ECLIPSE_API_*` OAuth2 creds — security-team roster sync, off by default), `SIMILARITY_CHECK_ENABLED` (+ `SIMILARITY_LLM_*` provider/model/key/base-url — LLM duplicate detection, off by default; enabling sends advisory content to the configured provider, INV-SIM-2).
 
 ## Releases
 

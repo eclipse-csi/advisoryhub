@@ -121,6 +121,10 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PRIVACY-3](#inv-privacy-3) | `reporter_display_name` is display-only; never used for authorization. | Privacy | Medium |
 | [INV-PRIVACY-4](#inv-privacy-4) | Other users' email addresses are shown only to owners. | Privacy | Medium |
 | [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
+| [INV-SIM-1](#inv-sim-1) | Duplicate-check results and endpoints are owner-only, enforced server-side. | Similarity | Critical |
+| [INV-SIM-2](#inv-sim-2) | `SIMILARITY_CHECK_ENABLED=False` (default) means zero advisory-content egress to the LLM provider. | Similarity | Critical |
+| [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
+| [INV-SIM-4](#inv-sim-4) | Fingerprint/judge inputs come from the pinned `SimilarityCheck.version` payload, never live data. | Similarity | High |
 
 ---
 
@@ -2127,6 +2131,132 @@ published project name diverge from PMI truth with no reconciliation path.
 **Related.** [INV-ID-2](#inv-id-2), [INV-PROJECT-2](#inv-project-2),
 [INV-VERSION-1](#inv-version-1), [INV-AUTH-1](#inv-auth-1),
 [INV-REVIEW-4](#inv-review-4).
+
+---
+
+## 20. LLM duplicate detection (similarity)
+
+<a id="inv-sim-1"></a>
+### INV-SIM-1 — Duplicate-check results are owner-only   [Critical]
+
+**Statement.** The duplicate-check panel and both `similarity` endpoints
+(`similarity:panel`, `similarity:run`) are visible only to users whose
+resolved permission on the advisory is `owner` (global admins and the
+project security team). Collaborators, viewers, and anonymous users are
+rejected server-side; the `similarity_enabled` flag the detail template
+consumes is display-only.
+
+**Rationale.** Check results enumerate other advisories in the same project
+(ids, confidence, rationale). Because the comparison corpus is
+same-project only, every owner of the checked advisory is an owner of
+every match — `owner` is exactly the safe audience. Anything weaker leaks
+the existence and substance of advisories a per-advisory grantee has no
+access to.
+
+**Enforced in.**
+- `similarity/views.py` — `_gated_advisory` requires `resolved_permission == "owner"`.
+- `advisories/views.py` — `advisory_detail` sets the display-only `similarity_enabled` flag.
+
+**Violation impact.** Per-advisory grantees (collaborator/viewer) learn about
+other same-project advisories, including embargoed ones.
+
+**Tests.** `similarity/tests/test_views.py` (permission matrix, loader gating).
+
+**Related.** [INV-AUTH-1](#inv-auth-1), [INV-PRIVACY-1](#inv-privacy-1),
+[INV-SIM-2](#inv-sim-2).
+
+---
+
+<a id="inv-sim-2"></a>
+### INV-SIM-2 — Disabled by default; no content egress while off   [Critical]
+
+**Statement.** With `SIMILARITY_CHECK_ENABLED=False` (the default), no
+advisory content leaves the deployment through the similarity feature:
+`request_check` returns `None` before creating any row or enqueue (the
+single egress gate every trigger funnels through), both endpoints return
+404, the detail page renders no panel, and `backfill_fingerprints`
+refuses with a `CommandError`. Enabling the flag is the operator's
+explicit consent for sending advisory content — potentially embargoed —
+to the configured LLM provider.
+
+**Rationale.** Embargoed vulnerability details must never flow to a third
+party as a side effect of an upgrade or a stray trigger. Deployments
+needing on-prem inference set `SIMILARITY_LLM_PROVIDER=openai` with
+`SIMILARITY_LLM_BASE_URL` pointing at a local OpenAI-compatible server.
+
+**Enforced in.**
+- `similarity/services.py` — `request_check` flag gate.
+- `similarity/views.py` — `Http404` while disabled.
+- `similarity/management/commands/backfill_fingerprints.py` — `CommandError` while disabled.
+
+**Violation impact.** Silent exfiltration of embargoed advisory content to an
+external service.
+
+**Tests.** `similarity/tests/test_services.py`, `similarity/tests/test_views.py`,
+`similarity/tests/test_triggers.py`, `similarity/tests/test_backfill.py`
+(disabled-flag cases).
+
+**Related.** [INV-SIM-1](#inv-sim-1), [INV-SIM-3](#inv-sim-3).
+
+---
+
+<a id="inv-sim-3"></a>
+### INV-SIM-3 — LLM errors are redacted; the API key never persists   [Critical]
+
+**Statement.** Strings stored in `SimilarityCheck.last_error` and similarity
+audit metadata never contain the provider API key or other credentials.
+`LlmError` messages are built from the HTTP status plus a response-body
+excerpt only — request headers, where the key travels, are never
+interpolated — and pass through `audit.services.redact_secrets` at
+construction; `mark_failed` redacts again and caps at 8000 chars.
+
+**Rationale.** Provider failures surface in the owner-facing panel and in the
+audit trail; a credential there is an immediate compromise of the LLM
+account.
+
+**Enforced in.**
+- `similarity/llm/base.py` — `LlmError` and `_post` error construction.
+- `similarity/services.py` — `mark_failed`.
+- `similarity/tasks.py` — `_fail` passes the already-redacted `last_error` to audit.
+
+**Violation impact.** LLM API key leak to the advisory page, audit log, or
+application logs.
+
+**Tests.** `similarity/tests/test_llm_client.py` (exhausted-retry error carries
+no key), `similarity/tests/test_pipeline.py` (failure path),
+`similarity/tests/test_services.py` (`mark_failed`).
+
+**Related.** [INV-SECRET-1](#inv-secret-1), [INV-AUDIT-2](#inv-audit-2).
+
+---
+
+<a id="inv-sim-4"></a>
+### INV-SIM-4 — Checks judge pinned version content   [High]
+
+**Statement.** The fingerprint and judge inputs for the checked advisory are
+built from the `SimilarityCheck.version` payload pinned at request time —
+never from live form data — and the version FK is `on_delete=PROTECT`.
+The `AdvisoryFingerprint` cache is keyed on a content hash of the
+duplicate-relevant payload subset and is **not** part of
+`Advisory.to_payload()`, so fingerprint writes never append
+`AdvisoryVersion` rows.
+
+**Rationale.** Stored results must describe an immutable, auditable input —
+the same contract OSV/CSAF generation honours. A mutable input would make
+a persisted confidence score unexplainable after the next edit.
+
+**Enforced in.**
+- `similarity/models.py` — `version` FK `PROTECT`; `AdvisoryFingerprint` sidecar.
+- `similarity/services.py` — `run_check_sync` reads `check.version.payload`;
+  `ensure_fingerprint` re-keys on the content hash.
+
+**Violation impact.** Results that cannot be traced to the content they
+scored; version rows deletable out from under recorded checks.
+
+**Tests.** `similarity/tests/test_pipeline.py`,
+`similarity/tests/test_services.py` (fingerprint staleness).
+
+**Related.** [INV-VERSION-2](#inv-version-2), [INV-VERSION-3](#inv-version-3).
 
 ---
 

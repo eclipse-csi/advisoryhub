@@ -115,6 +115,19 @@
         "scope": { "type": "string" }
       }
     },
+    "similarity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "provider": { "type": "string", "enum": ["anthropic", "openai"] },
+        "model": { "type": "string" },
+        "baseUrl": { "type": "string" },
+        "timeout": { "type": "integer", "minimum": 1 },
+        "candidateLimit": { "type": "integer", "minimum": 1 },
+        "minConfidence": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
     "intake": {
       "type": "object",
       "additionalProperties": false,

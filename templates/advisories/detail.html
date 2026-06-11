@@ -294,6 +294,12 @@
     {% include "advisories/_sidebar_review.html" %}
     {% include "advisories/_sidebar_publication.html" %}
 
+    {% if similarity_enabled %}
+      <div hx-get="{% url 'similarity:panel' advisory.advisory_id %}"
+           hx-trigger="load"
+           hx-swap="outerHTML"></div>
+    {% endif %}
+
     {% if not is_triage %}
       <div hx-get="{% url 'notifications:advisory_preferences' advisory.advisory_id %}"
            hx-trigger="load"

@@ -59,6 +59,12 @@ class Action(models.TextChoices):
     PUBLICATION_GIT_COMMIT = "publication.git_commit"
     PUBLICATION_GIT_PUSH = "publication.git_push"
     PUBLICATION_GIT_PUSH_FAILED = "publication.git_push_failed"
+    # LLM-assisted duplicate detection (similarity app). Durable: low-volume
+    # (a few rows per advisory creation) and security-relevant — they record
+    # when advisory content was sent to the configured LLM provider.
+    SIMILARITY_CHECK_STARTED = "similarity.check_started"
+    SIMILARITY_CHECK_COMPLETED = "similarity.check_completed"
+    SIMILARITY_CHECK_FAILED = "similarity.check_failed"
     NOTIFICATION_PREFS_CHANGED = "notification.prefs_changed"
     # One entry per recipient per delivered notification (incl. invitation
     # emails, which create no inbox row). High-volume and PII-bearing

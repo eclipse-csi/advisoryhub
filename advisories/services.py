@@ -150,6 +150,13 @@ def submit_triage_report(
             partial(_enqueue_triage_notification, advisory.pk, "advisory_triage_submitted")
         )
 
+        # Best-effort duplicate detection (no-op while SIMILARITY_CHECK_ENABLED
+        # is off, never fails intake). Local import: similarity.services
+        # imports this module.
+        from similarity.services import request_check_safe
+
+        request_check_safe(advisory, by=reporter_user)
+
     return advisory
 
 

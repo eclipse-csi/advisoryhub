@@ -100,6 +100,20 @@ x-django-env: &django-env
   ECLIPSE_API_CLIENT_ID: ""
   ECLIPSE_API_CLIENT_SECRET: ""
   ECLIPSE_API_SCOPE: ""
+  # ---- LLM-assisted duplicate detection (off by default in dev) ----
+  # Flip SIMILARITY_CHECK_ENABLED to "True" and set an API key — or keep
+  # content local with SIMILARITY_LLM_PROVIDER=openai plus a
+  # SIMILARITY_LLM_BASE_URL pointing at an OpenAI-compatible server
+  # (Ollama, vLLM, LM Studio). When enabled, advisory content is sent to
+  # the configured provider on every check.
+  SIMILARITY_CHECK_ENABLED: "False"
+  SIMILARITY_LLM_PROVIDER: anthropic
+  SIMILARITY_LLM_MODEL: claude-opus-4-8
+  SIMILARITY_LLM_API_KEY: ""
+  SIMILARITY_LLM_BASE_URL: ""
+  SIMILARITY_LLM_TIMEOUT: "120"
+  SIMILARITY_CANDIDATE_LIMIT: "60"
+  SIMILARITY_MIN_CONFIDENCE: "20"
 
 services:
   postgres:

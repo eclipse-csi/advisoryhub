@@ -128,6 +128,20 @@ env = environ.Env(
     # 0 disables it (web/tests/manage.py never bind); the docker-compose worker
     # sets 9808 and runs --pool=threads so one exporter sees all task threads.
     PROMETHEUS_WORKER_METRICS_PORT=(int, 0),
+    # LLM-assisted duplicate detection (similarity app). OFF by default: when
+    # enabled, advisory content (potentially embargoed) is sent to the
+    # configured LLM provider on every check (INV-SIM-2). For deployments that
+    # must keep content on-prem, set SIMILARITY_LLM_PROVIDER=openai and point
+    # SIMILARITY_LLM_BASE_URL at a local OpenAI-compatible server (Ollama,
+    # vLLM, LM Studio).
+    SIMILARITY_CHECK_ENABLED=(bool, False),
+    SIMILARITY_LLM_PROVIDER=(str, "anthropic"),  # anthropic|openai
+    SIMILARITY_LLM_MODEL=(str, "claude-opus-4-8"),
+    SIMILARITY_LLM_API_KEY=(str, ""),  # SECRET
+    SIMILARITY_LLM_BASE_URL=(str, ""),  # empty = provider default; set for local servers
+    SIMILARITY_LLM_TIMEOUT=(int, 120),  # read timeout (seconds); connect is fixed at 10
+    SIMILARITY_CANDIDATE_LIMIT=(int, 60),
+    SIMILARITY_MIN_CONFIDENCE=(int, 20),  # store matches at/above this confidence (0–100)
 )
 
 # Read .env if present (silently ignored if missing)
@@ -174,6 +188,7 @@ INSTALLED_APPS = [
     "api",
     "ghsa",
     "intake",
+    "similarity",
 ]
 
 MIDDLEWARE = [
@@ -440,6 +455,19 @@ INTAKE_DISABLED = env("INTAKE_DISABLED")
 # Access-log partition retention (see audit.partitions / INV-AUDIT-5).
 AUDIT_ACCESS_LOG_RETENTION_DAYS = env("AUDIT_ACCESS_LOG_RETENTION_DAYS")
 AUDIT_ACCESS_LOG_RETENTION_ENABLED = env("AUDIT_ACCESS_LOG_RETENTION_ENABLED")
+
+# ---------------------------------------------------------------------------
+# LLM-assisted duplicate detection (similarity app). See the env() block above
+# for semantics; the feature is dormant unless SIMILARITY_CHECK_ENABLED is set.
+# ---------------------------------------------------------------------------
+SIMILARITY_CHECK_ENABLED = env("SIMILARITY_CHECK_ENABLED")
+SIMILARITY_LLM_PROVIDER = env("SIMILARITY_LLM_PROVIDER")
+SIMILARITY_LLM_MODEL = env("SIMILARITY_LLM_MODEL")
+SIMILARITY_LLM_API_KEY = env("SIMILARITY_LLM_API_KEY")
+SIMILARITY_LLM_BASE_URL = env("SIMILARITY_LLM_BASE_URL")
+SIMILARITY_LLM_TIMEOUT = env("SIMILARITY_LLM_TIMEOUT")
+SIMILARITY_CANDIDATE_LIMIT = env("SIMILARITY_CANDIDATE_LIMIT")
+SIMILARITY_MIN_CONFIDENCE = env("SIMILARITY_MIN_CONFIDENCE")
 
 # Celery beat schedule. The worker that runs `celery -A config beat` will
 # fire run_pmi_repo_sync every PMI_SYNC_INTERVAL_HOURS hours, refreshing

@@ -3879,4 +3879,15 @@ dialog.drawer--right {
   gap: 0.4rem;
   font-size: var(--text-sm);
 }
+
+/* ---- Duplicate-check sidebar panel (similarity app) ---- */
+.similarity-matches { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.similarity-match { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
+.similarity-match .similarity-rationale {
+  flex-basis: 100%;
+  margin: 0.1rem 0 0;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+}
+.badge.similarity-confidence { color: var(--info-fg); background: var(--info-soft); border-color: var(--info-bd); }
 } /* @layer components */

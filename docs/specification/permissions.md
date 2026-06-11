@@ -173,6 +173,7 @@ asymmetries with the same-row entries.
 | See other users' email addresses | ✗ ⁷ | ✗ ⁷ | ✓ | ✓ |
 | Edit advisory content | ✗ | ✓ | ✓ | ✓ |
 | Grant / revoke access | ✗ | ✗ | ✓ | ✓ |
+| View duplicate-check results / trigger a re-run | ✗ | ✗ | ✓ ⁸ | ✓ ⁸ |
 | Change advisory's project | ✗ | ✗ | ✓ ¹ | ✓ |
 | Dismiss advisory | ✗ | ✗ | ✓ ² | ✓ |
 | Reopen dismissed advisory | ✗ | ✗ | ✓ ⁶ | ✓ ⁶ |
@@ -228,6 +229,13 @@ Collaborators and viewers see display names only — where a user has no display
 name, the email is rendered masked (`a•••@example.org`). A user always sees
 their *own* email. This applies to every surface: rendered pages, the
 `@`-mention autocomplete, and the JSON API. Defined by `can_see_user_emails`.
+
+⁸ Owner-only because results enumerate other same-project advisories
+(ids, confidence, rationale) — exactly the set every owner of the checked
+advisory can already see, and more than a per-advisory grantee may see
+([INV-SIM-1](./invariant.md#inv-sim-1)). The whole surface 404s while
+`SIMILARITY_CHECK_ENABLED` is off ([INV-SIM-2](./invariant.md#inv-sim-2)).
+Enforced by `similarity.views` via `resolved_permission == "owner"`.
 
 ---
 
@@ -328,6 +336,7 @@ Every surface re-checks the same predicates from
 | Web views | `advisories/views.py`, `access/views.py`, `comments/views.py`, `workflows/views.py`, `publication/views.py`, `ghsa/views.py` | `require_advisory_permission` decorator or `AdvisoryPermissionMixin`; explicit `can_*` calls before each state-changing action. |
 | JSON API | `api/views_*.py` | Same `can_*` predicates as the web views (e.g. `can_grant_access`, `can_view`, `can_see_internal_comment`, `can_publish`); list endpoints filter querysets through `can_view`. |
 | Admin console | `admin_console/views/*` | All sections wrapped with `@admin_required`, which is `can_review` (global admin only). |
+| Duplicate-check panel | `similarity/views.py` | Owner-only (`resolved_permission == "owner"`) on both the HTMX fragment and the re-run POST; the whole surface returns 404 while `SIMILARITY_CHECK_ENABLED` is off ([INV-SIM-1], [INV-SIM-2]). |
 | Celery tasks | `publication/tasks.py`, `notifications/tasks.py`, `ghsa/tasks.py`, `workflows/tasks.py` | Re-resolve recipients / actors against the current DB state at task time; notification recipient lists are filtered again at send so revoked grants drop ([INV-PRIVACY-2]). |
 | Public intake | `intake/views.py` | No authorization (`can_submit_triage_report` always returns true). Abuse control is the form-layer honeypot ([INV-INTAKE-1]) plus rate limits keyed on anonymous/authenticated (`RATELIMIT_INTAKE_ANON` / `RATELIMIT_INTAKE_USER`). |
 | Comment read filtering | `comments/services.py`, `comments/views.py` | `is_internal` is fixed at creation ([INV-COMMENT-1]); visibility is re-checked at *read* and notification *send* time ([INV-COMMENT-2]). |

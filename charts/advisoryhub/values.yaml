@@ -133,6 +133,20 @@ rosterSync:
   scope: ""
   # ECLIPSE_API_CLIENT_ID / _SECRET belong in the env Secret.
 
+similarity:
+  # LLM-assisted duplicate detection. When enabled, advisory content
+  # (potentially embargoed) is sent to the configured LLM provider on every
+  # check; for on-prem inference set provider: openai and point baseUrl at a
+  # local OpenAI-compatible server (Ollama, vLLM, LM Studio).
+  enabled: false
+  provider: anthropic # anthropic | openai
+  model: claude-opus-4-8
+  baseUrl: ""
+  timeout: 120
+  candidateLimit: 60
+  minConfidence: 20
+  # SIMILARITY_LLM_API_KEY belongs in the env Secret.
+
 intake:
   disabled: false
   retentionDays: 365
@@ -168,7 +182,7 @@ secrets:
   # OIDC_RP_CLIENT_SECRET, PUB_REPO_TOKEN, GITHUB_APP_WEBHOOK_SECRET,
   # ECLIPSE_API_CLIENT_ID, ECLIPSE_API_CLIENT_SECRET, SENTRY_DSN,
   # HCAPTCHA_SITE_KEY, HCAPTCHA_SECRET_KEY, EMAIL_HOST_USER,
-  # EMAIL_HOST_PASSWORD, PMI_API_TOKEN.
+  # EMAIL_HOST_PASSWORD, PMI_API_TOKEN, SIMILARITY_LLM_API_KEY.
   existingSecret: ""
   # Dev/eval convenience: render `values` below into a chart-managed Secret.
   # Anything in a values file ends up in your release history — use

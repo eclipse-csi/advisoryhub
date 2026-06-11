@@ -72,6 +72,7 @@ responsibility in spec terms.
 | `api` | JSON API surface re-using the same `can_*` predicates as the web views. |
 | `ghsa` | GitHub App client + JWT handling, PMI mirror, GHSA discovery / per-advisory sync, EF-CVE push, webhook ingest. |
 | `intake` | The public report form (`/report/`), `HoneypotSubmission`, rate-limited project picker JSON. |
+| `similarity` | LLM-assisted duplicate detection: `SimilarityCheck` / `SimilarityCandidate` task rows, the `AdvisoryFingerprint` cache, the Postgres prefilter, provider-agnostic LLM adapters (Anthropic / OpenAI-compatible), the owner-only HTMX panel, `backfill_fingerprints`. Dormant unless `SIMILARITY_CHECK_ENABLED`. |
 
 Custom user model is set via `AUTH_USER_MODEL = "accounts.User"`.
 
@@ -571,6 +572,7 @@ user-triggered, scoped (project or all), and recorded as a
 | App | Task | Purpose |
 |---|---|---|
 | `publication` | `run_publication` | Build → validate → push → flip state. |
+| `similarity` | `run_similarity_check` | Prefilter → fingerprint → LLM judge → persist top-5 potential duplicates. `rate_limit="6/m"` absorbs GHSA bulk-sync bursts. |
 | `notifications` | `send_advisory_event_email` | Lifecycle events (created, submitted for review, published, publication export status). |
 | `notifications` | `send_comment_email` | Comment + mention notifications. |
 | `notifications` | `send_advisory_triage_event_email` | Triage-flow events to the project security team or admins. |
@@ -589,10 +591,55 @@ Idempotency story:
 - `run_publication` is short-circuited when the task is no longer
   in a queueable state; success / failure is terminal per-row, and
   the file write is idempotent on content.
+- `run_similarity_check` uses the same queued/failed-only guard, and
+  the fingerprint cache is keyed on a content hash, so a re-delivered
+  task never duplicates LLM spend for unchanged content.
 - GHSA per-advisory sync writes a new version only on payload
   change.
 - Notification tasks recompute recipients at send time, so an
   enqueued-then-revoked grant produces no email.
+
+### 6.4 Duplicate-detection pipeline (`similarity`)
+
+Trigger points — public intake (`submit_triage_report`), manual creation
+(`advisory_create`), GHSA import (`create_ghsa_linked_advisory`), and the
+owner-only re-run button — all call
+`similarity.services.request_check_safe`, which no-ops unless
+`SIMILARITY_CHECK_ENABLED` ([INV-SIM-2]) and never fails the parent
+operation. `request_check` mirrors `publication.publish`: advisory row
+lock, queued/running in-flight guard, a `SimilarityCheck` row pinned
+(`PROTECT`) to the latest `AdvisoryVersion` ([INV-SIM-4]), an audit
+record, then `transaction.on_commit` → `safe_enqueue`.
+
+The worker pipeline (`run_similarity_check`) spends at most **two** LLM
+calls per check, independent of corpus size:
+
+1. Empty pinned payload (no summary/details) → succeed with a note;
+   zero LLM calls.
+2. Postgres prefilter — same project only, all lifecycle states: exact
+   alias / CVE / GHSA-id intersection and affected-package-name overlap
+   are force-included, then trigram similarity over summary/details
+   (the existing `pg_trgm` GIN indexes) fills up to
+   `SIMILARITY_CANDIDATE_LIMIT` slots.
+3. Fingerprint call — a compact normalized digest of the new report,
+   cached in `AdvisoryFingerprint` keyed on a content hash of the
+   duplicate-relevant payload subset; skipped while the hash is fresh.
+4. Judge call — scores every candidate (cached fingerprints where
+   fresh, truncated raw excerpts otherwise; candidate fingerprints are
+   never generated inline). The reply is post-processed — hallucinated
+   ids dropped, duplicates deduped, confidence clamped to 0–100,
+   floored at `SIMILARITY_MIN_CONFIDENCE` — and the top 5 stored as
+   ranked `SimilarityCandidate` rows.
+
+Provider adapters (`similarity/llm/`) are raw-`requests` clients with no
+SDK dependencies: the Anthropic Messages API, and OpenAI Chat
+Completions covering both OpenAI and local OpenAI-compatible servers
+(Ollama/vLLM/LM Studio — the on-prem option for embargoed content).
+Failures are wrapped in `LlmError`, whose message passes through
+`redact_secrets` ([INV-SIM-3]). Results render in an owner-only sidebar
+panel on the advisory detail page that polls over HTMX while a check is
+queued/running ([INV-SIM-1]); `manage.py backfill_fingerprints` warms
+the fingerprint corpus for pre-existing advisories.
 
 ---
 
@@ -710,6 +757,17 @@ be set for hCaptcha to engage — otherwise silently bypassed),
 `RATELIMIT_INTAKE_USER` (default `20/h`),
 `INTAKE_REPORT_RETENTION_DAYS` (default 365),
 `INTAKE_DISABLED` (kill switch).
+
+**Duplicate detection (similarity).** `SIMILARITY_CHECK_ENABLED`
+(default False — the explicit consent gate for sending advisory content
+to the LLM provider, [INV-SIM-2]), `SIMILARITY_LLM_PROVIDER`
+(`anthropic` | `openai`), `SIMILARITY_LLM_MODEL` (default
+`claude-opus-4-8`), `SIMILARITY_LLM_API_KEY` (secret; blank for
+keyless local servers), `SIMILARITY_LLM_BASE_URL` (empty = provider
+default; set for OpenAI-compatible/local servers),
+`SIMILARITY_LLM_TIMEOUT` (default 120 s read),
+`SIMILARITY_CANDIDATE_LIMIT` (default 60),
+`SIMILARITY_MIN_CONFIDENCE` (default 20).
 
 **Rate-limit master switch.** `RATELIMIT_ENABLE` (default True;
 forced False in `test`).

@@ -1,0 +1,60 @@
+{% load advisoryhub %}
+{% comment %}
+Sidebar card: duplicate-detection panel (similarity app). Owner-only — the
+endpoint enforces this server-side (INV-SIM-1); detail.html only decides
+whether to load the fragment.
+
+While a check is queued/running the section polls itself every 3s; the
+completed fragment renders WITHOUT the hx-trigger and replaces the poller
+(hx-swap=outerHTML), which stops the polling.
+
+Context required: advisory, check (latest SimilarityCheck or None),
+candidates (ranked SimilarityCandidate rows), is_pending.
+{% endcomment %}
+<section class="sidebar-card sidebar-card--similarity" id="similarity-panel"
+         {% if is_pending %}hx-get="{% url 'similarity:panel' advisory.advisory_id %}"
+         hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <header class="sidebar-card__header">
+    <h2>Duplicate check</h2>
+    {% if check %}
+      <span class="badge status-{{ check.status }}">{{ check.get_status_display }}</span>
+    {% else %}
+      <span class="badge">Never run</span>
+    {% endif %}
+  </header>
+
+  {% if not check %}
+    <p class="sidebar-card__hint">Checks whether this report may already have been filed in this project.</p>
+  {% elif is_pending %}
+    <p class="sidebar-card__hint">Checking for similar advisories…</p>
+  {% elif check.status == "succeeded" %}
+    {% if candidates %}
+      <p class="sidebar-card__hint">Potential duplicates, most similar first:</p>
+      <ul class="similarity-matches">
+        {% for candidate in candidates %}
+          <li class="similarity-match">
+            <a href="{% url 'advisories:detail' candidate.matched_advisory.advisory_id %}">{{ candidate.matched_advisory.advisory_id }}</a>
+            <span class="badge similarity-confidence">{{ candidate.confidence }}%</span>
+            {% if candidate.rationale %}<p class="similarity-rationale">{{ candidate.rationale }}</p>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No similar advisories found.</p>
+    {% endif %}
+    {% if check.note %}<p class="sidebar-card__meta">{{ check.note }}</p>{% endif %}
+    <p class="sidebar-card__meta">Checked {% timestamp check.finished_at %}</p>
+  {% elif check.status == "failed" %}
+    {% if check.last_error %}<p class="errors">Last error: <code>{{ check.last_error }}</code></p>{% endif %}
+  {% endif %}
+
+  {% if not is_pending %}
+    <div class="sidebar-card__row">
+      <form hx-post="{% url 'similarity:run' advisory.advisory_id %}"
+            hx-target="#similarity-panel" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn">{% if check %}Re-run check{% else %}Check for duplicates{% endif %}</button>
+      </form>
+    </div>
+  {% endif %}
+</section>

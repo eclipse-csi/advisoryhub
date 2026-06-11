@@ -107,7 +107,8 @@ def send_advisory_event_email(advisory_id: int, event: str) -> int:
     """Notify watchers of an advisory lifecycle event.
 
     ``event`` ∈ {advisory_created, advisory_submitted_for_review,
-    advisory_published, publication_export_status}.
+    advisory_review_withdrawn, advisory_published,
+    publication_export_status}.
     """
     try:
         advisory = Advisory.objects.get(pk=advisory_id)

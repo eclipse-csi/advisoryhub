@@ -131,7 +131,8 @@ def submit_triage_report(
         if reporter_user is not None:
             # Auto-grant viewer to the authenticated reporter. The grant is
             # active in TRIAGE state per the resolution order; the reporter
-            # sees the advisory but can't comment until it's promoted.
+            # sees the advisory immediately and may post public comments
+            # (internal comments stay collaborator+).
             grant_to_user(advisory, reporter_user, Permission.VIEWER, by=None)
 
         record_from_request(

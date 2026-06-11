@@ -104,12 +104,12 @@ satisfy any "owner" requirement.
 | # | From | To | Trigger (function) | Actor | Preconditions | Audit action(s) | Side effects |
 |---|---|---|---|---|---|---|---|
 | 1 | — | `triage` | `advisories.services.submit_triage_report` | Anonymous or authenticated reporter (public form) | Honeypot field empty ([INV-INTAKE-1]); rate-limit not tripped | `ADVISORY_TRIAGE_SUBMITTED` | `AdvisoryIntakeMetadata` created; `needs_admin_routing=True` if `project.slug == "unsorted"` ([INV-INTAKE-4]); viewer grant for authenticated reporter ([INV-INTAKE-3]); v1 seeded by post_save signal |
-| 2 | — | `draft` | `advisories.views.advisory_create` | Owner (admin or project security team) | Caller can create for the chosen project | `ADVISORY_CREATED` | v1 seeded by post_save signal; `advisory.created` notification queued |
-| 3 | — | `draft` | `ghsa.services.create_ghsa_linked_advisory` | Admin (and project security team) | GHSA ID not already mapped to another advisory ([INV-ID-2]) | `GHSA_LINKED_ADVISORY_CREATED` | `kind=GHSA_LINKED`; v1 seeded; initial `sync_single_ghsa` may append v2 if upstream returns content |
-| 4 | `triage` | `draft` | `advisories.services.promote_triage_to_draft` | Owner (project security team or admin) | `can_triage(user, advisory)`; `needs_admin_routing=False` for non-admin actor ([INV-AUTH-6]); explicit `project` arg required when advisory is on `unsorted` | `ADVISORY_TRIAGE_PROMOTED`, `ADVISORY_STATE_CHANGED` | Same PK / public ID / `created_at` preserved ([INV-LIFECYCLE-5]); existing comments, audit entries, intake metadata, and the reporter's viewer grant survive intact |
+| 2 | — | `draft` | `advisories.views.advisory_create` | Owner (admin or project security team) | Caller can create for the chosen project | `ADVISORY_CREATED` | v1 seeded by post_save signal; `advisory_created` notification queued |
+| 3 | — | `draft` | `ghsa.services.create_ghsa_linked_advisory` | Admin or project security team via a triggered GHSA sync; also the scheduled sync and webhook ingest (system) | GHSA ID not already mapped to another advisory ([INV-ID-2]) | `GHSA_LINKED_ADVISORY_CREATED` | `kind=GHSA_LINKED`; v1 seeded; initial `sync_single_ghsa` may append v2 if upstream returns content |
+| 4 | `triage` | `draft` | `advisories.services.promote_triage_to_draft` | Owner (project security team or admin) | `can_triage(user, advisory)`; `needs_admin_routing=False` for non-admin actor ([INV-AUTH-6]); explicit `project` arg required when advisory is on `unsorted` | `ADVISORY_TRIAGE_PROMOTED`, `ADVISORY_STATE_CHANGED` | Same PK / public ID / `created_at` preserved ([INV-LIFECYCLE-5]); existing comments, audit entries, intake metadata, and the reporter's viewer grant survive intact; admin-routing flag cleared if set; a version row is appended when promotion reassigns the project (`project_slug` is payload-visible); `advisory_triage_promoted` notification queued |
 | 5 | `triage` | `dismissed` | `advisories.services.dismiss_triage` | Owner (project security team or admin) | `can_triage(user, advisory)`; non-empty `reason` | `ADVISORY_DISMISSED`, `ADVISORY_STATE_CHANGED` (and, when `review_status != none` at dismiss time — rare for triage: `ADVISORY_REVIEW_WITHDRAWN`, conditionally `REVIEW_TASK_STATUS_CHANGED`) | `dismissed_reason` and `dismissed_from_state=triage` set; `cancel_pending_review` resets `review_status` to `none` and closes any open `ReviewTask` as `withdrawn`; `advisory_triage_dismissed` notification queued |
 | 6 | `draft` | `dismissed` | `advisories.views.advisory_dismiss` | Owner | `can_dismiss(user, advisory)`: not yet `published`; advisory has no `assigned_cve_id` unless actor is admin (footnote ² of `permissions.md` §5) | `ADVISORY_DISMISSED` (plus, when applicable: `CVE_REQUEST_CANCELLED`, `CVE_UNASSIGNED`, `ADVISORY_REVIEW_WITHDRAWN`, `REVIEW_TASK_STATUS_CHANGED`) | `cancel_open_cve_request` runs (any open CVE request → `cancelled`); `unassign_cve` runs if a CVE was assigned (admin-only path, leaves an `OrphanCve` to be marked rejected at cve.org); `cancel_pending_review` runs (resets `review_status` to `none` and closes any open `ReviewTask` as `withdrawn`) |
-| 7 | `draft` | `published` | `publication.tasks.run_publication` (success branch) | Celery worker, on behalf of the user who called `publication.services.publish` | `can_publish` was true at enqueue time; OSV+CSAF built and validated; Git clone, commit, and push succeeded; no other queued/running task ([INV-CONCURRENCY-1]) | `ADVISORY_PUBLISHED`, `PUBLICATION_OSV_GENERATED`, `PUBLICATION_CSAF_GENERATED`, `PUBLICATION_GIT_COMMIT`, `PUBLICATION_GIT_PUSH`, `PUBLICATION_EXPORT_COMPLETED` | `published_at` stamped if previously null; `republish_required=False`; `PublicationTask.status=SUCCEEDED` with `commit_sha`; one `PublicationArtifact` row per kind ([INV-VERSION-3]). All in one `transaction.atomic` block ([INV-PUB-4]) |
+| 7 | `draft` | `published` | `publication.tasks.run_publication` (success branch) | Celery worker, on behalf of the user who called `publication.services.publish` | `can_publish` was true at enqueue time; OSV+CSAF built and validated; Git clone, commit, and push succeeded; no other queued/running task ([INV-CONCURRENCY-1]) | `ADVISORY_PUBLISHED`, `PUBLICATION_OSV_GENERATED`, `PUBLICATION_CSAF_GENERATED`, `PUBLICATION_CVE_GENERATED` (when a CVE is assigned), `PUBLICATION_GIT_COMMIT`, `PUBLICATION_GIT_PUSH`, `PUBLICATION_EXPORT_COMPLETED` | `published_at` stamped if previously null; `republish_required=False`; `PublicationTask.status=SUCCEEDED` with `commit_sha`; one `PublicationArtifact` row per kind — `osv`, `csaf`, plus `cve` when the pinned payload carries an `assigned_cve_id` ([INV-VERSION-3]; architecture.md §4.2). The artifact rows and the build/commit/push audits land *outside* the final atomic block (artifacts before the push, the git audits right after it); the state flip, task success, and the `ADVISORY_PUBLISHED` / `PUBLICATION_EXPORT_COMPLETED` audits share one `transaction.atomic` block ([INV-PUB-4]) |
 | 8 | `published` | `published` | `publication.services.publish` → `run_publication` again | Owner (publish-eligible — §7 of `permissions.md`) | Edit happened since last publish (`republish_required=True`) **or** explicit re-publish for any reason; review gate per §5 applies | Same set as row 7 | A new `PublicationTask` row pins the **latest** `AdvisoryVersion`; OSV/CSAF and the commit on the same Git path are regenerated; prior `PublicationArtifact` and version rows remain immutable |
 | 9 | `dismissed` | `dismissed_from_state` (`draft` or `triage`) | `advisories.services.reopen_advisory` | Owner (project security team or admin) | `can_reopen(user, advisory)`: state is dismissed | `ADVISORY_REOPENED`, `ADVISORY_STATE_CHANGED` (and, depending on orphan/CVE state: `CVE_REASSIGNED_FROM_ORPHAN` *or* `ORPHAN_REASSIGNMENT_REQUESTED`; `CVE_REQUESTED` if a cancelled queued request is re-created) | `state` flips to `dismissed_from_state`; `dismissed_reason` / `dismissed_from_state` kept as historical metadata; auto-cancelled `CveRequestTask` re-created in `queued` if no other open task and target is `draft`; latest `OrphanCve` reattached directly (orphan → `REASSIGNED`) when `ORPHANED`, else an `OrphanCveReassignmentTask` is queued for admin (see §3.1.4) when `MARKED_REJECTED`; `advisory_reopened` notification queued |
 
@@ -190,7 +190,10 @@ CVE-side restoration runs inside the same atomic block as the state flip:
    - `status == ORPHANED` → `workflows.services.reassign_orphan_cve` runs
      immediately, transitioning the orphan to `REASSIGNED` and writing the
      CVE id back to `Advisory.assigned_cve_id`. Audit:
-     `CVE_REASSIGNED_FROM_ORPHAN`.
+     `CVE_REASSIGNED_FROM_ORPHAN`. If the direct reassignment conflicts
+     (the CVE is now held by another advisory, or this advisory already
+     holds one), an `OrphanCveReassignmentTask` is queued for admin
+     resolution instead. Audit: `ORPHAN_REASSIGNMENT_REQUESTED`.
    - `status == MARKED_REJECTED` → an `OrphanCveReassignmentTask` is
      created in `QUEUED` and surfaces in the admin inbox at
      `/admin/cves/`. The advisory itself is back in `draft` / `triage` with
@@ -198,7 +201,7 @@ CVE-side restoration runs inside the same atomic block as the state flip:
      resolves the task with one of two outcomes:
      - `reassigned` — cve.org rejection was undone out-of-band; the orphan
        transitions to `REASSIGNED` and the CVE id is reattached. Audit:
-       `ORPHAN_REASSIGNMENT_RESOLVED`.
+       `CVE_REASSIGNED_FROM_ORPHAN` + `ORPHAN_REASSIGNMENT_RESOLVED`.
      - `replaced` — rejection couldn't be undone; admin enters a fresh
        `replacement_cve_id` on the resolution form. A new
        `CveRequestTask(status=RESERVED, cve_id=…)` is created, the
@@ -281,7 +284,7 @@ stateDiagram-v2
 | `none` | `submitted` | `workflows.services.submit_for_review` | Owner (security team) | `can_submit_for_review`: lifecycle `state=draft`, advisory not currently `submitted`; **admins cannot submit** ([INV-REVIEW-3]) | `ADVISORY_SUBMITTED_FOR_REVIEW` | Creates a `ReviewTask` pinned to the current latest `AdvisoryVersion` ([INV-REVIEW-2], [INV-VERSION-2]) |
 | `submitted` | `approved` | `workflows.services.approve_review` | Admin (global reviewer) | `can_review(by)`; `ReviewTask.status=OPEN` | `ADVISORY_REVIEW_APPROVED`, `REVIEW_TASK_STATUS_CHANGED` | `ReviewTask.status=APPROVED` |
 | `submitted` | `changes_requested` | `workflows.services.request_changes` | Admin | `can_review(by)`; `ReviewTask.status=OPEN` | `ADVISORY_REVIEW_CHANGES_REQUESTED`, `REVIEW_TASK_STATUS_CHANGED` | `ReviewTask.status=CHANGES_REQUESTED` |
-| `submitted` | `none` | `workflows.services.withdraw_review` | Owner (submitter side) | Submitter; admins cannot withdraw ([INV-REVIEW-3]) | `ADVISORY_REVIEW_WITHDRAWN`, `REVIEW_TASK_STATUS_CHANGED` | `ReviewTask.status=WITHDRAWN` |
+| `submitted` | `none` | `workflows.services.withdraw_review` | Owner (submitter side) | Any non-admin owner (need not be the original submitter); admins cannot withdraw ([INV-REVIEW-3]) | `ADVISORY_REVIEW_WITHDRAWN`, `REVIEW_TASK_STATUS_CHANGED` | `ReviewTask.status=WITHDRAWN` |
 | `changes_requested` | `none` | `workflows.services.reopen_review` | Owner or admin | `review_status=CHANGES_REQUESTED` | `ADVISORY_STATE_CHANGED` (review-status field) | Allows edits to be made before a new submission |
 | `changes_requested` | `submitted` | `workflows.services.submit_for_review` | Owner (security team) | Same as the initial submission | `ADVISORY_SUBMITTED_FOR_REVIEW` | Opens a **new** `ReviewTask` pinned to the (possibly newer) latest version |
 | `approved` | `none` | `workflows.services.revoke_approval` | Admin | `can_revoke_approval(by)`; `review_status=APPROVED` | `ADVISORY_REVIEW_APPROVAL_REVOKED` | Used when the admin wants to retract approval before publication |
@@ -325,7 +328,7 @@ stateDiagram-v2
 | From | To | Trigger | Actor | Preconditions | Audit action(s) | Notes |
 |---|---|---|---|---|---|---|
 | — | `queued` | `workflows.services.request_cve` | Owner (security team) on a draft or published advisory | `can_request_cve`: lifecycle is `draft` or `published` (blocked in `triage` and `dismissed`), no `assigned_cve_id` ([INV-CVE-2]), no other open task ([INV-CVE-1]), `cve_requests_banned=False` ([INV-CVE-3]) | `CVE_REQUESTED` | — |
-| `queued` | `reserved` | `workflows.services.transition_cve_request(..., new_status=RESERVED, cve_id=...)` | Admin (CNA-side reviewer) | `can_review(by)`; valid `CVE-YYYY-NNNN…` format ([INV-ID-3]) | `CVE_TASK_STATUS_CHANGED` | Sets `Advisory.assigned_cve_id`; if the advisory is already `published`, also sets `republish_required=True` |
+| `queued` | `reserved` | `workflows.services.transition_cve_request(..., new_status=RESERVED, cve_id=...)` | Admin (CNA-side reviewer) | `can_review(by)`; valid `CVE-YYYY-NNNN…` format ([INV-ID-3]) | `CVE_TASK_STATUS_CHANGED` | Sets `Advisory.assigned_cve_id`; if the advisory is already `published`, also sets `republish_required=True`; for GHSA-linked advisories, additionally enqueues the EF-CVE push to GitHub (architecture.md §5.4) |
 | `queued` | `rejected` | `workflows.services.transition_cve_request(..., new_status=REJECTED, notes=...)` | Admin | `can_review(by)`; non-empty `notes` | `CVE_TASK_STATUS_CHANGED`, optional `CVE_REQUEST_BANNED` | Posts a comment to the advisory; admin may also flip `cve_requests_banned=True` ([INV-CVE-3]) |
 | `queued` | `cancelled` | `workflows.services.cancel_open_cve_request` | System (called from the dismiss-from-draft flow) | Advisory is being dismissed | `CVE_REQUEST_CANCELLED` | Not user-callable; runs inside the dismissal atomic block |
 
@@ -372,7 +375,7 @@ stateDiagram-v2
 | — | `queued` | `publication.services.publish` | Owner (publish-eligible per §5.2) | `can_publish(by)`; lifecycle `state` ≠ `dismissed`; no other queued/running task ([INV-CONCURRENCY-1]); GHSA-linked advisories refresh metadata from GitHub first | `PUBLICATION_EXPORT_STARTED` | New `PublicationTask` row pins the latest `AdvisoryVersion`; Celery `run_publication` enqueued via `transaction.on_commit` ([INV-PUB-5]) |
 | `queued` | `running` | `publication.services.mark_running` (called from `run_publication`) | Celery worker | Task picked up | — | `attempts` incremented |
 | `running` | `succeeded` | `publication.tasks.run_publication` (happy path) | Celery worker | OSV+CSAF built from `task.version.payload` ([INV-VERSION-3]), validated against vendored schemas ([INV-PUB-6]), committed to a fresh `TemporaryDirectory` clone ([INV-PUB-1], [INV-PUB-3]), and pushed ([INV-LIFECYCLE-3]) | `PUBLICATION_OSV_GENERATED`, `PUBLICATION_CSAF_GENERATED`, `PUBLICATION_GIT_COMMIT`, `PUBLICATION_GIT_PUSH`, `PUBLICATION_EXPORT_COMPLETED`, `ADVISORY_PUBLISHED` | Inside the same `transaction.atomic` ([INV-PUB-4]): `Advisory.state=published`, `published_at` stamped (if null), `republish_required=False`, `commit_sha` recorded on the task |
-| `running` | `failed` | `publication.tasks.run_publication` (exception branch) | Celery worker | Any of the steps above raised | `PUBLICATION_EXPORT_FAILED` (validation / unexpected) or `PUBLICATION_GIT_PUSH_FAILED` (push-time) | `task.last_error` set to the redacted error string ([INV-SECRET-1]); `Advisory.state` unchanged; surface appears in the Admin Console's Publication page; failure-notification e-mail uses the redacted text ([INV-SECRET-3]) |
+| `running` | `failed` | `publication.tasks.run_publication` (exception branch) | Celery worker | Any of the steps above raised | `PUBLICATION_EXPORT_FAILED` (validation / unexpected) or `PUBLICATION_GIT_PUSH_FAILED` (any git-layer failure: clone, write, commit, or push) | `task.last_error` set to the redacted error string ([INV-SECRET-1]); `Advisory.state` unchanged; surface appears in the Admin Console's Publication page; the failure e-mail announces the event only and embeds no error text ([INV-SECRET-3]) — the redacted `last_error` is visible in the Admin Console |
 | `failed` | `queued` | `publication.services.retry` | Owner (publish-eligible) | `task.status=failed`; `can_publish(by)` true now | `PUBLICATION_EXPORT_STARTED` (on the new task row) | Re-pins the **current** latest `AdvisoryVersion` — so a retry after additional edits picks up the new content |
 
 The `succeeded` and `failed` states are terminal for the individual task
@@ -416,8 +419,8 @@ sequenceDiagram
 
     Q->>Worker: dequeue
     Worker->>DB: mark_running(task)
-    Worker->>Worker: build OSV (from task.version.payload)<br/>build CSAF<br/>validate against schemas (INV-PUB-6)
-    Worker->>DB: PublicationArtifact rows (OSV, CSAF)
+    Worker->>Worker: build OSV (from task.version.payload)<br/>build CSAF (+ CVE record when assigned)<br/>validate against schemas (INV-PUB-6)
+    Worker->>DB: PublicationArtifact rows (OSV, CSAF, + CVE when assigned)
     Worker->>Git: shallow clone into TemporaryDirectory (INV-PUB-1, INV-PUB-3)
     Worker->>Git: write files, commit, push
 
@@ -428,12 +431,12 @@ sequenceDiagram
         Worker->>DB: PublicationTask.status=succeeded, commit_sha
         Worker->>DB: audit: ADVISORY_PUBLISHED, PUBLICATION_GIT_PUSH,<br/>PUBLICATION_EXPORT_COMPLETED, …
         Worker->>DB: COMMIT (INV-PUB-4)
-        Worker->>Q: notification: advisory.published
+        Worker->>Q: notification: advisory_published
     else Any step fails
         Worker->>DB: mark_failed(task, error=redact(error))
         Worker->>DB: audit: PUBLICATION_EXPORT_FAILED<br/>or PUBLICATION_GIT_PUSH_FAILED
         Note over Worker,DB: Advisory.state unchanged<br/>(INV-LIFECYCLE-3)
-        Worker->>Q: notification: publication failure (redacted body, INV-SECRET-3)
+        Worker->>Q: notification: publication failure (event-only body, no error text — INV-SECRET-3)
     end
 ```
 
@@ -466,8 +469,8 @@ into the orthogonal machines and the version log:
 | Edit on a draft with `review_status=approved`, by a **non-admin** | new row appended | reset to `none`, audit `ADVISORY_REVIEW_APPROVAL_INVALIDATED` ([INV-REVIEW-4]) | unchanged | — |
 | Edit on a draft with `review_status=approved`, by an admin | new row appended | unchanged | unchanged | Admin can re-approve at will |
 | Edit on a `published` advisory | new row appended | reset to `none` for non-admin if it was `approved` | set to `True` (re-publish required) | The Publish button becomes "Re-publish" in the UI |
-| Project change (native advisory, human editor) | new row appended (project is payload-visible) | reset to `none` if `approved` and editor is non-admin | set to `True` if `published` | `access_review_required_at` stamped — surfaces the access-review banner |
-| PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1]) | new row appended (`project_slug` is payload-visible) | **unchanged** — approval is preserved | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment` |
+| Project change (native advisory, human editor) | new row appended (project is payload-visible) | reset to `none` if `approved` and editor is non-admin | set to `True` if `published` | `access_review_required_at` stamped — surfaces the access-review banner; `ADVISORY_PROJECT_CHANGED` audit; `advisory_created` notification queued for the new project's team |
+| PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1]) | new row appended (`project_slug` is payload-visible) | **unchanged** — approval is preserved | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment`; `advisory_created` notification queued for the new project's team |
 | Non-payload save (state-only flip, heartbeat sync, `republish_required` toggle, `access_review_required_at` stamp) | **no row** ([INV-VERSION-1]) | unchanged | depends on the field | — |
 | GHSA heartbeat sync that returned no payload changes | **no row** | unchanged | unchanged | `ghsa_metadata_synced_at` refreshed |
 | GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | reset to `none` if `approved`, audit `ADVISORY_REVIEW_APPROVAL_INVALIDATED` — no admin carve-out: the content author is upstream GHSA, not whoever pressed Sync ([INV-REVIEW-4]) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
@@ -494,9 +497,9 @@ mutate intake metadata without changing `state`:
 
 | Trigger | Actor | Preconditions | Audit action | Effect |
 |---|---|---|---|---|
-| `advisories.services.flag_for_admin_routing` | Owner (project security team) | Lifecycle `state=triage`; not already flagged; advisory not on the `unsorted` sentinel project; non-empty note | `ADVISORY_FLAGGED_FOR_ROUTING` | Sets `AdvisoryIntakeMetadata.needs_admin_routing=True`; advisory becomes admin-only for edit / triage decisions ([INV-AUTH-6]) |
-| `advisories.services.clear_admin_routing_flag` | Owner (project security team or admin) — the flagging team may retract its own handoff ([INV-AUTH-6]) | Lifecycle `state=triage`; currently flagged | `ADVISORY_ROUTING_FLAG_CLEARED` | Sets `needs_admin_routing=False`; project owners regain triage capability |
-| `advisories.services.reassign_triage_project` | Admin or member of destination project's security team | Lifecycle `state=triage`; destination membership for non-admin | `ADVISORY_PROJECT_CHANGED` | Moves the advisory to a different project; useful when routing a misrouted report |
+| `advisories.services.flag_for_admin_routing` | Owner (project security team) | Lifecycle `state=triage`; not already flagged; advisory not on the `unsorted` sentinel project; non-empty note | `ADVISORY_FLAGGED_FOR_ROUTING` | Sets `AdvisoryIntakeMetadata.needs_admin_routing=True`; advisory becomes admin-only for edit / triage decisions ([INV-AUTH-6]); `advisory_flagged_for_routing` notification queued |
+| `advisories.services.clear_admin_routing_flag` | Owner (project security team or admin) — the flagging team may retract its own handoff ([INV-AUTH-6]) | Lifecycle `state=triage`; currently flagged | `ADVISORY_ROUTING_FLAG_CLEARED` | Sets `needs_admin_routing=False`; project owners regain triage capability; `advisory_routing_flag_cleared` notification queued |
+| `advisories.services.reassign_triage_project` | Admin, or an owner of the advisory who is also on the destination project's security team | Lifecycle `state=triage`; non-admins need triage rights on the advisory (owner; blocked while flagged for admin routing) **and** destination security-team membership | `ADVISORY_PROJECT_CHANGED` | Moves the advisory to a different project; useful when routing a misrouted report. Appends a version row (`project_slug` is payload-visible); clears the admin-routing flag **iff** the actor is an admin; `advisory_triage_reassigned` notification queued |
 
 Once promoted to `draft` (row 4 in §3.1), these triage-specific affordances
 no longer apply; the standard owner/collaborator/viewer matrix from

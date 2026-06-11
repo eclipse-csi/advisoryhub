@@ -72,7 +72,7 @@ happens in the IdP and propagates at next login.
 | **Project security-team member** | Member of `Project.security_team` (a Django `Group`) | Derived `owner` on every advisory under that project. |
 | **Shadow roster member (pre-login)** | `User.is_provisioned=True`, linked to an active `SecurityTeamRosterEntry` | **No authority at all.** Notification-only: reachable by their project's default notifications/`@team` mentions; not a member of any group; cannot act. Promoted to a real user on first login ([INV-OIDC-5], [INV-ROSTER-1]). |
 | **Global admin / reviewer** | Member of `OIDC_ADMIN_GROUP` | Derived `owner` on every advisory and exclusive reviewer; sole holder of CNA-side and integration-admin powers. |
-| **Celery worker** | Runs publication / notification / GHSA / CVE tasks | No ambient authority — every task acts on behalf of a stored `created_by` user and re-checks the relevant predicate at execution time. |
+| **Celery worker** | Runs publication / notification / GHSA / CVE tasks | No ambient authority — every task acts on behalf of a stored `created_by` / `enqueued_by` user. Permission predicates are checked at *enqueue* time (`advisory-lifecycle.md` §3.1 row 7; an operator retry re-runs `can_publish` via `publication.services.retry`); at execution the worker re-validates task state, and notification recipient lists are re-resolved at *send* time ([INV-PRIVACY-2]). |
 
 "Reviewer" is not a separate role: it is exactly the global-admin actor
 acting on a `ReviewTask`. The only place "reviewer" appears as a distinct
@@ -319,8 +319,14 @@ re-prompt.
 
 The actions currently gated by step-up are:
 
-- **Publish** — `publication/views.py`.
-- **Connect or modify the GitHub App** — `ghsa/views.py`.
+- **Publish / retry a publication** — `publication/views.py`; the JSON
+  API equivalents answer `401 step_up_required` instead of redirecting
+  (`api/views_publication.py`).
+- **Connect the GitHub App / rescan installations** — `ghsa/views.py`.
+- **Org-wide GHSA sync** — `ghsa/views.py` (`sync_all_ghsas`). The
+  project-scoped sync is *not* step-up gated.
+- **Retry a failed CVE push to GHSA** — `ghsa/views.py`
+  (`retry_cve_push`).
 
 The whole mechanism is switched off when `STEP_UP_REQUIRED=False`
 (default in the `test` settings module so test clients can `force_login`
@@ -336,11 +342,11 @@ Every surface re-checks the same predicates from
 
 | Surface | Module(s) | Enforcement |
 |---|---|---|
-| Web views | `advisories/views.py`, `access/views.py`, `comments/views.py`, `workflows/views.py`, `publication/views.py`, `ghsa/views.py` | `require_advisory_permission` decorator or `AdvisoryPermissionMixin`; explicit `can_*` calls before each state-changing action. |
+| Web views | `advisories/views.py`, `advisories/views_workflow.py`, `access/views.py`, `comments/views.py`, `publication/views.py`, `ghsa/views.py` | `require_advisory_permission` decorator or `AdvisoryPermissionMixin`; explicit `can_*` calls before each state-changing action. |
 | JSON API | `api/views_*.py` | Same `can_*` predicates as the web views (e.g. `can_grant_access`, `can_view`, `can_see_internal_comment`, `can_publish`); list endpoints filter querysets through `can_view`. |
 | Admin console | `admin_console/views/*` | All sections wrapped with `@admin_required`, which is `can_review` (global admin only). |
 | Duplicate-check panel | `similarity/views.py` | Owner-only (`resolved_permission == "owner"`) on both the HTMX fragment and the re-run POST; the whole surface returns 404 while `SIMILARITY_CHECK_ENABLED` is off ([INV-SIM-1], [INV-SIM-2]). |
-| Celery tasks | `publication/tasks.py`, `notifications/tasks.py`, `ghsa/tasks.py`, `workflows/tasks.py` | Re-resolve recipients / actors against the current DB state at task time; notification recipient lists are filtered again at send so revoked grants drop ([INV-PRIVACY-2]). |
+| Celery tasks | `publication/tasks.py`, `notifications/tasks.py`, `ghsa/tasks.py`, `similarity/tasks.py`, `projects/tasks.py`, `audit/tasks.py` | Act on behalf of the stored enqueuing user — predicates checked at enqueue (§3); execution re-validates task state; notification recipient lists are filtered again at send so revoked grants drop ([INV-PRIVACY-2]). |
 | Public intake | `intake/views.py` | No authorization (`can_submit_triage_report` always returns true). Abuse control is the form-layer honeypot ([INV-INTAKE-1]) plus rate limits keyed on anonymous/authenticated (`RATELIMIT_INTAKE_ANON` / `RATELIMIT_INTAKE_USER`). |
 | Comment read filtering | `comments/services.py`, `comments/views.py` | `is_internal` is fixed at creation ([INV-COMMENT-1]); visibility is re-checked at *read* and notification *send* time ([INV-COMMENT-2]). |
 

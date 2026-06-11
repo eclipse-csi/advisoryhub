@@ -339,7 +339,8 @@ documented in full in
 [`advisory-lifecycle.md`](./advisory-lifecycle.md):
 
 - **Review** (`Advisory.review_status`): `none` → `submitted` →
-  `approved | changes_requested | withdrawn`. Submission freezes the
+  `approved | changes_requested` (a withdrawal returns it to `none`;
+  `withdrawn` exists only on `ReviewTask.status`). Submission freezes the
   current `AdvisoryVersion`; subsequent edits to the advisory append
   versions but do not move the pinned one. Editing an `approved`
   draft by a non-admin invalidates the approval
@@ -716,19 +717,21 @@ sections:
 - **Inbox** (`/admin/`) — the unified action feed: triage queue,
   pending reviews, awaiting CVE assignment, failed publications,
   recent audit activity. Chip-driven `?category=<slug>` filter.
+  There is no dedicated Reviews section: open `ReviewTask`s surface
+  here as an Inbox category, and the approve / request-changes
+  decision UI lives on the advisory page itself.
 - **CVE Assignment** (`/admin/cves/`) — open `CveRequestTask`s and
   per-task transition actions; modal flow for the rejection note.
   Also surfaces `OrphanCve` rows for "mark rejected at cve.org".
-- **Reviews** — admin decisions on submitted advisories
-  (approve / request changes); decision UI driven from the advisory
-  page.
 - **Publication** (`/admin/publications/`) — publication task
   history, including failed exports, with retry, the redacted
   `last_error`, and OSV / CSAF previews from the stored
   `PublicationArtifact` content.
-- **Projects & OIDC groups** (`/admin/projects/`) — CRUD on
-  `Project` rows (security team, mature-publisher flag, PMI sync
-  status).
+- **Projects** (`/admin/projects/`) — CRUD on `Project` rows
+  (security team, mature-publisher flag, PMI sync status).
+- **Groups** (`/admin/groups/`) — read-only directory of the
+  mirrored OIDC groups: members, projects secured, and per-advisory
+  group grants.
 - **Audit** (`/admin/audit/`) — filterable read of the audit log.
 - **Access log** (`/admin/access-log/`) — filtered read of the
   ephemeral access-log events (advisory views, auth events,

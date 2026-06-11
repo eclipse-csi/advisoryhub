@@ -21,6 +21,7 @@ is forms -> models -> validators, and ``advisories`` must never import from
 from __future__ import annotations
 
 import re
+from typing import Any
 
 # Verbatim upstream identifiers (OSV copies them straight through). The 48 base
 # ecosystems from the schema's ``ecosystemName`` enum, plus ``GIT`` which the
@@ -87,7 +88,7 @@ _ECOSYSTEM_RE = re.compile(
 )
 
 
-def is_valid_ecosystem(value: str) -> bool:
+def is_valid_ecosystem(value: Any) -> bool:
     """True iff ``value`` is an accepted OSV ecosystem (base, or ``base:suffix``).
 
     Returns ``False`` for empty / non-string input — presence is each caller's

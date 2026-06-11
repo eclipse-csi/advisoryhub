@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
+from jsonschema.protocols import Validator
 
 from advisories.models import AdvisoryVersion
 
@@ -32,7 +33,7 @@ def _format_ts(dt) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S") + f".{dt.microsecond // 1000:03d}Z"
 
 
-def _validator() -> Draft202012Validator:
+def _validator() -> Validator:
     schema = json.loads(_SCHEMA_PATH.read_text())
     return Draft202012Validator(schema)
 

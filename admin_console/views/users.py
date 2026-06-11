@@ -21,7 +21,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods
 
 from access.models import AdvisoryAccessGrant, PendingInvitation, PrincipalType
 from accounts.models import User
@@ -173,7 +173,7 @@ def user_detail(request, user_id: int):
 
 
 @admin_required
-@require_POST
+@require_http_methods(["POST"])
 def user_ban(request, user_id: int):
     """Ban a user account: disable sign-in and drop any live session.
 
@@ -211,7 +211,7 @@ def user_ban(request, user_id: int):
 
 
 @admin_required
-@require_POST
+@require_http_methods(["POST"])
 def user_unban(request, user_id: int):
     """Lift a ban: restore sign-in and notifications for the account."""
     target = get_object_or_404(User, pk=user_id)
@@ -236,7 +236,7 @@ def user_unban(request, user_id: int):
 
 
 @admin_required
-@require_POST
+@require_http_methods(["POST"])
 def user_forget(request, user_id: int):
     """Exercise a GDPR right-to-be-forgotten against ``user_id``.
 

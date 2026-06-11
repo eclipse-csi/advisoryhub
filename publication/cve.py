@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,7 @@ from typing import Any
 from cvss import CVSS2, CVSS3, CVSS4
 from jsonschema import Draft7Validator
 from jsonschema.exceptions import best_match
+from jsonschema.protocols import Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT4, DRAFT7
 
@@ -145,7 +147,7 @@ class CveAssignerNotConfigured(CveBuildError):
 
 
 @lru_cache(maxsize=1)
-def _validator() -> Draft7Validator:
+def _validator() -> Validator:
     schema = json.loads(_SCHEMA_PATH.read_text())
     resources = []
     for uri, filename, dialect in _CVSS_IMPORTS:
@@ -485,6 +487,17 @@ def _metrics(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _score(value: Decimal | float | None) -> float:
+    """A successfully parsed CVSS vector always has a computed base score.
+
+    Raising on the can't-happen ``None`` lands in ``_cvss_metric``'s
+    ``except Exception`` fallback, which carries the raw vector instead.
+    """
+    if value is None:
+        raise ValueError("CVSS vector has no base score")
+    return float(value)
+
+
 def _cvss_metric(sev: dict[str, Any]) -> dict[str, Any] | None:
     """Map one OSV severity entry to a CVE metric.
 
@@ -503,7 +516,7 @@ def _cvss_metric(sev: dict[str, Any]) -> dict[str, Any] | None:
                 "cvssV2_0": {
                     "version": "2.0",
                     "vectorString": c2.clean_vector(),
-                    "baseScore": float(c2.base_score),
+                    "baseScore": _score(c2.base_score),
                 }
             }
         if stype == "CVSS_V3":
@@ -514,7 +527,7 @@ def _cvss_metric(sev: dict[str, Any]) -> dict[str, Any] | None:
                 field: {
                     "version": minor,
                     "vectorString": c3.clean_vector(),
-                    "baseScore": float(c3.base_score),
+                    "baseScore": _score(c3.base_score),
                     "baseSeverity": c3.severities()[0].upper(),
                 }
             }
@@ -524,7 +537,7 @@ def _cvss_metric(sev: dict[str, Any]) -> dict[str, Any] | None:
                 "cvssV4_0": {
                     "version": "4.0",
                     "vectorString": c4.clean_vector(),
-                    "baseScore": float(c4.base_score),
+                    "baseScore": _score(c4.base_score),
                     "baseSeverity": c4.severity.upper(),
                 }
             }

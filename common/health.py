@@ -21,20 +21,20 @@ from django.core.cache import cache
 from django.db import connection
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_http_methods
 
 log = logging.getLogger(__name__)
 
 
 @csrf_exempt
-@require_GET
+@require_http_methods(["GET"])
 def healthz(_request):
     """Cheap liveness check — process up."""
     return JsonResponse({"status": "ok"})
 
 
 @csrf_exempt
-@require_GET
+@require_http_methods(["GET"])
 def readyz(_request):
     """Readiness — DB, cache, and (optional) git remote reachable."""
     failures: dict[str, str] = {}

@@ -98,6 +98,33 @@ def test_validate_affected_allows_versions_only_entry():
     validate_affected([{"package": {"name": "lib", "ecosystem": "npm"}, "versions": ["1.0.0"]}])
 
 
+def test_validate_affected_rejects_non_list_ranges_or_versions():
+    # A truthy non-list used to slip past the `or []` default and raise a bare
+    # TypeError when iterated; it must be a ValidationError instead.
+    for field, value in (("ranges", 5), ("versions", "1.0.0")):
+        with pytest.raises(ValidationError) as exc:
+            validate_affected([{"package": {"name": "lib", "ecosystem": "npm"}, field: value}])
+        assert "must be lists" in str(exc.value)
+
+
+def test_validate_affected_rejects_non_list_events():
+    bad = [
+        {
+            "package": {"name": "lib", "ecosystem": "npm"},
+            "ranges": [{"type": "ECOSYSTEM", "events": "1.0.0"}],
+        }
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_affected(bad)
+    assert "must be a list" in str(exc.value)
+
+
+def test_validate_affected_rejects_non_string_event_kind():
+    with pytest.raises(ValidationError) as exc:
+        validate_affected(_affected({"introduced": "1.0.0"}, {1: "1.5.0"}))
+    assert "must be one of" in str(exc.value)
+
+
 # ---------------------------------------------------------------------------
 # Ecosystem acceptance — the value must be one of the OSV-accepted ecosystems
 # (optionally with a ``:suffix``) and is required on every affected package, so

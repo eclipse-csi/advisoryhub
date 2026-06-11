@@ -167,6 +167,11 @@ def validate_affected(value: Any) -> None:
             )
         ranges = entry.get("ranges") or []
         versions = entry.get("versions") or []
+        if not isinstance(ranges, list) or not isinstance(versions, list):
+            raise ValidationError(
+                f"affected[{index}]: ranges and versions must be lists",
+                code="invalid_affected",
+            )
         if not ranges and not versions:
             raise ValidationError(
                 "each affected entry needs at least one of ranges or versions",
@@ -176,6 +181,8 @@ def validate_affected(value: Any) -> None:
             if not isinstance(r, dict) or not r.get("type"):
                 raise ValidationError("range needs a type", code="invalid_affected")
             events = r.get("events") or []
+            if not isinstance(events, list):
+                raise ValidationError("range events must be a list", code="invalid_affected")
             if not events:
                 raise ValidationError("range needs at least one event", code="invalid_affected")
             kinds: list[str] = []
@@ -187,7 +194,7 @@ def validate_affected(value: Any) -> None:
                         code="invalid_affected",
                     )
                 ((kind, version),) = ev.items()
-                if kind not in EVENT_KINDS_ALLOWED:
+                if not isinstance(kind, str) or kind not in EVENT_KINDS_ALLOWED:
                     raise ValidationError(
                         f"event kind {kind!r} must be one of {sorted(EVENT_KINDS_ALLOWED)}",
                         code="invalid_affected",

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
+from jsonschema.protocols import Validator
 
 from advisories.models import AdvisoryVersion
 
@@ -22,7 +23,7 @@ OSV_SCHEMA_VERSION = "1.6.0"
 _SCHEMA_PATH = Path(__file__).parent / "schemas" / "osv.upstream.json"
 
 
-def _validator() -> Draft202012Validator:
+def _validator() -> Validator:
     schema = json.loads(_SCHEMA_PATH.read_text())
     return Draft202012Validator(schema)
 

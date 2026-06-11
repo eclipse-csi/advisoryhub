@@ -514,8 +514,8 @@ CSRF_COOKIE_SECURE = not DEBUG
 # over HTTPS, so dev/test (HTTP, *_COOKIE_SECURE=False) override these back to
 # the unprefixed names. NOTE: changing a cookie name logs every user out once on
 # the deploy that introduces it.
-SESSION_COOKIE_NAME = "__Host-sessionid"
-CSRF_COOKIE_NAME = "__Host-csrftoken"
+SESSION_COOKIE_NAME: str = "__Host-sessionid"
+CSRF_COOKIE_NAME: str = "__Host-csrftoken"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 # Referrer-Policy ("same-origin") and Cross-Origin-Opener-Policy ("same-origin")

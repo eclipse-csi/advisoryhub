@@ -669,7 +669,11 @@ def advisory_edit(request, advisory_id: str):
                 if project_changed and not is_triage:
                     updated.access_review_required_at = timezone.now()
                 updated.save()
-                new_version = services.record_advisory_version(updated, editor=user)
+                # if_changed: a save that alters no payload-visible field must
+                # not mint a duplicate version row (INV-VERSION-1).
+                new_version = services.record_advisory_version(
+                    updated, editor=user, if_changed=True
+                )
                 new_value = {
                     "summary": updated.summary,
                     "project": updated.project.slug,

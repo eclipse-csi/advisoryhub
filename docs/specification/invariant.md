@@ -823,9 +823,10 @@ rather than creating a fresh one.
 - `advisories/apps.py` — `AdvisoriesConfig.ready` registers the signal.
 - `advisories/services.py` — `record_advisory_version` is the only path for
   v(n+1); takes a row lock to serialise concurrent edits.
-- `advisories/views.py` — `advisory_edit` calls `record_advisory_version` after a
-  successful form save (native advisories only; GHSA-linked advisories are not
-  editable here — see [INV-GHSA-1](#inv-ghsa-1)).
+- `advisories/views.py` — `advisory_edit` calls `record_advisory_version` with
+  `if_changed=True` after a successful form save, so a save that changes no
+  payload-visible field appends nothing (native advisories only; GHSA-linked
+  advisories are not editable here — see [INV-GHSA-1](#inv-ghsa-1)).
 - `ghsa/services.py` — `sync_single_ghsa` appends a version only when
   `result.changed_field_names` is non-empty (filters out heartbeat syncs);
   `sync_project_repos_from_pmi` appends one when a PMI re-home moves a GHSA-linked
@@ -836,7 +837,8 @@ edits) or noise (rows for non-content saves), in either case losing its value
 for review and audit.
 
 **Tests.** `advisories/tests/test_versions.py`,
-`advisories/tests/test_models.py`.
+`advisories/tests/test_models.py`, `advisories/tests/test_views.py`
+(`test_edit_with_unchanged_payload_appends_no_version`).
 
 **Related.** [INV-IMPL-5](#inv-impl-5), [INV-VERSION-2](#inv-version-2),
 [INV-CONCURRENCY-2](#inv-concurrency-2), [INV-COMMENT-3](#inv-comment-3).

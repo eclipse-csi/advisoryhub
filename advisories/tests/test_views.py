@@ -404,6 +404,42 @@ def test_edit_records_changed_fields_in_audit_metadata(client, admin_user, proje
 
 
 @pytest.mark.django_db
+def test_edit_with_unchanged_payload_appends_no_version(client, admin_user, project_a):
+    """A save that changes no payload-visible field must not mint a duplicate
+    ``AdvisoryVersion`` row (INV-VERSION-1); the ``ADVISORY_EDITED`` audit
+    entry still lands, with an empty changed-field list.
+    """
+    from advisories.models import AdvisoryVersion
+
+    advisory = Advisory.objects.create(project=project_a, summary="x", details="d")
+    assert AdvisoryVersion.objects.filter(advisory=advisory).count() == 1
+    client.force_login(admin_user)
+    no_change = {
+        "project": project_a.pk,
+        "summary": "x",
+        "details": "d",
+        **empty_formsets_payload(),
+    }
+    response = client.post(reverse("advisories:edit", args=[advisory.advisory_id]), data=no_change)
+    assert response.status_code == 302
+    assert AdvisoryVersion.objects.filter(advisory=advisory).count() == 1
+    entry = (
+        AuditLogEntry.objects.filter(action=Action.ADVISORY_EDITED, advisory=advisory)
+        .order_by("-created_at")
+        .first()
+    )
+    assert entry is not None
+    assert entry.metadata.get("changed_fields") == []
+    assert entry.new_value.get("version") is None
+    # A payload-visible edit still appends v2.
+    client.post(
+        reverse("advisories:edit", args=[advisory.advisory_id]),
+        data={**no_change, "summary": "edited"},
+    )
+    assert AdvisoryVersion.objects.filter(advisory=advisory).count() == 2
+
+
+@pytest.mark.django_db
 def test_edit_without_project_change_leaves_access_review_flag_alone(client, admin_user, project_a):
     advisory = Advisory.objects.create(project=project_a, summary="x")
     client.force_login(admin_user)

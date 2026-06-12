@@ -10,6 +10,10 @@ there is no public anonymous surface in this codebase.
 Stack: Python 3.14, Django 5.2 LTS, PostgreSQL, Celery + Valkey,
 mozilla-django-oidc, server-rendered templates with HTMX.
 
+The documentation below is also published as a **versioned** site at
+<https://mbarbero.github.io/advisoryhub/> — `latest` is the newest release,
+numbered versions are per-release snapshots, `dev` tracks `main`.
+
 ## Specifications
 
 The authoritative source for what this system *is* and *does* lives in

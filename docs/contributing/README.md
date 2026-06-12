@@ -3,8 +3,8 @@
 This guide is for the **developer** — the person who changes AdvisoryHub's
 code and docs. It covers the local dev environment, tests, the code-quality
 gates, and the commit conventions. Its companions: the
-[`../specification/`](../specification/) set (what the system *is* —
-authoritative), the [`../operations/`](../operations/) manual (running the
+[`../specification/`](../specification/README.md) set (what the system *is* —
+authoritative), the [`../operations/`](../operations/README.md) manual (running the
 service in production), and [`releasing.md`](./releasing.md) (the maintainer
 runbook for cutting a release).
 
@@ -12,7 +12,7 @@ runbook for cutting a release).
 
 ## 1. Before you change anything
 
-The specification set in [`../specification/`](../specification/) is the
+The specification set in [`../specification/`](../specification/README.md) is the
 single source of truth for what this system *is* and *does*. Read the
 relevant file before making non-trivial changes, and cite `INV-*` IDs (from
 [`invariant.md`](../specification/invariant.md)) in commits and PRs. Every
@@ -76,7 +76,7 @@ mise run migrate && mise run seed
 ```
 
 `mise tasks` lists them all (`test`, `lint`, `fix`, `typecheck`, `ty`,
-`check`, `build`, `reset`, …). mise is a convenience wrapper only: tool versions live in
+`check`, `build`, `reset`, `docs-build`, `docs-serve`, …). mise is a convenience wrapper only: tool versions live in
 `uv.lock`, the Python version in `.python-version`, and CI runs these same tasks —
 the raw `uv` / `docker compose` commands above stay canonical.
 
@@ -91,7 +91,7 @@ secrets, AWS SSM, …) and is *not* loaded by docker-compose. The full
 env-var inventory with groups, defaults, and descriptions is in
 [`architecture.md §7`](../specification/architecture.md), and the step-by-step
 operator guide (install, run, integrate, operate) is in
-[`../operations/`](../operations/).
+[`../operations/`](../operations/README.md).
 
 ## 5. Running tests
 
@@ -114,7 +114,7 @@ are documented in [`architecture.md §9`](../specification/architecture.md).
 
 Lint, format, type, and Django checks run locally through
 [prek](https://github.com/j178/prek) — the fast Rust reimplementation of
-pre-commit — from [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml). The
+pre-commit — from [`.pre-commit-config.yaml`](https://github.com/mbarbero/advisoryhub/blob/main/.pre-commit-config.yaml). The
 hooks invoke the Python tools out of the project venv, so they run the exact
 versions pinned in `uv.lock`: what passes locally is what CI runs.
 
@@ -157,6 +157,28 @@ prek run --all-files --hook-stage manual      # advisory `ty` type-check
 ## 8. Releasing
 
 Releases are tag-driven: one signed `vX.Y.Z` tag produces the container
-image, the Helm chart, and the GitHub release automatically. The maintainer
-runbook — version lockstep, cutting and verifying a release, failure
-recovery — is [`releasing.md`](./releasing.md).
+image, the Helm chart, the GitHub release, and the versioned documentation
+site automatically. The maintainer runbook — version lockstep, cutting and
+verifying a release, failure recovery — is [`releasing.md`](./releasing.md).
+
+## 9. Documentation
+
+Everything under `docs/` is published as a **versioned** site at
+<https://mbarbero.github.io/advisoryhub/> (`.github/workflows/docs.yml`):
+`latest` is the newest release, numbered versions are immutable per-release
+snapshots (deployed on every `vX.Y.Z` tag), and `dev` tracks `main`. The
+site is built with MkDocs + mkdocs-material and versioned with
+[mike](https://github.com/jimporter/mike) onto the `gh-pages` branch.
+
+```sh
+mise run docs-serve              # live preview at http://127.0.0.1:8001
+mise run docs-build              # strict build — the PR and deploy gate
+mise run docs-deploy -- dev      # rehearse a mike deploy into a LOCAL gh-pages branch
+```
+
+Link rules (enforced by `mkdocs build --strict` on every docs PR):
+
+- Inside `docs/`, link **relative to the current file** and always to the
+  `.md` file itself (`../operations/README.md`, not `../operations/`).
+- Anything outside `docs/` (source files, charts, repo configs) gets an
+  **absolute GitHub URL** — those files aren't part of the site.

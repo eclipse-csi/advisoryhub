@@ -10,6 +10,7 @@ A release is one signed git tag `vX.Y.Z` that produces, automatically:
 | Container image `X.Y.Z` / `X.Y` (+ SBOM & SLSA provenance attestations, keyless cosign signature) | `ghcr.io/mbarbero/advisoryhub` | `.github/workflows/release-image.yml` |
 | Helm chart `X.Y.Z` (keyless cosign signature) | `oci://ghcr.io/mbarbero/charts/advisoryhub` | `.github/workflows/release.yml` |
 | GitHub release with git-cliff notes + chart `.tgz`, CycloneDX dependency SBOM, `checksums.txt` | repo **Releases** page | `.github/workflows/release.yml` |
+| Versioned docs `X.Y.Z` (+ `latest` alias and root redirect) | <https://mbarbero.github.io/advisoryhub/> | `.github/workflows/docs.yml` |
 
 ## The version lockstep rule
 
@@ -45,7 +46,7 @@ pushed. Review, then:
 git push origin main vX.Y.Z
 ```
 
-The tag triggers both release workflows in parallel:
+The tag triggers three release workflows in parallel:
 
 1. **Release image** builds the production image, smoke-tests it under an
    arbitrary UID, gates on Trivy, pushes to ghcr.io with SBOM + provenance,
@@ -54,6 +55,9 @@ The tag triggers both release workflows in parallel:
    (polls ghcr.io up to ~20 min — a failed image build fails the release run,
    so a GitHub release never exists without its image), pushes + signs the
    chart, and creates the GitHub release.
+3. **Docs** gates the versions, builds the site strictly, and mike-deploys
+   `X.Y.Z` + the `latest` alias to the `gh-pages` branch — each release's
+   docs live in their own directory, so earlier versions are never touched.
 
 ## Verifying a release
 
@@ -82,6 +86,9 @@ sha256sum -c checksums.txt
 - **Release run failed after the image published** (chart push, gh release):
   fix and re-run the *Release* workflow — every step is idempotent-safe to
   retry except `gh release create` (delete the partial release first).
+- **Docs deploy failed**: independent of the other two — re-run the *Docs*
+  workflow for the tag. `mike deploy` of the same version is idempotent (it
+  replaces only that version's directory on `gh-pages`).
 
 ### Re-tagging (the fix needed new commits)
 

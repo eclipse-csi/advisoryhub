@@ -1,0 +1,113 @@
+# MkDocs configuration for the AdvisoryHub documentation site
+# (https://mbarbero.github.io/advisoryhub/). Built with mkdocs-material and
+# versioned with mike (.github/workflows/docs.yml): one directory per release
+# on the gh-pages branch + versions.json; `latest` tracks the newest release,
+# `dev` tracks main. README.md files render as section indexes natively.
+#
+# NOTE: the superfences and toc-slugify settings below use `!!python/name:` /
+# `!!python/object/apply:` YAML tags, which safe-load parsers reject —
+# mkdocs.yml is excluded from the prek check-yaml hook for that reason.
+#
+# `strict: true` is deliberately NOT set here so `mkdocs serve` stays
+# forgiving while iterating; the `validation:` warnings below are promoted to
+# errors by the --strict flag in `mise run docs-build` (the PR and deploy gate).
+
+site_name: AdvisoryHub
+site_description: Eclipse Foundation security advisory authoring, review, and publication system
+site_url: https://mbarbero.github.io/advisoryhub/
+repo_url: https://github.com/mbarbero/advisoryhub
+repo_name: mbarbero/advisoryhub
+
+docs_dir: docs
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+theme:
+  name: material
+  palette:
+    # Light/dark toggle, following the OS preference on first visit.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - search.highlight
+    - content.code.copy
+
+extra:
+  version:
+    provider: mike # Material renders the version selector from ../versions.json
+    default: latest
+
+plugins:
+  - search
+  - mike:
+      canonical_version: latest
+
+markdown_extensions:
+  # Listing extensions replaces MkDocs' defaults — tables/toc stay explicit.
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      # GitHub-compatible heading slugs: pymdownx turns EVERY space into a
+      # dash without collapsing, so "Appendix A — Adding…" yields the same
+      # `appendix-a--adding…` anchor as GitHub's renderer — the docs' anchor
+      # links were authored against GitHub and keep working on both surfaces.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        # mkdocs-material's native Mermaid pattern (docs/ uses ```mermaid in
+        # manual/, operations/README.md, and advisory-lifecycle.md).
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - User manual:
+      - manual/README.md
+      - Reporter: manual/reporter.md
+      - Collaborator & viewer: manual/collaborator-and-viewer.md
+      - Security team: manual/security-team.md
+      - Administrator: manual/administrator.md
+  - Operations:
+      - operations/README.md
+      - Installation: operations/installation.md
+      - Configuration: operations/configuration.md
+      - Running in production: operations/running-in-production.md
+      - Deploy on Kubernetes: operations/deploy-kubernetes.md
+      - Integrations: operations/integrations.md
+      - Observability: operations/observability.md
+      - Maintenance: operations/maintenance.md
+  - Specification:
+      - specification/README.md
+      - Invariants: specification/invariant.md
+      - Architecture: specification/architecture.md
+      - Permissions: specification/permissions.md
+      - Advisory lifecycle: specification/advisory-lifecycle.md
+      - Requirements: specification/requirements.md
+  - Contributing:
+      - contributing/README.md
+      - Releasing: contributing/releasing.md

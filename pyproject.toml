@@ -59,6 +59,14 @@ dev = [
     "django-stubs[compatible-mypy]>=5.1",
     "zizmor>=1.0",
 ]
+# Docs-site toolchain (docs/ -> GitHub Pages, .github/workflows/docs.yml).
+# Build-time only — never installed in the production image, so deliberately
+# outside the enforced pip-audit scope (which audits the runtime set).
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.6",
+    "mike>=2.1",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"

@@ -43,8 +43,9 @@ repos:
         args: [--maxkb=1024]
       - id: check-yaml
         # Helm templates are Go-templated YAML — not parseable pre-render
-        # (everything else under charts/ stays checked).
-        exclude: '^charts/[^/]+/templates/'
+        # (everything else under charts/ stays checked). mkdocs.yml needs the
+        # non-safe-loadable `!!python/name:` tag for its Mermaid fence.
+        exclude: '^(charts/[^/]+/templates/|mkdocs\.yml$)'
       - id: check-toml
       - id: check-json
       - id: debug-statements

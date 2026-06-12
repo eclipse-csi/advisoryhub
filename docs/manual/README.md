@@ -6,7 +6,7 @@ separate guide for each kind of user, so you only have to read the one that
 matches your role.
 
 If you are a developer or want the authoritative rules behind a behaviour, read
-the specifications in [`../specification/`](../specification/) instead — this
+the specifications in [`../specification/`](../specification/README.md) instead — this
 manual links to the relevant spec sections throughout. Where the manual and the
 code ever disagree, the code (and the specs that track it) win.
 
@@ -38,7 +38,7 @@ published advisories on the separate website, not here.
 | Are a global administrator — you review advisories, manage CVEs, oversee publication, and run the Admin Console | [Administrator & Reviewer Guide](./administrator.md) |
 
 > **Installing or running the service itself** is a different job — see the
-> [operations manual](../operations/) for installation, configuration, and deployment.
+> [operations manual](../operations/README.md) for installation, configuration, and deployment.
 
 Roles can overlap (an administrator is also an owner everywhere; a security-team
 member can also be invited to another team's advisory). Read the guide for your

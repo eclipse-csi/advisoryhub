@@ -139,6 +139,19 @@ run = "bash dev/check_release_versions.sh"
 description = "Cut a release: lockstep version bump, signed commit + signed tag. Usage: `mise run release -- X.Y.Z`"
 run = "bash dev/release.sh"
 
+# ---- Documentation (docs/ -> GitHub Pages; see .github/workflows/docs.yml) -
+[tasks.docs-build]
+description = "mkdocs build --strict (broken links/anchors fail; mirrors CI's docs workflow)"
+run = "uv run --locked --extra docs mkdocs build --strict"
+
+[tasks.docs-serve]
+description = "Live-preview the docs at http://127.0.0.1:8001 (8000 is the dev web app)"
+run = "uv run --locked --extra docs mkdocs serve --dev-addr 127.0.0.1:8001"
+
+[tasks.docs-deploy]
+description = "mike-deploy the docs into the LOCAL gh-pages branch (nothing pushed). Usage: `mise run docs-deploy -- dev|vX.Y.Z`"
+run = "bash dev/deploy_docs.sh"
+
 # ---- Docker dev stack (verbatim wrappers of the README flow) --------------
 [tasks.kanidm-up]
 description = "Start only the dev OIDC provider (kanidm)"

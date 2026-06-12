@@ -2,7 +2,7 @@
 
 This manual is for the **operator** — the person who installs, configures, runs,
 and maintains the AdvisoryHub *service*. It is the day-0-to-day-2 companion to the
-end-user [`../manual/`](../manual/) guides (which cover *using* the app) and to
+end-user [`../manual/`](../manual/README.md) guides (which cover *using* the app) and to
 [`../specification/architecture.md`](../specification/architecture.md) (which
 explains *how it is built* and *why*). Where this manual and the code disagree,
 the code wins; cross-references point you at the authoritative source.

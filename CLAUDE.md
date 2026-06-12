@@ -60,6 +60,7 @@ Demo login: `alice@example.org` / `correcthorsebatterystaple` (created by `dev/k
 - `mise run helm-lint` / `helm-template` / `helm-validate` / `verify-chart-assets` — Helm chart gates for `charts/advisoryhub` (lint + kubeconform render validation + observability-asset sync; also run by CI)
 - `mise run zizmor` — security-audit the GitHub Actions workflows (also run by prek + CI's workflow-security job; config in `.github/zizmor.yml`)
 - `mise run release` / `release-check` / `changelog` / `sbom` — cut a release / version-consistency gate / git-cliff notes / CycloneDX SBOM (see [Releases](#releases))
+- `mise run docs-build` / `docs-serve` / `docs-deploy` — strict docs build / live preview on :8001 / mike deploy into the LOCAL gh-pages branch (CI: `.github/workflows/docs.yml` publishes versioned docs to GitHub Pages)
 
 mise pins only the bootstrap `uv` + `prek` (in `mise.toml`) plus the chart/release binaries (`helm`, `kubeconform`, `git-cliff`, `trivy`); all dev tool versions stay in `uv.lock`, the Python version in `.python-version`. CI runs these same tasks. Raw `uv`/`docker compose` commands remain canonical.
 
@@ -188,7 +189,7 @@ Notable knobs: `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`, `STEP_UP_REQUIRED` (re-au
 
 ## Releases
 
-Tag-driven; full runbook in [`docs/contributing/releasing.md`](docs/contributing/releasing.md). `mise run release -- X.Y.Z` bumps every recorded version in lockstep (`pyproject.toml` + `uv.lock` via `uv version`, `Chart.yaml` `version`/`appVersion`) and creates the signed `chore(release)` commit + signed `vX.Y.Z` tag; pushing the tag triggers `release-image.yml` (container image → ghcr.io, signed, SBOM + provenance) and `release.yml` (version gate → git-cliff notes → wait-for-image → Helm chart → `oci://ghcr.io/<owner>/charts`, cosign-signed → GitHub release with chart/SBOM/checksums attached). `mise run release-check` asserts the version lockstep anytime.
+Tag-driven; full runbook in [`docs/contributing/releasing.md`](docs/contributing/releasing.md). `mise run release -- X.Y.Z` bumps every recorded version in lockstep (`pyproject.toml` + `uv.lock` via `uv version`, `Chart.yaml` `version`/`appVersion`) and creates the signed `chore(release)` commit + signed `vX.Y.Z` tag; pushing the tag triggers `release-image.yml` (container image → ghcr.io, signed, SBOM + provenance) and `release.yml` (version gate → git-cliff notes → wait-for-image → Helm chart → `oci://ghcr.io/<owner>/charts`, cosign-signed → GitHub release with chart/SBOM/checksums attached), and `docs.yml` (versioned documentation → GitHub Pages: `X.Y.Z` + `latest` via mike on the gh-pages branch, `dev` tracks main). `mise run release-check` asserts the version lockstep anytime.
 
 **Workflow conventions** (gated by zizmor — `mise run zizmor`, prek hook, and the `workflow-security.yml` job): every `uses:` is pinned to a full commit SHA with a trailing `# vX.Y.Z` comment that Dependabot maintains — keep both when editing workflows; every job starts with `step-security/harden-runner` (audit); checkouts set `persist-credentials: false`; step outputs are expanded via `env:` indirection, never inline in `run:`. Suppressions live in `.github/zizmor.yml` with rationale.
 

@@ -1090,7 +1090,7 @@ and `python manage.py check --deploy --fail-level WARNING`.
   Celery / intake / comment-read filter).
 - [`requirements.md`](./requirements.md) — top-down functional
   specification (actors, domain concepts, use cases).
-- [`../../CLAUDE.md`](../../CLAUDE.md) — agent-facing operational
+- [`../../CLAUDE.md`](https://github.com/mbarbero/advisoryhub/blob/main/CLAUDE.md) — agent-facing operational
   notes (app layout, common commands, network policy, persistence
   rules).
-- [`../../README.md`](../../README.md) — setup instructions.
+- [`../../README.md`](https://github.com/mbarbero/advisoryhub/blob/main/README.md) — setup instructions.

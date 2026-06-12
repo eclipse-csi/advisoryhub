@@ -134,11 +134,12 @@ repos:
         stages: [pre-push]
 
       - id: pip-audit
-        name: pip-audit (dependency audit)
-        # Mirrors CI's security job (mise run audit). Needs network (queries the
-        # PyPI advisory DB). Audits the dev venv — a superset of the runtime-only
-        # set CI audits, so it can only be stricter than CI, never laxer.
-        entry: uv run --no-sync --python .venv --with pip-audit pip-audit
+        name: pip-audit (dependency audit of uv.lock)
+        # Audits the LOCKED runtime set (ephemeral uv env from uv.lock) rather
+        # than the installed venv, so the result is independent of local .venv
+        # staleness and matches the dependency set CI's security job audits.
+        # Needs network (queries the PyPI advisory DB).
+        entry: dev/audit_dependencies.sh
         language: system
         pass_filenames: false
         always_run: true

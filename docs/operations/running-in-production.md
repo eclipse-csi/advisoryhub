@@ -49,7 +49,7 @@ is read-only or ephemeral, point its schedule file somewhere writable with
 > Task semantics: publication is enqueued on `transaction.on_commit` (so a row is
 > never published before its DB transaction lands) and runs `acks_late`, so a task
 > redelivers if a worker dies mid-flight. A failed publish leaves the advisory's
-> state unchanged ([INV-LIFECYCLE-3]).
+> state unchanged ([INV-LIFECYCLE-3](../specification/invariant.md#inv-lifecycle-3)).
 
 ---
 
@@ -156,14 +156,14 @@ Most hardening is on by default in `prod.py` / `base.py`; verify and complete:
       `GITHUB_APP_PRIVATE_KEY_PATH`) rather than inline where possible. All
       user/CI-supplied strings are funnelled through `redact_secrets`, so tokens and
       keys never reach logs, audit metadata, task errors, or notifications
-      ([INV-SECRET-1], [INV-AUDIT-2]).
+      ([INV-SECRET-1](../specification/invariant.md#inv-secret-1), [INV-AUDIT-2](../specification/invariant.md#inv-audit-2)).
 - [ ] **`/metrics` is reachable only from your monitoring network** — it is
       intentionally unauthenticated at the app layer; gate it with network policy or
       a private port, never the public ingress.
 - [ ] `RATELIMIT_ENABLE=True` and `STEP_UP_REQUIRED=True` in prod.
 - [ ] Account **ban** (`is_active=False`, from the Admin Console) is the one
       app-side override of IdP authority — it drops a live session immediately
-      ([INV-AUTH-8]); everything else propagates at next login.
+      ([INV-AUTH-8](../specification/invariant.md#inv-auth-8)); everything else propagates at next login.
 
 ---
 

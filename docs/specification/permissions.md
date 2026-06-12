@@ -28,7 +28,7 @@ It does **not** cover the public surface where end users read published
 advisories — that surface is a separate static site rendered from the
 publication Git repository, with its own (open) access policy. A published
 advisory inside AdvisoryHub remains visible only to the same people who could
-see it as a draft ([INV-AUTH-7]).
+see it as a draft ([INV-AUTH-7](./invariant.md#inv-auth-7)).
 
 ---
 
@@ -43,14 +43,14 @@ authority.
   refresh email and display fields.
 - **Groups.** `sync_groups_from_claims` replaces `user.groups` from the
   configured OIDC claim on every login — one-way sync, no caching across
-  sessions ([INV-OIDC-1]). Claim values are filtered to SPN form so the
-  `Group` table stays clean ([INV-OIDC-4]).
+  sessions ([INV-OIDC-1](./invariant.md#inv-oidc-1)). Claim values are filtered to SPN form so the
+  `Group` table stays clean ([INV-OIDC-4](./invariant.md#inv-oidc-4)).
 - **Admin flags.** `is_staff` and `is_superuser` are set equal to
   membership in `OIDC_ADMIN_GROUP` on every login; demotion in the IdP
-  removes Django admin access on the next login ([INV-OIDC-3]).
+  removes Django admin access on the next login ([INV-OIDC-3](./invariant.md#inv-oidc-3)).
 - **Trust boundary.** Authorization predicates always read `user.groups`
   (the DB mirror); request bodies, headers, or form fields naming a group
-  are ignored ([INV-OIDC-2]).
+  are ignored ([INV-OIDC-2](./invariant.md#inv-oidc-2)).
 
 There is no local password store and no local group editor: revocation
 happens in the IdP and propagates at next login.
@@ -58,7 +58,7 @@ happens in the IdP and propagates at next login.
 - **Ban (local override).** `is_active=False` is the one app-side override of
   IdP-mediated authority: an admin can ban an account from the admin console
   to deny login and drop its live session immediately, rather than wait for an
-  IdP group change to propagate at next login ([INV-AUTH-8]). It is reversible
+  IdP group change to propagate at next login ([INV-AUTH-8](./invariant.md#inv-auth-8)). It is reversible
   (unban) and audited at both ends. (A Celery task already queued under a
   banned actor still re-checks group membership, not `is_active` — the same
   next-login lag as an IdP demotion.)
@@ -71,12 +71,12 @@ happens in the IdP and propagates at next login.
 |---|---|---|
 | **Anonymous web client** | No session | Submit a public triage report (`POST /report/`) and follow the OIDC redirect. Nothing else. |
 | **Authenticated user** | OIDC session | No role on any advisory by default; sees only advisories they have an explicit grant for. |
-| **Triage reporter (authenticated)** | OIDC session at submission time | Auto-granted `viewer` on the advisory they filed ([INV-INTAKE-3]). |
-| **Triage reporter (anonymous)** | None retained | No link is recorded; the report cannot later be claimed ([INV-INTAKE-2]). |
+| **Triage reporter (authenticated)** | OIDC session at submission time | Auto-granted `viewer` on the advisory they filed ([INV-INTAKE-3](./invariant.md#inv-intake-3)). |
+| **Triage reporter (anonymous)** | None retained | No link is recorded; the report cannot later be claimed ([INV-INTAKE-2](./invariant.md#inv-intake-2)). |
 | **Project security-team member** | Member of `Project.security_team` (a Django `Group`) | Derived `owner` on every advisory under that project. |
-| **Shadow roster member (pre-login)** | `User.is_provisioned=True`, linked to an active `SecurityTeamRosterEntry` | **No authority at all.** Notification-only: reachable by their project's default notifications/`@team` mentions; not a member of any group; cannot act. Promoted to a real user on first login ([INV-OIDC-5], [INV-ROSTER-1]). |
+| **Shadow roster member (pre-login)** | `User.is_provisioned=True`, linked to an active `SecurityTeamRosterEntry` | **No authority at all.** Notification-only: reachable by their project's default notifications/`@team` mentions; not a member of any group; cannot act. Promoted to a real user on first login ([INV-OIDC-5](./invariant.md#inv-oidc-5), [INV-ROSTER-1](./invariant.md#inv-roster-1)). |
 | **Global admin / reviewer** | Member of `OIDC_ADMIN_GROUP` | Derived `owner` on every advisory and exclusive reviewer; sole holder of CNA-side and integration-admin powers. |
-| **Celery worker** | Runs publication / notification / GHSA / CVE tasks | No ambient authority — every task acts on behalf of a stored `created_by` / `enqueued_by` user. Permission predicates are checked at *enqueue* time (`advisory-lifecycle.md` §3.1 row 7; an operator retry re-runs `can_publish` via `publication.services.retry`); at execution the worker re-validates task state, and notification recipient lists are re-resolved at *send* time ([INV-PRIVACY-2]). |
+| **Celery worker** | Runs publication / notification / GHSA / CVE tasks | No ambient authority — every task acts on behalf of a stored `created_by` / `enqueued_by` user. Permission predicates are checked at *enqueue* time (`advisory-lifecycle.md` §3.1 row 7; an operator retry re-runs `can_publish` via `publication.services.retry`); at execution the worker re-validates task state, and notification recipient lists are re-resolved at *send* time ([INV-PRIVACY-2](./invariant.md#inv-privacy-2)). |
 
 "Reviewer" is not a separate role: it is exactly the global-admin actor
 acting on a `ReviewTask`. The only place "reviewer" appears as a distinct
@@ -86,7 +86,7 @@ column in this document is the capability matrix's admin-only rows.
 
 ## 4. Roles & resolution
 
-There are exactly three roles ([INV-AUTH-2]): `viewer`, `collaborator`,
+There are exactly three roles ([INV-AUTH-2](./invariant.md#inv-auth-2)): `viewer`, `collaborator`,
 `owner`, ranked in that order.
 
 **Resolution algorithm** (`advisories.permissions.resolved_permission`):
@@ -96,11 +96,11 @@ There are exactly three roles ([INV-AUTH-2]): `viewer`, `collaborator`,
 3. Project security-team member for `advisory.project` → `owner`.
 4. Explicit grant — the highest rank held across all matching
    `AdvisoryAccessGrant` rows (direct user grant or via a group the user
-   belongs to) → `collaborator` or `viewer` ([INV-AUTH-4]).
+   belongs to) → `collaborator` or `viewer` ([INV-AUTH-4](./invariant.md#inv-auth-4)).
 5. Otherwise → no access.
 
 Resolution does **not** consult `advisory.state`: a published advisory is
-still gated by the same explicit grants as a draft ([INV-AUTH-7]).
+still gated by the same explicit grants as a draft ([INV-AUTH-7](./invariant.md#inv-auth-7)).
 
 ### Why `owner` is structural, not grantable
 
@@ -109,23 +109,23 @@ existing owner escalate themselves or others, defeating the IdP-mediated
 admin / security-team gating. `AdvisoryAccessGrant.Permission.choices`
 therefore lists only `collaborator` and `viewer`, and the grant service
 rejects `permission="owner"` at the API boundary
-([INV-AUTH-3], [INV-ACCESS-4]). The only paths to `owner` are admin-group
+([INV-AUTH-3](./invariant.md#inv-auth-3), [INV-ACCESS-4](./invariant.md#inv-access-4)). The only paths to `owner` are admin-group
 or project-security-team membership — both managed in the IdP.
 
 ### Grants in detail
 
 - A grant is unique per `(advisory, principal_type, principal_id)`
-  ([INV-ACCESS-1]); a second grant for the same principal updates the
+  ([INV-ACCESS-1](./invariant.md#inv-access-1)); a second grant for the same principal updates the
   existing row in place.
 - `principal_type` is `"user"` or `"group"`; group grants apply to every
   current member of the Django `Group` (which itself mirrors an IdP
   group).
 - Invitations (`PendingInvitation`) carry an email and a target
   permission. Redemption matches the authenticated user's email
-  case-insensitively ([INV-ACCESS-2]) and refuses expired rows
-  ([INV-ACCESS-3]; default lifetime 14 days).
+  case-insensitively ([INV-ACCESS-2](./invariant.md#inv-access-2)) and refuses expired rows
+  ([INV-ACCESS-3](./invariant.md#inv-access-3); default lifetime 14 days).
 - Every create / update / revoke / invite / redeem emits an audit entry
-  ([INV-ACCESS-5]).
+  ([INV-ACCESS-5](./invariant.md#inv-access-5)).
 
 ### Shadow (pre-login) security-team members
 
@@ -139,12 +139,12 @@ A shadow user is **notify-only**: it is not a member of any group, resolves to
 no permission, and cannot act. Its sole effect is notification reach — it
 receives the security-team member's *default* notification set **for its own
 project only** (advisory-created, lifecycle events, triage-queue events, and
-`@`-mentions), and is always dropped from internal comments ([INV-ROSTER-1]).
+`@`-mentions), and is always dropped from internal comments ([INV-ROSTER-1](./invariant.md#inv-roster-1)).
 Triage notifications are gated by the global `on_triage_event` preference
 (default on), which authenticated members may turn off. On first OIDC login the
 shadow is linked by email,
 `is_provisioned` clears, and access then comes entirely from the OIDC group
-claim ([INV-OIDC-5]) — the roster never grants access.
+claim ([INV-OIDC-5](./invariant.md#inv-oidc-5)) — the roster never grants access.
 
 Because notification emails embed advisory/comment content, this is a
 deliberate decision to disclose that content to an email sourced from the
@@ -213,12 +213,12 @@ take). Admins may dismiss even with an assigned CVE.
 
 ³ Owner-only **and** the advisory must not have an open
 `CveRequestTask`, an `assigned_cve_id`, or `cve_requests_banned=True`
-([INV-CVE-1]). Available while the lifecycle state is `draft` or
+([INV-CVE-1](./invariant.md#inv-cve-1)). Available while the lifecycle state is `draft` or
 `published`; blocked in `triage` (promote first) and `dismissed`
 (reopen first — dismissal auto-cancels open requests, §6).
 
 ⁴ Admins are the reviewers and cannot submit or withdraw submissions —
-this avoids self-review ([INV-REVIEW-3]).
+this avoids self-review ([INV-REVIEW-3](./invariant.md#inv-review-3)).
 
 ⁵ Project security-team members may publish only when *either* the
 project is marked `is_mature_publisher` *or* the advisory carries
@@ -228,7 +228,7 @@ project is marked `is_mature_publisher` *or* the advisory carries
 The reopened advisory returns to `Advisory.dismissed_from_state`
 (`triage` or `draft`); the normal review and publication gates re-engage
 from there. There is no direct `dismissed → published` transition
-([INV-LIFECYCLE-4]). Defined by `can_reopen`.
+([INV-LIFECYCLE-4](./invariant.md#inv-lifecycle-4)). Defined by `can_reopen`.
 
 ⁷ Owner-only PII gate ([INV-PRIVACY-4](./invariant.md#inv-privacy-4)).
 Collaborators and viewers see display names only — where a user has no display
@@ -256,7 +256,7 @@ the matrix:
   and viewer rows are suppressed for *every* action other than `View
   advisory` and `Post public comment`. The reporter's auto-granted
   viewer can therefore read and comment on their report, but cannot
-  edit, publish, or request a CVE on it ([INV-AUTH-5]). Internal
+  edit, publish, or request a CVE on it ([INV-AUTH-5](./invariant.md#inv-auth-5)). Internal
   comments still require collaborator+. In addition: `Submit advisory
   for review`, `Publish`, and `Request a CVE` are blocked for everyone
   (advisories must be promoted to `draft` first). The triage-specific actions
@@ -269,12 +269,12 @@ the matrix:
   the flag is owner-level: a global admin *or* the project's security
   team may unflag, retracting their own handoff. Project owners may
   *flag* a misrouted report only when not already flagged and not on
-  the `unsorted` sentinel project ([INV-AUTH-6], [INV-INTAKE-4]).
+  the `unsorted` sentinel project ([INV-AUTH-6](./invariant.md#inv-auth-6), [INV-INTAKE-4](./invariant.md#inv-intake-4)).
 
 - **`review_status=submitted`.** `Edit advisory content` is blocked for
   every role except global admin. `Publish` is blocked for **everyone,
   including admins** — the pending review must be decided or withdrawn
-  first ([INV-PERM-3]). `Withdraw a pending review` is the
+  first ([INV-PERM-3](./invariant.md#inv-perm-3)). `Withdraw a pending review` is the
   submitter-side affordance for non-admin owners; admins decide via
   Approve / Request changes.
 
@@ -282,7 +282,7 @@ the matrix:
   published; corrections go through Edit + Re-publish). Edits append a
   new `AdvisoryVersion` and set `republish_required=True`, which makes
   the existing matrix-allowed `Publish` action surface a re-publish
-  button ([INV-VERSION-1], [INV-REVIEW-4]). Non-admin edits that would
+  button ([INV-VERSION-1](./invariant.md#inv-version-1), [INV-REVIEW-4](./invariant.md#inv-review-4)). Non-admin edits that would
   otherwise invalidate an `approved` review reset `review_status`
   automatically; an admin's edit leaves the approval standing (the admin
   *is* the reviewer — explicit retraction goes through `Revoke an
@@ -292,7 +292,7 @@ the matrix:
   review`, `Request a CVE`, and `Edit advisory content` are blocked for
   every role. `Reopen dismissed advisory` is the only state-change
   action available; it is owner-gated and returns the advisory to
-  `Advisory.dismissed_from_state` ([INV-LIFECYCLE-4]). The advisory
+  `Advisory.dismissed_from_state` ([INV-LIFECYCLE-4](./invariant.md#inv-lifecycle-4)). The advisory
   remains viewable per its grants throughout.
 
 These are the only state overrides. Anything not mentioned here follows
@@ -303,11 +303,11 @@ the matrix unchanged.
 ## 7. Mature publisher
 
 A project may be flagged `is_mature_publisher` on its `Project` row
-([INV-PERM-2]). When set, the `Publish` matrix entry for the project's
+([INV-PERM-2](./invariant.md#inv-perm-2)). When set, the `Publish` matrix entry for the project's
 security-team members no longer requires `review_status=approved`: the
 team may publish drafts directly, subject only to the universal
 "no publish while review is submitted" gate from §6
-([INV-PERM-1], [INV-PERM-3]).
+([INV-PERM-1](./invariant.md#inv-perm-1), [INV-PERM-3](./invariant.md#inv-perm-3)).
 
 Mature-publisher status is **not** an IdP group, an environment
 variable, or a per-user flag — it lives on the project row so admins
@@ -345,33 +345,33 @@ without an OIDC round-trip).
 
 Every surface re-checks the same predicates from
 `advisories/permissions.py`. Templates only display — they never decide
-([INV-AUTH-1]).
+([INV-AUTH-1](./invariant.md#inv-auth-1)).
 
 | Surface | Module(s) | Enforcement |
 |---|---|---|
 | Web views | `advisories/views.py`, `advisories/views_workflow.py`, `access/views.py`, `comments/views.py`, `publication/views.py`, `ghsa/views.py` | `require_advisory_permission` decorator or `AdvisoryPermissionMixin`; explicit `can_*` calls before each state-changing action. |
 | JSON API | `api/views_*.py` | Same `can_*` predicates as the web views (e.g. `can_grant_access`, `can_view`, `can_see_internal_comment`, `can_publish`); list endpoints filter querysets through `can_view`. |
 | Admin console | `admin_console/views/*` | All sections wrapped with `@admin_required`, which is `can_review` (global admin only). |
-| Duplicate-check panel | `similarity/views.py` | Owner-only (`resolved_permission == "owner"`) on both the HTMX fragment and the re-run POST; the whole surface returns 404 while `SIMILARITY_CHECK_ENABLED` is off ([INV-SIM-1], [INV-SIM-2]). |
-| Celery tasks | `publication/tasks.py`, `notifications/tasks.py`, `ghsa/tasks.py`, `similarity/tasks.py`, `projects/tasks.py`, `audit/tasks.py` | Act on behalf of the stored enqueuing user — predicates checked at enqueue (§3); execution re-validates task state; notification recipient lists are filtered again at send so revoked grants drop ([INV-PRIVACY-2]). |
-| Public intake | `intake/views.py` | No authorization (`can_submit_triage_report` always returns true). Abuse control is the form-layer honeypot ([INV-INTAKE-1]) plus rate limits keyed on anonymous/authenticated (`RATELIMIT_INTAKE_ANON` / `RATELIMIT_INTAKE_USER`). |
-| Comment read filtering | `comments/services.py`, `comments/views.py` | `is_internal` is fixed at creation ([INV-COMMENT-1]); visibility is re-checked at *read* and notification *send* time ([INV-COMMENT-2]). |
+| Duplicate-check panel | `similarity/views.py` | Owner-only (`resolved_permission == "owner"`) on both the HTMX fragment and the re-run POST; the whole surface returns 404 while `SIMILARITY_CHECK_ENABLED` is off ([INV-SIM-1](./invariant.md#inv-sim-1), [INV-SIM-2](./invariant.md#inv-sim-2)). |
+| Celery tasks | `publication/tasks.py`, `notifications/tasks.py`, `ghsa/tasks.py`, `similarity/tasks.py`, `projects/tasks.py`, `audit/tasks.py` | Act on behalf of the stored enqueuing user — predicates checked at enqueue (§3); execution re-validates task state; notification recipient lists are filtered again at send so revoked grants drop ([INV-PRIVACY-2](./invariant.md#inv-privacy-2)). |
+| Public intake | `intake/views.py` | No authorization (`can_submit_triage_report` always returns true). Abuse control is the form-layer honeypot ([INV-INTAKE-1](./invariant.md#inv-intake-1)) plus rate limits keyed on anonymous/authenticated (`RATELIMIT_INTAKE_ANON` / `RATELIMIT_INTAKE_USER`). |
+| Comment read filtering | `comments/services.py`, `comments/views.py` | `is_internal` is fixed at creation ([INV-COMMENT-1](./invariant.md#inv-comment-1)); visibility is re-checked at *read* and notification *send* time ([INV-COMMENT-2](./invariant.md#inv-comment-2)). |
 
 ---
 
 ## 10. Audit footprint
 
 Every governance action that this document names emits exactly one
-`AuditLogEntry` row at the moment it succeeds ([INV-AUDIT-3]). The
+`AuditLogEntry` row at the moment it succeeds ([INV-AUDIT-3](./invariant.md#inv-audit-3)). The
 authoritative catalogue of recordable actions is the `Action` enum in
 `audit/models.py`; web-originated entries additionally capture the
-requesting IP and User-Agent ([INV-AUDIT-4]). The log is append-only
-in both the application and database layers ([INV-AUDIT-1]).
+requesting IP and User-Agent ([INV-AUDIT-4](./invariant.md#inv-audit-4)). The log is append-only
+in both the application and database layers ([INV-AUDIT-1](./invariant.md#inv-audit-1)).
 
 For an action to count as "audited" it must reach `audit.services.record`
 or `record_from_request` — both funnel every user/CI-supplied string
 through `redact_secrets` so tokens, key paths, and bearer URLs never
-land in audit metadata ([INV-AUDIT-2], [INV-SECRET-1]).
+land in audit metadata ([INV-AUDIT-2](./invariant.md#inv-audit-2), [INV-SECRET-1](./invariant.md#inv-secret-1)).
 
 ---
 
@@ -380,7 +380,7 @@ land in audit metadata ([INV-AUDIT-2], [INV-SECRET-1]).
 - **Public anonymous reads.** The website at which published advisories
   are consumed lives in a separate Git repository; its access policy is
   not part of this document. Inside AdvisoryHub, "published" never
-  grants implicit read ([INV-AUTH-7]).
+  grants implicit read ([INV-AUTH-7](./invariant.md#inv-auth-7)).
 - **MITRE CVE assignment.** `workflows.CveRequestTask` is an internal
   queue; AdvisoryHub does not call any external CVE API and does not
   authorize external CNA actions.

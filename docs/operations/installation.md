@@ -97,14 +97,14 @@ produces the content-hashed, compressed assets WhiteNoise serves — see
 ### 2.4 Establish the admin group
 
 AdvisoryHub never manages group membership itself — it mirrors the OIDC group
-claim on every login ([INV-OIDC-1]). Before anyone can administer the running
+claim on every login ([INV-OIDC-1](../specification/invariant.md#inv-oidc-1)). Before anyone can administer the running
 instance:
 
 1. In your identity provider, create the **admin group** whose name matches
    `OIDC_ADMIN_GROUP` (default `advisoryhub-security`) and add your initial
    administrators to it.
 2. Those users gain Django `is_staff` / `is_superuser` automatically at their
-   next login ([INV-OIDC-3]).
+   next login ([INV-OIDC-3](../specification/invariant.md#inv-oidc-3)).
 
 Projects, their security teams, and the **mature-publisher** flag are created and
 managed **in-app** afterward (Admin Console at `/admin/`, or `/django-admin/`) —

@@ -552,7 +552,7 @@ and `autodiscover_tasks()`. Settings:
 | `CELERY_TASK_IGNORE_RESULT` | True | Results are never read (outcomes live on `PublicationTask`); keeps the result backend empty. |
 | `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP` | True | Pins the resilient behaviour across the Celery 6 default flip. |
 | `CELERY_BROKER_TRANSPORT_OPTIONS` | `{"visibility_timeout": 3600}` | Redelivery window for the Redis/Valkey transport; must exceed the longest task. `PUB_TASK_STALE_QUEUED_AFTER_SECONDS` must in turn exceed this window (§6.2). |
-| `run_publication` task | `acks_late`, `reject_on_worker_lost`, `soft_time_limit=600`, `time_limit=660` | At-least-once for the durable publication task; a hung git push fails-and-is-retryable rather than running until the visibility window. A worker lost *after* the run starts leaves the row `running`; the beat-scheduled reaper recovers it (§6.2, INV-PUB-7). |
+| `run_publication` task | `acks_late`, `reject_on_worker_lost`, `soft_time_limit=600`, `time_limit=660` | At-least-once for the durable publication task; a hung git push fails-and-is-retryable rather than running until the visibility window. A worker lost *after* the run starts leaves the row `running`; the beat-scheduled reaper recovers it (§6.2, [INV-PUB-7](./invariant.md#inv-pub-7)). |
 
 Run a worker with `celery -A config worker -l info`. Run beat with
 `celery -A config beat`.
@@ -607,7 +607,7 @@ series lands on the worker's metrics exporter.
 `access-log-partition-maintenance` creates the upcoming month's
 `AccessLogEntry` partition and drops months older than
 `AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90); it no-ops when
-`AUDIT_ACCESS_LOG_RETENTION_ENABLED` is False (see §8.6, INV-AUDIT-5).
+`AUDIT_ACCESS_LOG_RETENTION_ENABLED` is False (see §8.6, [INV-AUDIT-5](./invariant.md#inv-audit-5)).
 
 `security-roster-sync` mirrors each project's Eclipse security team into
 `SecurityTeamRosterEntry` rows and pre-provisions notification-only shadow
@@ -615,20 +615,20 @@ users (`User.is_provisioned=True`) so `@team` mentions and team notifications
 reach members who have never logged in. It uses the **authenticated** Eclipse
 API (`projects/eclipse_api.py`, OAuth2 client-credentials) to resolve member
 emails the public PMI feed hides, and **no-ops unless `PMI_ROSTER_SYNC_ENABLED`
-is set** (default off). Shadow users hold no authorization (INV-OIDC-5); reach
-is notification-only (INV-ROSTER-1).
+is set** (default off). Shadow users hold no authorization ([INV-OIDC-5](./invariant.md#inv-oidc-5)); reach
+is notification-only ([INV-ROSTER-1](./invariant.md#inv-roster-1)).
 
 `publication-task-reaper` fails `PublicationTask` rows orphaned in
 `running` (worker hard-killed mid-run: `time_limit` SIGKILL, OOM kill, pod
 eviction) or `queued` (enqueue swallowed by `safe_enqueue` during a broker
-outage), so the in-flight guard (INV-CONCURRENCY-1) can never block
+outage), so the in-flight guard ([INV-CONCURRENCY-1](./invariant.md#inv-concurrency-1)) can never block
 publishing forever. Thresholds: `running` after
 `PUB_TASK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s — past the 660 s
 hard `time_limit`, so the row cannot belong to a live execution) from
 `started_at`; `queued` after `PUB_TASK_STALE_QUEUED_AFTER_SECONDS`
 (default 7200 s — past the 3600 s broker `visibility_timeout`, so a
 delayed redelivery wins first) from `created_at`. It never touches
-`Advisory.state` (INV-LIFECYCLE-3); see §4.5 and INV-PUB-7.
+`Advisory.state` ([INV-LIFECYCLE-3](./invariant.md#inv-lifecycle-3)); see §4.5 and [INV-PUB-7](./invariant.md#inv-pub-7).
 
 `similarity-check-reaper` is the same janitor for `SimilarityCheck`
 rows, which otherwise wedge `request_check`'s in-flight guard and the
@@ -638,9 +638,9 @@ mechanism as §4.5; thresholds
 `SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s — past
 the 360 s hard `time_limit`) and
 `SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS` (default 7200 s). Reaping
-is DB-only — no LLM egress (INV-SIM-2 unaffected) — so it runs even
+is DB-only — no LLM egress ([INV-SIM-2](./invariant.md#inv-sim-2) unaffected) — so it runs even
 while `SIMILARITY_CHECK_ENABLED` is off; recovery after a reap is the
-panel's existing re-run button. See INV-SIM-5.
+panel's existing re-run button. See [INV-SIM-5](./invariant.md#inv-sim-5).
 
 `ghsa-cve-push-reaper` is the third janitor, for `GhsaCvePushTask`
 rows. Unlike the previous two it is display truth, not deadlock
@@ -654,7 +654,7 @@ from `started_at`, `GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS`
 (default 7200 s) from `created_at`. The advisory-badge flip is
 guarded against newer push tasks (§5.4). DB-only — no GitHub egress —
 so it runs even while `GHSA_FEATURE_ENABLED` is off. `GhsaSyncRun`
-needs no reaper (§5.3 — atomic create+finalise). See INV-GHSA-2.
+needs no reaper (§5.3 — atomic create+finalise). See [INV-GHSA-2](./invariant.md#inv-ghsa-2).
 
 GHSA *discovery* is intentionally not on beat — it is
 user-triggered, scoped (project or all), and recorded as a
@@ -665,9 +665,9 @@ user-triggered, scoped (project or all), and recorded as a
 | App | Task | Purpose |
 |---|---|---|
 | `publication` | `run_publication` | Build → validate → push → flip state. |
-| `publication` | `reap_stale_publication_tasks` | Beat-scheduled janitor: fails `PublicationTask` rows orphaned in queued/running (INV-PUB-7). |
+| `publication` | `reap_stale_publication_tasks` | Beat-scheduled janitor: fails `PublicationTask` rows orphaned in queued/running ([INV-PUB-7](./invariant.md#inv-pub-7)). |
 | `similarity` | `run_similarity_check` | Prefilter → fingerprint → LLM judge → persist top-5 potential duplicates. `rate_limit="6/m"` absorbs GHSA bulk-sync bursts. |
-| `similarity` | `reap_stale_similarity_checks` | Beat-scheduled janitor: fails `SimilarityCheck` rows orphaned in queued/running (INV-SIM-5). |
+| `similarity` | `reap_stale_similarity_checks` | Beat-scheduled janitor: fails `SimilarityCheck` rows orphaned in queued/running ([INV-SIM-5](./invariant.md#inv-sim-5)). |
 | `notifications` | `send_advisory_event_email` | Lifecycle events (created, submitted for review, published, publication export status). |
 | `notifications` | `send_comment_email` | Comment + mention notifications. |
 | `notifications` | `send_comment_mention_email` | Delta @-mentions added by a comment *edit* (including newly-mentioned `@team` shadow roster members); visibility re-checked at send time. |
@@ -679,7 +679,7 @@ user-triggered, scoped (project or all), and recorded as a
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
 | `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button). |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
-| `ghsa` | `reap_stale_cve_push_tasks` | Beat-scheduled janitor: fails `GhsaCvePushTask` rows orphaned in queued/running and corrects the advisory's CVE-push badge (INV-GHSA-2). |
+| `ghsa` | `reap_stale_cve_push_tasks` | Beat-scheduled janitor: fails `GhsaCvePushTask` rows orphaned in queued/running and corrects the advisory's CVE-push badge ([INV-GHSA-2](./invariant.md#inv-ghsa-2)). |
 | `ghsa` | `process_webhook` | Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread. |
 | `audit` | `maintain_access_log_partitions` | Beat-scheduled `AccessLogEntry` partition create-ahead + drop-expired. |
 | `audit` | `refresh_backlog_gauges` | Beat-scheduled refresh of the `advisoryhub_backlog` Prometheus gauge from live queue depths. |
@@ -709,10 +709,10 @@ Trigger points — public intake (`submit_triage_report`), manual creation
 (`advisory_create`), GHSA import (`create_ghsa_linked_advisory`), and the
 owner-only re-run button — all call
 `similarity.services.request_check_safe`, which no-ops unless
-`SIMILARITY_CHECK_ENABLED` ([INV-SIM-2]) and never fails the parent
+`SIMILARITY_CHECK_ENABLED` ([INV-SIM-2](./invariant.md#inv-sim-2)) and never fails the parent
 operation. `request_check` mirrors `publication.publish`: advisory row
 lock, queued/running in-flight guard, a `SimilarityCheck` row pinned
-(`PROTECT`) to the latest `AdvisoryVersion` ([INV-SIM-4]), an audit
+(`PROTECT`) to the latest `AdvisoryVersion` ([INV-SIM-4](./invariant.md#inv-sim-4)), an audit
 record, then `transaction.on_commit` → `safe_enqueue`.
 
 The worker pipeline (`run_similarity_check`) spends at most **two** LLM
@@ -740,14 +740,14 @@ SDK dependencies: the Anthropic Messages API, and OpenAI Chat
 Completions covering both OpenAI and local OpenAI-compatible servers
 (Ollama/vLLM/LM Studio — the on-prem option for embargoed content).
 Failures are wrapped in `LlmError`, whose message passes through
-`redact_secrets` ([INV-SIM-3]). Results render in an owner-only sidebar
+`redact_secrets` ([INV-SIM-3](./invariant.md#inv-sim-3)). Results render in an owner-only sidebar
 panel on the advisory detail page that polls over HTMX while a check is
-queued/running ([INV-SIM-1]); `manage.py backfill_fingerprints` warms
+queued/running ([INV-SIM-1](./invariant.md#inv-sim-1)); `manage.py backfill_fingerprints` warms
 the fingerprint corpus for pre-existing advisories.
 
 Checks orphaned in `queued`/`running` (worker hard-killed mid-run, or an
 enqueue swallowed during a broker outage) are bounded by the
-beat-scheduled `similarity-check-reaper` (§6.2, [INV-SIM-5]) — after a
+beat-scheduled `similarity-check-reaper` (§6.2, [INV-SIM-5](./invariant.md#inv-sim-5)) — after a
 reap the panel's re-run button works again.
 
 ---
@@ -861,7 +861,7 @@ stamped into generated CVE Records.
 (default 1800 — must comfortably exceed `run_publication`'s 660 s hard
 `time_limit`) and `PUB_TASK_STALE_QUEUED_AFTER_SECONDS` (default 7200 —
 must exceed the broker's 3600 s `visibility_timeout`): staleness
-thresholds for the beat-scheduled reaper (§6.2, INV-PUB-7).
+thresholds for the beat-scheduled reaper (§6.2, [INV-PUB-7](./invariant.md#inv-pub-7)).
 
 **GHSA / GitHub App / PMI.** `GHSA_FEATURE_ENABLED` (default False),
 `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH` (preferred in prod),
@@ -871,7 +871,7 @@ thresholds for the beat-scheduled reaper (§6.2, INV-PUB-7).
 `GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS` (default 1800) and
 `GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS` (default 7200 — must exceed
 the 3600 s broker `visibility_timeout`): staleness thresholds for the
-beat-scheduled CVE-push reaper (§6.2, INV-GHSA-2), which runs even
+beat-scheduled CVE-push reaper (§6.2, [INV-GHSA-2](./invariant.md#inv-ghsa-2)), which runs even
 while the GHSA feature is disabled (DB-only, no GitHub egress),
 `PMI_API_BASE_URL`, `PMI_API_TOKEN` (PMI is public; blank by
 default), `PMI_SYNC_INTERVAL_HOURS` (default 6).
@@ -894,7 +894,7 @@ be set for hCaptcha to engage — otherwise silently bypassed),
 
 **Duplicate detection (similarity).** `SIMILARITY_CHECK_ENABLED`
 (default False — the explicit consent gate for sending advisory content
-to the LLM provider, [INV-SIM-2]), `SIMILARITY_LLM_PROVIDER`
+to the LLM provider, [INV-SIM-2](./invariant.md#inv-sim-2)), `SIMILARITY_LLM_PROVIDER`
 (`anthropic` | `openai`), `SIMILARITY_LLM_MODEL` (default
 `claude-opus-4-8`), `SIMILARITY_LLM_API_KEY` (secret; blank for
 keyless local servers), `SIMILARITY_LLM_BASE_URL` (empty = provider
@@ -906,7 +906,7 @@ default; set for OpenAI-compatible/local servers),
 comfortably exceed the 360 s hard `time_limit`) and
 `SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS` (default 7200 — must
 exceed the 3600 s broker `visibility_timeout`): staleness thresholds
-for the beat-scheduled reaper (§6.2, INV-SIM-5), which runs even while
+for the beat-scheduled reaper (§6.2, [INV-SIM-5](./invariant.md#inv-sim-5)), which runs even while
 the feature is disabled (DB-only, no LLM egress).
 
 **Rate-limit master switch.** `RATELIMIT_ENABLE` (default True;
@@ -915,7 +915,7 @@ forced False in `test`).
 **Access-log retention.** `AUDIT_ACCESS_LOG_RETENTION_ENABLED` (default
 True), `AUDIT_ACCESS_LOG_RETENTION_DAYS` (default 90) — drive the
 beat-scheduled `AccessLogEntry` partition maintenance (§6.2, §8.6,
-INV-AUDIT-5).
+[INV-AUDIT-5](./invariant.md#inv-audit-5)).
 
 **Observability.** `SENTRY_DSN` (optional — enables Sentry via
 `common.sentry.init_from_env`). `PROMETHEUS_WORKER_METRICS_PORT`
@@ -1021,7 +1021,7 @@ user) — picked dynamically in `intake.views`.
 
 ### 8.6 Audit hygiene
 
-The audit log is split into two tables (see INV-AUDIT-5). The durable,
+The audit log is split into two tables (see [INV-AUDIT-5](./invariant.md#inv-audit-5)). The durable,
 append-only **ledger** `AuditLogEntry` holds governance/timeline events. The
 high-volume, retention-managed **access log** `AccessLogEntry` holds the actions
 in `audit.models.EPHEMERAL_ACTIONS` (advisory views, GHSA/PMI chatter,

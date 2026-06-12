@@ -69,7 +69,7 @@ Foundation identity provider (OIDC):
 
 Your account is created automatically on first login, and your **group
 memberships are mirrored from the identity provider every time you sign in**
-([INV-OIDC-1]). This is how the app knows whether you are a security-team
+([INV-OIDC-1](../specification/invariant.md#inv-oidc-1)). This is how the app knows whether you are a security-team
 member, an administrator, or neither. You cannot edit groups inside AdvisoryHub;
 membership changes are made in the identity provider and take effect at your
 next login.
@@ -146,7 +146,7 @@ reviewer:
 
 `owner` is **structural, never handed out** — it comes only from security-team
 or administrator membership, so no one can grant themselves more power
-([INV-AUTH-3]). The complete capability matrix, including how it changes per
+([INV-AUTH-3](../specification/invariant.md#inv-auth-3)). The complete capability matrix, including how it changes per
 state, is in [`permissions.md`](../specification/permissions.md).
 
 ---

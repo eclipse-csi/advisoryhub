@@ -17,8 +17,8 @@ side, follow the cross-links to the
 
 You become an owner by being a member of your project's **security team** group.
 That membership lives in the Eclipse Foundation identity provider and is mirrored
-into AdvisoryHub every time you sign in ([INV-OIDC-1]) — there is no "add me as
-owner" button, and owner access is never granted by hand ([INV-AUTH-3]). When
+into AdvisoryHub every time you sign in ([INV-OIDC-1](../specification/invariant.md#inv-oidc-1)) — there is no "add me as
+owner" button, and owner access is never granted by hand ([INV-AUTH-3](../specification/invariant.md#inv-auth-3)). When
 your project's roster changes, the change takes effect at the affected person's
 next login.
 
@@ -26,7 +26,7 @@ next login.
 > security team, AdvisoryHub may email you about that project's advisories *before*
 > you have ever signed in, so team mentions and alerts reach you. Until you sign
 > in you cannot act on anything; your first sign-in turns that notification-only
-> "shadow" record into a full security-team account ([INV-OIDC-5]).
+> "shadow" record into a full security-team account ([INV-OIDC-5](../specification/invariant.md#inv-oidc-5)).
 
 As an owner you can do everything in the capability matrix's owner column; the
 authoritative, state-by-state version is in
@@ -67,7 +67,7 @@ Public reports for your project arrive in the **triage** state. Find them via th
   scope). You must give a reason. Dismissed reports are reversible later (§9).
 - **Flag for admin routing** (`…/flag/`) — if the report clearly belongs to a
   *different* project, flag it with a note. It then moves to the administrators'
-  queue for re-homing ([INV-INTAKE-4]): while flagged, the report is locked to
+  queue for re-homing ([INV-INTAKE-4](../specification/invariant.md#inv-intake-4)): while flagged, the report is locked to
   administrators, who alone can promote it (choosing its real project) or
   dismiss it. If you flagged it by mistake, clear your own flag
   (`…/clear-routing-flag/`) to take the report back.
@@ -119,7 +119,7 @@ creates the advisory as a **draft** and records the first version.
 Open an advisory and choose **Edit** (`…/edit/`). Key behaviours:
 
 - **Versions are append-only.** Every content change records a new version;
-  earlier versions are never overwritten ([INV-VERSION-1]). Review the history at
+  earlier versions are never overwritten ([INV-VERSION-1](../specification/invariant.md#inv-version-1)). Review the history at
   `…/history/` and compare any two versions with the diff view
   (`…/versions/<n>/diff/`).
 - **Editing a published advisory flags it for re-publication.** The public copy
@@ -150,7 +150,7 @@ Owners control per-advisory access from the **Access** panel
 - **Revoke** any grant or pending invitation.
 
 You **cannot** grant `owner` — that role comes only from security-team or
-administrator membership, by design ([INV-AUTH-3]). Every grant, change, and
+administrator membership, by design ([INV-AUTH-3](../specification/invariant.md#inv-auth-3)). Every grant, change, and
 revocation is written to the audit log.
 
 ---
@@ -165,7 +165,7 @@ advisory) or **rejects** the request with a reason — see the
 
 You can request a CVE on a **draft or published** advisory — not in triage, not
 dismissed — when it has **no open request already, no CVE already assigned, and
-isn't barred from requesting** ([INV-CVE-1]). Once a CVE is assigned, only an
+isn't barred from requesting** ([INV-CVE-1](../specification/invariant.md#inv-cve-1)). Once a CVE is assigned, only an
 administrator can unassign it (that's a CNA-side action).
 
 ---
@@ -180,7 +180,7 @@ that rides alongside the draft:
    locked (only administrators can edit it) and it cannot be published yet.
 2. **An administrator decides** — they **approve** it or **request changes**.
    Administrators are the only reviewers, and they cannot review their own
-   submissions ([INV-REVIEW-3]).
+   submissions ([INV-REVIEW-3](../specification/invariant.md#inv-review-3)).
 3. **If changes are requested** — reopen the review (`…/reopen-review/`), edit,
    and submit again.
 4. **Withdraw** (`…/withdraw-review/`) — you can pull back a submission you made
@@ -237,7 +237,7 @@ sequenceDiagram
 A few things to expect:
 
 - **The advisory becomes "published" only after the Git push succeeds**
-  ([INV-LIFECYCLE-3]). If anything fails (validation, network, the push), the
+  ([INV-LIFECYCLE-3](../specification/invariant.md#inv-lifecycle-3)). If anything fails (validation, network, the push), the
   state does **not** change and the attempt is recorded as **failed**.
 - **Failures land back on the advisory page.** The sidebar's **Publication**
   card shows the latest run — its status, a secret-redacted error message, the
@@ -264,7 +264,7 @@ A few things to expect:
   stay open).
 - **Reopen** (`…/reopen/`) — bring a dismissed advisory back. It returns to
   whatever state it was in before (triage or draft), and the normal review and
-  publish gates apply again from there ([INV-LIFECYCLE-4]). A dismissed advisory
+  publish gates apply again from there ([INV-LIFECYCLE-4](../specification/invariant.md#inv-lifecycle-4)). A dismissed advisory
   stays viewable to its grantees the whole time.
 
 ---

@@ -9,7 +9,7 @@ three are optional and off by default. Variable defaults are in
 ## 1. OIDC identity provider
 
 Authentication and **group membership** both flow from your OIDC provider;
-AdvisoryHub stores a mirror and never the authority ([INV-OIDC-2]).
+AdvisoryHub stores a mirror and never the authority ([INV-OIDC-2](../specification/invariant.md#inv-oidc-2)).
 
 **Register a confidential client** for each environment and configure:
 
@@ -26,12 +26,12 @@ signing algorithm).
 
 **Model the groups.** The provider must emit a **`groups`** claim
 (`OIDC_GROUP_CLAIM`) listing each user's groups. On every login AdvisoryHub
-replaces the user's local groups from that claim ([INV-OIDC-1]) and recomputes
+replaces the user's local groups from that claim ([INV-OIDC-1](../specification/invariant.md#inv-oidc-1)) and recomputes
 admin status:
 
 - The **admin group** named by `OIDC_ADMIN_GROUP` (default `advisoryhub-security`)
   grants global admin — owner on every advisory, the exclusive reviewer, and Django
-  `is_staff`/`is_superuser` ([INV-OIDC-3]).
+  `is_staff`/`is_superuser` ([INV-OIDC-3](../specification/invariant.md#inv-oidc-3)).
 - Each **project security team** is a group referenced by the project's row; its
   members are owners of that project's advisories. Create one group per team and
   point the project at it (in-app, after first run).
@@ -117,7 +117,7 @@ Off unless `GHSA_FEATURE_ENABLED=True`. AdvisoryHub authenticates to GitHub as a
 The Eclipse PMI API (`PMI_API_BASE_URL`, usually unauthenticated) is the
 source-of-truth for the project↔repository mapping the beat task mirrors. GHSA-linked
 advisories' content is read-only in AdvisoryHub and re-homed only by PMI sync
-([INV-GHSA-1]).
+([INV-GHSA-1](../specification/invariant.md#inv-ghsa-1)).
 
 ---
 
@@ -137,7 +137,7 @@ mentions and team notifications reach members who have **never logged in**.
 - A shadow user holds **no authorization** — it is in no group and can act on
   nothing. On first OIDC login it is linked by email, the provisioned flag clears,
   and access then comes entirely from the OIDC group claim; the roster never grants
-  access ([INV-OIDC-5], [INV-ROSTER-1]).
+  access ([INV-OIDC-5](../specification/invariant.md#inv-oidc-5), [INV-ROSTER-1](../specification/invariant.md#inv-roster-1)).
 
 ---
 
@@ -149,7 +149,7 @@ candidate duplicates (owner-only, on the advisory page).
 
 > **Enabling the switch is the consent** for advisory content — including
 > potentially embargoed drafts — to be sent to the configured LLM provider on
-> every check ([INV-SIM-2]). Leave it off if that egress is not acceptable.
+> every check ([INV-SIM-2](../specification/invariant.md#inv-sim-2)). Leave it off if that egress is not acceptable.
 
 - **Provider**: `SIMILARITY_LLM_PROVIDER=anthropic` (default, needs
   `SIMILARITY_LLM_API_KEY`) or `openai` — which covers any OpenAI-compatible

@@ -156,7 +156,7 @@ Off by default. See [integrations.md §4](./integrations.md#4-security-team-rost
 
 Off by default. See [integrations.md §5](./integrations.md#5-similarity-llm-provider-optional).
 Enabling the switch **is the consent** for advisory content (potentially embargoed)
-to reach the configured LLM provider ([INV-SIM-2]).
+to reach the configured LLM provider ([INV-SIM-2](../specification/invariant.md#inv-sim-2)).
 
 | Variable | Default | Notes |
 |---|---|---|

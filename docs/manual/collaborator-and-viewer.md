@@ -31,7 +31,7 @@ and a viewer on another:
 The last two rows are owner/administrator territory — even as a collaborator you
 cannot manage access or move the advisory through its lifecycle, and you see
 other people by **display name** only (where someone has no display name, their
-email is shown masked, like `a•••@example.org` — [INV-PRIVACY-4]). You always
+email is shown masked, like `a•••@example.org` — [INV-PRIVACY-4](../specification/invariant.md#inv-privacy-4)). You always
 see your *own* email.
 
 The authoritative, state-by-state capability matrix is in
@@ -48,8 +48,8 @@ administrator:
 - **Group grant** — a group you belong to was granted access; you inherit it.
 - **Email invitation** — you were invited by email before you had an account.
   The invitation becomes a real grant automatically the **first time you sign
-  in** with that email address (matching is case-insensitive — [INV-ACCESS-2]).
-  Invitations **expire after 14 days** ([INV-ACCESS-3]); if yours lapsed, ask the
+  in** with that email address (matching is case-insensitive — [INV-ACCESS-2](../specification/invariant.md#inv-access-2)).
+  Invitations **expire after 14 days** ([INV-ACCESS-3](../specification/invariant.md#inv-access-3)); if yours lapsed, ask the
   owner to re-send it.
 
 > **"I signed in but I see nothing."** An empty advisory list means you don't yet
@@ -105,7 +105,7 @@ If you are a **collaborator**, the advisory shows an **Edit** action
 (`…/edit/`). A few things to understand before you edit:
 
 - **Every content change appends a new version** — the previous version is kept
-  intact and remains in the history ([INV-VERSION-1]). You cannot lose earlier
+  intact and remains in the history ([INV-VERSION-1](../specification/invariant.md#inv-version-1)). You cannot lose earlier
   content.
 - **Editing a *published* advisory does not change what's public on its own.** It
   marks the advisory as needing re-publication; an owner or administrator then

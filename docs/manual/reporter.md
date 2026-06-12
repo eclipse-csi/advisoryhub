@@ -52,11 +52,11 @@ particular, nothing that asks for contact details.
 > **Reporting privately.** AdvisoryHub never asks for your email or a PGP key on
 > this form. If you report **anonymously**, there is no way for the team to reply
 > to you directly, and **you cannot reclaim or track the report later** — even if
-> you sign in afterwards with the same email ([INV-INTAKE-2]). If you want to be
+> you sign in afterwards with the same email ([INV-INTAKE-2](../specification/invariant.md#inv-intake-2)). If you want to be
 > reachable and able to follow progress, sign in *before* submitting (see §5).
 
 > **Spam protection.** The form has invisible anti-abuse measures and submission
-> rate limits ([INV-INTAKE-1]), and some deployments add a visible CAPTCHA.
+> rate limits ([INV-INTAKE-1](../specification/invariant.md#inv-intake-1)), and some deployments add a visible CAPTCHA.
 > Ordinary reporters rarely notice any of it; you don't need to do anything
 > special.
 
@@ -111,7 +111,7 @@ submit, two things change:
 - Your verified email from the identity provider becomes the report's reporter
   contact — so the team can reach you.
 - You are automatically granted **viewer** access to the advisory you filed
-  ([INV-INTAKE-3]). That means you can:
+  ([INV-INTAKE-3](../specification/invariant.md#inv-intake-3)). That means you can:
   - find it later in your advisory list at `/advisories/`, and
   - read it and post **public comments** on it (for example, to answer the
     team's follow-up questions).

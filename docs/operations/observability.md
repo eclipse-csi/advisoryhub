@@ -16,7 +16,7 @@ targets and the deeper rationale are in
   request, and echoes it back in the `X-Request-ID` response header — so you can
   stitch a request together across logs.
 - Secrets never reach the logs: all user/CI-supplied strings pass through
-  `redact_secrets` ([INV-SECRET-1]).
+  `redact_secrets` ([INV-SECRET-1](../specification/invariant.md#inv-secret-1)).
 
 ---
 

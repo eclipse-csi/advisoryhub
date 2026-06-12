@@ -20,7 +20,7 @@ advisories, versions, the audit log, grants, workflow state — lives there.
   triggers are recreated by migrations.
 - **Append-only protections are enforced in the database**, not just the app: the
   audit log rejects `UPDATE`/`DELETE` and `Advisory` rejects `DELETE`, even via raw
-  SQL ([INV-AUDIT-1]). The controlled maintenance commands below use a scoped,
+  SQL ([INV-AUDIT-1](../specification/invariant.md#inv-audit-1)). The controlled maintenance commands below use a scoped,
   audited bypass; ordinary access cannot mutate history.
 
 **Valkey / Redis is ephemeral** — it holds the Celery broker queue and the cache.
@@ -66,7 +66,7 @@ ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
 For a quiet window (migrations, data work), a global admin toggles **maintenance
 mode** from the Admin Console at `/admin/maintenance/`. It is a DB-backed flag read
 on every write attempt, so the pause is coherent across all replicas the instant it
-is toggled ([INV-MAINT-1]).
+is toggled ([INV-MAINT-1](../specification/invariant.md#inv-maint-1)).
 
 While on:
 

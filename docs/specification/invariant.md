@@ -234,7 +234,7 @@ Dismiss also tears down any pending review state at dismissal time
 so a reopened advisory always re-enters the pipeline with
 `review_status=NONE` and no `OPEN` `ReviewTask`. This closes the
 "surviving APPROVED" loophole that would otherwise let an owner publish
-on a reopened advisory without a fresh review ([INV-PERM-3]).
+on a reopened advisory without a fresh review ([INV-PERM-3](#inv-perm-3)).
 
 **Enforced in.**
 - `advisories/permissions.py` — `can_reopen` requires `state=dismissed` and
@@ -1231,7 +1231,7 @@ authorizes only this email channel; it confers no in-app view/owner access
 ([INV-OIDC-5](#inv-oidc-5)).
 
 **Rationale.** Reaching the full security team — including members who have never
-logged in — is the whole point of the roster ([TODO/INV-OIDC-5](#inv-oidc-5)). The
+logged in — is the whole point of the roster ([INV-OIDC-5](#inv-oidc-5)). The
 mention/notification email contains advisory content, so reach is deliberately a
 disclosure to a rostered Eclipse-security-team email; it is bounded to that team's
 own project and excludes internal comments, which remain collaborator+ only.
@@ -2221,7 +2221,8 @@ with its finalisation — an interrupted run rolls back instead of stranding.
 message is acked at pickup, so a worker hard-killed mid-push leaves the row
 `running` with no redelivery — and the GHSA panel shows the advisory's
 CVE-push status as "Pending" forever. A broker outage swallowed by
-`safe_enqueue` strands `queued` rows the same way. Unlike INV-PUB-7/INV-SIM-5
+`safe_enqueue` strands `queued` rows the same way. Unlike
+[INV-PUB-7](#inv-pub-7)/[INV-SIM-5](#inv-sim-5)
 nothing *blocks* (there is no in-flight guard, multiple push tasks may
 coexist) — this is display truth, hence Medium. A `running` row older than
 the threshold cannot belong to a live attempt: a push is one GitHub API call

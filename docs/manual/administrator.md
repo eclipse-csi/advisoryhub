@@ -15,7 +15,7 @@ concepts, see the [manual index](./README.md).
 ## 1. Who this guide is for
 
 You become an administrator by being in the admin group in the Eclipse Foundation
-identity provider; membership is mirrored on every login ([INV-OIDC-3]). That
+identity provider; membership is mirrored on every login ([INV-OIDC-3](../specification/invariant.md#inv-oidc-3)). That
 same membership also grants you Django's low-level admin site (§12). As with all
 roles, you cannot grant admin from inside AdvisoryHub — it is managed in the
 identity provider.
@@ -69,7 +69,7 @@ needs another look before it goes out — this re-blocks publishing.
 Two rules to remember:
 
 - **Administrators are the only reviewers**, and **you cannot submit or withdraw
-  a submission yourself** — that would be self-review ([INV-REVIEW-3]). Owners
+  a submission yourself** — that would be self-review ([INV-REVIEW-3](../specification/invariant.md#inv-review-3)). Owners
   submit; you decide.
 - **No one can publish while a review is still submitted** — it must be decided
   or withdrawn first.
@@ -122,7 +122,7 @@ The **Publication** page (`/admin/publications/`) lists publication attempts —
 in particular the **failed** ones. For each you can:
 
 - read the (secret-redacted) error message — tokens and credentials never appear
-  here ([INV-SECRET-1]);
+  here ([INV-SECRET-1](../specification/invariant.md#inv-secret-1));
 - **retry** the publication (`/publication/tasks/<id>/retry/`), which is the right
   move for a transient failure such as a network blip or a momentary push
   rejection (owners can equally re-publish from the advisory page — this page
@@ -131,7 +131,7 @@ in particular the **failed** ones. For each you can:
   assigned — **CVE** artifacts (`/publication/tasks/<id>/artifact/<kind>/`).
 
 Remember an advisory flips to *published* only after a successful Git push
-([INV-LIFECYCLE-3]); a failed task leaves the state untouched, so retrying is
+([INV-LIFECYCLE-3](../specification/invariant.md#inv-lifecycle-3)); a failed task leaves the state untouched, so retrying is
 safe.
 
 ---
@@ -142,7 +142,7 @@ Reports submitted with **"I don't know"** as the project, or flagged by an owner
 as misrouted, land in your Inbox for routing. Open such a report and **promote**
 it — because it isn't yet on a real project, promotion requires you to **choose
 the destination project**. Only administrators can route these reports — while
-flagged, they are locked to you ([INV-INTAKE-4]). The flag itself is not a
+flagged, they are locked to you ([INV-INTAKE-4](../specification/invariant.md#inv-intake-4)). The flag itself is not a
 one-way door, though: the owner who raised it can retract it to take the report
 back, and you can clear it without promoting if it was raised in error.
 
@@ -155,13 +155,13 @@ The **Projects** page (`/admin/projects/`) lists every project. You can:
 - **Create** a project (`/admin/projects/new/`) and **edit** one
   (`/admin/projects/<id>/edit/`) — name, security team, and settings.
 - **Toggle the mature-publisher flag.** When set, that project's security team can
-  publish drafts **without** a per-advisory approval ([INV-PERM-2]). This flag
+  publish drafts **without** a per-advisory approval ([INV-PERM-2](../specification/invariant.md#inv-perm-2)). This flag
   lives on the project (not in the identity provider), precisely so you can change
   it here and have the change audited.
 - **Sync the security-team roster** (`/admin/projects/<id>/sync-roster/`) —
   pre-provision notification-only ("shadow") accounts for Eclipse roster members
   who haven't signed in yet, so `@team` mentions and alerts reach them. It
-  confers no in-app access ([INV-OIDC-5]), and the button appears only on
+  confers no in-app access ([INV-OIDC-5](../specification/invariant.md#inv-oidc-5)), and the button appears only on
   deployments that enable roster sync.
 
 ---
@@ -176,14 +176,14 @@ From there you can:
 - **Ban / unban** (`…/ban/`, `…/unban/`) — banning is the one app-side override of
   identity-provider authority: it denies login and drops the user's live session
   immediately, rather than waiting for an identity-provider change to propagate
-  ([INV-AUTH-8]). It is reversible and audited at both ends.
+  ([INV-AUTH-8](../specification/invariant.md#inv-auth-8)). It is reversible and audited at both ends.
 - **Forget user (GDPR)** (`…/forget/`) — erase a user's personal data across the
   system. This is irreversible; use it only for genuine data-subject erasure
   requests.
 
 The **Groups** page (`/admin/groups/`) is **read-only**: groups and their
 membership are owned by the identity provider, which AdvisoryHub only mirrors
-([INV-OIDC-2]). Each group has a read-only detail page (`/admin/groups/<id>/`).
+([INV-OIDC-2](../specification/invariant.md#inv-oidc-2)). Each group has a read-only detail page (`/admin/groups/<id>/`).
 To change who is in a group, change it in the identity provider.
 
 ---
@@ -192,7 +192,7 @@ To change who is in a group, change it in the identity provider.
 
 The **Maintenance** page (`/admin/maintenance/`) toggles maintenance mode. While
 it is **on**, only global administrators may make changes — every other user's
-writes are paused server-side, while reads continue ([INV-MAINT-1]). Use it for
+writes are paused server-side, while reads continue ([INV-MAINT-1](../specification/invariant.md#inv-maint-1)). Use it for
 deployments or data work where you need a stable, write-quiet system. Turn it off
 to restore normal operation.
 
@@ -202,7 +202,7 @@ to restore normal operation.
 
 - **Audit log** (`/admin/audit/`) — the append-only record of every governance
   action (create, edit, grant, review, publish, ban, …). It cannot be altered or
-  deleted, in either the application or the database ([INV-AUDIT-1]). Use it to
+  deleted, in either the application or the database ([INV-AUDIT-1](../specification/invariant.md#inv-audit-1)). Use it to
   answer "who did what, when".
 - **Access log** (`/admin/access-log/`) — who viewed or accessed which advisory.
 

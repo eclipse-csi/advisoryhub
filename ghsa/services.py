@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from datetime import datetime, timedelta
 from functools import partial
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from advisories import services as advisory_services
@@ -409,6 +412,13 @@ def sync_ghsas_for_project(project: Project, *, by) -> GhsaSyncRun:
     refreshes metadata for those already linked. Reports a
     :class:`GhsaSyncRun` row with counters so the dashboard can render the
     last run's outcome.
+
+    ``transaction.atomic`` is load-bearing beyond write consistency: the
+    RUNNING run row commits only together with its finalisation, so an
+    interrupted sync (worker hard-kill or an escaping exception) rolls the
+    row back instead of stranding a forever-"Running" entry in the
+    dashboard history — which is why ``GhsaSyncRun`` needs no stale-row
+    reaper (INV-GHSA-2 covers only ``GhsaCvePushTask``).
     """
     run = GhsaSyncRun.objects.create(
         scope=GhsaSyncRunScope.PROJECT,
@@ -489,7 +499,11 @@ def sync_ghsas_for_project(project: Project, *, by) -> GhsaSyncRun:
 
 @transaction.atomic
 def sync_ghsas_for_all_projects(*, by, projects: Iterable[Project] | None = None) -> GhsaSyncRun:
-    """Org-wide sync. Iterates every project that has at least one repo."""
+    """Org-wide sync. Iterates every project that has at least one repo.
+
+    Same load-bearing atomicity as :func:`sync_ghsas_for_project`: an
+    interrupted run rolls back rather than stranding a RUNNING row.
+    """
     run = GhsaSyncRun.objects.create(
         scope=GhsaSyncRunScope.ALL,
         requested_by=actor_or_none(by),
@@ -648,6 +662,158 @@ def push_reserved_cve_to_ghsa(task: GhsaCvePushTask) -> GhsaCvePushTask:
         metadata={"ghsa_id": advisory.ghsa_id},
     )
     return task
+
+
+def reap_stale_cve_push_tasks(*, now: datetime | None = None) -> dict:
+    """Fail ``GhsaCvePushTask`` rows orphaned in queued/running (INV-GHSA-2).
+
+    ``run_cve_push`` is a plain task (no ``acks_late``): the broker message
+    is acked at pickup, so a worker hard-killed mid-push (SIGKILL, OOM
+    kill, pod eviction) leaves the row ``running`` with no redelivery — and
+    the advisory's ``ghsa_cve_push_status`` badge stuck at "Pending" on the
+    GHSA panel. An enqueue swallowed by ``safe_enqueue`` during a broker
+    outage strands ``queued`` rows the same way. Nothing blocks (there is
+    no in-flight guard), so unlike the publication/similarity reapers
+    (INV-PUB-7 / INV-SIM-5) this is display truth, not deadlock recovery.
+
+    The badge flip is guarded: ``ghsa_cve_push_status`` is advisory-scoped
+    and overwritten by every new enqueue, so the reaper flips it to
+    ``failed`` only while it still reads ``pending`` AND no other
+    queued/running push task exists for the advisory.
+
+    Thresholds, not locks, are the real defense: a push is one GitHub API
+    call bounded by the client's connect/read timeouts (10s/30s), so a
+    ``running`` row older than ``GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS``
+    (default 1800s) cannot belong to a live attempt; ``queued`` rows use
+    ``GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS`` (default 7200s, 2× the
+    broker's visibility_timeout). DB-only — no GitHub egress — so the
+    reaper runs even while ``GHSA_FEATURE_ENABLED`` is off.
+    """
+    now = now or timezone.now()
+    running_cutoff = now - timedelta(seconds=settings.GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS)
+    queued_cutoff = now - timedelta(seconds=settings.GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS)
+    # started_at is stamped by the same UPDATE that flips a row to running,
+    # so the isnull arm is belt-and-braces for rows written by older code.
+    candidates = list(
+        GhsaCvePushTask.objects.filter(
+            (
+                Q(status=GhsaCvePushTaskStatus.RUNNING)
+                & (
+                    Q(started_at__lt=running_cutoff)
+                    | Q(started_at__isnull=True, created_at__lt=running_cutoff)
+                )
+            )
+            | Q(status=GhsaCvePushTaskStatus.QUEUED, created_at__lt=queued_cutoff)
+        ).values_list("pk", "status")
+    )
+    reaped = {GhsaCvePushTaskStatus.RUNNING.value: 0, GhsaCvePushTaskStatus.QUEUED.value: 0}
+    for task_pk, status in candidates:
+        if _reap_one_push(task_pk, expected_status=status, now=now) is not None:
+            reaped[status] += 1
+    result = {
+        "reaped_push_running": reaped[GhsaCvePushTaskStatus.RUNNING.value],
+        "reaped_push_queued": reaped[GhsaCvePushTaskStatus.QUEUED.value],
+    }
+    if result["reaped_push_running"] or result["reaped_push_queued"]:
+        logger.info(
+            "reap_stale_cve_push_tasks: running=%s queued=%s",
+            result["reaped_push_running"],
+            result["reaped_push_queued"],
+        )
+    return result
+
+
+def _reap_one_push(task_pk: int, *, expected_status: str, now: datetime) -> GhsaCvePushTask | None:
+    """Compare-and-set one stale push task to failed; ``None`` if it moved on.
+
+    The status filter under ``select_for_update`` means a row finalised
+    between the candidate query and this lock no longer matches and is
+    never clobbered; ``skip_locked`` turns a finalisation mid-commit (or an
+    overlapping reaper run) into a skip, not a wait.
+    """
+    with transaction.atomic():
+        task = (
+            GhsaCvePushTask.objects.select_for_update(skip_locked=True)
+            .select_related("advisory")
+            .filter(pk=task_pk, status=expected_status)
+            .first()
+        )
+        if task is None:
+            return None
+        age = _push_stale_age_seconds(task, now=now)
+        if age is None:
+            return None
+        stale_after = (
+            settings.GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS
+            if expected_status == GhsaCvePushTaskStatus.RUNNING
+            else settings.GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS
+        )
+        cause = (
+            "worker likely lost mid-run"
+            if expected_status == GhsaCvePushTaskStatus.RUNNING
+            else "enqueue likely lost to a broker outage"
+        )
+        task.status = GhsaCvePushTaskStatus.FAILED
+        task.finished_at = timezone.now()
+        task.last_error = redact_secrets(
+            f"reaped: push stuck in '{expected_status}' for {age}s ({cause})"
+        )[:8000]
+        task.save(update_fields=["status", "finished_at", "last_error"])
+
+        # Guarded badge flip: the advisory-level status may already belong
+        # to a NEWER push task (every enqueue overwrites it to 'pending');
+        # flip it only while it still reads 'pending' and no other live
+        # task exists for this advisory. Conflict fields are never touched.
+        advisory = task.advisory
+        other_live = (
+            GhsaCvePushTask.objects.filter(
+                advisory=advisory,
+                status__in=[GhsaCvePushTaskStatus.QUEUED, GhsaCvePushTaskStatus.RUNNING],
+            )
+            .exclude(pk=task.pk)
+            .exists()
+        )
+        advisory_status_updated = False
+        if advisory.ghsa_cve_push_status == GhsaCvePushStatus.PENDING and not other_live:
+            advisory.ghsa_cve_push_status = GhsaCvePushStatus.FAILED
+            advisory.ghsa_cve_push_attempted_at = timezone.now()
+            advisory.save(
+                update_fields=[
+                    "ghsa_cve_push_status",
+                    "ghsa_cve_push_attempted_at",
+                    "modified_at",
+                ]
+            )
+            advisory_status_updated = True
+        record(
+            action=Action.GHSA_CVE_PUSH_REAPED,
+            advisory=advisory,
+            new_value={"task_id": task.pk, "cve_id": task.cve_id},
+            metadata={
+                "ghsa_id": advisory.ghsa_id,
+                "task_id": task.pk,
+                "previous_status": expected_status,
+                "age_seconds": age,
+                "stale_after_seconds": stale_after,
+                "advisory_status_updated": advisory_status_updated,
+                "error": task.last_error,
+            },
+        )
+        return task
+
+
+def _push_stale_age_seconds(task: GhsaCvePushTask, *, now: datetime) -> int | None:
+    """Seconds the row has been stuck, or ``None`` while it is still fresh."""
+    if task.status == GhsaCvePushTaskStatus.RUNNING:
+        anchor = task.started_at or task.created_at
+        threshold = settings.GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS
+    elif task.status == GhsaCvePushTaskStatus.QUEUED:
+        anchor = task.created_at
+        threshold = settings.GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS
+    else:
+        return None
+    age = int((now - anchor).total_seconds())
+    return age if age > threshold else None
 
 
 # ---------------------------------------------------------------------------

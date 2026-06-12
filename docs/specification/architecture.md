@@ -464,6 +464,14 @@ in the project's repo mirror, lists GHSAs, and creates or updates
 mapped ([INV-ID-2](./invariant.md#inv-id-2)). A run is recorded as
 a `GhsaSyncRun` with counts and last error.
 
+Both sync functions are `transaction.atomic`, and that atomicity is
+load-bearing for run-row truthfulness: the `running` row commits only
+together with its finalisation, so an interrupted sync (worker
+hard-kill or an escaping exception) rolls the row back instead of
+stranding a forever-"Running" entry in the run history. `GhsaSyncRun`
+therefore needs no stale-row reaper — unlike `GhsaCvePushTask`
+(§5.4, [INV-GHSA-2](./invariant.md#inv-ghsa-2)).
+
 Per-advisory sync (`sync_single_ghsa`) refreshes one advisory from
 GitHub. When upstream payload-visible fields change,
 `AdvisoryVersion` v(n+1) is appended and
@@ -483,6 +491,15 @@ carrying a *different* CVE, AdvisoryHub never overwrites its own
 value; instead `GHSA_CVE_CONFLICT_DETECTED` is emitted and
 `ghsa_cve_conflict_*` columns are populated so an admin can
 reconcile manually.
+
+`run_cve_push` has no `acks_late`, so a worker hard-killed mid-push
+leaves the task `running` with no redelivery — and the advisory's
+CVE-push badge stuck at "Pending". The beat-scheduled
+`ghsa-cve-push-reaper` (§6.2, [INV-GHSA-2](./invariant.md#inv-ghsa-2))
+bounds both that and broker-stranded `queued` rows, flipping them to
+`failed` (audited as `GHSA_CVE_PUSH_REAPED`) and correcting the
+advisory badge — guarded so it never clobbers a status belonging to a
+newer push task.
 
 ### 5.5 Webhook ingest
 
@@ -548,7 +565,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-Six periodic jobs are registered in `config/settings/base.py`:
+Seven periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -574,6 +591,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     "similarity-check-reaper": {
         "task": "similarity.reap_stale_similarity_checks",
+        "schedule": timedelta(minutes=10),
+    },
+    "ghsa-cve-push-reaper": {
+        "task": "ghsa.tasks.reap_stale_cve_push_tasks",
         "schedule": timedelta(minutes=10),
     },
 }
@@ -621,6 +642,20 @@ is DB-only — no LLM egress (INV-SIM-2 unaffected) — so it runs even
 while `SIMILARITY_CHECK_ENABLED` is off; recovery after a reap is the
 panel's existing re-run button. See INV-SIM-5.
 
+`ghsa-cve-push-reaper` is the third janitor, for `GhsaCvePushTask`
+rows. Unlike the previous two it is display truth, not deadlock
+recovery: nothing blocks (there is no in-flight guard), but a worker
+hard-killed mid-push (`run_cve_push` has no `acks_late` → no
+redelivery) leaves the task `running` forever and the advisory's
+CVE-push badge stuck at "Pending". Thresholds:
+`GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS` (default 1800 s — a push
+is one GitHub API call bounded by the client's 10 s/30 s timeouts)
+from `started_at`, `GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS`
+(default 7200 s) from `created_at`. The advisory-badge flip is
+guarded against newer push tasks (§5.4). DB-only — no GitHub egress —
+so it runs even while `GHSA_FEATURE_ENABLED` is off. `GhsaSyncRun`
+needs no reaper (§5.3 — atomic create+finalise). See INV-GHSA-2.
+
 GHSA *discovery* is intentionally not on beat — it is
 user-triggered, scoped (project or all), and recorded as a
 `GhsaSyncRun`.
@@ -644,6 +679,7 @@ user-triggered, scoped (project or all), and recorded as a
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
 | `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button). |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
+| `ghsa` | `reap_stale_cve_push_tasks` | Beat-scheduled janitor: fails `GhsaCvePushTask` rows orphaned in queued/running and corrects the advisory's CVE-push badge (INV-GHSA-2). |
 | `ghsa` | `process_webhook` | Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread. |
 | `audit` | `maintain_access_log_partitions` | Beat-scheduled `AccessLogEntry` partition create-ahead + drop-expired. |
 | `audit` | `refresh_backlog_gauges` | Beat-scheduled refresh of the `advisoryhub_backlog` Prometheus gauge from live queue depths. |
@@ -654,11 +690,11 @@ Idempotency story:
 - `run_publication` is short-circuited when the task is no longer
   in a queueable state; success / failure is terminal per-row, and
   the file write is idempotent on content.
-- `reap_stale_publication_tasks` and `reap_stale_similarity_checks`
-  are idempotent by construction: the candidate predicate is
-  status+staleness, reaped rows leave the set, and each reap is a
-  per-row compare-and-set — overlapping runs `skip_locked` each other
-  rather than double-reaping.
+- `reap_stale_publication_tasks`, `reap_stale_similarity_checks`, and
+  `reap_stale_cve_push_tasks` are idempotent by construction: the
+  candidate predicate is status+staleness, reaped rows leave the set,
+  and each reap is a per-row compare-and-set — overlapping runs
+  `skip_locked` each other rather than double-reaping.
 - `run_similarity_check` uses the same queued/failed-only guard, and
   the fingerprint cache is keyed on a content hash, so a re-delivered
   task never duplicates LLM spend for unchanged content.
@@ -832,6 +868,11 @@ thresholds for the beat-scheduled reaper (§6.2, INV-PUB-7).
 `GITHUB_APP_PRIVATE_KEY` (inline fallback for dev),
 `GITHUB_APP_WEBHOOK_SECRET` (HMAC key — secret),
 `GITHUB_APP_API_BASE_URL` (default `https://api.github.com`),
+`GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS` (default 1800) and
+`GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS` (default 7200 — must exceed
+the 3600 s broker `visibility_timeout`): staleness thresholds for the
+beat-scheduled CVE-push reaper (§6.2, INV-GHSA-2), which runs even
+while the GHSA feature is disabled (DB-only, no GitHub egress),
 `PMI_API_BASE_URL`, `PMI_API_TOKEN` (PMI is public; blank by
 default), `PMI_SYNC_INTERVAL_HOURS` (default 6).
 

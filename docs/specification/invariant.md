@@ -122,6 +122,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PRIVACY-3](#inv-privacy-3) | `reporter_display_name` is display-only; never used for authorization. | Privacy | Medium |
 | [INV-PRIVACY-4](#inv-privacy-4) | Other users' email addresses are shown only to owners. | Privacy | Medium |
 | [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
+| [INV-GHSA-2](#inv-ghsa-2) | Stale queued/running CVE-push tasks are reaped to `failed`, correcting the advisory's CVE-push badge. | GHSA | Medium |
 | [INV-SIM-1](#inv-sim-1) | Duplicate-check results and endpoints are owner-only, enforced server-side. | Similarity | Critical |
 | [INV-SIM-2](#inv-sim-2) | `SIMILARITY_CHECK_ENABLED=False` (default) means zero advisory-content egress to the LLM provider. | Similarity | Critical |
 | [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
@@ -1415,8 +1416,8 @@ no recovery short of manual SQL.
 
 **Related.** [INV-CONCURRENCY-1](#inv-concurrency-1),
 [INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-PUB-4](#inv-pub-4),
-[INV-SECRET-1](#inv-secret-1), [INV-SIM-5](#inv-sim-5) (the similarity
-mirror of this rule).
+[INV-SECRET-1](#inv-secret-1), [INV-SIM-5](#inv-sim-5) and
+[INV-GHSA-2](#inv-ghsa-2) (the similarity and GHSA mirrors of this rule).
 
 ---
 
@@ -2196,6 +2197,54 @@ published project name diverge from PMI truth with no reconciliation path.
 
 ---
 
+<a id="inv-ghsa-2"></a>
+### INV-GHSA-2 — Stale CVE-push tasks are bounded   [Medium]
+
+**Statement.** A beat-scheduled reaper (`ghsa.tasks.reap_stale_cve_push_tasks`,
+every 10 minutes) flips `GhsaCvePushTask` rows stuck in `running` past
+`GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS` (default 1800 s, measured from
+`started_at`) or in `queued` past `GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS`
+(default 7200 s, measured from `created_at`) to `failed`, via the same per-row
+compare-and-set under `select_for_update(skip_locked=True)` as
+[INV-PUB-7](#inv-pub-7) / [INV-SIM-5](#inv-sim-5). The advisory's CVE-push
+badge is corrected with a guard: `ghsa_cve_push_status` flips
+`pending → failed` (stamping `ghsa_cve_push_attempted_at`) only while it
+still reads `pending` **and** no other queued/running push task exists for
+the advisory — the badge is advisory-scoped and overwritten by every new
+enqueue, so it may belong to a newer task. Conflict fields are never touched.
+The reaper is DB-only (no GitHub egress) and runs even while
+`GHSA_FEATURE_ENABLED` is off. `GhsaSyncRun` is deliberately not covered: its
+creators are `transaction.atomic`, so the `running` row commits only together
+with its finalisation — an interrupted run rolls back instead of stranding.
+
+**Rationale.** `run_cve_push` is a plain task without `acks_late`: the broker
+message is acked at pickup, so a worker hard-killed mid-push leaves the row
+`running` with no redelivery — and the GHSA panel shows the advisory's
+CVE-push status as "Pending" forever. A broker outage swallowed by
+`safe_enqueue` strands `queued` rows the same way. Unlike INV-PUB-7/INV-SIM-5
+nothing *blocks* (there is no in-flight guard, multiple push tasks may
+coexist) — this is display truth, hence Medium. A `running` row older than
+the threshold cannot belong to a live attempt: a push is one GitHub API call
+bounded by the client's connect/read timeouts (10 s/30 s).
+
+**Enforced in.**
+- `ghsa/services.py` — `reap_stale_cve_push_tasks` / `_reap_one_push`;
+  `sync_ghsas_for_project` / `sync_ghsas_for_all_projects` (the load-bearing
+  `transaction.atomic` that exempts `GhsaSyncRun`).
+- `ghsa/tasks.py` — `reap_stale_cve_push_tasks`.
+- `config/settings/base.py` — `CELERY_BEAT_SCHEDULE["ghsa-cve-push-reaper"]`,
+  `GHSA_CVE_PUSH_STALE_*` knobs.
+
+**Violation impact.** Operators misled: a dead push reads as in-flight on the
+advisory's GHSA panel indefinitely. No functional block.
+
+**Tests.** `ghsa/tests/test_reaper.py`.
+
+**Related.** [INV-PUB-7](#inv-pub-7), [INV-SIM-5](#inv-sim-5),
+[INV-GHSA-1](#inv-ghsa-1).
+
+---
+
 ## 20. LLM duplicate detection (similarity)
 
 <a id="inv-sim-1"></a>
@@ -2359,8 +2408,9 @@ advisory, with no recovery short of manual SQL.
 
 **Tests.** `similarity/tests/test_reaper.py`.
 
-**Related.** [INV-PUB-7](#inv-pub-7) (the publication mirror of this rule),
-[INV-SIM-2](#inv-sim-2), [INV-SIM-3](#inv-sim-3).
+**Related.** [INV-PUB-7](#inv-pub-7) and [INV-GHSA-2](#inv-ghsa-2) (the
+publication and GHSA mirrors of this rule), [INV-SIM-2](#inv-sim-2),
+[INV-SIM-3](#inv-sim-3).
 
 ---
 

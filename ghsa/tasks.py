@@ -96,6 +96,21 @@ def run_cve_push(task_id: int) -> dict:
     return {"task_id": result.pk, "status": result.status}
 
 
+# No acks_late / time limits: the reaper is idempotent and fast (one indexed
+# SELECT, normally zero rows) and beat re-fires it every 10 minutes anyway.
+@shared_task(name="ghsa.tasks.reap_stale_cve_push_tasks")
+def reap_stale_cve_push_tasks() -> dict:
+    """Beat (every 10 min): fail GhsaCvePushTask rows orphaned in queued/running.
+
+    run_cve_push has no acks_late, so a worker hard-killed mid-push leaves
+    the row 'running' with no redelivery — and the advisory's CVE-push
+    badge stuck at 'Pending'. Display truth only (nothing blocks in ghsa);
+    DB-only, so it runs regardless of GHSA_FEATURE_ENABLED. See INV-GHSA-2
+    and services.reap_stale_cve_push_tasks for the threshold rationale.
+    """
+    return services.reap_stale_cve_push_tasks()
+
+
 @shared_task(name="ghsa.tasks.process_webhook")
 def process_webhook(delivery_pk: int, payload: dict) -> dict:
     """Apply a verified webhook payload to local state.

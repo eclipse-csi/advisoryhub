@@ -97,6 +97,16 @@ env = environ.Env(
     GITHUB_APP_PRIVATE_KEY=(str, ""),  # inline fallback for dev
     GITHUB_APP_WEBHOOK_SECRET=(str, ""),  # SECRET — HMAC key for inbound webhooks
     GITHUB_APP_API_BASE_URL=(str, "https://api.github.com"),
+    # Stale-CVE-push reaper thresholds (INV-GHSA-2). run_cve_push has no
+    # acks_late, so a worker hard-killed mid-push leaves the task 'running'
+    # with no redelivery — and the advisory's CVE-push badge stuck at
+    # "Pending". A push is a single GitHub API call bounded by the client's
+    # connect/read timeouts (10s/30s), so 1800s for RUNNING (from
+    # started_at) is enormously safe; QUEUED (from created_at) mirrors the
+    # other reapers' 2x-visibility_timeout default. DB-only — no GitHub
+    # egress — so the reaper runs even while GHSA_FEATURE_ENABLED is off.
+    GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS=(int, 1800),
+    GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS=(int, 7200),
     # Eclipse Foundation PMI API (source-of-truth for project↔repo)
     PMI_API_BASE_URL=(str, "https://projects.eclipse.org/api"),
     PMI_API_TOKEN=(str, ""),  # blank by default; PMI is public
@@ -457,6 +467,8 @@ GITHUB_APP_PRIVATE_KEY_PATH = env("GITHUB_APP_PRIVATE_KEY_PATH")
 GITHUB_APP_PRIVATE_KEY = env("GITHUB_APP_PRIVATE_KEY")
 GITHUB_APP_WEBHOOK_SECRET = env("GITHUB_APP_WEBHOOK_SECRET")
 GITHUB_APP_API_BASE_URL = env("GITHUB_APP_API_BASE_URL")
+GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS = env("GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS")
+GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS = env("GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS")
 PMI_API_BASE_URL = env("PMI_API_BASE_URL")
 PMI_API_TOKEN = env("PMI_API_TOKEN")
 PMI_SYNC_INTERVAL_HOURS = env("PMI_SYNC_INTERVAL_HOURS")
@@ -544,6 +556,17 @@ CELERY_BEAT_SCHEDULE = {
     # SIMILARITY_CHECK_STALE_* thresholds above.
     "similarity-check-reaper": {
         "task": "similarity.reap_stale_similarity_checks",
+        "schedule": timedelta(minutes=10),
+    },
+    # Same janitor for GhsaCvePushTask rows: a worker hard-killed mid-push
+    # (run_cve_push has no acks_late → no redelivery) leaves the task
+    # 'running' and the advisory's CVE-push badge stuck at "Pending".
+    # Display truth only — nothing blocks (no in-flight guard). DB-only, so
+    # it runs even while GHSA_FEATURE_ENABLED is off. GhsaSyncRun needs no
+    # reaper: its creators are transaction.atomic, so interrupted runs roll
+    # back instead of stranding. See INV-GHSA-2.
+    "ghsa-cve-push-reaper": {
+        "task": "ghsa.tasks.reap_stale_cve_push_tasks",
         "schedule": timedelta(minutes=10),
     },
 }

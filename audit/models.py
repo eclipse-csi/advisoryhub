@@ -77,6 +77,7 @@ class Action(models.TextChoices):
     GHSA_CVE_PUSH_REQUESTED = "ghsa.cve_push_requested"
     GHSA_CVE_PUSH_SUCCEEDED = "ghsa.cve_push_succeeded"
     GHSA_CVE_PUSH_FAILED = "ghsa.cve_push_failed"
+    GHSA_CVE_PUSH_REAPED = "ghsa.cve_push_reaped"
     GHSA_CVE_CONFLICT_DETECTED = "ghsa.cve_conflict_detected"
     GHSA_SYNC_RUN_STARTED = "ghsa.sync_run_started"
     GHSA_SYNC_RUN_FINISHED = "ghsa.sync_run_finished"

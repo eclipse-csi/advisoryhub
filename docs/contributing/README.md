@@ -168,7 +168,10 @@ Everything under `docs/` is published as a **versioned** site at
 `latest` is the newest release, numbered versions are immutable per-release
 snapshots (deployed on every `vX.Y.Z` tag), and `dev` tracks `main`. The
 site is built with MkDocs + mkdocs-material and versioned with
-[mike](https://github.com/jimporter/mike) onto the `gh-pages` branch.
+[mike](https://github.com/jimporter/mike) onto the `gh-pages` branch — the
+branch is only the version-state store; the workflow deploys its content to
+Pages itself (source: GitHub Actions), so nothing goes live on a bare
+branch push.
 
 ```sh
 mise run docs-serve              # live preview at http://127.0.0.1:8001

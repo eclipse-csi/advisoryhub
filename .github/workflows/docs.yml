@@ -13,6 +13,11 @@ name: Docs
 #
 # Checkouts never persist credentials; mike commits locally and a dedicated
 # step pushes gh-pages with the job token (env indirection only).
+#
+# Pages source is "GitHub Actions" (self-enabled by configure-pages): the
+# gh-pages branch is only the version-state store mike appends to — nothing
+# goes live until THIS workflow uploads the branch content as a Pages
+# artifact and deploys it, so a stray push to gh-pages never publishes.
 
 on:
   push:
@@ -60,11 +65,16 @@ jobs:
       - run: mise run docs-build
 
   deploy:
-    name: Publish to gh-pages (mike)
+    name: Publish (mike + Pages deploy)
     if: github.event_name != 'pull_request' && (github.ref_type == 'tag' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: write # push the gh-pages branch
+      pages: write # configure-pages enablement + deploy-pages
+      id-token: write # deploy-pages OIDC deployment attestation
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     # Fixed group, no cancel: main-push and tag-push deploys serialize on the
     # shared gh-pages branch.
     concurrency:
@@ -117,7 +127,29 @@ jobs:
         if: github.ref_type == 'branch'
         run: mise run docs-deploy -- dev
 
-      - name: Push gh-pages
+      - name: Push gh-pages (version-state store)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+
+      # enablement: true creates/updates the Pages site with the workflow
+      # build type on first run — no manual Settings -> Pages step.
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: true
+
+      # What Pages serves is the full content of the gh-pages branch (every
+      # version + versions.json + the root redirect), freshly extracted from
+      # the local branch mike just committed to.
+      - name: Extract the site from gh-pages
+        run: |
+          mkdir -p /tmp/pages-site
+          git archive gh-pages | tar -x -C /tmp/pages-site
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: /tmp/pages-site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

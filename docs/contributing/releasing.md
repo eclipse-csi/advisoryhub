@@ -55,9 +55,10 @@ The tag triggers three release workflows in parallel:
    (polls ghcr.io up to ~20 min — a failed image build fails the release run,
    so a GitHub release never exists without its image), pushes + signs the
    chart, and creates the GitHub release.
-3. **Docs** gates the versions, builds the site strictly, and mike-deploys
-   `X.Y.Z` + the `latest` alias to the `gh-pages` branch — each release's
-   docs live in their own directory, so earlier versions are never touched.
+3. **Docs** gates the versions, builds the site strictly, mike-deploys
+   `X.Y.Z` + the `latest` alias to the `gh-pages` branch (each release's
+   docs live in their own directory, so earlier versions are never
+   touched), and deploys the branch content to GitHub Pages.
 
 ## Verifying a release
 

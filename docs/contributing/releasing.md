@@ -1,7 +1,7 @@
 # Releasing AdvisoryHub
 
 This is the **maintainer** runbook for cutting a release. (Deploying a released
-version is covered by the [operations manual](./operations/README.md).)
+version is covered by the [operations manual](../operations/README.md).)
 
 A release is one signed git tag `vX.Y.Z` that produces, automatically:
 

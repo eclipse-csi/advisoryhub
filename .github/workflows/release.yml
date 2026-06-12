@@ -1,6 +1,6 @@
 name: Release
 
-# Tag-driven release (runbook: docs/releasing.md). On a vX.Y.Z tag push —
+# Tag-driven release (runbook: docs/contributing/releasing.md). On a vX.Y.Z tag push —
 # created by `mise run release -- X.Y.Z` — this workflow:
 #
 #   1. gates: the tag must match every recorded version (pyproject, uv.lock,

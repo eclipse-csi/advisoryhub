@@ -22,7 +22,7 @@ prek = "latest"   # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wire
 # not Python tools, so they belong here rather than in uv.lock.
 helm        = "latest"   # aqua:helm/helm
 kubeconform = "latest"   # aqua:yannh/kubeconform
-# Release toolchain (docs/releasing.md) — bootstrap binaries, same rationale.
+# Release toolchain (docs/contributing/releasing.md) — bootstrap binaries, same rationale.
 git-cliff   = "latest"   # aqua:orhun/git-cliff — release notes from conventional commits
 trivy       = "latest"   # aqua:aquasecurity/trivy — dependency SBOM (CycloneDX) for releases
 # NO python here  -> .python-version + uv own the interpreter.
@@ -122,7 +122,7 @@ run = "bash dev/validate_chart.sh"
 description = "Chart copies of the observability assets match their dev/observability/ sources"
 run = "bash dev/check_chart_assets.sh"
 
-# ---- Release (tag-driven; see docs/releasing.md) ---------------------------
+# ---- Release (tag-driven; see docs/contributing/releasing.md) --------------
 [tasks.changelog]
 description = "Render release notes for the latest tag. Args pass through: `mise run changelog -- --unreleased --tag v0.2.0`"
 run = "git-cliff --latest --strip header"

@@ -44,14 +44,10 @@ Task-oriented guides for the people who use and run AdvisoryHub:
 - [`docs/operations/`](docs/operations/) — **operator** manual for installing,
   configuring, running, and maintaining the service.
 
-## Running locally
+## Quick start
 
 `docker-compose.yml` is **dev-only** — every value it sets is a fixture,
-no real secrets, and no `.env` file is required. The one variable that's
-genuinely random (the OIDC client secret) is minted by the kanidm
-bootstrap script and written to a file compose loads automatically.
-
-First-run flow:
+no real secrets, and no `.env` file is required. First-run flow:
 
 ```sh
 docker login dhi.io                        # one-time: app images base on DHI (free Docker account)
@@ -59,8 +55,6 @@ docker compose up -d kanidm                # start the dev OIDC provider
 bash dev/kanidm/setup.sh                   # one-time: cert, users, OAuth2 client
 docker compose up                          # web + worker pick up the secret
 ```
-
-After that, plain `docker compose up` is enough.
 
 Then in another terminal:
 
@@ -71,97 +65,14 @@ docker compose exec web python manage.py seed_demo \
 ```
 
 The app is served at <http://localhost:8000>. Sign in with
-`alice@example.org` / `correcthorsebatterystaple` (the demo users seeded
-by `dev/kanidm/setup.sh` align 1:1 with what `seed_demo` creates Django-side)
-and walk a draft → review → publish flow end-to-end.
+`alice@example.org` / `correcthorsebatterystaple` and walk a
+draft → review → publish flow end-to-end.
 
-To **reset** the dev environment:
-
-```sh
-docker compose down -v                     # wipes Postgres + kanidm volumes
-docker compose build                       # down -v keeps cached images; rebuild after a Dockerfile/uv.lock change
-docker compose up -d kanidm
-bash dev/kanidm/setup.sh
-docker compose up
-```
-
-## With mise (optional)
-
-If you use [mise](https://mise.jdx.dev), it wraps the flows above so you don't
-have to remember the individual commands:
-
-```sh
-mise trust && mise run setup     # install uv + prek, sync the locked .venv, wire git hooks
-mise run kanidm-up               # start the dev OIDC provider
-mise run kanidm-setup            # one-time: cert, users, OAuth2 client
-mise run up                      # web + worker (full stack)
-mise run migrate && mise run seed
-```
-
-`mise tasks` lists them all (`test`, `lint`, `fix`, `typecheck`, `ty`,
-`check`, `build`, `reset`, …). mise is a convenience wrapper only: tool versions live in
-`uv.lock`, the Python version in `.python-version`, and CI runs these same tasks —
-the raw `uv` / `docker compose` commands above stay canonical.
-
-## Configuration
-
-`docker-compose.yml`'s `x-django-env` anchor is the canonical dev
-configuration (reused by `web` and `worker`); **don't edit env files for
-dev**. For **production**, `.env.example` documents every knob with
-secret-vs-config markers — it is a reference for whatever secret manager
-or platform manifest your deploy uses (Kubernetes Secrets, Docker Swarm
-secrets, AWS SSM, …) and is *not* loaded by docker-compose. The full
-env-var inventory with groups, defaults, and descriptions is in
-[`architecture.md §7`](docs/specification/architecture.md), and the step-by-step
-operator guide (install, run, integrate, operate) is in
-[`docs/operations/`](docs/operations/).
-
-## Running tests
-
-Tests run against PostgreSQL (the same engine as prod), so start it first:
-
-```sh
-docker compose up -d postgres    # or `mise run up` for the full dev stack
-DJANGO_SETTINGS_MODULE=config.settings.test pytest
-```
-
-`config.settings.test` defaults to the local compose Postgres; set
-`TEST_DATABASE_URL` to target a different host/port. `--reuse-db` (in
-`addopts`) keeps the test database between runs — pass `--create-db` after a
-migration change. Testing strategy and conventions are documented in
-[`architecture.md §9`](docs/specification/architecture.md).
-
-## Code quality
-
-Lint, format, type, and Django checks run locally through
-[prek](https://github.com/j178/prek) — the fast Rust reimplementation of
-pre-commit — from [`.pre-commit-config.yaml`](.pre-commit-config.yaml). The
-hooks invoke the Python tools out of the project venv, so they run the exact
-versions pinned in `uv.lock`: what passes locally is what CI runs.
-
-```sh
-mise run setup             # one-shot: installs uv+prek, syncs .venv, wires hooks
-# …or by hand:
-uv sync --extra dev        # install the pinned ruff / mypy the hooks call
-uv tool install prek       # or: pipx install prek / cargo install prek / mise install
-prek install               # wire up the pre-commit AND pre-push git hooks
-```
-
-Once installed the hooks fire automatically:
-
-- **on commit** — file hygiene (trailing whitespace, end-of-file, merge
-  markers, private-key detection, …) plus `ruff check --fix` and `ruff format`.
-- **on push** — additionally `mypy` (+ django-stubs), `manage.py
-  makemigrations --check`, `manage.py check`, and a `pip-audit`
-  dependency audit (mirrors CI's security job; needs network).
-
-Run them on demand any time:
-
-```sh
-prek run --all-files                          # commit-stage checks
-prek run --all-files --hook-stage pre-push    #   + type, Django & dependency-audit checks
-prek run --all-files --hook-stage manual      # advisory `ty` type-check
-```
+Everything else a developer needs — the reset flow, the optional
+[mise](https://mise.jdx.dev) task runner, dev vs prod configuration,
+running the tests, the code-quality hooks, commit conventions, and the
+release runbook — is in the
+[contributor guide](docs/contributing/README.md).
 
 ## Out of scope
 

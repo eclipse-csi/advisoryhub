@@ -57,7 +57,7 @@ CI additionally runs the test suite against PostgreSQL, `ruff`, `mypy`, an advis
 
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
-[`docs/releasing.md`](../releasing.md).
+[`docs/contributing/releasing.md`](../contributing/releasing.md).
 
 ---
 

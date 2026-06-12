@@ -75,6 +75,18 @@ env = environ.Env(
     # loudly while it is empty (see publication.cve.CveAssignerNotConfigured).
     PUB_CVE_ASSIGNER_ORG_ID=(str, ""),
     PUB_CVE_ASSIGNER_SHORT_NAME=(str, "eclipse"),
+    # Stale-publication-task reaper thresholds (INV-PUB-7). A worker lost
+    # AFTER run_publication started (hard time_limit SIGKILL, OOM kill, pod
+    # eviction) leaves the row 'running'; a broker outage swallowed by
+    # safe_enqueue leaves it 'queued' with no message. The beat-scheduled
+    # reaper flips such rows to 'failed' so the in-flight guard
+    # (INV-CONCURRENCY-1) cannot block publish() forever. RUNNING is
+    # measured from started_at and must comfortably exceed the task's hard
+    # time_limit (660s); QUEUED is measured from created_at and must exceed
+    # the broker visibility_timeout (3600s) so a delayed redelivery always
+    # wins before the reaper does.
+    PUB_TASK_STALE_RUNNING_AFTER_SECONDS=(int, 1800),
+    PUB_TASK_STALE_QUEUED_AFTER_SECONDS=(int, 7200),
     # GitHub App (GHSA integration). Installations are stored in the
     # ``ghsa_githubappinstallation`` table — there is no env-var
     # short-circuit. Run ``manage.py discover_github_installations`` (or
@@ -413,6 +425,8 @@ PUB_CSAF_PATH_TEMPLATE = env("PUB_CSAF_PATH_TEMPLATE")
 PUB_CVE_PATH_TEMPLATE = env("PUB_CVE_PATH_TEMPLATE")
 PUB_CVE_ASSIGNER_ORG_ID = env("PUB_CVE_ASSIGNER_ORG_ID")
 PUB_CVE_ASSIGNER_SHORT_NAME = env("PUB_CVE_ASSIGNER_SHORT_NAME")
+PUB_TASK_STALE_RUNNING_AFTER_SECONDS = env("PUB_TASK_STALE_RUNNING_AFTER_SECONDS")
+PUB_TASK_STALE_QUEUED_AFTER_SECONDS = env("PUB_TASK_STALE_QUEUED_AFTER_SECONDS")
 
 # ---------------------------------------------------------------------------
 # GHSA integration (GitHub App + Eclipse PMI)
@@ -501,6 +515,15 @@ CELERY_BEAT_SCHEDULE = {
     "security-roster-sync": {
         "task": "projects.tasks.run_roster_sync",
         "schedule": timedelta(hours=PMI_ROSTER_SYNC_INTERVAL_HOURS),
+    },
+    # Fail PublicationTask rows orphaned in queued/running (worker hard-killed
+    # mid-run, or an enqueue swallowed during a broker outage) so the in-flight
+    # guard (INV-CONCURRENCY-1) can never block publish() forever. Never
+    # touches Advisory.state (INV-LIFECYCLE-3). See INV-PUB-7 and the
+    # PUB_TASK_STALE_* thresholds above.
+    "publication-task-reaper": {
+        "task": "publication.reap_stale_publication_tasks",
+        "schedule": timedelta(minutes=10),
     },
 }
 

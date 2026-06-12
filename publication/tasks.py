@@ -40,6 +40,9 @@ log = logging.getLogger(__name__)
 # SoftTimeLimitExceeded (handled by the broad `except` → marked FAILED, operator-retryable)
 # so a hung git clone/push doesn't run until the broker's visibility_timeout (3600s) and
 # get double-delivered; the hard time_limit is a backstop. Tune the limits to the repo size.
+# A worker lost AFTER the task starts (hard time_limit SIGKILL, OOM kill, pod eviction)
+# leaves the row 'running' — the redelivered message no-ops against the guard — and is
+# recovered by the beat-scheduled reaper (reap_stale_publication_tasks, INV-PUB-7).
 @shared_task(
     name="publication.run_publication",
     bind=True,
@@ -234,3 +237,17 @@ def _fail(task: PublicationTask, *, error: str, action: str) -> str:
     except Exception:  # pragma: no cover
         pass
     return PublicationTaskStatus.FAILED
+
+
+# No acks_late / time limits: the reaper is idempotent and fast (one indexed
+# SELECT, normally zero rows) and beat re-fires it every 10 minutes anyway.
+@shared_task(name="publication.reap_stale_publication_tasks")
+def reap_stale_publication_tasks() -> dict:
+    """Beat (every 10 min): fail PublicationTask rows orphaned in queued/running.
+
+    Covers the two holes acks_late/soft_time_limit cannot: a worker
+    hard-killed mid-run that never reaches mark_failed, and an enqueue
+    swallowed by safe_enqueue during a broker outage. See INV-PUB-7 and
+    services.reap_stale_tasks for the threshold rationale.
+    """
+    return services.reap_stale_tasks()

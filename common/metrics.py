@@ -26,7 +26,10 @@ from prometheus_client import Counter, Gauge, Histogram
 publication_total = Counter(
     "advisoryhub_publication_total",
     "Publication runs by lifecycle status.",
-    ["status"],  # started | succeeded | failed
+    # started | succeeded | failed. 'failed' includes rows flipped by the
+    # stale-task reaper (services.reap_stale_tasks, INV-PUB-7); a queued-reap
+    # increments 'failed' with no matching 'started' — deliberate skew.
+    ["status"],
 )
 
 publication_stage_total = Counter(

@@ -369,6 +369,8 @@ stateDiagram-v2
 
     running --> succeeded: clean push<br/>(OSV+CSAF built, validated,<br/>committed, pushed)
     running --> failed   : any error<br/>(validation, clone, write,<br/>commit, push)
+    running --> failed   : reaper (stale —<br/>worker hard-killed)
+    queued --> failed    : reaper (stale —<br/>enqueue never reached broker)
 
     failed --> queued   : retry()
     succeeded --> [*]
@@ -376,6 +378,11 @@ stateDiagram-v2
     note right of succeeded : Inside the same atomic block,\nAdvisory.state flips to published\n(see §3, row 7) — INV-PUB-4
     note right of failed    : Advisory.state is NOT changed.\nlast_error is redacted\n(INV-SECRET-1)
 ```
+
+The two `reaper` edges are the beat-scheduled stale-task reaper
+(`publication.reap_stale_publication_tasks`, every 10 minutes), which
+force-fails rows orphaned in `queued`/`running` so the in-flight guard can
+never block publishing forever ([INV-PUB-7]).
 
 ### 7.1 Publication-task transitions
 
@@ -385,6 +392,8 @@ stateDiagram-v2
 | `queued` | `running` | `publication.services.mark_running` (called from `run_publication`) | Celery worker | Task picked up | — | `attempts` incremented |
 | `running` | `succeeded` | `publication.tasks.run_publication` (happy path) | Celery worker | OSV+CSAF built from `task.version.payload` ([INV-VERSION-3]), validated against vendored schemas ([INV-PUB-6]), committed to a fresh `TemporaryDirectory` clone ([INV-PUB-1], [INV-PUB-3]), and pushed ([INV-LIFECYCLE-3]) | `PUBLICATION_OSV_GENERATED`, `PUBLICATION_CSAF_GENERATED`, `PUBLICATION_GIT_COMMIT`, `PUBLICATION_GIT_PUSH`, `PUBLICATION_EXPORT_COMPLETED`, `ADVISORY_PUBLISHED` | Inside the same `transaction.atomic` ([INV-PUB-4]): `Advisory.state=published`, `published_at` stamped (if null), `republish_required=False`, `commit_sha` recorded on the task |
 | `running` | `failed` | `publication.tasks.run_publication` (exception branch) | Celery worker | Any of the steps above raised | `PUBLICATION_EXPORT_FAILED` (validation / unexpected) or `PUBLICATION_GIT_PUSH_FAILED` (any git-layer failure: clone, write, commit, or push) | `task.last_error` set to the redacted error string ([INV-SECRET-1]); `Advisory.state` unchanged; surface appears in the Admin Console's Publication page; the failure e-mail announces the event only and embeds no error text ([INV-SECRET-3]) — the redacted `last_error` is visible in the Admin Console |
+| `running` | `failed` | Beat reaper `publication.tasks.reap_stale_publication_tasks` (every 10 min) → `publication.services.reap_stale_tasks` | System (Celery beat) | `started_at` older than `PUB_TASK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s — comfortably beyond the 660 s hard `time_limit`, so the row can only belong to a worker hard-killed mid-run: SIGKILL at the time limit, OOM kill, pod eviction); status re-checked per row under `select_for_update(skip_locked=True)` ([INV-PUB-7]) | `PUBLICATION_TASK_REAPED` (metadata: `previous_status`, `age_seconds`, `stale_after_seconds`) | Same failure machinery as the row above: synthetic redacted `last_error` explains the reap ([INV-SECRET-1]); `Advisory.state` unchanged ([INV-LIFECYCLE-3]); the in-flight guard releases ([INV-CONCURRENCY-1]) so Retry applies; best-effort `publication_export_status` e-mail ([INV-SECRET-3]) |
+| `queued` | `failed` | Beat reaper (same task) | System (Celery beat) | `created_at` older than `PUB_TASK_STALE_QUEUED_AFTER_SECONDS` (default 7200 s — beyond the broker's 3600 s `visibility_timeout`, so a delayed redelivery always wins first); covers the broker-outage case where `common.enqueue.safe_enqueue` swallowed the enqueue and no Celery message exists | `PUBLICATION_TASK_REAPED` | As above |
 | `failed` | `queued` | `publication.services.retry` | Owner (publish-eligible) | `task.status=failed`; `can_publish(by)` true now | `PUBLICATION_EXPORT_STARTED` (on the new task row) | Re-pins the **current** latest `AdvisoryVersion` — so a retry after additional edits picks up the new content |
 
 The `succeeded` and `failed` states are terminal for the individual task
@@ -393,7 +402,13 @@ deliberate exception at the worker boundary: `run_publication` re-runs a
 row it finds in `failed` — with `acks_late`, a broker redelivery that
 arrives after a failure re-attempts in place, incrementing `attempts`;
 every *user-facing* retry still goes through `publication.services.retry`,
-which creates a new row.) Because
+which creates a new row.) The reaper is a second system-side exception in
+the other direction: it moves stuck non-terminal rows *into* `failed`, so
+no row can wedge the in-flight guard forever ([INV-PUB-7]). A reaped row
+then behaves like any failed row — including the worker-boundary exception
+above: a very late redelivery that finds a queued-reaped row in `failed`
+may still re-run it in place, which the 2× visibility-timeout threshold
+makes effectively impossible. Because
 each successful publish writes the same deterministic file paths
 (`PUB_OSV_PATH_TEMPLATE` / `PUB_CSAF_PATH_TEMPLATE`), a re-publish appears
 in the publication repo as a new commit on those same paths — earlier
@@ -542,7 +557,7 @@ CVE, and publication tables are cited by their section.
 | §3.1 #8 (re-publish) | Same as #7 | [INV-REVIEW-4], [INV-VERSION-1], [INV-IMPL-5] |
 | §5 review transitions | [INV-REVIEW-1], [INV-REVIEW-2] | [INV-REVIEW-3], [INV-REVIEW-4], [INV-PERM-3], [INV-VERSION-2] |
 | §6 CVE transitions | [INV-CVE-1], [INV-CVE-2] | [INV-CVE-3], [INV-ID-3] |
-| §7 publication-task transitions | [INV-PUB-4], [INV-LIFECYCLE-3] | [INV-PUB-1], [INV-PUB-3], [INV-PUB-5], [INV-PUB-6], [INV-CONCURRENCY-1], [INV-SECRET-1], [INV-SECRET-3] |
+| §7 publication-task transitions | [INV-PUB-4], [INV-LIFECYCLE-3] | [INV-PUB-1], [INV-PUB-3], [INV-PUB-5], [INV-PUB-6], [INV-PUB-7], [INV-CONCURRENCY-1], [INV-SECRET-1], [INV-SECRET-3] |
 | §9 edit side-effects | [INV-VERSION-1], [INV-IMPL-5] | [INV-REVIEW-4], [INV-VERSION-2] |
 | §10 triage sub-transitions | [INV-AUTH-5], [INV-AUTH-6] | [INV-INTAKE-4], [INV-PROJECT-2] |
 
@@ -577,6 +592,7 @@ CVE, and publication tables are cited by their section.
 [INV-PUB-4]: ./invariant.md#inv-pub-4
 [INV-PUB-5]: ./invariant.md#inv-pub-5
 [INV-PUB-6]: ./invariant.md#inv-pub-6
+[INV-PUB-7]: ./invariant.md#inv-pub-7
 [INV-PERM-1]: ./invariant.md#inv-perm-1
 [INV-PERM-2]: ./invariant.md#inv-perm-2
 [INV-PERM-3]: ./invariant.md#inv-perm-3

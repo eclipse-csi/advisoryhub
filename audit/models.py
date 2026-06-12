@@ -59,6 +59,7 @@ class Action(models.TextChoices):
     PUBLICATION_GIT_COMMIT = "publication.git_commit"
     PUBLICATION_GIT_PUSH = "publication.git_push"
     PUBLICATION_GIT_PUSH_FAILED = "publication.git_push_failed"
+    PUBLICATION_TASK_REAPED = "publication.task_reaped"
     # LLM-assisted duplicate detection (similarity app). Durable: low-volume
     # (a few rows per advisory creation) and security-relevant — they record
     # when advisory content was sent to the configured LLM provider.

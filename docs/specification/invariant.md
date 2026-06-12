@@ -89,6 +89,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PUB-4](#inv-pub-4) | The `state` flip and `PublicationTask` outcome share one transaction. | Publication | Critical |
 | [INV-PUB-5](#inv-pub-5) | The Celery task is enqueued via `transaction.on_commit`. | Publication | High |
 | [INV-PUB-6](#inv-pub-6) | OSV and CSAF documents are validated against vendored schemas before push. | Publication | High |
+| [INV-PUB-7](#inv-pub-7) | Stale queued/running publication tasks are reaped to `failed` without touching advisory state. | Publication | High |
 | [INV-PERM-1](#inv-perm-1) | Mature-publisher projects may publish without a top-level review. | Permissions | High |
 | [INV-PERM-2](#inv-perm-2) | Mature-publisher status lives on `Project`, not on a group or env var. | Permissions | High |
 | [INV-PERM-3](#inv-perm-3) | No one can publish while `review_status=submitted`. | Permissions | High |
@@ -202,7 +203,8 @@ button stops being idempotent because the prior commit may never have happened.
 
 **Tests.** `publication/tests/test_pipeline.py`, `publication/tests/test_git_service.py`.
 
-**Related.** [INV-PUB-4](#inv-pub-4), [INV-VERSION-3](#inv-version-3).
+**Related.** [INV-PUB-4](#inv-pub-4), [INV-VERSION-3](#inv-version-3),
+[INV-PUB-7](#inv-pub-7) (the stale-task reaper also never touches `state`).
 
 ---
 
@@ -1376,6 +1378,46 @@ crashes downstream pipelines and damages trust.
 
 ---
 
+<a id="inv-pub-7"></a>
+### INV-PUB-7 — Stale publication tasks are bounded   [High]
+
+**Statement.** A beat-scheduled reaper (`publication.reap_stale_publication_tasks`,
+every 10 minutes) flips `PublicationTask` rows stuck in `running` past
+`PUB_TASK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s, measured from
+`started_at`) or in `queued` past `PUB_TASK_STALE_QUEUED_AFTER_SECONDS`
+(default 7200 s, measured from `created_at`) to `failed`, never modifying
+`Advisory.state`. Each reap is a per-row compare-and-set under
+`select_for_update(skip_locked=True)`: a row finalised concurrently falls out
+of the status filter and is skipped, never clobbered.
+
+**Rationale.** A worker hard-killed mid-run (hard `time_limit` SIGKILL, OOM
+kill, pod eviction) leaves a row in `running` that the redelivered message
+no-ops against (the entry guard accepts only queued/failed); a broker outage
+swallowed by `safe_enqueue` leaves a `queued` row with no message at all.
+Either row makes the [INV-CONCURRENCY-1](#inv-concurrency-1) in-flight guard
+block `publish()` forever, and the admin Retry path accepts `failed` only —
+the advisory becomes permanently unpublishable. The thresholds sit above the
+physical constants they are anchored to (the 660 s hard `time_limit`; the
+3600 s broker `visibility_timeout`), so the reaper can never race a live
+execution or a pending redelivery.
+
+**Enforced in.**
+- `publication/services.py` — `reap_stale_tasks` / `_reap_one`.
+- `publication/tasks.py` — `reap_stale_publication_tasks`.
+- `config/settings/base.py` — `CELERY_BEAT_SCHEDULE["publication-task-reaper"]`,
+  `PUB_TASK_STALE_*` knobs.
+
+**Violation impact.** An advisory blocked from publishing indefinitely, with
+no recovery short of manual SQL.
+
+**Tests.** `publication/tests/test_reaper.py`.
+
+**Related.** [INV-CONCURRENCY-1](#inv-concurrency-1),
+[INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-PUB-4](#inv-pub-4),
+[INV-SECRET-1](#inv-secret-1).
+
+---
+
 ## 10. Permission resolution & publication eligibility
 
 <a id="inv-perm-1"></a>
@@ -1646,7 +1688,9 @@ would defeat the purpose.
 queued or running `PublicationTask` already exists for the advisory.
 
 **Rationale.** Serialises publication attempts so two pushes do not race for the
-same path in the publication repo.
+same path in the publication repo. The guard cannot deadlock an advisory
+permanently: stale queued/running rows are bounded by the reaper
+([INV-PUB-7](#inv-pub-7)).
 
 **Enforced in.**
 - `publication/services.py` — `publish`.
@@ -1655,7 +1699,8 @@ same path in the publication repo.
 
 **Tests.** `publication/tests/test_pipeline.py`.
 
-**Related.** [INV-PUB-1](#inv-pub-1), [INV-PUB-4](#inv-pub-4).
+**Related.** [INV-PUB-1](#inv-pub-1), [INV-PUB-4](#inv-pub-4),
+[INV-PUB-7](#inv-pub-7).
 
 ---
 

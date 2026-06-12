@@ -21,8 +21,13 @@ remote with an unpredictable ordering.
 
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta
+
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from advisories import permissions as perms
@@ -34,6 +39,8 @@ from common import metrics
 from common.enqueue import safe_enqueue
 
 from .models import PublicationTask, PublicationTaskStatus
+
+log = logging.getLogger(__name__)
 
 
 class PublicationInProgress(Exception):
@@ -118,8 +125,10 @@ def retry(failed_task: PublicationTask, *, by) -> PublicationTask:
 
 
 def _enqueue(task_pk: int) -> None:
-    # Broker offline: safe_enqueue leaves the task 'queued'; the dashboard
-    # surfaces it so an operator can re-trigger after fixing the broker.
+    # Broker offline: safe_enqueue leaves the task 'queued' with no Celery
+    # message behind it; the beat-scheduled reaper (reap_stale_tasks,
+    # INV-PUB-7) fails it after PUB_TASK_STALE_QUEUED_AFTER_SECONDS so the
+    # dashboard's normal Retry path applies.
     from .tasks import run_publication
 
     safe_enqueue(run_publication, task_pk)
@@ -165,3 +174,138 @@ def _observe_duration(task: PublicationTask) -> None:
         metrics.publication_duration_seconds.observe(
             (task.finished_at - task.started_at).total_seconds()
         )
+
+
+def reap_stale_tasks(*, now: datetime | None = None) -> dict:
+    """Fail ``PublicationTask`` rows orphaned in queued/running (INV-PUB-7).
+
+    Two loss modes leave a row that both the ``run_publication`` entry guard
+    and the :func:`publish` in-flight check treat as live forever:
+
+    * a worker lost AFTER the run started (hard ``time_limit`` SIGKILL, OOM
+      kill, pod eviction) — the row stays ``running`` and the redelivered
+      message no-ops against the QUEUED/FAILED entry guard;
+    * a broker outage at enqueue time — ``safe_enqueue`` swallowed the
+      error, so the row stays ``queued`` with no Celery message at all.
+
+    Either way :func:`publish` raises :class:`PublicationInProgress`
+    indefinitely (INV-CONCURRENCY-1). Reaping flips the row to ``failed``
+    through :func:`mark_failed` — never touching ``Advisory.state``
+    (INV-LIFECYCLE-3) — so the normal failed→retry path applies.
+
+    The thresholds, not the locks, are the real defense against reaping a
+    live run: a ``running`` row older than
+    ``PUB_TASK_STALE_RUNNING_AFTER_SECONDS`` (default 1800s, ~2.7× the 660s
+    hard ``time_limit``) cannot belong to a live execution, and a ``queued``
+    row older than ``PUB_TASK_STALE_QUEUED_AFTER_SECONDS`` (default 7200s,
+    2× the broker's 3600s ``visibility_timeout``) is past any legitimate
+    redelivery. The per-row compare-and-set in :func:`_reap_one` is
+    belt-and-braces on top.
+    """
+    now = now or timezone.now()
+    running_cutoff = now - timedelta(seconds=settings.PUB_TASK_STALE_RUNNING_AFTER_SECONDS)
+    queued_cutoff = now - timedelta(seconds=settings.PUB_TASK_STALE_QUEUED_AFTER_SECONDS)
+    # started_at is stamped by the same UPDATE that flips a row to running,
+    # so the isnull arm is belt-and-braces for rows written by older code.
+    candidates = list(
+        PublicationTask.objects.filter(
+            (
+                Q(status=PublicationTaskStatus.RUNNING)
+                & (
+                    Q(started_at__lt=running_cutoff)
+                    | Q(started_at__isnull=True, created_at__lt=running_cutoff)
+                )
+            )
+            | Q(status=PublicationTaskStatus.QUEUED, created_at__lt=queued_cutoff)
+        ).values_list("pk", "status")
+    )
+    reaped = {PublicationTaskStatus.RUNNING.value: 0, PublicationTaskStatus.QUEUED.value: 0}
+    for task_pk, status in candidates:
+        task = _reap_one(task_pk, expected_status=status, now=now)
+        if task is None:
+            continue
+        reaped[status] += 1
+        # Best-effort failure notification, outside the reap transaction —
+        # mirrors _fail in publication.tasks. The e-mail announces the event
+        # only and embeds no error text (INV-SECRET-3).
+        try:
+            from notifications.tasks import send_advisory_event_email
+
+            send_advisory_event_email.delay(task.advisory_id, "publication_export_status")
+        except Exception:  # pragma: no cover
+            pass
+    result = {
+        "reaped_running": reaped[PublicationTaskStatus.RUNNING.value],
+        "reaped_queued": reaped[PublicationTaskStatus.QUEUED.value],
+    }
+    if result["reaped_running"] or result["reaped_queued"]:
+        log.info(
+            "reap_stale_tasks: running=%s queued=%s",
+            result["reaped_running"],
+            result["reaped_queued"],
+        )
+    return result
+
+
+def _reap_one(task_pk: int, *, expected_status: str, now: datetime) -> PublicationTask | None:
+    """Compare-and-set one stale task to failed; ``None`` if it moved on.
+
+    The status filter under ``select_for_update`` means a row finalised
+    between the candidate query and this lock no longer matches and is never
+    clobbered; ``skip_locked`` turns a finalisation mid-commit (or an
+    overlapping reaper run) into a skip, not a wait.
+    """
+    with transaction.atomic():
+        task = (
+            PublicationTask.objects.select_for_update(skip_locked=True)
+            .select_related("advisory")
+            .filter(pk=task_pk, status=expected_status)
+            .first()
+        )
+        if task is None:
+            return None
+        age = _stale_age_seconds(task, now=now)
+        if age is None:
+            return None
+        stale_after = (
+            settings.PUB_TASK_STALE_RUNNING_AFTER_SECONDS
+            if expected_status == PublicationTaskStatus.RUNNING
+            else settings.PUB_TASK_STALE_QUEUED_AFTER_SECONDS
+        )
+        mark_failed(task, error=_reap_error(expected_status, age))
+        record(
+            action=Action.PUBLICATION_TASK_REAPED,
+            advisory=task.advisory,
+            new_value={"task_id": task.pk},
+            metadata={
+                "task_id": task.pk,
+                "previous_status": expected_status,
+                "age_seconds": age,
+                "stale_after_seconds": stale_after,
+                "error": task.last_error,
+            },
+        )
+        return task
+
+
+def _stale_age_seconds(task: PublicationTask, *, now: datetime) -> int | None:
+    """Seconds the row has been stuck, or ``None`` while it is still fresh."""
+    if task.status == PublicationTaskStatus.RUNNING:
+        anchor = task.started_at or task.created_at
+        threshold = settings.PUB_TASK_STALE_RUNNING_AFTER_SECONDS
+    elif task.status == PublicationTaskStatus.QUEUED:
+        anchor = task.created_at
+        threshold = settings.PUB_TASK_STALE_QUEUED_AFTER_SECONDS
+    else:
+        return None
+    age = int((now - anchor).total_seconds())
+    return age if age > threshold else None
+
+
+def _reap_error(previous_status: str, age_seconds: int) -> str:
+    cause = (
+        "worker likely lost mid-run"
+        if previous_status == PublicationTaskStatus.RUNNING
+        else "enqueue likely lost to a broker outage"
+    )
+    return f"reaped: task stuck in '{previous_status}' for {age_seconds}s ({cause}); safe to retry"

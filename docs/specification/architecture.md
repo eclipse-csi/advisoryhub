@@ -399,6 +399,27 @@ Any of {`OsvValidationError`, `CsafValidationError`,
 A retry is a brand-new `PublicationTask` pinned to the current
 latest version, not a re-run of the failed row.
 
+**Stale-task reaper.** The `_fail` path requires a live worker. Two loss
+modes never reach it: a worker hard-killed after the run started (hard
+`time_limit` SIGKILL, OOM kill, pod eviction) leaves the row `running` —
+the redelivered message no-ops against the QUEUED/FAILED entry guard —
+and a broker outage at enqueue time (`common.enqueue.safe_enqueue`
+swallows the error) leaves it `queued` with no Celery message at all.
+Either row wedges the in-flight guard
+([INV-CONCURRENCY-1](./invariant.md#inv-concurrency-1)) forever. The
+beat-scheduled reaper (`publication.reap_stale_publication_tasks`, §6.2)
+bounds both: it fails `running` rows older than
+`PUB_TASK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s, comfortably past
+the 660 s hard `time_limit`) and `queued` rows older than
+`PUB_TASK_STALE_QUEUED_AFTER_SECONDS` (default 7200 s, past the 3600 s
+broker `visibility_timeout` so a delayed redelivery always wins first).
+Each reap is a per-row compare-and-set under
+`select_for_update(skip_locked=True)` — a row finalised concurrently
+falls out of the filter and is never clobbered — and routes through the
+same `mark_failed` / audit (`PUBLICATION_TASK_REAPED`) / best-effort
+notification surface as `_fail`, never touching `Advisory.state`
+([INV-PUB-7](./invariant.md#inv-pub-7)).
+
 ---
 
 ## 5. GHSA integration
@@ -513,8 +534,8 @@ and `autodiscover_tasks()`. Settings:
 | `CELERY_TASK_EAGER_PROPAGATES` | True | Errors raised in tests, not swallowed. |
 | `CELERY_TASK_IGNORE_RESULT` | True | Results are never read (outcomes live on `PublicationTask`); keeps the result backend empty. |
 | `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP` | True | Pins the resilient behaviour across the Celery 6 default flip. |
-| `CELERY_BROKER_TRANSPORT_OPTIONS` | `{"visibility_timeout": 3600}` | Redelivery window for the Redis/Valkey transport; must exceed the longest task. |
-| `run_publication` task | `acks_late`, `reject_on_worker_lost`, `soft_time_limit=600`, `time_limit=660` | At-least-once for the durable publication task; a hung git push fails-and-is-retryable rather than running until the visibility window. |
+| `CELERY_BROKER_TRANSPORT_OPTIONS` | `{"visibility_timeout": 3600}` | Redelivery window for the Redis/Valkey transport; must exceed the longest task. `PUB_TASK_STALE_QUEUED_AFTER_SECONDS` must in turn exceed this window (§6.2). |
+| `run_publication` task | `acks_late`, `reject_on_worker_lost`, `soft_time_limit=600`, `time_limit=660` | At-least-once for the durable publication task; a hung git push fails-and-is-retryable rather than running until the visibility window. A worker lost *after* the run starts leaves the row `running`; the beat-scheduled reaper recovers it (§6.2, INV-PUB-7). |
 
 Run a worker with `celery -A config worker -l info`. Run beat with
 `celery -A config beat`.
@@ -527,7 +548,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-Four periodic jobs are registered in `config/settings/base.py`:
+Five periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -546,6 +567,10 @@ CELERY_BEAT_SCHEDULE = {
     "security-roster-sync": {
         "task": "projects.tasks.run_roster_sync",
         "schedule": timedelta(hours=PMI_ROSTER_SYNC_INTERVAL_HOURS),
+    },
+    "publication-task-reaper": {
+        "task": "publication.reap_stale_publication_tasks",
+        "schedule": timedelta(minutes=10),
     },
 }
 ```
@@ -568,6 +593,18 @@ emails the public PMI feed hides, and **no-ops unless `PMI_ROSTER_SYNC_ENABLED`
 is set** (default off). Shadow users hold no authorization (INV-OIDC-5); reach
 is notification-only (INV-ROSTER-1).
 
+`publication-task-reaper` fails `PublicationTask` rows orphaned in
+`running` (worker hard-killed mid-run: `time_limit` SIGKILL, OOM kill, pod
+eviction) or `queued` (enqueue swallowed by `safe_enqueue` during a broker
+outage), so the in-flight guard (INV-CONCURRENCY-1) can never block
+publishing forever. Thresholds: `running` after
+`PUB_TASK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s — past the 660 s
+hard `time_limit`, so the row cannot belong to a live execution) from
+`started_at`; `queued` after `PUB_TASK_STALE_QUEUED_AFTER_SECONDS`
+(default 7200 s — past the 3600 s broker `visibility_timeout`, so a
+delayed redelivery wins first) from `created_at`. It never touches
+`Advisory.state` (INV-LIFECYCLE-3); see §4.5 and INV-PUB-7.
+
 GHSA *discovery* is intentionally not on beat — it is
 user-triggered, scoped (project or all), and recorded as a
 `GhsaSyncRun`.
@@ -577,6 +614,7 @@ user-triggered, scoped (project or all), and recorded as a
 | App | Task | Purpose |
 |---|---|---|
 | `publication` | `run_publication` | Build → validate → push → flip state. |
+| `publication` | `reap_stale_publication_tasks` | Beat-scheduled janitor: fails `PublicationTask` rows orphaned in queued/running (INV-PUB-7). |
 | `similarity` | `run_similarity_check` | Prefilter → fingerprint → LLM judge → persist top-5 potential duplicates. `rate_limit="6/m"` absorbs GHSA bulk-sync bursts. |
 | `notifications` | `send_advisory_event_email` | Lifecycle events (created, submitted for review, published, publication export status). |
 | `notifications` | `send_comment_email` | Comment + mention notifications. |
@@ -599,6 +637,10 @@ Idempotency story:
 - `run_publication` is short-circuited when the task is no longer
   in a queueable state; success / failure is terminal per-row, and
   the file write is idempotent on content.
+- `reap_stale_publication_tasks` is idempotent by construction: the
+  candidate predicate is status+staleness, reaped rows leave the set,
+  and each reap is a per-row compare-and-set — overlapping runs
+  `skip_locked` each other rather than double-reaping.
 - `run_similarity_check` uses the same queued/failed-only guard, and
   the fingerprint cache is keyed on a content hash, so a re-delivered
   task never duplicates LLM spend for unchanged content.
@@ -755,6 +797,12 @@ cvelistV5 layout, `{year}`/`{bucket}` derived from the CVE id, e.g.
 `CVE-2026-12345` → `2026/12xxx`), `PUB_CVE_ASSIGNER_ORG_ID` and
 `PUB_CVE_ASSIGNER_SHORT_NAME` (default `eclipse`) — the CNA identity
 stamped into generated CVE Records.
+
+**Publication task reaper.** `PUB_TASK_STALE_RUNNING_AFTER_SECONDS`
+(default 1800 — must comfortably exceed `run_publication`'s 660 s hard
+`time_limit`) and `PUB_TASK_STALE_QUEUED_AFTER_SECONDS` (default 7200 —
+must exceed the broker's 3600 s `visibility_timeout`): staleness
+thresholds for the beat-scheduled reaper (§6.2, INV-PUB-7).
 
 **GHSA / GitHub App / PMI.** `GHSA_FEATURE_ENABLED` (default False),
 `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH` (preferred in prod),

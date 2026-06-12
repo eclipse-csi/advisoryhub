@@ -359,21 +359,30 @@ their own work and immediately approving it.
 <a id="inv-review-4"></a>
 ### INV-REVIEW-4 — Editing a draft invalidates approval   [High]
 
-**Statement.** Editing a draft advisory that holds `review_status=approved` resets
-`review_status` and sets `republish_required=True` (when also published).
+**Statement.** A non-admin edit to an advisory that holds `review_status=approved`
+resets `review_status` to `none`; an admin's own edit leaves the approval standing
+(admins retract explicitly via `can_revoke_approval`). A GHSA sync that returns
+changed content resets unconditionally — the content author is upstream GHSA, not
+the user who pressed Sync. Either path also sets `republish_required=True` when the
+advisory is published.
 
 **Rationale.** An approved review covers a specific content version; substantive
 edits invalidate that approval and must be re-reviewed or, for mature publishers,
 deliberately re-published.
 
 **Enforced in.**
-- `advisories/services.py` — the edit path resets `review_status`.
-- `advisories/models.py` — `republish_required` is set when editing a published advisory.
+- `advisories/views.py` — `advisory_edit` resets `review_status` for non-admin
+  editors and sets `republish_required` on published rows.
+- `ghsa/services.py` — the sync path resets `review_status` and sets
+  `republish_required` unconditionally when content changed.
 
 **Violation impact.** Publication of an unreviewed change; CSAF/OSV diverging from
 what was approved.
 
-**Tests.** `advisories/tests/test_views.py`, `workflows/tests.py`.
+**Tests.** `advisories/tests/test_views.py`
+(`test_edit_by_owner_invalidates_approval`, `test_edit_by_admin_preserves_approval`,
+`test_published_edit_by_owner_invalidates_and_flags_republish`),
+`workflows/tests.py`.
 
 **Related.** [INV-REVIEW-2](#inv-review-2), [INV-PERM-1](#inv-perm-1).
 

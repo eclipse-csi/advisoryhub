@@ -8,9 +8,13 @@ where a rule has a stable invariant ID, this document references it by ID
 appears in exactly one place — the capability matrix or the state-conditioned
 overrides, never both.
 
-The single source of truth for the executable predicates is
-`advisories/permissions.py`. This document tracks that file's intent; if the
-two ever disagree, the code wins and this document is wrong.
+This document is the single source of truth for the authorization model:
+the executable predicates in `advisories/permissions.py` and the
+enforcement surfaces in §9 must conform to it. If this document and the
+code disagree, that is a defect — either the code drifted (fix the code)
+or the behavior changed deliberately without a spec update (fix this
+document in the same change). Deviating from this document requires
+explicit maintainer confirmation *before* implementation.
 
 ---
 
@@ -278,8 +282,11 @@ the matrix:
   published; corrections go through Edit + Re-publish). Edits append a
   new `AdvisoryVersion` and set `republish_required=True`, which makes
   the existing matrix-allowed `Publish` action surface a re-publish
-  button ([INV-VERSION-1], [INV-REVIEW-4]). Edits that would otherwise
-  invalidate an `approved` review reset `review_status` automatically.
+  button ([INV-VERSION-1], [INV-REVIEW-4]). Non-admin edits that would
+  otherwise invalidate an `approved` review reset `review_status`
+  automatically; an admin's edit leaves the approval standing (the admin
+  *is* the reviewer — explicit retraction goes through `Revoke an
+  existing approval`).
 
 - **`dismissed`.** While dismissed, `Publish`, `Submit advisory for
   review`, `Request a CVE`, and `Edit advisory content` are blocked for

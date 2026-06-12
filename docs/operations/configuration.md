@@ -78,8 +78,8 @@ end-to-end setup. All endpoints come from your provider's discovery document.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `STEP_UP_REQUIRED` † | `True` | Force a fresh re-login before publishing / GitHub-App changes. Keep `True` in prod. |
-| `STEP_UP_MAX_AGE_SECONDS` † | `300` | How recent that re-auth must be. |
+| `STEP_UP_REQUIRED` | `True` | Force a fresh re-login before publishing / GitHub-App changes. Keep `True` in prod. |
+| `STEP_UP_MAX_AGE_SECONDS` | `300` | How recent that re-auth must be. |
 
 ## 6. Celery & broker
 
@@ -152,7 +152,24 @@ Off by default. See [integrations.md §4](./integrations.md#4-security-team-rost
 | `ECLIPSE_API_CLIENT_SECRET` | *(empty)* | **Secret. Required if enabled.** |
 | `ECLIPSE_API_SCOPE` | *(empty)* | Optional space-separated scope(s). |
 
-## 11. Public report intake
+## 11. LLM duplicate detection (similarity)
+
+Off by default. See [integrations.md §5](./integrations.md#5-similarity-llm-provider-optional).
+Enabling the switch **is the consent** for advisory content (potentially embargoed)
+to reach the configured LLM provider ([INV-SIM-2]).
+
+| Variable | Default | Notes |
+|---|---|---|
+| `SIMILARITY_CHECK_ENABLED` | `False` | Master switch for LLM-assisted duplicate detection. |
+| `SIMILARITY_LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` (incl. OpenAI-compatible servers). |
+| `SIMILARITY_LLM_MODEL` | `claude-opus-4-8` | Model identifier for the selected provider. |
+| `SIMILARITY_LLM_API_KEY` | *(empty)* | **Secret. Required if enabled** — blank only for keyless local servers. |
+| `SIMILARITY_LLM_BASE_URL` | *(empty)* | Empty = provider default; point at a local OpenAI-compatible server (e.g. `http://ollama:11434`) for on-prem inference. |
+| `SIMILARITY_LLM_TIMEOUT` | `120` | Per-request read timeout in seconds (connect timeout is fixed at 10). |
+| `SIMILARITY_CANDIDATE_LIMIT` | `60` | Max prefiltered candidates sent to the LLM judge call. |
+| `SIMILARITY_MIN_CONFIDENCE` | `20` | Store matches at/above this confidence (0–100). |
+
+## 12. Public report intake
 
 | Variable | Default | Notes |
 |---|---|---|
@@ -163,12 +180,12 @@ Off by default. See [integrations.md §4](./integrations.md#4-security-team-rost
 | `INTAKE_REPORT_RETENTION_DAYS` † | `365` | Horizon after which intake PII is scrubbed (see `prune_reports`). |
 | `INTAKE_DISABLED` † | `False` | Kill switch for the public `/report/` form. |
 
-## 12. Logging & reverse proxy
+## 13. Logging & reverse proxy
 
 | Variable | Default | Notes |
 |---|---|---|
-| `LOG_FORMAT` † | `json` | `json` (prod) or `plain` (dev). |
-| `LOG_LEVEL` † | `INFO` | Root log level. |
+| `LOG_FORMAT` | `json` | `json` (prod) or `plain` (dev). |
+| `LOG_LEVEL` | `INFO` | Root log level. |
 | `TRUSTED_PROXY_COUNT` | `0` | Number of trusted proxies appending to `X-Forwarded-For`. Set to your real proxy depth (e.g. `1`) so per-IP rate limits and audit IPs reflect the true client and can't be spoofed. `0` ignores the header. |
 | `USE_X_FORWARDED_PROTO` | `False` | Trust the proxy's `X-Forwarded-Proto` (sets `SECURE_PROXY_SSL_HEADER`). **Required when TLS terminates at the proxy** — without it `SECURE_SSL_REDIRECT` loops and secure cookies/CSRF never engage. Only enable when *all* traffic passes a proxy that sets (never forwards) the header. |
 | `CSRF_TRUSTED_ORIGINS` | *(empty)* | Comma-separated origins for CSRF origin checking behind a proxy, e.g. `https://advisoryhub.example.org`. Pair with `USE_X_FORWARDED_PROTO`. |
@@ -177,7 +194,7 @@ Off by default. See [integrations.md §4](./integrations.md#4-security-team-rost
 > (`SECURE_REDIRECT_EXEMPT` in `base.py`) so plain-HTTP kubelet probes and
 > Prometheus scrapes see real status codes instead of 301s.
 
-## 13. Observability
+## 14. Observability
 
 See [observability.md](./observability.md).
 
@@ -186,16 +203,17 @@ See [observability.md](./observability.md).
 | `SENTRY_DSN` | *(empty)* | **Secret.** Empty disables Sentry. |
 | `SENTRY_ENVIRONMENT` | *(unset)* | Environment tag, e.g. `production`. |
 | `SENTRY_TRACES_SAMPLE_RATE` | `0` | Tracing sample rate (0.0–1.0). |
+| `SENTRY_RELEASE` † | *(unset)* | Optional release tag on Sentry events. Read straight from the OS env (`common/sentry.py`). |
 | `PROMETHEUS_WORKER_METRICS_PORT` | `0` | Set **on the worker only** (compose uses `9808`); `0` disables its exporter. |
 | `PROMETHEUS_MULTIPROC_DIR` | *(unset)* | **Required for multi-worker gunicorn.** A writable, empty-at-boot tmpfs so the custom `advisoryhub_*` counters aggregate across workers. Read straight from the OS env. |
 
-## 14. CSP, rate-limiting, health, audit retention
+## 15. CSP, rate-limiting, health, audit retention
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CSP_REPORT_ONLY` † | `False` | CSP is **enforced** by default; set `True` for Report-Only while diagnosing a new violation. |
-| `CSP_REPORT_URI` † | *(empty)* | Optional collector URL for the `report-uri` directive. |
-| `RATELIMIT_ENABLE` † | `True` | Master rate-limit switch (dev/test set `False`). |
+| `CSP_REPORT_ONLY` | `False` | CSP is **enforced** by default; set `True` for Report-Only while diagnosing a new violation. |
+| `CSP_REPORT_URI` | *(empty)* | Optional collector URL for the `report-uri` directive. |
+| `RATELIMIT_ENABLE` | `True` | Master rate-limit switch (dev/test set `False`). |
 | `READYZ_INCLUDE_BROKER` | `False` | Add a Celery-broker probe to `/readyz`. |
 | `READYZ_INCLUDE_PUB_REPO` | `False` | Add a `git ls-remote` of the publication repo to `/readyz`. |
 | `AUDIT_ACCESS_LOG_RETENTION_DAYS` | `90` | Drop access-log monthly partitions older than this. |

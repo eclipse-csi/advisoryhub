@@ -48,6 +48,7 @@ flowchart LR
     BEAT --> VK
     WK --> PUB[(Publication Git repo)]
     WK --> GHAPI[GitHub API]
+    WK -->|optional| LLM[LLM provider]
     WEB -->|/metrics| PROM[Prometheus]
     WK -->|exporter| PROM
 ```
@@ -71,8 +72,10 @@ The full architecture, pipelines, and rationale are in
   deploy key or token that can push.
 - **An SMTP relay** for notification email (dev uses the console backend).
 - A **TLS-terminating reverse proxy / load balancer** in front of `web`.
-- *Optional:* a **GitHub App** (for the GHSA integration) and **Eclipse API
-  client credentials** (for security-team roster sync) — both off by default.
+- *Optional:* a **GitHub App** (for the GHSA integration), **Eclipse API
+  client credentials** (for security-team roster sync), and an **LLM provider**
+  (Anthropic API key, or any OpenAI-compatible endpoint, for duplicate
+  detection) — all off by default.
 
 ---
 

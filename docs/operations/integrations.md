@@ -1,7 +1,7 @@
 # Integrations
 
-AdvisoryHub talks to four external systems. The first two are required; the last
-two are optional and off by default. Variable defaults are in
+AdvisoryHub talks to five external systems. The first two are required; the last
+three are optional and off by default. Variable defaults are in
 [configuration.md](./configuration.md).
 
 ---
@@ -138,6 +138,36 @@ mentions and team notifications reach members who have **never logged in**.
   nothing. On first OIDC login it is linked by email, the provisioned flag clears,
   and access then comes entirely from the OIDC group claim; the roster never grants
   access ([INV-OIDC-5], [INV-ROSTER-1]).
+
+---
+
+## 5. Similarity LLM provider (optional)
+
+Off unless `SIMILARITY_CHECK_ENABLED=True`. LLM-assisted duplicate detection
+compares new reports against the project's existing advisories and surfaces
+candidate duplicates (owner-only, on the advisory page).
+
+> **Enabling the switch is the consent** for advisory content — including
+> potentially embargoed drafts — to be sent to the configured LLM provider on
+> every check ([INV-SIM-2]). Leave it off if that egress is not acceptable.
+
+- **Provider**: `SIMILARITY_LLM_PROVIDER=anthropic` (default, needs
+  `SIMILARITY_LLM_API_KEY`) or `openai` — which covers any OpenAI-compatible
+  endpoint. For **on-prem inference**, set `SIMILARITY_LLM_PROVIDER=openai` and
+  point `SIMILARITY_LLM_BASE_URL` at a local server (Ollama, vLLM, LM Studio);
+  the API key may be blank for keyless local servers.
+- **Where it runs**: on the **worker** tier, as the Celery task
+  `similarity.run_similarity_check` — the egress to the provider comes from the
+  worker, not web, and there is no beat entry. Size network policy / proxy rules
+  accordingly.
+- **When it fires**: automatically on public intake submissions and on GHSA sync.
+  It is best-effort — a failed or timed-out check never fails intake or sync.
+- **Rollout**: after enabling, run **`python manage.py backfill_fingerprints`**
+  once so existing advisories enter the candidate corpus (one LLM call per
+  advisory; idempotent — see [maintenance.md §4](./maintenance.md#4-management-command-reference)).
+- **Tuning**: `SIMILARITY_LLM_TIMEOUT` (read timeout), `SIMILARITY_CANDIDATE_LIMIT`
+  (prefilter cap per check), `SIMILARITY_MIN_CONFIDENCE` (persistence threshold) —
+  defaults in [configuration.md §11](./configuration.md#11-llm-duplicate-detection-similarity).
 
 ---
 

@@ -55,6 +55,10 @@ is ever lost there, re-publishing regenerates and re-pushes the current advisori
 CI additionally runs the test suite against PostgreSQL, `ruff`, `mypy`, an advisory
 `ty` pass, and the vendored-asset/template guards — see `.github/workflows/`.
 
+Cutting a **release** (version-lockstep bump, signed tag, container image to
+ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
+[`docs/releasing.md`](../releasing.md).
+
 ---
 
 ## 3. Maintenance mode
@@ -95,6 +99,7 @@ Project-specific commands (Django's own `migrate`, `collectstatic`, `check`,
 | `sync_roster` | projects | Refresh security-team rosters from the authenticated Eclipse API (shadow-user provisioning). | `--all`, `--project SLUG`, `--actor EMAIL` |
 | `sync_ghsa` | ghsa | Sync the PMI repo mirror and/or GHSA-linked advisory metadata. | `--all`, `--project SLUG`, `--advisory ID`, `--pmi-only`, `--actor EMAIL` |
 | `discover_github_installations` | ghsa | Populate the GitHub App installation registry (run once after enabling GHSA, or to recover after webhook loss). | `--actor EMAIL` |
+| `backfill_fingerprints` | similarity | Generate missing/stale duplicate-detection fingerprints for existing advisories (run once after enabling `SIMILARITY_CHECK_ENABLED`; refuses to run while it is off). One LLM call per advisory; idempotent. | `--dry-run`, `--limit N` (0 = no limit), `--project SLUG` |
 | `seed_demo` | admin_console | **Dev-only.** Seed demo projects/users/advisories. Destructive with `--reset`; never run in prod. | `--reset`, `--with-publish-repo PATH` |
 
 ---

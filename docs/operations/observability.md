@@ -39,6 +39,10 @@ Custom worker series:
 - `advisoryhub_publication_duration_seconds` — publication duration histogram.
 - `advisoryhub_celery_task_total{task,status}` — `success` / `failure` / `retry`.
 - `advisoryhub_celery_task_duration_seconds{task}` — task duration histogram.
+- `advisoryhub_similarity_check_total{status}` — `started` / `succeeded` / `failed`
+  LLM duplicate-detection checks (the task also shows up in the two series above as
+  `task="similarity.run_similarity_check"`). Stays flat unless
+  `SIMILARITY_CHECK_ENABLED`.
 - `advisoryhub_backlog{queue}` — live queue depths (`pub_failed`, `cve_open`,
   `review_open`, `triage`, `triage_routing`, `orphan`, `reassignment`), refreshed
   every 60s by the `backlog-gauge-refresh` beat task — so **`beat` must be running**

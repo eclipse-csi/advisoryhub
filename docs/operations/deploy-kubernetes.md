@@ -53,7 +53,7 @@ kubectl -n advisoryhub create secret generic advisoryhub-env \
   --from-literal=EMAIL_HOST_PASSWORD='…'
   # optional extras: PUB_REPO_TOKEN, GITHUB_APP_WEBHOOK_SECRET,
   # ECLIPSE_API_CLIENT_ID/_SECRET, SENTRY_DSN, HCAPTCHA_SITE_KEY/_SECRET_KEY,
-  # PMI_API_TOKEN
+  # PMI_API_TOKEN, SIMILARITY_LLM_API_KEY
 
 # 2. Key-files secret — mounted as files at /etc/advisoryhub/keys.
 kubectl -n advisoryhub create secret generic advisoryhub-keys \
@@ -68,6 +68,12 @@ kubectl -n advisoryhub create secret docker-registry ghcr-pull \
 Any env var from [configuration.md](./configuration.md) can be added to the
 env Secret — Secret keys override nothing in the chart's ConfigMap (they are
 disjoint by design), and per-pod `extraEnv` values win over both.
+
+Optional features follow the same split: e.g. LLM duplicate detection is
+toggled by the chart's `similarity.*` values block (`enabled` / `provider` /
+`model` / `baseUrl` — see
+[integrations.md §5](./integrations.md#5-similarity-llm-provider-optional)),
+while its `SIMILARITY_LLM_API_KEY` belongs in the env Secret, never in values.
 
 ---
 
@@ -222,7 +228,11 @@ and drop the `labels`.
 
 `networkPolicy.enabled=true` adds ingress-only policies (router → web :8000,
 monitoring → metrics, beat fully closed). Egress stays open by default —
-restrict it with `networkPolicy.egress` once you know your endpoints.
+restrict it with `networkPolicy.egress` to the endpoints the deployment
+actually uses: PostgreSQL, Valkey, the OIDC provider, the SMTP relay, the
+publication Git remote, plus — when the optional features are enabled — the
+GitHub API (GHSA), the Eclipse API (roster sync), and the LLM provider
+(similarity; worker egress).
 
 ## 8. Chart development
 

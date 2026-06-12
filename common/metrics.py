@@ -54,7 +54,10 @@ publication_duration_seconds = Histogram(
 similarity_check_total = Counter(
     "advisoryhub_similarity_check_total",
     "Similarity (duplicate-detection) checks by lifecycle status.",
-    ["status"],  # started | succeeded | failed
+    # started | succeeded | failed. 'failed' includes rows flipped by the
+    # stale-check reaper (services.reap_stale_checks, INV-SIM-5); a
+    # queued-reap increments 'failed' with no matching 'started'.
+    ["status"],
 )
 
 # ---------------------------------------------------------------------------

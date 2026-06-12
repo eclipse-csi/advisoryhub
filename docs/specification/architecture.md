@@ -548,7 +548,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-Five periodic jobs are registered in `config/settings/base.py`:
+Six periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -570,6 +570,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     "publication-task-reaper": {
         "task": "publication.reap_stale_publication_tasks",
+        "schedule": timedelta(minutes=10),
+    },
+    "similarity-check-reaper": {
+        "task": "similarity.reap_stale_similarity_checks",
         "schedule": timedelta(minutes=10),
     },
 }
@@ -605,6 +609,18 @@ hard `time_limit`, so the row cannot belong to a live execution) from
 delayed redelivery wins first) from `created_at`. It never touches
 `Advisory.state` (INV-LIFECYCLE-3); see §4.5 and INV-PUB-7.
 
+`similarity-check-reaper` is the same janitor for `SimilarityCheck`
+rows, which otherwise wedge `request_check`'s in-flight guard and the
+panel's re-run button forever (the view swallows
+`SimilarityCheckInProgress`, so the panel just shows "pending"). Same
+mechanism as §4.5; thresholds
+`SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s — past
+the 360 s hard `time_limit`) and
+`SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS` (default 7200 s). Reaping
+is DB-only — no LLM egress (INV-SIM-2 unaffected) — so it runs even
+while `SIMILARITY_CHECK_ENABLED` is off; recovery after a reap is the
+panel's existing re-run button. See INV-SIM-5.
+
 GHSA *discovery* is intentionally not on beat — it is
 user-triggered, scoped (project or all), and recorded as a
 `GhsaSyncRun`.
@@ -616,6 +632,7 @@ user-triggered, scoped (project or all), and recorded as a
 | `publication` | `run_publication` | Build → validate → push → flip state. |
 | `publication` | `reap_stale_publication_tasks` | Beat-scheduled janitor: fails `PublicationTask` rows orphaned in queued/running (INV-PUB-7). |
 | `similarity` | `run_similarity_check` | Prefilter → fingerprint → LLM judge → persist top-5 potential duplicates. `rate_limit="6/m"` absorbs GHSA bulk-sync bursts. |
+| `similarity` | `reap_stale_similarity_checks` | Beat-scheduled janitor: fails `SimilarityCheck` rows orphaned in queued/running (INV-SIM-5). |
 | `notifications` | `send_advisory_event_email` | Lifecycle events (created, submitted for review, published, publication export status). |
 | `notifications` | `send_comment_email` | Comment + mention notifications. |
 | `notifications` | `send_comment_mention_email` | Delta @-mentions added by a comment *edit* (including newly-mentioned `@team` shadow roster members); visibility re-checked at send time. |
@@ -637,10 +654,11 @@ Idempotency story:
 - `run_publication` is short-circuited when the task is no longer
   in a queueable state; success / failure is terminal per-row, and
   the file write is idempotent on content.
-- `reap_stale_publication_tasks` is idempotent by construction: the
-  candidate predicate is status+staleness, reaped rows leave the set,
-  and each reap is a per-row compare-and-set — overlapping runs
-  `skip_locked` each other rather than double-reaping.
+- `reap_stale_publication_tasks` and `reap_stale_similarity_checks`
+  are idempotent by construction: the candidate predicate is
+  status+staleness, reaped rows leave the set, and each reap is a
+  per-row compare-and-set — overlapping runs `skip_locked` each other
+  rather than double-reaping.
 - `run_similarity_check` uses the same queued/failed-only guard, and
   the fingerprint cache is keyed on a content hash, so a re-delivered
   task never duplicates LLM spend for unchanged content.
@@ -690,6 +708,11 @@ Failures are wrapped in `LlmError`, whose message passes through
 panel on the advisory detail page that polls over HTMX while a check is
 queued/running ([INV-SIM-1]); `manage.py backfill_fingerprints` warms
 the fingerprint corpus for pre-existing advisories.
+
+Checks orphaned in `queued`/`running` (worker hard-killed mid-run, or an
+enqueue swallowed during a broker outage) are bounded by the
+beat-scheduled `similarity-check-reaper` (§6.2, [INV-SIM-5]) — after a
+reap the panel's re-run button works again.
 
 ---
 
@@ -837,7 +860,13 @@ keyless local servers), `SIMILARITY_LLM_BASE_URL` (empty = provider
 default; set for OpenAI-compatible/local servers),
 `SIMILARITY_LLM_TIMEOUT` (default 120 s read),
 `SIMILARITY_CANDIDATE_LIMIT` (default 60),
-`SIMILARITY_MIN_CONFIDENCE` (default 20).
+`SIMILARITY_MIN_CONFIDENCE` (default 20),
+`SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS` (default 1800 — must
+comfortably exceed the 360 s hard `time_limit`) and
+`SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS` (default 7200 — must
+exceed the 3600 s broker `visibility_timeout`): staleness thresholds
+for the beat-scheduled reaper (§6.2, INV-SIM-5), which runs even while
+the feature is disabled (DB-only, no LLM egress).
 
 **Rate-limit master switch.** `RATELIMIT_ENABLE` (default True;
 forced False in `test`).

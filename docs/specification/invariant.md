@@ -126,6 +126,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-SIM-2](#inv-sim-2) | `SIMILARITY_CHECK_ENABLED=False` (default) means zero advisory-content egress to the LLM provider. | Similarity | Critical |
 | [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
 | [INV-SIM-4](#inv-sim-4) | Fingerprint/judge inputs come from the pinned `SimilarityCheck.version` payload, never live data. | Similarity | High |
+| [INV-SIM-5](#inv-sim-5) | Stale queued/running similarity checks are reaped to `failed`; the reaper performs no LLM egress. | Similarity | High |
 
 ---
 
@@ -1414,7 +1415,8 @@ no recovery short of manual SQL.
 
 **Related.** [INV-CONCURRENCY-1](#inv-concurrency-1),
 [INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-PUB-4](#inv-pub-4),
-[INV-SECRET-1](#inv-secret-1).
+[INV-SECRET-1](#inv-secret-1), [INV-SIM-5](#inv-sim-5) (the similarity
+mirror of this rule).
 
 ---
 
@@ -2317,6 +2319,48 @@ scored; version rows deletable out from under recorded checks.
 `similarity/tests/test_services.py` (fingerprint staleness).
 
 **Related.** [INV-VERSION-2](#inv-version-2), [INV-VERSION-3](#inv-version-3).
+
+---
+
+<a id="inv-sim-5"></a>
+### INV-SIM-5 — Stale similarity checks are bounded   [High]
+
+**Statement.** A beat-scheduled reaper (`similarity.reap_stale_similarity_checks`,
+every 10 minutes) flips `SimilarityCheck` rows stuck in `running` past
+`SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS` (default 1800 s, measured from
+`started_at`) or in `queued` past `SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS`
+(default 7200 s, measured from `created_at`) to `failed`. Each reap is a
+per-row compare-and-set under `select_for_update(skip_locked=True)`: a row
+finalised concurrently falls out of the status filter and is skipped, never
+clobbered. The reaper is DB-only janitor work — it performs **no** LLM egress
+([INV-SIM-2](#inv-sim-2) unaffected) and therefore runs even while
+`SIMILARITY_CHECK_ENABLED` is off, clearing rows wedged from when the feature
+was on. It never mutates `Advisory` rows.
+
+**Rationale.** A worker hard-killed mid-run (hard `time_limit` SIGKILL, OOM
+kill, pod eviction) leaves a row in `running` that the redelivered message
+no-ops against (the entry guard accepts only queued/failed); a broker outage
+swallowed by `safe_enqueue` leaves a `queued` row with no message at all.
+Either row wedges `request_check`'s in-flight guard forever — and the panel
+view swallows `SimilarityCheckInProgress`, so the re-run button silently does
+nothing and the panel shows "pending" indefinitely. The thresholds sit above
+the physical constants they are anchored to (the 360 s hard `time_limit`; the
+3600 s broker `visibility_timeout`), so the reaper can never race a live
+execution or a pending redelivery.
+
+**Enforced in.**
+- `similarity/services.py` — `reap_stale_checks` / `_reap_one`.
+- `similarity/tasks.py` — `reap_stale_similarity_checks`.
+- `config/settings/base.py` — `CELERY_BEAT_SCHEDULE["similarity-check-reaper"]`,
+  `SIMILARITY_CHECK_STALE_*` knobs.
+
+**Violation impact.** Duplicate detection permanently dead for the affected
+advisory, with no recovery short of manual SQL.
+
+**Tests.** `similarity/tests/test_reaper.py`.
+
+**Related.** [INV-PUB-7](#inv-pub-7) (the publication mirror of this rule),
+[INV-SIM-2](#inv-sim-2), [INV-SIM-3](#inv-sim-3).
 
 ---
 

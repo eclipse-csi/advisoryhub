@@ -22,9 +22,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from advisories import services as advisory_services
@@ -148,8 +150,11 @@ def request_check_safe(advisory: Advisory, *, by=None) -> None:
 
 
 def _enqueue(check_pk: int) -> None:
-    # Broker offline: safe_enqueue leaves the check 'queued'; the panel's
-    # re-run button is the recovery path once the broker is back.
+    # Broker offline: safe_enqueue leaves the check 'queued' with no Celery
+    # message behind it — and the panel's re-run button is blocked by the
+    # in-flight guard above, not a recovery path. The beat-scheduled reaper
+    # (reap_stale_checks, INV-SIM-5) fails the row after
+    # SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS so re-running works again.
     from .tasks import run_similarity_check
 
     safe_enqueue(run_similarity_check, check_pk)
@@ -356,4 +361,135 @@ def _record_completed(check: SimilarityCheck, *, matches: int) -> None:
             "matches": matches,
             "candidate_pool": check.candidate_pool_size,
         },
+    )
+
+
+def reap_stale_checks(*, now: datetime | None = None) -> dict:
+    """Fail ``SimilarityCheck`` rows orphaned in queued/running (INV-SIM-5).
+
+    Mirrors ``publication.services.reap_stale_tasks``. Two loss modes leave
+    a row that both the ``run_similarity_check`` entry guard and the
+    :func:`request_check` in-flight guard treat as live forever:
+
+    * a worker lost AFTER the run started (hard ``time_limit`` SIGKILL, OOM
+      kill, pod eviction) — the row stays ``running`` and the redelivered
+      message no-ops against the QUEUED/FAILED entry guard;
+    * a broker outage at enqueue time — ``safe_enqueue`` swallowed the
+      error, so the row stays ``queued`` with no Celery message at all.
+
+    Either way the panel's re-run button raises
+    :class:`SimilarityCheckInProgress` indefinitely (silently swallowed by
+    the view, so the panel just shows "pending" forever). Reaping flips the
+    row to ``failed`` through :func:`mark_failed`, after which re-running
+    works again. Reaping is DB-only janitor work — it performs no LLM
+    egress (INV-SIM-2 unaffected) — so it runs even while
+    ``SIMILARITY_CHECK_ENABLED`` is off, clearing rows wedged from when the
+    feature was on.
+
+    The thresholds, not the locks, are the real defense against reaping a
+    live run: a ``running`` row older than
+    ``SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS`` (default 1800s, 5× the
+    360s hard ``time_limit``) cannot belong to a live execution, and a
+    ``queued`` row older than ``SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS``
+    (default 7200s, 2× the broker's 3600s ``visibility_timeout``) is past
+    any legitimate redelivery. The per-row compare-and-set in
+    :func:`_reap_one` is belt-and-braces on top.
+    """
+    now = now or timezone.now()
+    running_cutoff = now - timedelta(seconds=settings.SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS)
+    queued_cutoff = now - timedelta(seconds=settings.SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS)
+    # started_at is stamped by the same UPDATE that flips a row to running,
+    # so the isnull arm is belt-and-braces for rows written by older code.
+    candidates = list(
+        SimilarityCheck.objects.filter(
+            (
+                Q(status=SimilarityCheckStatus.RUNNING)
+                & (
+                    Q(started_at__lt=running_cutoff)
+                    | Q(started_at__isnull=True, created_at__lt=running_cutoff)
+                )
+            )
+            | Q(status=SimilarityCheckStatus.QUEUED, created_at__lt=queued_cutoff)
+        ).values_list("pk", "status")
+    )
+    reaped = {SimilarityCheckStatus.RUNNING.value: 0, SimilarityCheckStatus.QUEUED.value: 0}
+    for check_pk, status in candidates:
+        if _reap_one(check_pk, expected_status=status, now=now) is not None:
+            reaped[status] += 1
+    result = {
+        "reaped_running": reaped[SimilarityCheckStatus.RUNNING.value],
+        "reaped_queued": reaped[SimilarityCheckStatus.QUEUED.value],
+    }
+    if result["reaped_running"] or result["reaped_queued"]:
+        log.info(
+            "reap_stale_checks: running=%s queued=%s",
+            result["reaped_running"],
+            result["reaped_queued"],
+        )
+    return result
+
+
+def _reap_one(check_pk: int, *, expected_status: str, now: datetime) -> SimilarityCheck | None:
+    """Compare-and-set one stale check to failed; ``None`` if it moved on.
+
+    The status filter under ``select_for_update`` means a row finalised
+    between the candidate query and this lock no longer matches and is never
+    clobbered; ``skip_locked`` turns a finalisation mid-commit (or an
+    overlapping reaper run) into a skip, not a wait.
+    """
+    with transaction.atomic():
+        check = (
+            SimilarityCheck.objects.select_for_update(skip_locked=True)
+            .select_related("advisory")
+            .filter(pk=check_pk, status=expected_status)
+            .first()
+        )
+        if check is None:
+            return None
+        age = _stale_age_seconds(check, now=now)
+        if age is None:
+            return None
+        stale_after = (
+            settings.SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS
+            if expected_status == SimilarityCheckStatus.RUNNING
+            else settings.SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS
+        )
+        mark_failed(check, error=_reap_error(expected_status, age))
+        record(
+            action=Action.SIMILARITY_CHECK_REAPED,
+            advisory=check.advisory,
+            new_value={"check_id": check.pk},
+            metadata={
+                "check_id": check.pk,
+                "previous_status": expected_status,
+                "age_seconds": age,
+                "stale_after_seconds": stale_after,
+                "error": check.last_error,
+            },
+        )
+        return check
+
+
+def _stale_age_seconds(check: SimilarityCheck, *, now: datetime) -> int | None:
+    """Seconds the row has been stuck, or ``None`` while it is still fresh."""
+    if check.status == SimilarityCheckStatus.RUNNING:
+        anchor = check.started_at or check.created_at
+        threshold = settings.SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS
+    elif check.status == SimilarityCheckStatus.QUEUED:
+        anchor = check.created_at
+        threshold = settings.SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS
+    else:
+        return None
+    age = int((now - anchor).total_seconds())
+    return age if age > threshold else None
+
+
+def _reap_error(previous_status: str, age_seconds: int) -> str:
+    cause = (
+        "worker likely lost mid-run"
+        if previous_status == SimilarityCheckStatus.RUNNING
+        else "enqueue likely lost to a broker outage"
+    )
+    return (
+        f"reaped: check stuck in '{previous_status}' for {age_seconds}s ({cause}); safe to re-run"
     )

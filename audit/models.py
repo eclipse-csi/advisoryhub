@@ -66,6 +66,7 @@ class Action(models.TextChoices):
     SIMILARITY_CHECK_STARTED = "similarity.check_started"
     SIMILARITY_CHECK_COMPLETED = "similarity.check_completed"
     SIMILARITY_CHECK_FAILED = "similarity.check_failed"
+    SIMILARITY_CHECK_REAPED = "similarity.check_reaped"
     NOTIFICATION_PREFS_CHANGED = "notification.prefs_changed"
     # One entry per recipient per delivered notification (incl. invitation
     # emails, which create no inbox row). High-volume and PII-bearing

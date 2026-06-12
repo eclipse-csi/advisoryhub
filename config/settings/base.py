@@ -154,6 +154,16 @@ env = environ.Env(
     SIMILARITY_LLM_TIMEOUT=(int, 120),  # read timeout (seconds); connect is fixed at 10
     SIMILARITY_CANDIDATE_LIMIT=(int, 60),
     SIMILARITY_MIN_CONFIDENCE=(int, 20),  # store matches at/above this confidence (0–100)
+    # Stale-similarity-check reaper thresholds (INV-SIM-5) — mirrors the
+    # PUB_TASK_STALE_* pair above. RUNNING is measured from started_at and
+    # must comfortably exceed run_similarity_check's hard time_limit (360s);
+    # QUEUED is measured from created_at and must exceed the broker
+    # visibility_timeout (3600s) so a delayed redelivery always wins first.
+    # The reaper is DB-only janitor work (no LLM egress, INV-SIM-2
+    # unaffected) and runs even while SIMILARITY_CHECK_ENABLED is off, so
+    # rows wedged from when the feature was on still get cleared.
+    SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS=(int, 1800),
+    SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS=(int, 7200),
 )
 
 # Read .env if present (silently ignored if missing)
@@ -482,6 +492,8 @@ SIMILARITY_LLM_BASE_URL = env("SIMILARITY_LLM_BASE_URL")
 SIMILARITY_LLM_TIMEOUT = env("SIMILARITY_LLM_TIMEOUT")
 SIMILARITY_CANDIDATE_LIMIT = env("SIMILARITY_CANDIDATE_LIMIT")
 SIMILARITY_MIN_CONFIDENCE = env("SIMILARITY_MIN_CONFIDENCE")
+SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS = env("SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS")
+SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS = env("SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS")
 
 # Celery beat schedule. The worker that runs `celery -A config beat` will
 # fire run_pmi_repo_sync every PMI_SYNC_INTERVAL_HOURS hours, refreshing
@@ -523,6 +535,15 @@ CELERY_BEAT_SCHEDULE = {
     # PUB_TASK_STALE_* thresholds above.
     "publication-task-reaper": {
         "task": "publication.reap_stale_publication_tasks",
+        "schedule": timedelta(minutes=10),
+    },
+    # Same janitor for SimilarityCheck rows: a stale queued/running row
+    # wedges request_check's in-flight guard and the panel's re-run button
+    # forever. DB-only — no LLM egress (INV-SIM-2 unaffected), so it runs
+    # even while SIMILARITY_CHECK_ENABLED is off. See INV-SIM-5 and the
+    # SIMILARITY_CHECK_STALE_* thresholds above.
+    "similarity-check-reaper": {
+        "task": "similarity.reap_stale_similarity_checks",
         "schedule": timedelta(minutes=10),
     },
 }

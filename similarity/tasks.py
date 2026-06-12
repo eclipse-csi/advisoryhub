@@ -4,6 +4,10 @@ Mirrors ``publication.tasks.run_publication``: refetch the row, idempotency
 guard on status (re-delivery after a worker loss is safe), redacted failure
 funnel. The ``rate_limit`` is the safety valve for GHSA bulk syncs, whose
 single post-commit burst can enqueue one check per discovered advisory.
+A worker lost AFTER the check starts (hard time_limit SIGKILL, OOM kill,
+pod eviction) leaves the row 'running' — the redelivered message no-ops
+against the guard — and is recovered by the beat-scheduled reaper
+(reap_stale_similarity_checks, INV-SIM-5).
 """
 
 from __future__ import annotations
@@ -67,3 +71,18 @@ def _fail(check: SimilarityCheck, *, error: str) -> str:
         metadata={"check_id": check.pk, "error": check.last_error},
     )
     return SimilarityCheckStatus.FAILED
+
+
+# No acks_late / time limits: the reaper is idempotent and fast (one indexed
+# SELECT, normally zero rows) and beat re-fires it every 10 minutes anyway.
+@shared_task(name="similarity.reap_stale_similarity_checks")
+def reap_stale_similarity_checks() -> dict:
+    """Beat (every 10 min): fail SimilarityCheck rows orphaned in queued/running.
+
+    Covers the two holes acks_late/soft_time_limit cannot: a worker
+    hard-killed mid-run that never reaches mark_failed, and an enqueue
+    swallowed by safe_enqueue during a broker outage. DB-only — no LLM
+    egress, so it runs regardless of SIMILARITY_CHECK_ENABLED. See
+    INV-SIM-5 and services.reap_stale_checks for the threshold rationale.
+    """
+    return services.reap_stale_checks()

@@ -152,13 +152,14 @@ Once installed the hooks fire automatically:
 - **on commit** — file hygiene (trailing whitespace, end-of-file, merge
   markers, private-key detection, …) plus `ruff check --fix` and `ruff format`.
 - **on push** — additionally `mypy` (+ django-stubs), `manage.py
-  makemigrations --check`, and `manage.py check`.
+  makemigrations --check`, `manage.py check`, and a `pip-audit`
+  dependency audit (mirrors CI's security job; needs network).
 
 Run them on demand any time:
 
 ```sh
 prek run --all-files                          # commit-stage checks
-prek run --all-files --hook-stage pre-push    #   + type & Django checks
+prek run --all-files --hook-stage pre-push    #   + type, Django & dependency-audit checks
 prek run --all-files --hook-stage manual      # advisory `ty` type-check
 ```
 

@@ -108,11 +108,11 @@ uv tool install prek     # or: pipx install prek / cargo install prek / mise ins
 prek install             # installs BOTH the pre-commit and pre-push hooks
 
 prek run --all-files                          # commit stage: hygiene + ruff
-prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
+prek run --all-files --hook-stage pre-push    #   + mypy, Django checks & pip-audit
 prek run --all-files --hook-stage manual      # advisory ty (mirrors CI's ty job)
 ```
 
-Commit stage = file hygiene + `ruff check --fix` + `ruff format`, plus three repo guards: `dev/check_vendored_assets.sh` (htmx + Inter font sha256 vs their `*.VERSION` files), `dev/check_template_comments.py` (rejects multi-line `{# #}` — Django's single-line comment renders those as literal text), and zizmor (workflow security audit, fires when `.github/` workflow files change). Push stage adds `mypy`, `makemigrations --check`, and `manage.py check`. `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored/verbatim assets (`static/htmx.*`, `static/fonts/*.woff2`, `static/fonts/Inter.VERSION`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded from the hygiene hooks.
+Commit stage = file hygiene + `ruff check --fix` + `ruff format`, plus three repo guards: `dev/check_vendored_assets.sh` (htmx + Inter font sha256 vs their `*.VERSION` files), `dev/check_template_comments.py` (rejects multi-line `{# #}` — Django's single-line comment renders those as literal text), and zizmor (workflow security audit, fires when `.github/` workflow files change). Push stage adds `mypy`, `makemigrations --check`, `manage.py check`, and `pip-audit` (dependency audit, mirrors CI's security job; needs network). `ty` is manual + advisory (no Django plugin yet), matching CI's `continue-on-error` ty job. Vendored/verbatim assets (`static/htmx.*`, `static/fonts/*.woff2`, `static/fonts/Inter.VERSION`, `publication/schemas/*.upstream.json`, `publication/schemas/cvss/*.json`) are excluded from the hygiene hooks.
 
 ## Load-bearing rules
 

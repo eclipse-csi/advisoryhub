@@ -9,7 +9,7 @@
 #
 # Run by hand:
 #   prek run --all-files                          # commit stage: hygiene + ruff
-#   prek run --all-files --hook-stage pre-push    #   + mypy & Django checks
+#   prek run --all-files --hook-stage pre-push    #   + mypy, Django checks & pip-audit
 #   prek run --all-files --hook-stage manual      # advisory ty type-check
 #
 # Why `uv run --no-sync --python .venv`: the Python tools (ruff, mypy, Django)
@@ -104,7 +104,7 @@ repos:
         pass_filenames: false
         files: '^\.github/(workflows/.*\.ya?ml|zizmor\.yml)$'
 
-  # ---- Type & Django checks (pre-push only — whole-project, slower) ---------
+  # ---- Type, Django & dependency checks (pre-push only — whole-project, slower)
   # Run when pushing, mirroring the enforced CI gates. pass_filenames is false:
   # each command analyses the whole project, not the changed files.
   - repo: local
@@ -131,6 +131,17 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+        stages: [pre-push]
+
+      - id: pip-audit
+        name: pip-audit (dependency audit)
+        # Mirrors CI's security job (mise run audit). Needs network (queries the
+        # PyPI advisory DB). Audits the dev venv — a superset of the runtime-only
+        # set CI audits, so it can only be stricter than CI, never laxer.
+        entry: uv run --no-sync --python .venv --with pip-audit pip-audit
+        language: system
+        pass_filenames: false
+        always_run: true
         stages: [pre-push]
 
   # ---- Advisory type check (ty) — manual only, never blocks -----------------

@@ -24,7 +24,7 @@ default_install_hook_types: [pre-commit, pre-push]
 
 # Vendored / upstream-verbatim assets stay byte-identical to upstream, so no
 # hook (least of all the whitespace fixers) may rewrite them.
-exclude: '^(static/htmx\.min\.js|static/htmx\.VERSION|static/fonts/.*\.woff2|static/fonts/Inter\.VERSION|publication/schemas/.*\.upstream\.json|publication/schemas/cvss/.*\.json)$'
+exclude: '^(static/htmx\.min\.js|static/htmx\.VERSION|static/fonts/.*\.woff2|static/fonts/Inter\.VERSION|publication/schemas/.*\.upstream\.json|publication/schemas/cvss/.*\.json|docs/assets/css/neoteroi-mkdocs\.css)$'
 
 repos:
   # ---- Generic file hygiene (fast; every commit) ----------------------------

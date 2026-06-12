@@ -58,6 +58,9 @@ dev = [
     "ruff>=0.5",
     "django-stubs[compatible-mypy]>=5.1",
     "zizmor>=1.0",
+    # docs/specification/openapi.yaml drift guards (api/tests/test_openapi_spec.py)
+    "openapi-spec-validator>=0.7",
+    "PyYAML>=6.0",
 ]
 # Docs-site toolchain (docs/ -> GitHub Pages, .github/workflows/docs.yml).
 # Build-time only — never installed in the production image, so deliberately
@@ -66,6 +69,7 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.6",
     "mike>=2.1",
+    "neoteroi-mkdocs>=1.2", # renders docs/specification/openapi.yaml (OAD tag in api.md)
 ]
 
 [tool.pytest.ini_options]

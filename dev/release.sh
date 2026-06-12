@@ -51,6 +51,25 @@ with open(path, "w") as f:
     f.write(src)
 PY
 
+# The OpenAPI contract's info.version tracks the app version in lockstep
+# (api/tests/test_openapi_spec.py asserts it equals the installed package
+# version, so a stale spec version would fail CI on the release commit).
+python3 - "$V" <<'PY'
+import re
+import sys
+
+v = sys.argv[1]
+path = "docs/specification/openapi.yaml"
+with open(path) as f:
+    src = f.read()
+src, n = re.subn(
+    r"(?ms)^(info:.*?^  version): .*?$", rf"\g<1>: {v}", src, count=1
+)
+assert n == 1, "openapi.yaml info.version line not found"
+with open(path, "w") as f:
+    f.write(src)
+PY
+
 # Sanity: the bumped lock still syncs, and every recorded version agrees.
 uv sync --locked --extra dev
 bash dev/check_release_versions.sh "v$V"
@@ -61,7 +80,7 @@ echo "----------------------------------------------------------------------"
 git-cliff --unreleased --tag "v$V" --strip header
 echo "----------------------------------------------------------------------"
 
-git add pyproject.toml uv.lock charts/advisoryhub/Chart.yaml
+git add pyproject.toml uv.lock charts/advisoryhub/Chart.yaml docs/specification/openapi.yaml
 if git diff --cached --quiet; then
   echo "No version changes to commit (already at $V) — tagging HEAD."
 else

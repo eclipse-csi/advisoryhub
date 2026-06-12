@@ -22,3 +22,8 @@ maintainer confirmation before implementation.
 - [`requirements.md`](./requirements.md) — top-down functional spec:
   actors, domain objects, functional & non-functional requirements, use
   cases.
+- [`api.md`](./api.md) — rendered OpenAPI reference for the
+  machine-consumable endpoints (`/api/` JSON namespace, GHSA webhook,
+  intake project picker, health probes); [`openapi.yaml`](./openapi.yaml)
+  is the machine-readable source, drift-guarded against the URLconf by
+  `api/tests/test_openapi_spec.py`.

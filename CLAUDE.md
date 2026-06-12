@@ -21,6 +21,7 @@ The specification set in `docs/specification/` is the **single source of truth**
 - [`docs/specification/permissions.md`](docs/specification/permissions.md) — authorization model: actors, roles, capability matrix, state-conditioned overrides, enforcement surfaces.
 - [`docs/specification/advisory-lifecycle.md`](docs/specification/advisory-lifecycle.md) — four lifecycle states plus three orthogonal sub-machines (review, CVE-request, publication-task), with transition tables and a sequence diagram.
 - [`docs/specification/requirements.md`](docs/specification/requirements.md) — top-down functional spec: actors, domain objects, functional & non-functional requirements, use cases.
+- [`docs/specification/openapi.yaml`](docs/specification/openapi.yaml) — OpenAPI 3.0 contract for the machine-consumable endpoints (`/api/`, GHSA webhook, intake project picker, health probes), rendered on the docs site by [`docs/specification/api.md`](docs/specification/api.md); drift-guarded against the URLconf by `api/tests/test_openapi_spec.py`, `info.version` release-lockstepped by `dev/release.sh` / `dev/check_release_versions.sh`.
 
 ## Common commands
 

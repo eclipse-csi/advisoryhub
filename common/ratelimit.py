@@ -11,7 +11,7 @@ Two decorators are provided:
 * ``html_ratelimit`` — for HTML/HTMX views. On hit, returns a 429
   response with a tiny human message.
 * ``json_ratelimit`` — for JSON API views. On hit, returns the
-  ``{error: "rate_limited", message, retry_after}`` body.
+  ``{error: "rate_limited", message}`` body.
 
 Both take exactly one ``rate`` argument (e.g. ``"30/m"``) and optionally
 a ``key`` override.

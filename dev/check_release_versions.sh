@@ -5,6 +5,8 @@
 #                                    `uv lock` ran after a pyproject bump —
 #                                    and then `uv sync --locked` fails everywhere)
 #   - charts/advisoryhub/Chart.yaml  version + appVersion (lockstep with the app)
+#   - docs/specification/openapi.yaml  info.version (the API contract; also
+#                                    asserted by api/tests/test_openapi_spec.py)
 #
 # Usage: dev/check_release_versions.sh [vX.Y.Z]
 #   With an argument (release.yml passes "$GITHUB_REF_NAME"), the tag must
@@ -31,6 +33,9 @@ print(next(p["version"] for p in lock["package"] if p["name"] == "advisoryhub"))
 # Chart.yaml is repo-controlled, single-document, flat keys — sed is enough.
 chart_version=$(sed -n 's/^version: //p' charts/advisoryhub/Chart.yaml)
 chart_app_version=$(sed -n 's/^appVersion: "\(.*\)"$/\1/p' charts/advisoryhub/Chart.yaml)
+# openapi.yaml is repo-controlled too — first `  version:` line after `info:`.
+openapi_version=$(awk '/^info:/{f=1} f && /^  version:/{print $2; exit}' \
+  docs/specification/openapi.yaml)
 
 check() {
   local label="$1" actual="$2"
@@ -46,6 +51,7 @@ echo "OK: pyproject.toml [project] version = $pyproject_version"
 check "uv.lock root package version (run 'uv lock' after a bump)" "$lock_version"
 check "Chart.yaml version" "$chart_version"
 check "Chart.yaml appVersion" "$chart_app_version"
+check "openapi.yaml info.version" "$openapi_version"
 
 if [ "${1:-}" != "" ]; then
   check "tag $1" "${1#v}"

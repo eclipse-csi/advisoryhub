@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Verify vendored, upstream-verbatim assets still match their pinned hashes:
-#   - static/htmx.min.js          vs static/htmx.VERSION
-#   - static/fonts/Inter*.woff2   vs static/fonts/Inter.VERSION
+#   - static/htmx.min.js                   vs static/htmx.VERSION
+#   - static/fonts/Inter*.woff2            vs static/fonts/Inter.VERSION
+#   - docs/assets/css/neoteroi-mkdocs.css  vs docs/assets/css/neoteroi-mkdocs.VERSION
 #
 # These ship on every page (including the public intake form), so an automated
 # tamper/staleness check mirrors how publication/schemas/*.upstream.json are
@@ -48,5 +49,11 @@ check static/fonts/InterVariable.woff2 \
   "$(hash_for static/fonts/Inter.VERSION InterVariable.woff2)"
 check static/fonts/InterVariable-Italic.woff2 \
   "$(hash_for static/fonts/Inter.VERSION InterVariable-Italic.woff2)"
+
+# Docs-site CSS for the OAD-rendered API reference; same `sha256:<hash>` line
+# format as htmx.VERSION. Keep in lockstep with the neoteroi-mkdocs pin in
+# pyproject.toml's docs extra.
+check docs/assets/css/neoteroi-mkdocs.css \
+  "$(sed -n 's/^sha256://p' docs/assets/css/neoteroi-mkdocs.VERSION | head -n1)"
 
 exit "$fail"

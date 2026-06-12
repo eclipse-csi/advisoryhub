@@ -53,10 +53,19 @@ extra:
     provider: mike # Material renders the version selector from ../versions.json
     default: latest
 
+# Vendored neoteroi-mkdocs CSS (styles the OAD-rendered API page), pinned via
+# docs/assets/css/neoteroi-mkdocs.VERSION and checked by dev/check_vendored_assets.sh.
+extra_css:
+  - assets/css/neoteroi-mkdocs.css
+
 plugins:
   - search
   - mike:
       canonical_version: latest
+  # Renders specification/openapi.yaml on the API page (OAD tag in
+  # specification/api.md) at build time — static HTML, no JS app.
+  - neoteroi.mkdocsoad:
+      use_pymdownx: true
 
 markdown_extensions:
   # Listing extensions replaces MkDocs' defaults — tables/toc stay explicit.
@@ -76,6 +85,9 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
+  # Required by neoteroi.mkdocsoad's use_pymdownx output (tabbed schema views).
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.superfences:
       custom_fences:
         # mkdocs-material's native Mermaid pattern (docs/ uses ```mermaid in
@@ -108,6 +120,7 @@ nav:
       - Permissions: specification/permissions.md
       - Advisory lifecycle: specification/advisory-lifecycle.md
       - Requirements: specification/requirements.md
+      - API: specification/api.md
   - Contributing:
       - contributing/README.md
       - Releasing: contributing/releasing.md

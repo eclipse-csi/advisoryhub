@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from django.core.management import call_command
@@ -245,6 +245,60 @@ def test_prune_audit_rejects_zero_or_negative(setup):
         prune_audit_older_than(-1)
 
 
+@pytest.mark.django_db
+def test_prune_audit_records_audit_of_the_pruning(setup):
+    record(action=Action.ADVISORY_CREATED, actor=setup["member"], advisory=setup["advisory"])
+    with _audit_trigger_bypass():
+        AuditLogEntry.objects.all().update(created_at=timezone.now() - timedelta(days=400))
+
+    deleted = prune_audit_older_than(365)
+
+    entry = AuditLogEntry.objects.get(action=Action.AUDIT_PRUNED)
+    assert entry.metadata["operation"] == "prune_audit"
+    assert entry.metadata["older_than_days"] == 365
+    assert entry.metadata["deleted"] == deleted == 1
+    # No requesting operator on the CLI path.
+    assert entry.actor_id is None
+    assert entry.metadata["via"] == "cli"
+    # The entry post-dates the cutoff it records, so it survives its own sweep.
+    assert datetime.fromisoformat(entry.metadata["cutoff"]) < entry.created_at
+
+
+@pytest.mark.django_db
+def test_prune_audit_records_even_when_nothing_matched(setup):
+    assert prune_audit_older_than(365) == 0
+    entry = AuditLogEntry.objects.get(action=Action.AUDIT_PRUNED)
+    assert entry.metadata["deleted"] == 0
+
+
+@pytest.mark.django_db
+def test_prune_audit_dry_run_records_nothing(setup):
+    prune_audit_older_than(365, dry_run=True)
+    assert not AuditLogEntry.objects.filter(action=Action.AUDIT_PRUNED).exists()
+
+
+@pytest.mark.django_db
+def test_prune_audit_records_requesting_operator_and_reason(make_user, setup):
+    """The operator path records who requested the sweep, the source IP/UA,
+    and a secret-redacted justification on the AUDIT_PRUNED entry."""
+    operator = make_user(email="operator@example.org")
+    prune_audit_older_than(
+        365,
+        by=operator,
+        reason="retention ticket #7; token ghp_abcdefghijklmnopqrstuvwx leaked",
+        ip_address="198.51.100.9",
+        user_agent="Mozilla/5.0",
+    )
+    entry = AuditLogEntry.objects.get(action=Action.AUDIT_PRUNED)
+    assert entry.actor_id == operator.pk
+    assert entry.ip_address == "198.51.100.9"
+    assert entry.metadata["via"] == "admin_console"
+    # Reason is recorded but funnelled through redact_secrets (INV-AUDIT-2).
+    assert "ghp_" not in entry.metadata["reason"]
+    assert "***" in entry.metadata["reason"]
+    assert "retention ticket #7" in entry.metadata["reason"]
+
+
 # ---- management command -------------------------------------------------
 
 
@@ -274,7 +328,10 @@ def test_prune_audit_command(setup, capsys):
     assert AuditLogEntry.objects.count() >= 1
 
     call_command("prune_audit", "--older-than-days=365")
-    assert AuditLogEntry.objects.count() == 0
+    # The backdated entry is gone; the only remaining row is the prune's own record.
+    remaining = AuditLogEntry.objects.all()
+    assert remaining.count() == 1
+    assert remaining.get().action == Action.AUDIT_PRUNED
 
 
 @pytest.mark.django_db

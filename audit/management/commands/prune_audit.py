@@ -8,6 +8,10 @@ Usage::
 The default horizon is 1825 days (5 years). Use ``--dry-run`` to count
 what *would* be removed before doing anything destructive.
 
+Every non-dry-run invocation records an ``AUDIT_PRUNED`` entry on the
+durable ledger (horizon, exact cutoff, deleted row count, optional
+``--reason``), so the sweep itself stays in the immutable history.
+
 This bypasses the append-only Postgres triggers via
 ``SET LOCAL session_replication_role = replica`` for the duration of
 the transaction, which is the supported way to allow a one-shot
@@ -38,8 +42,13 @@ class Command(BaseCommand):
             action="store_true",
             help="Count matching rows without deleting them.",
         )
+        parser.add_argument(
+            "--reason",
+            default="",
+            help="Justification recorded on the AUDIT_PRUNED audit entry.",
+        )
 
-    def handle(self, *args, older_than_days: int, dry_run: bool, **opts):
-        n = prune_audit_older_than(older_than_days, dry_run=dry_run)
+    def handle(self, *args, older_than_days: int, dry_run: bool, reason: str, **opts):
+        n = prune_audit_older_than(older_than_days, dry_run=dry_run, reason=reason)
         verb = "would delete" if dry_run else "deleted"
         self.stdout.write(self.style.SUCCESS(f"prune_audit: {verb} {n} entries."))

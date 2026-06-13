@@ -1037,7 +1037,10 @@ Management commands in `audit/management/commands/`:
   retention horizon, using the trigger bypass. Production retention is
   conservative and the command is intended for explicit operator invocation,
   not automated cron. Now rarely needed: the high-volume events live in the
-  access log, which prunes itself by partition drop.
+  access log, which prunes itself by partition drop. Each non-dry-run
+  invocation records an `AUDIT_PRUNED` entry on the ledger itself (horizon,
+  exact cutoff, deleted row count, optional operator reason), so the act of
+  pruning is part of the immutable history.
 - `maintain_access_log_partitions` — manual equivalent of the beat task:
   create the upcoming `AccessLogEntry` partition, drop months past the horizon
   (`--dry-run` reports what would drop).

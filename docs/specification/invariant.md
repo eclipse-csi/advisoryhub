@@ -669,7 +669,10 @@ which is deliberately weaker — see [INV-AUDIT-5](#inv-audit-5).
 
 **Rationale.** Tamper resistance. Even a compromised admin or raw `psql` session
 cannot rewrite history; both layers must be subverted, and the database trigger
-removal would itself appear in `git log`.
+removal would itself appear in `git log`. The sole sanctioned removal path —
+`prune_audit`'s controlled bypass (`audit/retention.py`) — records each sweep as
+an `AUDIT_PRUNED` ledger entry in the same transaction, so even retention itself
+stays in the history.
 
 **Enforced in.**
 - `audit/models.py` — `AuditLogEntry.save` and `.delete`.

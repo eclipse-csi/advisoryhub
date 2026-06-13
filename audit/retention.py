@@ -18,8 +18,9 @@ non-replication triggers without dropping them.
 
 The escape hatch only applies inside the function's ``with`` block; once
 control leaves it, normal append-only enforcement is back. Each call
-emits an audit entry recording the scrub itself, so the *act* of
-forgetting is itself in the immutable history (with no PII inside).
+emits an audit entry recording the operation itself (``USER_FORGOTTEN`` /
+``AUDIT_PRUNED``), so the *act* of forgetting or pruning is itself in the
+immutable history (with no PII inside).
 """
 
 from __future__ import annotations
@@ -271,13 +272,28 @@ def _scrub_json(value: Any, email: str, pseudo: str, display: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def prune_audit_older_than(days: int, *, dry_run: bool = False) -> int:
+def prune_audit_older_than(
+    days: int,
+    *,
+    dry_run: bool = False,
+    by=None,
+    reason: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> int:
     """Delete audit entries older than ``days`` and return the row count.
 
     With ``dry_run=True`` no rows are deleted and the count is just the
     number that *would* be removed. Use the management command
     (``manage.py prune_audit --older-than-days …``) for the standard
     operator workflow rather than calling this directly.
+
+    Every non-dry-run call records an ``AUDIT_PRUNED`` entry on the ledger
+    (horizon, exact cutoff, deleted row count) — even when zero rows
+    matched, since the act of running the sweep is what's audited.
+    ``by`` / ``reason`` / ``ip_address`` / ``user_agent`` describe the
+    requesting operator, as in :func:`forget_user`; the ``reason`` is
+    secret-redacted before it lands in metadata (INV-AUDIT-2).
     """
     if days <= 0:
         raise ValueError("days must be positive")
@@ -288,4 +304,25 @@ def prune_audit_older_than(days: int, *, dry_run: bool = False) -> int:
 
     with transaction.atomic(), _audit_trigger_bypass():
         deleted, _ = qs.delete()
+        # Audit the act of pruning itself on the durable ledger (same pattern
+        # as forget_user above). The fresh INSERT is allowed inside the
+        # trigger-bypass block — the append-only trigger only blocks
+        # UPDATE/DELETE — and sharing the transaction means a prune can never
+        # commit unrecorded: if this insert fails, the delete rolls back. The
+        # entry is dated *now*, after the delete ran, so it can never fall
+        # inside its own cutoff.
+        record(
+            action=Action.AUDIT_PRUNED,
+            actor=by,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata={
+                "operation": "prune_audit",
+                "older_than_days": days,
+                "cutoff": cutoff.isoformat(),
+                "deleted": deleted,
+                "reason": reason,
+                "via": "admin_console" if by else "cli",
+            },
+        )
     return deleted

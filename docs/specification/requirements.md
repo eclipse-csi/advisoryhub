@@ -1126,7 +1126,9 @@ is required.
   and per-user for authenticated ones; the global toggle
   `RATELIMIT_ENABLE` exists for tests and local debugging.
 - The retention commands `prune_audit` and `forget_user` handle
-  long-term audit hygiene and per-user PII scrubbing respectively.
+  long-term audit hygiene and per-user PII scrubbing respectively;
+  each records its own run on the durable ledger (`AUDIT_PRUNED` /
+  `USER_FORGOTTEN`).
 - A `seed_demo` management command builds the dev fixture data
   used by the docker-compose dev environment.
 

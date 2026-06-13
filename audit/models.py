@@ -115,6 +115,11 @@ class Action(models.TextChoices):
     # source scrub counters live in metadata, with no PII inside. See
     # ``audit.retention.forget_user``.
     USER_FORGOTTEN = "user.forgotten"
+    # Retention sweep of the durable ledger itself (admin console or `manage.py
+    # prune_audit`). Durable governance event: the actor is the requesting
+    # operator (null on the CLI path); the horizon, exact cutoff, and deleted
+    # row count live in metadata. See ``audit.retention.prune_audit_older_than``.
+    AUDIT_PRUNED = "audit.pruned"
     # Triage flow (current). The intake form creates an Advisory(state=triage)
     # rather than a separate report row. Old REPORT_* values below remain in
     # the enum so existing audit rows stay readable; new code emits the

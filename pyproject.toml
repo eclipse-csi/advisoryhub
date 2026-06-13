@@ -11,7 +11,10 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "mozilla-django-oidc>=4.0",
     "django-htmx>=1.21",
-    "celery>=5.4",
+    "celery[redis]>=5.4",
+    # redis-py is also used directly by Django's RedisCache (CACHE_URL), so keep it
+    # explicit — but its upper bound is inherited from kombu via celery[redis]
+    # (currently redis<6.5), so the ceiling tracks kombu instead of a hand-pinned number.
     "redis>=5.0",
     "markdown-it-py>=3.0",
     "bleach>=6.1",

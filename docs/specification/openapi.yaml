@@ -11,8 +11,8 @@
 # info.version tracks the application version in lockstep (bumped by
 # dev/release.sh, checked by dev/check_release_versions.sh).
 #
-# OpenAPI 3.0.3 (not 3.1): the docs-site renderer (neoteroi-mkdocs /
-# essentials-openapi) documents support for 3.0 only, and nothing here
+# OpenAPI 3.0.3 (not 3.1): the docs-site renderer (essentials-openapi, via
+# dev/mkdocs_oad_hook.py) documents support for 3.0 only, and nothing here
 # needs 3.1-only features.
 openapi: 3.0.3
 

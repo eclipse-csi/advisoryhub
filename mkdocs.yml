@@ -53,7 +53,8 @@ extra:
     provider: mike # Material renders the version selector from ../versions.json
     default: latest
 
-# Vendored neoteroi-mkdocs CSS (styles the OAD-rendered API page), pinned via
+# Vendored CSS styling the OAD-rendered API page (essentials-openapi HTML
+# output, originally shipped with neoteroi-mkdocs's release), pinned via
 # docs/assets/css/neoteroi-mkdocs.VERSION and checked by dev/check_vendored_assets.sh.
 extra_css:
   - assets/css/neoteroi-mkdocs.css
@@ -62,10 +63,14 @@ plugins:
   - search
   - mike:
       canonical_version: latest
-  # Renders specification/openapi.yaml on the API page (OAD tag in
-  # specification/api.md) at build time — static HTML, no JS app.
-  - neoteroi.mkdocsoad:
-      use_pymdownx: true
+
+# Renders specification/openapi.yaml on the API page (OAD tag in
+# specification/api.md) at build time — static HTML, no JS app. A thin local
+# hook calling essentials-openapi directly, replacing the neoteroi-mkdocs
+# plugin (which also dragged in httpx/rich); MKDOCS output style = the old
+# use_pymdownx: true.
+hooks:
+  - dev/mkdocs_oad_hook.py
 
 markdown_extensions:
   # Listing extensions replaces MkDocs' defaults — tables/toc stay explicit.
@@ -85,7 +90,7 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  # Required by neoteroi.mkdocsoad's use_pymdownx output (tabbed schema views).
+  # Required by the OAD hook's MKDOCS output style (tabbed schema views).
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.superfences:

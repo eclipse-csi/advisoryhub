@@ -51,8 +51,8 @@ check static/fonts/InterVariable-Italic.woff2 \
   "$(hash_for static/fonts/Inter.VERSION InterVariable-Italic.woff2)"
 
 # Docs-site CSS for the OAD-rendered API reference; same `sha256:<hash>` line
-# format as htmx.VERSION. Keep in lockstep with the neoteroi-mkdocs pin in
-# pyproject.toml's docs extra.
+# format as htmx.VERSION. Styles essentials-openapi's HTML output (rendered by
+# dev/mkdocs_oad_hook.py); re-vendor from upstream if that engine is bumped.
 check docs/assets/css/neoteroi-mkdocs.css \
   "$(sed -n 's/^sha256://p' docs/assets/css/neoteroi-mkdocs.VERSION | head -n1)"
 

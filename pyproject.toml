@@ -69,7 +69,7 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.6",
     "mike>=2.1",
-    "neoteroi-mkdocs>=1.2", # renders docs/specification/openapi.yaml (OAD tag in api.md)
+    "essentials-openapi>=1.4", # renders openapi.yaml via dev/mkdocs_oad_hook.py (OAD tag in api.md)
 ]
 
 [tool.pytest.ini_options]

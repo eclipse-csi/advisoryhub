@@ -8,6 +8,7 @@ the metadata JSON by accident.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 from django.http import HttpRequest
@@ -127,3 +128,34 @@ def record_from_request(request: HttpRequest, **kwargs) -> AuditLogEntry | Acces
     kwargs.setdefault("ip_address", client_ip(request))
     kwargs.setdefault("user_agent", request.META.get("HTTP_USER_AGENT", ""))
     return record(**kwargs)
+
+
+def pruned_history_floor() -> datetime | None:
+    """Most aggressive retention boundary ever applied by ``prune_audit``, or None.
+
+    Returns the **maximum** ``cutoff`` across all surviving ``AUDIT_PRUNED``
+    entries — audit events before this instant may have been removed from the
+    ledger (see :func:`audit.retention.prune_audit_older_than`). The most recent
+    prune by timestamp is *not* necessarily the most aggressive (a later sweep
+    may use a smaller/earlier horizon), so we max over the recorded cutoffs
+    rather than reading the latest row. The max-cutoff entry itself can never be
+    pruned: its ``created_at`` is stamped after its own delete and so postdates
+    its cutoff, which is at least as late as any later sweep's cutoff.
+
+    Cheap and uncached: ``action`` is indexed and ``AUDIT_PRUNED`` rows are few
+    (one per sweep). Returns ``None`` when no prune has ever run.
+    """
+    best: datetime | None = None
+    for meta in AuditLogEntry.objects.filter(action=Action.AUDIT_PRUNED).values_list(
+        "metadata", flat=True
+    ):
+        raw = (meta or {}).get("cutoff")
+        if not raw:
+            continue
+        try:
+            dt = datetime.fromisoformat(raw)
+        except (TypeError, ValueError):
+            continue
+        if best is None or dt > best:
+            best = dt
+    return best

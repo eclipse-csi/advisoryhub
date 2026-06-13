@@ -5,6 +5,8 @@
     {% for item in timeline %}
       {% if item.kind == "comment" %}
         {% include "comments/_comment.html" with comment=item.obj advisory=advisory can_comment=can_comment can_post_internal=can_post_internal %}
+      {% elif item.kind == "marker" %}
+        {% include "comments/_retention_marker.html" with marker=item.obj %}
       {% else %}
         {% include "comments/_event.html" with event=item.obj advisory=advisory %}
       {% endif %}

@@ -30,6 +30,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from audit.models import Action, AuditLogEntry
+from audit.services import pruned_history_floor
 
 from .base import admin_required
 
@@ -153,6 +154,7 @@ def audit(request):
             "selected_q": selected_q,
             "filters_querystring": filters_querystring,
             "any_filter_active": any_filter_active,
+            "pruned_history_floor": pruned_history_floor(),
             "admin_section": "audit",
         },
     )

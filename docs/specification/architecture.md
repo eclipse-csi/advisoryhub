@@ -1040,7 +1040,13 @@ Management commands in `audit/management/commands/`:
   access log, which prunes itself by partition drop. Each non-dry-run
   invocation records an `AUDIT_PRUNED` entry on the ledger itself (horizon,
   exact cutoff, deleted row count, optional operator reason), so the act of
-  pruning is part of the immutable history.
+  pruning is part of the immutable history. The *retention floor* — the most
+  aggressive cutoff ever recorded across surviving `AUDIT_PRUNED` entries
+  (`audit.services.pruned_history_floor`) — is surfaced to readers: a marker at
+  the oldest end of any affected advisory's activity timeline (an advisory whose
+  `created_at` predates the floor) and a footer note on the Admin Console's
+  Audit-logs page, so a pruned history reads as deliberately truncated rather
+  than simply short.
 - `maintain_access_log_partitions` — manual equivalent of the beat task:
   create the upcoming `AccessLogEntry` partition, drop months past the horizon
   (`--dry-run` reports what would drop).

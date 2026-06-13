@@ -814,6 +814,66 @@ def test_advisory_timeline_does_not_duplicate_comments_as_events(setup):
 
 
 # ---------------------------------------------------------------------------
+# Retention-floor marker
+# ---------------------------------------------------------------------------
+
+
+def _record_prune_cutoff(cutoff):
+    """An AUDIT_PRUNED ledger entry whose metadata records ``cutoff`` (datetime)."""
+    return record(
+        action=Action.AUDIT_PRUNED,
+        metadata={"operation": "prune_audit", "cutoff": cutoff.isoformat(), "deleted": 0},
+    )
+
+
+@pytest.mark.django_db
+def test_advisory_timeline_prepends_retention_marker_when_advisory_predates_floor(setup):
+    advisory = setup["advisory"]
+    floor = timezone.now()
+    # Advisory created before the floor → its early events were swept.
+    Advisory.objects.filter(pk=advisory.pk).update(created_at=floor - timedelta(days=30))
+    advisory.refresh_from_db()
+    _record_prune_cutoff(floor)
+
+    items = comment_services.advisory_timeline(advisory, viewer=setup["owner"])
+    assert items[0]["kind"] == "marker"
+    assert items[0]["obj"].floor == floor
+
+
+@pytest.mark.django_db
+def test_advisory_timeline_no_marker_when_advisory_newer_than_floor(setup):
+    advisory = setup["advisory"]  # created ~now by the fixture
+    _record_prune_cutoff(timezone.now() - timedelta(days=30))  # floor in the past
+
+    items = comment_services.advisory_timeline(advisory, viewer=setup["owner"])
+    assert all(i["kind"] != "marker" for i in items)
+
+
+@pytest.mark.django_db
+def test_advisory_timeline_no_marker_without_any_prune(setup):
+    advisory = setup["advisory"]
+    Advisory.objects.filter(pk=advisory.pk).update(created_at=timezone.now() - timedelta(days=4000))
+    advisory.refresh_from_db()
+
+    items = comment_services.advisory_timeline(advisory, viewer=setup["owner"])
+    assert all(i["kind"] != "marker" for i in items)
+
+
+@pytest.mark.django_db
+def test_timeline_view_renders_retention_marker(client, setup):
+    advisory = setup["advisory"]
+    floor = timezone.now()
+    Advisory.objects.filter(pk=advisory.pk).update(created_at=floor - timedelta(days=30))
+    _record_prune_cutoff(floor)
+
+    client.force_login(setup["owner"])
+    response = client.get(reverse("comments:timeline", args=[advisory.advisory_id]))
+    assert response.status_code == 200
+    assert b"timeline-retention-marker" in response.content
+    assert b"under the retention policy" in response.content
+
+
+# ---------------------------------------------------------------------------
 # HTMX view
 # ---------------------------------------------------------------------------
 

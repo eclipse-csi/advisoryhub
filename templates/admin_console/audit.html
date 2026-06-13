@@ -104,4 +104,8 @@
   {% if page.has_other_pages %}
     {% include "admin_console/_paginator.html" with page=page filters_querystring=filters_querystring %}
   {% endif %}
+
+  {% if pruned_history_floor %}
+    <p class="muted audit__retention-note">{% blocktranslate with when=pruned_history_floor|date:'Y-m-d' %}Audit entries before {{ when }} were removed under the retention policy.{% endblocktranslate %}</p>
+  {% endif %}
 {% endblock %}

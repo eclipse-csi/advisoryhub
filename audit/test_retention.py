@@ -9,7 +9,7 @@ from django.utils import timezone
 from advisories.models import Advisory
 from audit.models import Action, AuditLogEntry
 from audit.retention import _audit_trigger_bypass, forget_user, prune_audit_older_than
-from audit.services import record
+from audit.services import pruned_history_floor, record
 
 
 @pytest.fixture
@@ -332,6 +332,33 @@ def test_prune_audit_command(setup, capsys):
     remaining = AuditLogEntry.objects.all()
     assert remaining.count() == 1
     assert remaining.get().action == Action.AUDIT_PRUNED
+
+
+# ---- pruned_history_floor ----------------------------------------------
+
+
+@pytest.mark.django_db
+def test_pruned_history_floor_none_without_prune(setup):
+    assert pruned_history_floor() is None
+
+
+@pytest.mark.django_db
+def test_pruned_history_floor_returns_recorded_cutoff(setup):
+    prune_audit_older_than(365)
+    entry = AuditLogEntry.objects.get(action=Action.AUDIT_PRUNED)
+    assert pruned_history_floor() == datetime.fromisoformat(entry.metadata["cutoff"])
+
+
+@pytest.mark.django_db
+def test_pruned_history_floor_takes_max_cutoff_not_latest_prune(setup):
+    """A later, less-aggressive sweep must not lower the floor: the floor is the
+    max cutoff across all prunes, not the most recent prune by timestamp."""
+    prune_audit_older_than(3650)  # cutoff ~10y ago
+    prune_audit_older_than(7300)  # runs later, but cutoff ~20y ago (earlier)
+    aggressive = AuditLogEntry.objects.get(
+        action=Action.AUDIT_PRUNED, metadata__older_than_days=3650
+    )
+    assert pruned_history_floor() == datetime.fromisoformat(aggressive.metadata["cutoff"])
 
 
 @pytest.mark.django_db

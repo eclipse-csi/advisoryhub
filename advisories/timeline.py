@@ -24,6 +24,7 @@ from typing import Any
 
 from accounts.utils import mask_email
 from audit.models import Action, AuditLogEntry
+from audit.services import pruned_history_floor
 
 from . import permissions as perms
 from .models import Advisory
@@ -125,6 +126,40 @@ def events_for_advisory(advisory: Advisory, *, viewer) -> Iterable[AuditLogEntry
         .prefetch_related("actor__groups")
         .order_by("created_at")
     )
+
+
+# ---------------------------------------------------------------------------
+# Retention-floor marker
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RetentionMarker:
+    """A timeline boundary noting that older audit events were pruned.
+
+    Rendered at the oldest end of the timeline when the advisory predates the
+    retention floor (see :func:`audit.services.pruned_history_floor`). Purely
+    informational — it carries only the floor instant; the per-advisory count of
+    removed events is unknowable because those rows are gone.
+    """
+
+    floor: datetime
+
+
+def retention_marker_for(advisory: Advisory) -> RetentionMarker | None:
+    """A :class:`RetentionMarker` if a prune may have removed events from this
+    advisory's history, else ``None``.
+
+    The gate is just ``advisory.created_at < floor``: every audit event for an
+    advisory postdates its creation, so if creation precedes the floor the
+    (tier-A, visible-to-all) ``ADVISORY_CREATED`` event was necessarily swept;
+    if creation is at or after the floor, nothing for this advisory could have
+    been pruned.
+    """
+    floor = pruned_history_floor()
+    if floor and advisory.created_at and advisory.created_at < floor:
+        return RetentionMarker(floor=floor)
+    return None
 
 
 # ---------------------------------------------------------------------------

@@ -360,6 +360,29 @@ def test_audit_page_paginates(client, setup):
 
 
 @pytest.mark.django_db
+def test_audit_page_shows_retention_note_after_prune(client, setup):
+    AuditLogEntry.objects.create(
+        action=Action.AUDIT_PRUNED,
+        metadata={
+            "operation": "prune_audit",
+            "cutoff": datetime(2016, 6, 13, tzinfo=UTC).isoformat(),
+            "deleted": 0,
+        },
+    )
+    client.force_login(setup["admin"])
+    body = client.get(reverse("admin_console:audit")).content.decode()
+    assert "under the retention policy" in body
+    assert "2016-06-13" in body
+
+
+@pytest.mark.django_db
+def test_audit_page_no_retention_note_without_prune(client, setup):
+    client.force_login(setup["admin"])
+    body = client.get(reverse("admin_console:audit")).content.decode()
+    assert "under the retention policy" not in body
+
+
+@pytest.mark.django_db
 def test_audit_page_filters_by_action(client, setup):
     AuditLogEntry.objects.create(actor=setup["admin"], action=Action.ADVISORY_CREATED)
     AuditLogEntry.objects.create(actor=setup["admin"], action=Action.ADVISORY_PUBLISHED)

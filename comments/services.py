@@ -529,6 +529,7 @@ def advisory_timeline(advisory: Advisory, *, viewer: User) -> list[dict]:
         can_extend_run,
         events_for_advisory,
         resolve_principals,
+        retention_marker_for,
     )
 
     # Build a single sorted list of raw items first — comments stay as
@@ -567,4 +568,12 @@ def advisory_timeline(advisory: Advisory, *, viewer: User) -> list[dict]:
         wrapped = TimelineEvent.from_run(run, principals=principals, show_emails=show_emails)
         out.append({"kind": "event", "ts": wrapped.created_at, "obj": wrapped})
         i = j
+
+    # If a retention sweep removed events older than this advisory's creation,
+    # mark the truncation at the oldest (top) end so the timeline doesn't appear
+    # to simply begin mid-life. Comments are never pruned, so a pre-floor comment
+    # may still sit below the marker — the copy says "audit events" accordingly.
+    marker = retention_marker_for(advisory)
+    if marker:
+        out.insert(0, {"kind": "marker", "ts": marker.floor, "obj": marker})
     return out

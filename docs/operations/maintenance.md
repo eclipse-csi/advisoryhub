@@ -119,7 +119,10 @@ commands:
 - **Audit ledger** — `prune_audit` trims entries past a long horizon (default ~10
   years), honouring the append-only trigger via its controlled bypass and
   recording the sweep itself on an `AUDIT_PRUNED` audit entry (horizon, cutoff,
-  deleted count).
+  deleted count). After a sweep, affected advisories' activity timelines and the
+  Admin Console's Audit-logs page show a marker noting that older audit events
+  were removed (the *retention floor*), so a truncated history is not mistaken
+  for a short one.
 - **Right to be forgotten** — `forget_user` pseudonymises a specific person across
   the system (optionally deleting the row), recording the justification on a
   `USER_FORGOTTEN` audit entry.

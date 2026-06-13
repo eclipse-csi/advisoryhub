@@ -1,0 +1,5 @@
+{% load i18n %}
+{# Coarse retention boundary — a pure date is intentional here (not {% timestamp %}). #}
+<article class="timeline-retention-marker" role="note">
+  <p>{% blocktranslate with when=marker.floor|date:'Y-m-d' %}Audit events before {{ when }} were removed under the retention policy.{% endblocktranslate %}</p>
+</article>

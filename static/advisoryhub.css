@@ -1483,6 +1483,20 @@ p.state strong { color: var(--text); }
 
 .comments h2 { margin-bottom: 0.8rem; }
 .comment-list { display: flex; flex-direction: column; gap: 0.7rem; }
+/* Retention-floor boundary: prepended at the oldest end of the timeline when a
+   prune removed this advisory's earlier audit events. Reads as a truncation
+   line (dashed top rule), not an event. */
+.timeline-retention-marker {
+  margin: 0;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.timeline-retention-marker p { margin: 0; }
+/* Same note on the admin audit page, below the results. */
+.audit__retention-note { margin-top: 0.8rem; font-size: var(--text-sm); }
 .comment {
   background: var(--surface-alt);
   border: 1px solid var(--border);

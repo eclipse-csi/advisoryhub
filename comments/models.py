@@ -2,7 +2,7 @@
 
 Comments are stored as raw markdown in :attr:`AdvisoryComment.body`. Rendered
 HTML is generated on demand via :func:`comments.services.render_markdown`,
-which runs the body through markdown-it-py and a strict bleach allowlist.
+which runs the body through markdown-it-py and a strict nh3 allowlist.
 We never store rendered HTML — re-rendering keeps the sanitizer rules in one
 place and lets us tighten them retroactively.
 """

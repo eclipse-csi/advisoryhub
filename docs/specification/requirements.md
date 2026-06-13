@@ -188,7 +188,7 @@ matches the authenticated user's email case-insensitively
 Comments on an advisory. Each comment has an author, a markdown
 `body`, and an `is_internal` boolean fixed at creation
 ([INV-COMMENT-1](./invariant.md#inv-comment-1)). Markdown is rendered
-on demand through a strict bleach allowlist — no inline HTML, no
+on demand through a strict nh3 allowlist — no inline HTML, no
 images, no scripts; rendered HTML is never stored. `@mentions`
 resolve to users by full email or local-part.
 
@@ -424,7 +424,7 @@ falls out of normal permission resolution
 
 Comments are authored by the requesting user. The form accepts
 markdown; the body is stored as raw markdown and re-rendered on every
-read through a strict bleach allowlist (`p`, `br`, `strong`, `em`,
+read through a strict nh3 allowlist (`p`, `br`, `strong`, `em`,
 `u`, `code`, `pre`, `blockquote`, `hr`, `ul`, `ol`, `li`, `h1`–`h6`,
 `a`, tables). Anchor tags are augmented with `rel="nofollow noopener"`.
 Rendered HTML is never persisted, so tightening the allowlist applies
@@ -989,7 +989,7 @@ is required.
 
 1. A collaborator opens the advisory and posts a public comment
    mentioning `@alice` and `@bob@example.org`.
-2. The markdown is rendered through the bleach allowlist and saved
+2. The markdown is rendered through the nh3 allowlist and saved
    to `AdvisoryComment.body`; `CommentVersion` v1 carries the same
    body; `COMMENT_CREATED` is audited.
 3. `notifications.tasks.send_comment_email` is queued. At send time
@@ -1027,7 +1027,7 @@ is required.
   inherits the same protection (the JSON project picker is GET-only
   and cache-controlled).
 - Markdown bodies (advisory `details`, comments) are sanitised at
-  render time through a strict bleach allowlist; rendered HTML is
+  render time through a strict nh3 allowlist; rendered HTML is
   never persisted.
 - Step-up authentication gates publication and GitHub App
   configuration.

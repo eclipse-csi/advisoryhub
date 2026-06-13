@@ -53,7 +53,7 @@ def test_markdown_strips_javascript_urls():
     """A javascript: URL must never produce an executable anchor.
 
     markdown-it-py refuses to emit ``<a>`` for a ``javascript:`` href in
-    the first place; bleach is a defense-in-depth backstop. Either way:
+    the first place; nh3 is a defense-in-depth backstop. Either way:
     no anchor element with a ``javascript:`` href reaches the rendered
     HTML.
     """

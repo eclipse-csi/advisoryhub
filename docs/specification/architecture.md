@@ -33,7 +33,7 @@ Cross-references point at the deep-dive documents in this folder.
 | Async runtime | Celery | Workers + beat scheduler. JSON serialiser only. |
 | Authentication | `mozilla-django-oidc` | All authentication via OIDC. PKCE on by default. |
 | Templating | Django templates + HTMX | `django_htmx` middleware; partial-update fragments on the admin console and advisory actions. |
-| Markdown | `markdown-it-py` + `bleach` | Strict allowlist; rendered HTML never stored. |
+| Markdown | `markdown-it-py` + `nh3` | Strict allowlist; rendered HTML never stored. |
 | Git client | `git` CLI via `subprocess` | Used by the publication pipeline; argument lists only, never `shell=True`. |
 | HTTP client (GHSA) | `requests` / `urllib3` | Through `ghsa.client`. |
 | Metrics | `django-prometheus` | `PrometheusBeforeMiddleware` first, `PrometheusAfterMiddleware` last. |

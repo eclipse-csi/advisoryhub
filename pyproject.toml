@@ -17,7 +17,7 @@ dependencies = [
     # (currently redis<6.5), so the ceiling tracks kombu instead of a hand-pinned number.
     "redis>=5.0",
     "markdown-it-py>=3.0",
-    "bleach>=6.1",
+    "nh3>=0.2.18",
     "jsonschema>=4.21",
     "cvss>=3.0",
     "django-environ>=0.11",
@@ -79,9 +79,6 @@ docs = [
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "-q --strict-markers --reuse-db"
-filterwarnings = [
-    "ignore::DeprecationWarning:bleach",
-]
 
 [tool.ruff]
 line-length = 100

@@ -1,9 +1,9 @@
 """Comment markdown rendering, mention extraction, and write helpers.
 
-Markdown is rendered with ``markdown-it-py`` and post-sanitised by
-``bleach``. The allowlist is intentionally narrow — no images, no inline
-HTML, no scripts. Tightening here applies retroactively to all stored
-comments because we never store rendered HTML.
+Markdown is rendered with ``markdown-it-py`` and post-sanitised by ``nh3``
+(the Rust ``ammonia`` sanitizer). The allowlist is intentionally narrow — no
+images, no inline HTML, no scripts. Tightening here applies retroactively to
+all stored comments because we never store rendered HTML.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-import bleach
+import nh3
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import transaction
@@ -61,34 +61,28 @@ _ALLOWED_TAGS = {
     "th",
     "td",
 }
-_ALLOWED_ATTRS = {"a": ["href", "title", "rel"]}
-_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
+# nh3 manages the ``rel`` attribute itself via ``link_rel`` below (forcing
+# ``nofollow noopener`` on every link), so ``rel`` is deliberately absent here —
+# listing it as an allowed attribute would conflict with nh3's link_rel handling.
+_ALLOWED_ATTRS = {"a": {"href", "title"}}
+_ALLOWED_SCHEMES = {"http", "https", "mailto"}
 
 
 def render_markdown(body: str) -> str:
     """Render markdown to a sanitized HTML fragment safe for inclusion in templates."""
     raw_html = _MD.render(body or "")
-    cleaner = bleach.Cleaner(
+    # nh3 strips disallowed tags (keeping their text), drops disallowed-scheme
+    # hrefs (the javascript: backstop), and forces rel="nofollow noopener" on
+    # every link natively.
+    cleaned = nh3.clean(
+        raw_html,
         tags=_ALLOWED_TAGS,
         attributes=_ALLOWED_ATTRS,
-        protocols=_ALLOWED_PROTOCOLS,
-        strip=True,
-    )
-    cleaned = cleaner.clean(raw_html)
-    # Add rel="nofollow noopener" to all links via bleach.linkify-style postprocess.
-    cleaned = re.sub(
-        r"<a ([^>]*?)>",
-        lambda m: _augment_anchor(m.group(1)),
-        cleaned,
+        url_schemes=_ALLOWED_SCHEMES,
+        link_rel="nofollow noopener",
     )
     cleaned = _highlight_mentions(cleaned)
     return cleaned
-
-
-def _augment_anchor(attrs: str) -> str:
-    if "rel=" in attrs.lower():
-        return f"<a {attrs}>"
-    return f'<a {attrs} rel="nofollow noopener">'
 
 
 # Matches the opening of a <code>/<pre> run and its close, so the mention
@@ -102,7 +96,7 @@ def _highlight_mentions(html: str) -> str:
 
     Runs *after* sanitisation on the already-cleaned, HTML-escaped fragment,
     so the only ``<span>`` present is the fixed-class one we emit here — we
-    never have to widen the bleach allowlist (strictly safer than letting the
+    never have to widen the sanitizer allowlist (strictly safer than letting the
     body author write spans). Highlighting is **syntactic**: it does not hit
     the DB to check whether a handle resolves, because the timeline renders
     many comments and a per-comment lookup would be N queries. Tokens inside

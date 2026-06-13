@@ -595,7 +595,7 @@ X_FRAME_OPTIONS = "DENY"
 # ---------------------------------------------------------------------------
 # Nonce-based script-src + 'strict-dynamic': only per-request-nonced <script>
 # tags (and scripts they load) execute, so an injected inline <script> or event
-# handler cannot run. This is the defence-in-depth layer behind the bleach
+# handler cannot run. This is the defence-in-depth layer behind the nh3
 # sanitiser that scrubs user-supplied markdown (comments/services.render_markdown).
 # All scripts, styles and fonts are same-origin; inline event handlers and the
 # per-form CSRF hx-headers were removed (see static/advisoryhub-dialogs.js and

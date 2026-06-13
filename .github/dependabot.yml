@@ -1,14 +1,23 @@
-# Dependabot keeps the SHA-pinned `uses:` references in .github/workflows/
-# fresh (it rewrites both the pin and the trailing `# vX.Y.Z` comment).
-#
-# Deliberately github-actions only:
-#   * Python deps stay in uv.lock — pip-audit already FAILS CI on known-
-#     vulnerable runtime deps; feature upgrades happen via explicit `uv lock`
-#     bumps, not bot churn.
-#   * Docker bases (dhi.io) are digest-pinned on purpose, live behind a
-#     credentialed registry Dependabot can't reach without extra secrets, and
-#     the Trivy gate fails the build on a vulnerable base anyway.
+# Dependabot keeps our pinned dependencies fresh across three ecosystems. The
+# CI security gates remain the source of truth — Dependabot only proposes PRs:
+#   * github-actions — rewrites the SHA pin and trailing `# vX.Y.Z` comment on
+#     every `uses:` reference in .github/workflows/.
+#   * uv — lockfile bumps for pyproject.toml + uv.lock, grouped into runtime
+#     deps vs dev/docs tooling. pip-audit still FAILS CI on any known-vulnerable
+#     runtime dep, so security never rides on bot cadence.
+#   * docker — base-image bumps for the Dockerfile; the Trivy gate still fails
+#     the build on a vulnerable base. The dhi.io bases sit behind a credentialed
+#     registry, so the `dhi-io` registry below needs DEPENDABOT secrets (repo
+#     Settings → Secrets and variables → Dependabot — NOT Actions secrets).
+#     Until those exist, dhi.io updates error in the Dependabot logs while the
+#     public ghcr.io/astral-sh/uv base still updates fine.
 version: 2
+registries:
+  dhi-io:
+    type: docker-registry
+    url: dhi.io
+    username: ${{secrets.DHI_REGISTRY_USERNAME}}
+    password: ${{secrets.DHI_REGISTRY_TOKEN}}
 updates:
   - package-ecosystem: github-actions
     directory: "/"
@@ -20,3 +29,31 @@ updates:
     commit-message:
       prefix: "build"
       include: scope # → "build(deps): bump …" (conventional commits)
+
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      python-prod:
+        dependency-type: production
+        patterns: ["*"]
+      python-dev:
+        dependency-type: development
+        patterns: ["*"]
+    commit-message:
+      prefix: "build"
+      include: scope
+
+  - package-ecosystem: docker
+    directory: "/"
+    registries:
+      - dhi-io
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]
+    commit-message:
+      prefix: "build"
+      include: scope

@@ -2,10 +2,10 @@
 
 Usage::
 
-    python manage.py prune_audit --older-than-days 1825 --dry-run
-    python manage.py prune_audit --older-than-days 1825
+    python manage.py prune_audit --older-than-days 3650 --dry-run
+    python manage.py prune_audit --older-than-days 3650
 
-The default horizon is 1825 days (5 years). Use ``--dry-run`` to count
+The default horizon is 3650 days (10 years). Use ``--dry-run`` to count
 what *would* be removed before doing anything destructive.
 
 Every non-dry-run invocation records an ``AUDIT_PRUNED`` entry on the
@@ -34,8 +34,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--older-than-days",
             type=int,
-            default=1825,
-            help="Retention horizon in days (default: 1825 ≈ 5 years).",
+            default=3650,
+            help="Retention horizon in days (default: 3650 ≈ 10 years).",
         )
         parser.add_argument(
             "--dry-run",

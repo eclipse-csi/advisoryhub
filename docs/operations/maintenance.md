@@ -92,7 +92,7 @@ Project-specific commands (Django's own `migrate`, `collectstatic`, `check`,
 
 | Command | App | Purpose | Key flags |
 |---|---|---|---|
-| `prune_audit` | audit | Delete audit-log entries older than the horizon (uses the controlled append-only bypass; records the sweep on an `AUDIT_PRUNED` entry). | `--older-than-days N` (default 1825 ≈ 5y), `--dry-run`, `--reason TEXT` |
+| `prune_audit` | audit | Delete audit-log entries older than the horizon (uses the controlled append-only bypass; records the sweep on an `AUDIT_PRUNED` entry). | `--older-than-days N` (default 3650 ≈ 10y), `--dry-run`, `--reason TEXT` |
 | `forget_user` | audit | GDPR right-to-be-forgotten: anonymise a user across audit, comments, and invitations. | `email` (positional), `--pseudo EMAIL`, `--reason TEXT`, `--also-delete` |
 | `maintain_access_log_partitions` | audit | Manual run of the daily task: create the upcoming access-log partition, drop expired ones. | `--retention-days N`, `--dry-run` |
 | `prune_reports` | intake | Scrub PII (IP, user-agent, reporter name) from old triage intake sidecars + honeypot rows. | `--dry-run`, `--advisory-id ID` (one-off), `--retention-days N` |
@@ -116,7 +116,7 @@ commands:
 - **Intake PII** — reporter IP/user-agent/name on triage sidecars and honeypot rows
   are scrubbed after `INTAKE_REPORT_RETENTION_DAYS` (default 365) via `prune_reports`;
   use `--advisory-id` for a one-off erasure request.
-- **Audit ledger** — `prune_audit` trims entries past a long horizon (default ~5
+- **Audit ledger** — `prune_audit` trims entries past a long horizon (default ~10
   years), honouring the append-only trigger via its controlled bypass and
   recording the sweep itself on an `AUDIT_PRUNED` audit entry (horizon, cutoff,
   deleted count).

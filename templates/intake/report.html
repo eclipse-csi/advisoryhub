@@ -38,7 +38,7 @@
         {# Smart select-combobox (advisoryhub-select.js), same as the advisory forms. Submits the project slug; __unsorted__ routes to admin triage. Degrades to a native <select> without JS. #}
         <select id="id_project_slug" name="project_slug" data-combobox required>
           <option value="">{% translate "Select a project…" %}</option>
-          <option value="__unsorted__"{% if form.project_slug.value == "__unsorted__" %} selected{% endif %}>{% translate "I do not know — route to admins" %}</option>
+          <option value="__unsorted__"{% if form.project_slug.value == "__unsorted__" %} selected{% endif %}>{% translate "I don't know which project" %}</option>
           {% for p in projects %}
             <option value="{{ p.slug }}" data-combobox-detail="{{ p.slug }}"{% if form.project_slug.value == p.slug %} selected{% endif %}>{{ p.name }}</option>
           {% endfor %}

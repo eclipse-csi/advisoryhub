@@ -23,7 +23,7 @@
   {% if is_triage and intake and intake.needs_admin_routing %}
     <div class="advisory-banner advisory-banner--warning" role="status">
       <div class="advisory-banner__body">
-        <strong>Flagged for admin re-routing</strong>
+        <strong>Flagged for admin routing</strong>
         {% if intake.flagged_for_routing_by %}
           — flagged by {% user_chip intake.flagged_for_routing_by %}
           on {% timestamp intake.flagged_for_routing_at %}
@@ -72,7 +72,7 @@
   <dl>
     <dt>Project</dt>
     <dd>
-      {% if is_triage and is_unsorted %}<em>unrouted</em>{% else %}{{ advisory.project.name }}{% endif %}
+      {% if is_triage and is_unsorted %}<em>Unsorted</em>{% else %}{{ advisory.project.name }}{% endif %}
     </dd>
     <dt>Summary</dt><dd>{{ advisory.summary|default:"—" }}</dd>
     {% if is_triage %}

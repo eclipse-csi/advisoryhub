@@ -151,8 +151,8 @@ homepage URL, the `security_team` Django `Group`, and the
 `is_mature_publisher` flag that controls whether the team may publish
 without a top-level review ([INV-PERM-1](./invariant.md#inv-perm-1),
 [INV-PERM-2](./invariant.md#inv-perm-2)). A singleton `unsorted`
-project owns unrouted triage; its security team is the admin group by
-construction ([INV-PROJECT-2](./invariant.md#inv-project-2)).
+project owns triage filed without a known project; its security team is
+the admin group by construction ([INV-PROJECT-2](./invariant.md#inv-project-2)).
 
 `ProjectGitHubRepository` mirrors the `(owner, name)` pairs that PMI
 declares for a project. The mirror is refreshed by a Celery beat task

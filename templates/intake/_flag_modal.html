@@ -4,7 +4,7 @@
         hx-target="#modal"
         hx-swap="innerHTML">
     {% csrf_token %}
-    <h3 id="triage-flag-modal-title">{% translate "Flag for admin re-routing" %}</h3>
+    <h3 id="triage-flag-modal-title">{% translate "Flag for admin routing" %}</h3>
     <p>{% translate "Briefly describe where this report should go and why. An admin will review and reassign." %}</p>
     {% if error %}<p class="errors">{{ error }}</p>{% endif %}
     <label>{% translate "Routing note (required)" %}

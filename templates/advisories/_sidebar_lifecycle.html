@@ -23,7 +23,7 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
       <p class="sidebar-card__action-hint">
         {% if is_triage %}
           Clean up the reporter's submission before promoting it to a draft advisory.
-          For unrouted reports, set the target project on the edit form first.
+          For reports on the Unsorted project, set the target project on the edit form first.
         {% else %}
           Modify the advisory's content. Editing a published advisory will require re-publishing it before the changes appear in the public feed.
         {% endif %}
@@ -37,7 +37,7 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
       {% include "_confirm_action.html" with action=promote_url dialog_id="advisory-promote" trigger_label="Promote to draft" trigger_class="success" disabled=is_unsorted title="Promote to draft" body="Move this report from triage to draft. Comments open up, the project security team is notified, and the standard advisory workflow takes over." confirm_label="Promote to draft" confirm_class="success" %}
       <p class="sidebar-card__action-hint">
         {% if is_unsorted %}
-          Set a target project via the edit form first — unrouted reports can't be promoted as-is.
+          Set a target project via the edit form first — reports on the Unsorted project can't be promoted as-is.
         {% else %}
           Move this report from triage to draft. Comments open up, the project security team picks it up, and the standard advisory workflow takes over.
         {% endif %}
@@ -51,7 +51,7 @@ can_edit, can_triage, can_flag_routing, can_dismiss, can_reopen.
          hx-get="{% url 'advisories:flag_modal' advisory.advisory_id %}"
          hx-target="#modal" hx-swap="innerHTML"
          role="button"
-         href="#">Flag for admin re-routing</a>
+         href="#">Flag for admin routing</a>
       <p class="sidebar-card__action-hint">
         Hand this report off to an admin if it belongs to a different project's security team. Non-admin triagers are locked out until the admin resolves the flag.
       </p>

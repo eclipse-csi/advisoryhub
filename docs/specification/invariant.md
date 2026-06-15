@@ -111,7 +111,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-ID-2](#inv-id-2) | `ghsa_id` is unique when non-empty. | Identifiers | High |
 | [INV-ID-3](#inv-id-3) | `assigned_cve_id` is validated against `CVE-YYYY-NNNN…`. | Identifiers | Medium |
 | [INV-PROJECT-1](#inv-project-1) | A project's security team is a Django `Group`. | Projects | Medium |
-| [INV-PROJECT-2](#inv-project-2) | The `unsorted` sentinel project owns all unrouted triage. | Projects | High |
+| [INV-PROJECT-2](#inv-project-2) | The `unsorted` sentinel project owns all triage filed without a known project. | Projects | High |
 | [INV-IMPL-1](#inv-impl-1) | `Advisory.delete()` is blocked at the model layer (and DB trigger). | Structural | Critical |
 | [INV-IMPL-2](#inv-impl-2) | `AuditLogEntry.delete()` is blocked. | Structural | Critical |
 | [INV-IMPL-3](#inv-impl-3) | `CommentVersion` rows are append-only. | Structural | High |
@@ -536,7 +536,7 @@ could have dismissed instead of flagging), and both directions are audited.
 - `advisories/permissions.py` — `can_edit`, `can_triage`,
   `can_flag_for_admin_routing`, `can_clear_admin_routing_flag`.
 
-**Violation impact.** Mis-routed reports get suppressed by the wrong team.
+**Violation impact.** Misrouted reports get suppressed by the wrong team.
 
 **Tests.** `advisories/tests/test_triage.py`.
 

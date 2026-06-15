@@ -192,7 +192,7 @@ def promote_triage_to_draft(advisory: Advisory, *, by, project=None) -> Advisory
         target_project = project or previous_project
         if is_unsorted_origin and (project is None or project.slug == UNSORTED_PROJECT_SLUG):
             raise ValueError(
-                "Unrouted triage advisories require an explicit target project at promotion."
+                "Reports on the Unsorted project require an explicit target project at promotion."
             )
 
         is_reassigning = previous_project != target_project

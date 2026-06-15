@@ -14,7 +14,7 @@
           {% if report.project %}
             <option value="{{ report.project.slug }}" selected>{{ report.project.slug }} — {{ report.project.name }}</option>
           {% else %}
-            <option value="" selected>— {% translate "unsorted (admin queue)" %} —</option>
+            <option value="" selected>— {% translate "Unsorted" %} —</option>
           {% endif %}
           {% if is_admin %}
             {% for p in projects %}
@@ -23,7 +23,7 @@
               {% endif %}
             {% endfor %}
             {% if report.project %}
-              <option value="{{ unsorted_sentinel }}">{% translate "(unsorted — admin queue)" %}</option>
+              <option value="{{ unsorted_sentinel }}">{% translate "Unsorted" %}</option>
             {% endif %}
           {% else %}
             {% for p in user_projects %}
@@ -41,10 +41,10 @@
            hx-get="{% url 'intake:triage_flag_modal' report.id %}"
            hx-target="#modal" hx-swap="innerHTML"
            href="#"
-           role="button">{% translate "Flag for admin re-routing" %}</a>
+           role="button">{% translate "Flag for admin routing" %}</a>
       {% endif %}
     {% else %}
-      {% if report.project %}{{ report.project.slug }} ({{ report.project.name }}){% else %}<em>{% translate "unsorted" %}</em>{% endif %}
+      {% if report.project %}{{ report.project.slug }} ({{ report.project.name }}){% else %}<em>{% translate "Unsorted" %}</em>{% endif %}
     {% endif %}
   </dd>
 </div>

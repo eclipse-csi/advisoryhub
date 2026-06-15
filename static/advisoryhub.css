@@ -929,6 +929,11 @@ input[type="email"],
 input[type="url"],
 input[type="number"],
 input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"],
 select,
 textarea {
   font: inherit;
@@ -995,6 +1000,29 @@ input.combobox__input {
 :root[data-theme="dark"] input.combobox__input {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23818ea8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.75 4.5 6 7.75 9.25 4.5'/%3E%3C/svg%3E");
 }
+
+/* Native date/time controls expose their internals via WebKit/Blink shadow
+   pseudo-elements; Firefox renders them as plain text, covered by the box rule
+   above. The themed box gives them surface/border/radius like every other input;
+   the picker glyph and edit text follow the inherited `color-scheme` (set on
+   :root, flipped under [data-theme="dark"]) — so we must NOT set color-scheme
+   here (`light dark` would override the manual theme pin) nor `appearance: none`
+   (that would strip the picker). These rules only polish the WebKit chrome:
+   strip the default inset so the text aligns with the 0.5rem/0.7rem box padding
+   and matches sibling inputs' height on Safari, and make the calendar glyph read
+   as clickable. */
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="month"]::-webkit-datetime-edit,
+input[type="week"]::-webkit-datetime-edit { padding: 0; }
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.12s ease;
+}
+::-webkit-calendar-picker-indicator:hover,
+input:focus-visible::-webkit-calendar-picker-indicator { opacity: 1; }
 
 textarea { min-height: 6em; resize: vertical; }
 

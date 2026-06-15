@@ -16,7 +16,7 @@ from audit.retention import _audit_trigger_bypass
 from publication.models import PublicationTask, PublicationTaskStatus
 from workflows import services as wf
 
-SECTIONS = ["index", "cves", "publications", "audit", "project_list"]
+SECTIONS = ["index", "cves", "publications", "audit", "project_list", "stats"]
 
 
 def _backdate(entry, when):
@@ -68,7 +68,7 @@ def test_sidebar_links_render_on_each_page(client, setup, section):
     client.force_login(setup["admin"])
     body = client.get(reverse(f"admin_console:{section}")).content.decode()
     # Every sidebar href must be present.
-    for url_name in ["index", "project_list", "cves", "publications", "audit"]:
+    for url_name in ["index", "project_list", "cves", "publications", "audit", "stats"]:
         assert reverse(f"admin_console:{url_name}") in body, (
             f"sidebar link {url_name} missing on {section}"
         )

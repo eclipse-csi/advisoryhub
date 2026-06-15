@@ -3932,4 +3932,138 @@ dialog.drawer--right {
   font-size: var(--text-sm);
 }
 .badge.similarity-confidence { color: var(--info-fg); background: var(--info-soft); border-color: var(--info-bd); }
+
+/* ---------------------------------------------------- admin Stats (SLA) */
+/* Comparison tables (one per metric); base `table` rules supply the chrome.
+   Numeric columns right-align with tabular figures; the trend chip is a
+   colour-only delta (no pill) so up to five chips per row stay legible. */
+.stats-section { margin-top: 1.6rem; }
+.stats-section > h2 { margin-bottom: 0.3rem; }
+.stats-section > p.muted { margin-top: 0; }
+
+.stats__num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The optional custom-range row, tinted so it reads apart from the trailing
+   windows above it. */
+.stats__row--custom th[scope="row"] { font-style: italic; }
+.stats__row--custom td,
+.stats__row--custom th[scope="row"] { background: var(--brand-soft); }
+
+.stats__note { margin-top: 0.7rem; font-size: var(--text-sm); }
+
+.stats-trend {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1rem;
+  margin-left: 0.3rem;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.stats-trend--improved { color: var(--ok-fg); }
+.stats-trend--worsened { color: var(--danger-fg); }
+.stats-trend--flat     { color: var(--text-muted); }
+
+/* Custom-range picker — inline date fields, mirrors the audit date fieldset. */
+.stats-filter { margin-top: 1rem; }
+.stats-filter__dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+}
+.stats-filter__field { display: flex; flex-direction: column; gap: 0.2rem; font-size: var(--text-sm); }
+.stats-filter__field--project { min-width: 16rem; }
+.stats-filter__actions { display: flex; align-items: center; gap: 0.8rem; }
+
+/* Per-metric trend sparkline (inline SVG; geometry in attributes, colour here).
+   The SVG is pure data geometry; the value/time axes are HTML around it and the
+   gridlines are CSS (plot border = max/zero lines, a gradient = the mid line),
+   so labels and gridlines line up with the data without text inside the SVG. */
+.stats-chart { margin: 0.2rem 0 1.2rem; max-width: 460px; }
+.sparkline {
+  display: block;
+  width: 100%;
+  aspect-ratio: 240 / 40;
+  height: auto;
+  overflow: visible;
+}
+.sparkline__line {
+  fill: none;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.sparkline__line--mean { stroke: var(--brand-fg); }
+.sparkline__line--p95 { stroke: var(--text-muted); stroke-dasharray: 3 3; }
+.sparkline__marker { fill: var(--brand-fg); stroke: var(--surface); stroke-width: 1; }
+.sparkline__empty { margin: 0.4rem 0 0; font-size: var(--text-sm); }
+
+/* Header: mean/p95 legend (left) + current-value readout (right). */
+.stats-chart__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin-bottom: 0.3rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.stats-chart__readout { font-variant-numeric: tabular-nums; }
+.stats-chart__legend { display: flex; flex-wrap: wrap; gap: 0.9rem; }
+.stats-chart__key { display: inline-flex; align-items: center; gap: 0.35rem; }
+.stats-chart__key--mean::before,
+.stats-chart__key--p95::before {
+  content: "";
+  width: 0.9rem;
+  border-top: 2px solid var(--brand-fg);
+}
+.stats-chart__key--p95::before { border-top-style: dashed; border-top-color: var(--text-muted); }
+
+/* Axes: y-labels column | plot, with the x-labels row beneath the plot. */
+.stats-chart__grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.45rem;
+}
+.stats-chart__yaxis {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.stats-chart__plot {
+  grid-column: 2;
+  grid-row: 1;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(50% - 0.5px),
+    var(--border) calc(50% - 0.5px),
+    var(--border) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+.stats-chart__xaxis {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
 } /* @layer components */

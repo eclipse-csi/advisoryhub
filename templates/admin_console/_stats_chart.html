@@ -1,0 +1,25 @@
+{% load i18n advisoryhub %}
+<figure class="stats-chart">
+  {% if spark.has_data %}
+    <div class="stats-chart__head">
+      <div class="stats-chart__legend">
+        <span class="stats-chart__key stats-chart__key--mean">{% translate "mean" %}</span>
+        <span class="stats-chart__key stats-chart__key--p95">{% translate "p95" %}</span>
+      </div>
+      <div class="stats-chart__readout">{% blocktranslate with m=spark.current_mean|duration_human p=spark.current_p95|duration_human %}now: mean {{ m }} · p95 {{ p }}{% endblocktranslate %}</div>
+    </div>
+    <div class="stats-chart__grid">
+      <div class="stats-chart__yaxis" aria-hidden="true">
+        {% for v in spark.y_ticks %}<span>{% if forloop.last %}0{% else %}{{ v|duration_human }}{% endif %}</span>{% endfor %}
+      </div>
+      <div class="stats-chart__plot">
+        {% include "admin_console/_sparkline.html" with spark=spark %}
+      </div>
+      <div class="stats-chart__xaxis" aria-hidden="true">
+        {% for d in spark.x_ticks %}<span>{% if forloop.last %}{% translate "now" %}{% else %}{{ d|date:"M" }}{% endif %}</span>{% endfor %}
+      </div>
+    </div>
+  {% else %}
+    {% include "admin_console/_sparkline.html" with spark=spark %}
+  {% endif %}
+</figure>

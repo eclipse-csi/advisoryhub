@@ -53,6 +53,31 @@ def timestamp(
 
 
 @register.filter
+def duration_human(seconds: float | int | None) -> str:
+    """Compact human duration from a number of seconds (two largest units).
+
+    ``5400`` → ``"1 h 30 m"``, ``2220`` → ``"37 m"``, ``180000`` → ``"2 d 2 h"``.
+    ``None`` renders an em dash — an empty metric window, never "0" (a quiet
+    period must not read as "instant"). Used by the admin Stats page.
+    """
+    if seconds is None:
+        return "—"
+    try:
+        total = int(round(float(seconds)))
+    except (TypeError, ValueError):
+        return "—"
+    if total < 60:
+        return f"{total} s"
+    parts: list[str] = []
+    remaining = total
+    for label, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if remaining >= size:
+            value, remaining = divmod(remaining, size)
+            parts.append(f"{value} {label}")
+    return " ".join(parts[:2])
+
+
+@register.filter
 def toast_payload(messages) -> list[dict[str, str]]:
     """Serialise ``django.contrib.messages`` into a toast-ready list.
 

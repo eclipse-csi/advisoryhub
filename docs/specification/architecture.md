@@ -68,7 +68,7 @@ responsibility in spec terms.
 | `notifications` | Global preference + per-advisory override models, recipient resolver (`filter_for_event`), Celery email tasks (advisory events, triage events, comments, invitations). |
 | `workflows` | `CveRequestTask`, `ReviewTask`, `OrphanCve`, and the services that drive their state machines. |
 | `publication` | `PublicationTask`, `PublicationArtifact`, `PublicationRepositoryConfig`, OSV + CSAF builders + vendored schemas, the Git service, the Celery worker. |
-| `admin_console` | The /admin/ sidebar shell and its section views (Inbox, CVEs, Publications, Audit, Projects). |
+| `admin_console` | The /admin/ sidebar shell and its section views (Inbox, CVEs, Publications, Audit, Access log, Stats, Projects, Users, Groups, Maintenance). Stats is the SLA-metrics page (`stats.py` computation + `views/stats.py`). |
 | `api` | JSON API surface re-using the same `can_*` predicates as the web views. |
 | `ghsa` | GitHub App client + JWT handling, PMI mirror, GHSA discovery / per-advisory sync, EF-CVE push, webhook ingest. |
 | `intake` | The public report form (`/report/`), `HoneypotSubmission`, rate-limited project picker JSON. |
@@ -1103,6 +1103,51 @@ multiple gunicorn workers the custom counters only aggregate when
 `gunicorn config.wsgi -c gunicorn.conf.py` (its `child_exit` hook reaps
 dead workers' mmap files). The Celery worker exports its own series on
 `PROMETHEUS_WORKER_METRICS_PORT`; scrape both targets.
+
+### 8.9 Admin Stats page (operator SLAs)
+
+Distinct from the Prometheus series (§8.3), the Admin Console **Stats**
+page (`/admin/stats/`, admin-only via `can_review`) reports two
+human-facing SLAs computed on demand from the database by
+`admin_console/stats.py`:
+
+- **Time to first response (TTFR)** — intake/triage-sourced advisories
+  only: `AdvisoryIntakeMetadata.submitted_at` → the *earliest*
+  `AuditLogEntry` in `FIRST_RESPONSE_ACTIONS`
+  (`advisory.triage_promoted`, `advisory.dismissed`,
+  `advisory.flagged_for_routing`). `FIRST_RESPONSE_ACTIONS` is the
+  single authoritative definition (see advisory-lifecycle §10).
+- **Time to publish (TTP)** — `Advisory.created_at` →
+  `Advisory.published_at`.
+
+Each is reported as mean + **p95** (the single SLA percentile — p95 is the
+industry standard and matches the sparkline; p90/p99 were dropped as noise
+at this small per-period sample size) over **trailing windows** (last week,
+month, 3/6/12 months, all time) plus an optional custom range **and a
+per-project filter** (`?project=<slug>`, scoping tables + sparklines + the
+reverted tally to one project), with a **period-over-period** trend chip vs
+the immediately-preceding equal-length window (lower is better). Samples are
+**completion-anchored** (bucketed by the window their end event lands in) so
+a window reports the work that *completed* in it. A separate **reverted**
+tally counts intake reports promoted to draft and later dismissed (anchored
+on the dismissal); such reports still contribute a TTFR sample anchored on
+the promotion.
+Percentiles are computed in Python (linear interpolation) — the data is
+low-volume and this keeps the engine unit-testable without a DB
+(`admin_console/test_stats.py`). TTFR is bounded by the audit-retention
+window (old first-response rows may be pruned); TTP reads only `Advisory`
+columns and is immune. The demo seed (`seed_demo._seed_stats_demo`)
+backdates published + intake advisories across every window so the page is
+demonstrable.
+
+Each metric section also carries a compact **trend sparkline** — a
+server-rendered inline `<svg>` line of mean + p95 over the last 12 months in
+twelve 30-day buckets (`bucket_series` + `build_sparkline`), with value
+(max / mid / 0) and month axes and a "now: mean … · p95 …" current-value
+readout. It is CSP-clean: the SVG holds only data geometry (attributes), the
+axis labels are HTML and the gridlines are CSS, all colour in
+`static/advisoryhub.css` classes (no JS, no chart library), mirroring the
+existing inline-SVG icon set.
 
 ---
 

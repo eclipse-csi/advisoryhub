@@ -1,0 +1,6 @@
+{% load i18n %}
+{% if spark.has_data %}<svg class="sparkline" viewBox="0 0 {{ spark.width }} {{ spark.height }}" role="img" aria-label="{% translate 'Mean and p95 over the last 12 months' %}">
+  {% if spark.p95_points %}<polyline class="sparkline__line sparkline__line--p95" points="{{ spark.p95_points }}" />{% endif %}
+  {% if spark.mean_points %}<polyline class="sparkline__line sparkline__line--mean" points="{{ spark.mean_points }}" />{% endif %}
+  {% if spark.last_mean %}<circle class="sparkline__marker" cx="{{ spark.last_mean.0 }}" cy="{{ spark.last_mean.1 }}" r="2.5" />{% endif %}
+</svg>{% else %}<p class="muted sparkline__empty">{% translate "No data in the last 12 months." %}</p>{% endif %}

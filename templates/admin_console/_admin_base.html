@@ -14,6 +14,7 @@
         <a href="{% url 'admin_console:publications' %}" {% if section == "publications" %}aria-current="page" class="is-active"{% endif %}>{% translate "Publication" %}</a>
         <a href="{% url 'admin_console:audit' %}"        {% if section == "audit" %}aria-current="page" class="is-active"{% endif %}>{% translate "Audit logs" %}</a>
         <a href="{% url 'admin_console:access_log' %}"   {% if section == "access_log" %}aria-current="page" class="is-active"{% endif %}>{% translate "Access log" %}</a>
+        <a href="{% url 'admin_console:stats' %}"        {% if section == "stats" %}aria-current="page" class="is-active"{% endif %}>{% translate "Stats" %}</a>
         <a href="{% url 'admin_console:maintenance' %}"   {% if section == "maintenance" %}aria-current="page" class="is-active"{% endif %}>{% translate "Maintenance" %}</a>
       </nav>
     </aside>

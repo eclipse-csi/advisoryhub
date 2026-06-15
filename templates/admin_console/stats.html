@@ -1,0 +1,102 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n advisoryhub %}
+{% block title %}Admin Console — Stats{% endblock %}
+{% block admin_section %}stats{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "Stats" %}</h1>
+  <p class="muted">
+    {% translate "Operational SLAs across trailing periods. Faster is better; the chip on each value compares the period against the one immediately before it. Empty windows show an em dash, never zero." %}
+  </p>
+
+  <form method="get" class="stats-filter">
+    <fieldset class="stats-filter__dates">
+      <legend>{% translate "Filters" %}</legend>
+      <label class="stats-filter__field stats-filter__field--project">
+        <span>{% translate "Project" %}</span>
+        <select name="project">
+          <option value="">{% translate "All projects" %}</option>
+          {% for slug, name in projects %}
+            <option value="{{ slug }}" {% if selected_project == slug %}selected{% endif %}>{{ slug }} — {{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="stats-filter__field">
+        <span>{% translate "From" %}</span>
+        <input type="date" name="start" value="{{ selected_start }}">
+      </label>
+      <label class="stats-filter__field">
+        <span>{% translate "To" %}</span>
+        <input type="date" name="end" value="{{ selected_end }}">
+      </label>
+      <div class="stats-filter__actions">
+        <button type="submit">{% translate "Apply" %}</button>
+        {% if has_custom_range or selected_project %}
+          <a href="{% url 'admin_console:stats' %}">{% translate "Clear" %}</a>
+        {% endif %}
+      </div>
+    </fieldset>
+  </form>
+
+  <section class="stats-section">
+    <h2>{% translate "Time to first response" %}</h2>
+    <p class="muted">
+      {% translate "Intake reports only: from submission to the first triage action (promote, dismiss, or flag for routing)." %}
+    </p>
+    {% include "admin_console/_stats_chart.html" with spark=ttfr_sparkline %}
+    <table class="stats">
+      <caption class="visually-hidden">{% translate "Time to first response by period" %}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Period" %}</th>
+          <th scope="col" class="stats__num">{% translate "n" %}</th>
+          <th scope="col" class="stats__num">{% translate "Mean" %}</th>
+          <th scope="col" class="stats__num">{% translate "p95" %}</th>
+          <th scope="col" class="stats__num"><abbr title="{% translate 'Intake reports promoted to draft and later dismissed, by dismissal date' %}">{% translate "Reverted" %}</abbr></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ttfr_rows %}
+          <tr {% if row.metric.period_key == "custom" %}class="stats__row--custom"{% endif %}>
+            <th scope="row">{{ row.metric.period_label }}</th>
+            <td class="stats__num">{{ row.metric.current.count }}</td>
+            {% include "admin_console/_stats_cell.html" with value=row.metric.current.mean c=row.metric.comparisons.mean %}
+            {% include "admin_console/_stats_cell.html" with value=row.metric.current.p95 c=row.metric.comparisons.p95 %}
+            <td class="stats__num">{{ row.reverted.count }} {% include "admin_console/_stats_trend.html" with c=row.reverted.comparison %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if pruned_history_floor %}
+      <p class="muted stats__note">{% blocktranslate with when=pruned_history_floor|date:'Y-m-d' %}First-response history is limited to the audit-retention window: events before {{ when }} were pruned, so older periods may under-count.{% endblocktranslate %}</p>
+    {% endif %}
+  </section>
+
+  <section class="stats-section">
+    <h2>{% translate "Time to publish" %}</h2>
+    <p class="muted">
+      {% translate "From advisory creation to first successful publication, by publication date." %}
+    </p>
+    {% include "admin_console/_stats_chart.html" with spark=ttp_sparkline %}
+    <table class="stats">
+      <caption class="visually-hidden">{% translate "Time to publish by period" %}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{% translate "Period" %}</th>
+          <th scope="col" class="stats__num">{% translate "n" %}</th>
+          <th scope="col" class="stats__num">{% translate "Mean" %}</th>
+          <th scope="col" class="stats__num">{% translate "p95" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in ttp_rows %}
+          <tr {% if m.period_key == "custom" %}class="stats__row--custom"{% endif %}>
+            <th scope="row">{{ m.period_label }}</th>
+            <td class="stats__num">{{ m.current.count }}</td>
+            {% include "admin_console/_stats_cell.html" with value=m.current.mean c=m.comparisons.mean %}
+            {% include "admin_console/_stats_cell.html" with value=m.current.p95 c=m.comparisons.p95 %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

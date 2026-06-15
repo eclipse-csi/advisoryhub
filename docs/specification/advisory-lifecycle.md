@@ -537,6 +537,15 @@ Once promoted to `draft` (row 4 in §3.1), these triage-specific affordances
 no longer apply; the standard owner/collaborator/viewer matrix from
 `permissions.md` §5 takes over.
 
+**Metrics note.** The Admin Console Stats page (architecture §8.9) measures
+*time to first response* for intake reports as the gap from
+`AdvisoryIntakeMetadata.submitted_at` to the **earliest** of these triage
+outcomes — `ADVISORY_TRIAGE_PROMOTED`, `ADVISORY_DISMISSED`, or
+`ADVISORY_FLAGGED_FOR_ROUTING`. The authoritative set lives in one place,
+`admin_console.stats.FIRST_RESPONSE_ACTIONS`; a report promoted and later
+dismissed is timed from its promotion (the earliest qualifying event) and is
+also counted in the page's separate *reverted* tally.
+
 ---
 
 ## 11. Cross-reference: invariants per transition

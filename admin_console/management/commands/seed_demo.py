@@ -552,6 +552,11 @@ class Command(BaseCommand):
         # re-run can backfill them onto an older demo database.
         self._seed_intake_demo(projects, users)
 
+        # Backdated published + intake advisories so the admin Stats page has a
+        # realistic spread to show. Backfillable + idempotent like the intake
+        # demo above, so it runs even on a re-seed of an older demo DB.
+        self._seed_stats_demo(projects, admin)
+
         if Advisory.objects.exists() and not reset:
             self.stdout.write("Advisories already exist; skipping advisory creation.")
             return
@@ -873,6 +878,210 @@ class Command(BaseCommand):
         )
 
         self.stdout.write(f"  Seeded {created} triage advisories + 1 honeypot submission.")
+
+    def _seed_stats_demo(self, projects: dict[str, Project], admin: User) -> None:
+        """Seed backdated advisories so the admin Stats page is demonstrable.
+
+        Creates three families of synthetic rows spread across every reporting
+        period (last week → 12 months → all time), with a deliberate long tail
+        so percentiles separate and recent windows read faster than older ones:
+
+        * **Published** advisories (time-to-publish): ``created_at`` →
+          ``published_at`` latencies.
+        * **Intake** reports (time-to-first-response): ``submitted_at`` → a
+          first-response audit event (promote / dismiss / flag).
+        * **Reverted** reports: promoted to draft and *later* dismissed — they
+          feed the reverted tally (anchored on the dismissal) and also yield a
+          TTFR sample anchored on the earlier promotion.
+
+        Idempotent: rows carry a ``[stats-demo]`` summary prefix and the method
+        no-ops if they already exist. ``auto_now_add`` timestamps are backdated
+        with ``.update()``; the append-only audit rows are backdated under
+        :func:`audit.retention._audit_trigger_bypass` (plain UPDATE is blocked
+        by the ledger trigger). The enclosing ``handle`` is ``@transaction.atomic``
+        so the ``SET LOCAL`` in the bypass applies for the whole sweep.
+        """
+        from datetime import timedelta
+
+        from audit.models import Action, AuditLogEntry
+        from audit.retention import _audit_trigger_bypass
+        from audit.services import record
+
+        if Advisory.objects.filter(summary__startswith="[stats-demo]").exists():
+            return
+
+        now = timezone.now()
+        project_cycle = [
+            projects["demotech.lantern"],
+            projects["demotech.marigold"],
+            projects["demotech.beacon"],
+            projects["demotech.harbor"],
+        ]
+
+        # (a) Time to publish — (published_days_ago, created→published latency h).
+        # Anchors span every period incl. > 12 months; the 120/200/300/400 h
+        # tail makes p99 ≫ p90 ≫ mean, and recent latencies stay below older
+        # ones so the trend chips read "improved".
+        ttp_samples = [
+            (1, 5),
+            (3, 8),
+            (5, 30),
+            (6, 12),
+            (9, 14),
+            (12, 40),
+            (13, 9),
+            (18, 18),
+            (22, 60),
+            (27, 22),
+            (36, 30),
+            (45, 120),
+            (52, 26),
+            (70, 40),
+            (85, 200),
+            (110, 50),
+            (150, 300),
+            (170, 35),
+            (220, 60),
+            (300, 400),
+            (350, 45),
+            # Fill the mid-range 30-day buckets so the 12-month trend sparkline
+            # has a point in every bucket (older = a touch slower).
+            (135, 45),
+            (195, 55),
+            (255, 60),
+            (285, 70),
+            (420, 90),
+            (600, 150),
+        ]
+        for i, (days_ago, latency_h) in enumerate(ttp_samples):
+            published_at = now - timedelta(days=days_ago)
+            created_at = published_at - timedelta(hours=latency_h)
+            adv = Advisory.objects.create(
+                project=project_cycle[i % len(project_cycle)],
+                state=State.PUBLISHED,
+                summary=f"[stats-demo] Published advisory #{i + 1}",
+                details="Synthetic published advisory for the admin Stats demo.",
+                created_by=admin,
+            )
+            Advisory.objects.filter(pk=adv.pk).update(
+                created_at=created_at, modified_at=published_at, published_at=published_at
+            )
+
+        # (b) Time to first response — (response_days_ago, response h, action,
+        # final state). The final state keeps these out of the triage inbox;
+        # the audit action is what the metric reads. Recent responses faster.
+        promote, dismiss, flag = (
+            Action.ADVISORY_TRIAGE_PROMOTED,
+            Action.ADVISORY_DISMISSED,
+            Action.ADVISORY_FLAGGED_FOR_ROUTING,
+        )
+        ttfr_samples = [
+            (1, 3, promote, State.DRAFT),
+            (4, 10, flag, State.DRAFT),
+            (6, 5, promote, State.DRAFT),
+            (9, 6, promote, State.DRAFT),
+            (12, 20, dismiss, State.DISMISSED),
+            (18, 8, promote, State.DRAFT),
+            (25, 30, promote, State.DRAFT),
+            (38, 12, promote, State.DRAFT),
+            (50, 48, flag, State.DRAFT),
+            (75, 16, promote, State.DRAFT),
+            (88, 72, dismiss, State.DISMISSED),
+            (120, 20, promote, State.DRAFT),
+            (160, 96, promote, State.DRAFT),
+            (240, 24, promote, State.DRAFT),
+            (320, 120, promote, State.DRAFT),
+            # Fill the sparse mid/old 30-day buckets for the trend sparkline.
+            (225, 30, promote, State.DRAFT),
+            (285, 60, promote, State.DRAFT),
+            (345, 48, dismiss, State.DISMISSED),
+            (420, 36, promote, State.DRAFT),
+            (560, 144, promote, State.DRAFT),
+        ]
+        # (c) Reverted — (dismissed_days_ago, promote-before-dismissal h).
+        reverted_samples = [
+            (3, 30),
+            (5, 48),
+            (10, 24),
+            (20, 36),
+            (38, 60),
+            (52, 30),
+            (70, 48),
+            (100, 36),
+            (140, 72),
+            (200, 48),
+            (300, 96),
+        ]
+
+        audit_backdates: list[tuple[AuditLogEntry, object]] = []
+
+        def _new_intake(summary: str, ip: str, *, state, reason: str = ""):
+            adv = Advisory.objects.create(
+                project=project_cycle[len(audit_backdates) % len(project_cycle)],
+                state=state,
+                summary=summary,
+                details="Synthetic intake report for the admin Stats demo.",
+                created_by=admin,
+                dismissed_reason=reason,
+            )
+            AdvisoryIntakeMetadata.objects.create(
+                advisory=adv,
+                reporter_display_name="Stats Demo Reporter",
+                submitted_ip=ip,
+                submitted_user_agent="stats-demo/1.0",
+            )
+            return adv
+
+        def _audit(adv, action):
+            return record(
+                action=action,
+                actor=admin,
+                advisory=adv,
+                metadata={"advisory_id": adv.advisory_id, "stats_demo": True},
+            )
+
+        for i, (days_ago, resp_h, action, final_state) in enumerate(ttfr_samples):
+            response_at = now - timedelta(days=days_ago)
+            submitted_at = response_at - timedelta(hours=resp_h)
+            reason = "stats-demo dismissal" if final_state == State.DISMISSED else ""
+            adv = _new_intake(
+                f"[stats-demo] Intake report #{i + 1}",
+                "203.0.113.200",
+                state=final_state,
+                reason=reason,
+            )
+            Advisory.objects.filter(pk=adv.pk).update(
+                created_at=submitted_at, modified_at=response_at
+            )
+            AdvisoryIntakeMetadata.objects.filter(advisory=adv).update(submitted_at=submitted_at)
+            audit_backdates.append((_audit(adv, action), response_at))
+
+        for i, (days_ago, promote_before_h) in enumerate(reverted_samples):
+            dismissed_at = now - timedelta(days=days_ago)
+            promoted_at = dismissed_at - timedelta(hours=promote_before_h)
+            submitted_at = promoted_at - timedelta(hours=8)
+            adv = _new_intake(
+                f"[stats-demo] Reverted report #{i + 1}",
+                "203.0.113.201",
+                state=State.DISMISSED,
+                reason="stats-demo reverted after promotion",
+            )
+            Advisory.objects.filter(pk=adv.pk).update(
+                created_at=submitted_at, modified_at=dismissed_at
+            )
+            AdvisoryIntakeMetadata.objects.filter(advisory=adv).update(submitted_at=submitted_at)
+            audit_backdates.append((_audit(adv, Action.ADVISORY_TRIAGE_PROMOTED), promoted_at))
+            audit_backdates.append((_audit(adv, Action.ADVISORY_DISMISSED), dismissed_at))
+
+        # Backdate the audit rows; the append-only trigger forbids plain UPDATE.
+        with _audit_trigger_bypass():
+            for entry, when in audit_backdates:
+                AuditLogEntry.objects.filter(pk=entry.pk).update(created_at=when)
+
+        self.stdout.write(
+            f"  Seeded stats demo: {len(ttp_samples)} published, "
+            f"{len(ttfr_samples)} intake, {len(reverted_samples)} reverted advisories."
+        )
 
     # --- GHSA demo seed --------------------------------------------------
 

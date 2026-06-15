@@ -1,0 +1,2 @@
+{% load i18n %}
+{% if c.direction != "na" %}<span class="stats-trend stats-trend--{{ c.direction }}"><span aria-hidden="true">{% if c.direction == "improved" %}▼{% elif c.direction == "worsened" %}▲{% else %}≈{% endif %}</span>{% if c.magnitude %} {{ c.magnitude }}{% endif %}<span class="visually-hidden"> {% if c.direction == "improved" %}{% translate "improved vs previous period" %}{% elif c.direction == "worsened" %}{% translate "worsened vs previous period" %}{% else %}{% translate "unchanged vs previous period" %}{% endif %}</span></span>{% endif %}

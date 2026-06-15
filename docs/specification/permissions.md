@@ -196,6 +196,7 @@ asymmetries with the same-row entries.
 | Configure the GitHub App | — | — | ✗ | ✓ |
 | Retry a failed CVE push | — | — | ✗ | ✓ |
 | Browse the triage queue (Admin Console Inbox) | — | — | ✗ | ✓ |
+| View operational SLA stats (Admin Console Stats) | — | — | ✗ | ✓ |
 | Submit a public triage report | ✓ (also anonymous) | ✓ | ✓ | ✓ |
 
 Footnotes:

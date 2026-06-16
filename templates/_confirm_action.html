@@ -30,7 +30,7 @@ Params:
   cancel_label   optional — defaults to "Cancel".
   disabled       optional — render the trigger disabled (the dialog is omitted).
 {% endcomment %}
-<button type="button" class="{{ trigger_class }}" data-dialog-open="{{ dialog_id }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>{{ trigger_label }}</button>
+<button type="button" class="{{ trigger_class }}" data-dialog-open="{{ dialog_id }}"{% if disabled %} disabled aria-disabled="true"{% endif %}>{{ trigger_label }}…</button>
 {% if not disabled %}
   <dialog id="{{ dialog_id }}" class="confirm-dialog" aria-labelledby="{{ dialog_id }}-title" aria-describedby="{{ dialog_id }}-desc">
     {% if submit_form %}

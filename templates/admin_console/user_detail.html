@@ -37,7 +37,7 @@
         <dt>{% translate "Banned at" %}</dt><dd>{% timestamp target_user.banned_at %}</dd>
         <dt>{% translate "Reason" %}</dt><dd>{{ target_user.ban_reason|default:"—" }}</dd>
       </dl>
-      <button type="button" class="success" data-dialog-open="unban-user-dialog">{% translate "Unban account" %}</button>
+      <button type="button" class="success" data-dialog-open="unban-user-dialog">{% translate "Unban account" %}…</button>
     {% elif is_self %}
       <p class="muted">{% translate "You cannot ban your own account." %}</p>
     {% else %}

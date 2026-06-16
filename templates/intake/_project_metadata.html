@@ -41,7 +41,7 @@
            hx-get="{% url 'intake:triage_flag_modal' report.id %}"
            hx-target="#modal" hx-swap="innerHTML"
            href="#"
-           role="button">{% translate "Flag for admin routing" %}</a>
+           role="button">{% translate "Flag for admin routing" %}…</a>
       {% endif %}
     {% else %}
       {% if report.project %}{{ report.project.slug }} ({{ report.project.name }}){% else %}<em>{% translate "Unsorted" %}</em>{% endif %}

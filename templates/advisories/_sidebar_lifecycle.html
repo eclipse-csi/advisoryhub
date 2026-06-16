@@ -52,7 +52,7 @@ can_dismiss, can_reopen.
          hx-get="{% url 'advisories:flag_modal' advisory.advisory_id %}"
          hx-target="#modal" hx-swap="innerHTML"
          role="button"
-         href="#">Flag for admin routing</a>
+         href="#">Flag for admin routing…</a>
       <p class="sidebar-card__action-hint">
         Hand this report off to an admin if it belongs to a different project's security team. Non-admin triagers are locked out until the admin resolves the flag.
       </p>
@@ -65,7 +65,7 @@ can_dismiss, can_reopen.
          hx-get="{% url 'advisories:request_reassignment_modal' advisory.advisory_id %}"
          hx-target="#modal" hx-swap="innerHTML"
          role="button"
-         href="#">Request admin reassignment</a>
+         href="#">Request admin reassignment…</a>
       <p class="sidebar-card__action-hint">
         Ask an admin to move this advisory to the right project if it belongs to a team you're not on. Your team keeps editing in the meantime.
       </p>
@@ -75,7 +75,7 @@ can_dismiss, can_reopen.
   {% if can_dismiss and advisory.state == 'draft' or can_triage %}
     <div class="sidebar-card__row">
       <button type="button" class="danger"
-              data-dialog-open="advisory-dismiss-dialog">Dismiss</button>
+              data-dialog-open="advisory-dismiss-dialog">Dismiss…</button>
       <p class="sidebar-card__action-hint">
         {% if is_triage %}
           Drop this report as spam, duplicate, or out-of-scope. Requires a reason and is logged in the audit trail.

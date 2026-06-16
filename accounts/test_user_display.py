@@ -108,6 +108,27 @@ class TestUserChipTag:
         assert "advisoryhub-security" in html
         assert "eclipse-jetty-security" in html
 
+    def test_popover_shows_friendly_name_for_admin_group(self, settings):
+        """The admin group renders with its friendly name *and* raw slug; a
+        per-project security-team group keeps only its slug."""
+        from common.constants import SECURITY_TEAM_DISPLAY_NAME
+
+        u = User.objects.create_user(email="g@example.org")
+        u.display_name = "Grace"
+        u.save()
+        u.groups.add(
+            Group.objects.get_or_create(name=settings.OIDC_ADMIN_GROUP)[0],
+            Group.objects.get_or_create(name="eclipse-jetty-security")[0],
+        )
+        html = _render(u)
+        # Scope to the popover groups list — the seal's aria-label/title also
+        # carry the friendly name, so assert against the <ul> alone.
+        groups = html.split('user-chip__groups">', 1)[1].split("</ul>", 1)[0]
+        assert SECURITY_TEAM_DISPLAY_NAME in groups  # friendly name for admin group
+        assert settings.OIDC_ADMIN_GROUP in groups  # raw slug retained
+        assert "eclipse-jetty-security" in groups  # project group present
+        assert groups.count(SECURITY_TEAM_DISPLAY_NAME) == 1  # only the admin group
+
     def test_popover_omits_groups_section_when_empty(self):
         u = User.objects.create_user(email="loner@example.org")
         u.display_name = "Loner"

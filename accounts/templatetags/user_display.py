@@ -14,6 +14,7 @@ from django import template
 from django.conf import settings
 
 from accounts.utils import mask_email
+from common.constants import SECURITY_TEAM_DISPLAY_NAME
 
 register = template.Library()
 
@@ -61,4 +62,8 @@ def user_chip(context, user, fallback: str = "—"):
         "name": name,
         "reveal": reveal,
         "is_security_team": is_security_team,
+        # Inclusion tags don't receive context processors, so feed the friendly
+        # name + admin-group slug from the same source the rest of the UI uses.
+        "security_team_label": SECURITY_TEAM_DISPLAY_NAME,
+        "admin_group_name": settings.OIDC_ADMIN_GROUP,
     }

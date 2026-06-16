@@ -8,7 +8,7 @@
     <dt>Groups</dt>
     <dd>
       <ul>
-        {% for g in user.groups.all %}<li>{{ g.name }}</li>{% empty %}<li>(none)</li>{% endfor %}
+        {% for g in user.groups.all %}<li>{% if g.name == admin_group_name %}{{ security_team_display_name }} <code>{{ g.name }}</code>{% else %}{{ g.name }}{% endif %}</li>{% empty %}<li>(none)</li>{% endfor %}
       </ul>
     </dd>
     <dt>Global admin</dt><dd>{{ user.is_global_admin|yesno:"yes,no" }}</dd>

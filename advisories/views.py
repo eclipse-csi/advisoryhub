@@ -25,6 +25,7 @@ from django.views.decorators.http import require_http_methods
 
 from audit.models import Action
 from audit.services import record_from_request
+from common.constants import SECURITY_TEAM_DISPLAY_NAME
 from common.ratelimit import html_ratelimit
 from projects.models import Project
 
@@ -510,7 +511,7 @@ def _lifecycle_hints(advisory: Advisory, *, last_publication_task) -> dict[str, 
     elif rs == ReviewStatus.NONE:
         review = "Not submitted."
     elif rs == ReviewStatus.SUBMITTED:
-        review = "Awaiting decision by the global security team."
+        review = f"Awaiting decision by the {SECURITY_TEAM_DISPLAY_NAME}."
     elif rs == ReviewStatus.APPROVED:
         review = "Approved — publication unlocked."
     elif rs == ReviewStatus.CHANGES_REQUESTED:

@@ -342,6 +342,22 @@ def test_group_list_shows_admin_badge(client, base):
 
 
 @pytest.mark.django_db
+def test_group_list_shows_friendly_name_for_admin_group(client, base):
+    from common.constants import SECURITY_TEAM_DISPLAY_NAME
+
+    client.force_login(base["admin"])
+    body = client.get(reverse("admin_console:group_list")).content.decode()
+    # Scope to the table body — the navbar user chip popover also names the
+    # admin's group memberships.
+    table = body.split("<tbody>", 1)[1].split("</tbody>", 1)[0]
+    # Admin group row carries the friendly name *and* keeps the raw slug; the
+    # project-team group (alpha-security) keeps just its slug.
+    assert "advisoryhub-security" in table
+    assert "alpha-security" in table
+    assert table.count(SECURITY_TEAM_DISPLAY_NAME) == 1
+
+
+@pytest.mark.django_db
 def test_group_list_counts_members_and_projects(client, base, make_user):
     g, _ = Group.objects.get_or_create(name="researchers")
     make_user(email="a@example.org", groups=["researchers"])
@@ -384,6 +400,31 @@ def test_group_detail_admin_banner_for_admin_group(client, base, settings):
     client.force_login(base["admin"])
     body = client.get(reverse("admin_console:group_detail", args=[g.pk])).content.decode()
     assert "Global admin group." in body
+
+
+@pytest.mark.django_db
+def test_group_detail_header_shows_friendly_name_for_admin_group(client, base, settings):
+    from common.constants import SECURITY_TEAM_DISPLAY_NAME
+
+    g = Group.objects.get(name=settings.OIDC_ADMIN_GROUP)
+    client.force_login(base["admin"])
+    body = client.get(reverse("admin_console:group_detail", args=[g.pk])).content.decode()
+    # Scope to the page header — the navbar user chip also names the group.
+    header = body.split("advisory-detail__header", 1)[1].split("</header>", 1)[0]
+    assert SECURITY_TEAM_DISPLAY_NAME in header  # friendly name
+    assert settings.OIDC_ADMIN_GROUP in header  # raw slug retained
+
+
+@pytest.mark.django_db
+def test_group_detail_header_omits_friendly_name_for_non_admin_group(client, base):
+    from common.constants import SECURITY_TEAM_DISPLAY_NAME
+
+    g = Group.objects.get(name="alpha-security")
+    client.force_login(base["admin"])
+    body = client.get(reverse("admin_console:group_detail", args=[g.pk])).content.decode()
+    header = body.split("advisory-detail__header", 1)[1].split("</header>", 1)[0]
+    assert "alpha-security" in header
+    assert SECURITY_TEAM_DISPLAY_NAME not in header
 
 
 @pytest.mark.django_db

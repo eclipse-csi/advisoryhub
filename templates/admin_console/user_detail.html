@@ -125,7 +125,7 @@
     {% if groups %}
       <ul class="chips">
         {% for g in groups %}
-          <li><a href="{% url 'admin_console:group_detail' g.pk %}">{{ g.name }}</a></li>
+          <li><a href="{% url 'admin_console:group_detail' g.pk %}">{% if g.name == admin_group_name %}{{ security_team_display_name }} <code class="muted">{{ g.name }}</code>{% else %}{{ g.name }}{% endif %}</a></li>
         {% endfor %}
       </ul>
     {% else %}

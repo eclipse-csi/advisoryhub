@@ -4,7 +4,7 @@
 {% block admin_section %}groups{% endblock %}
 {% block admin_content %}
   <header class="advisory-detail__header">
-    <h1><code>{{ group.name }}</code>{% if is_admin_group %} <strong>({% translate "admin group" %})</strong>{% endif %}</h1>
+    <h1>{% if is_admin_group %}{{ security_team_display_name }} <code class="muted">{{ group.name }}</code> <strong>({% translate "global admin group" %})</strong>{% else %}<code>{{ group.name }}</code>{% endif %}</h1>
   </header>
 
   {% if is_admin_group %}

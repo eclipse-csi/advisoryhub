@@ -29,13 +29,13 @@
         <th>{% translate "Name" %}</th>
         <th>{% translate "Members" %}</th>
         <th>{% translate "Projects secured" %}</th>
-        <th>{% translate "Admin group" %}</th>
+        <th>{% translate "Global admin group" %}</th>
       </tr>
     </thead>
     <tbody>
       {% for g in page.object_list %}
         <tr data-href="{% url 'admin_console:group_detail' g.pk %}">
-          <td><a href="{% url 'admin_console:group_detail' g.pk %}"><code>{{ g.name }}</code></a></td>
+          <td><a href="{% url 'admin_console:group_detail' g.pk %}">{% if g.name == admin_group_name %}{{ security_team_display_name }} <code class="muted">{{ g.name }}</code>{% else %}<code>{{ g.name }}</code>{% endif %}</a></td>
           <td>{{ g.member_count }}</td>
           <td>{{ g.projects_secured_count }}</td>
           <td>{% if g.name == admin_group_name %}<strong>{% translate "yes" %}</strong>{% else %}—{% endif %}</td>

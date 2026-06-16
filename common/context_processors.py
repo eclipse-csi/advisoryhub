@@ -12,17 +12,32 @@ may see other users' emails in ``{% user_chip %}`` popovers: global admins, yes
 wiring); everyone else, no. Advisory-scoped views override it with the
 per-advisory ``perms.can_see_user_emails`` so project security-team owners get
 it on their own advisories (``INV-PRIVACY-4``).
+
+``security_team_identity`` exposes the global security team's friendly display
+name plus the admin-group slug, so templates can render
+"Eclipse Foundation Security Team" wherever that group is named and detect its
+row in group listings. Display-only (``INV-AUTH-1``).
 """
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.http import HttpRequest
+
+from common.constants import SECURITY_TEAM_DISPLAY_NAME
 
 
 def user_email_visibility(request: HttpRequest) -> dict:
     from advisories import permissions as perms
 
     return {"viewer_can_see_emails": perms.is_global_admin(getattr(request, "user", None))}
+
+
+def security_team_identity(request: HttpRequest) -> dict:
+    return {
+        "security_team_display_name": SECURITY_TEAM_DISPLAY_NAME,
+        "admin_group_name": settings.OIDC_ADMIN_GROUP,
+    }
 
 
 def maintenance_mode(request: HttpRequest) -> dict:

@@ -336,6 +336,19 @@ def advisory_detail(request, advisory_id: str):
     except Exception:
         pass
 
+    # A withdrawal is "in progress" while its publication task is queued/running
+    # (mirrors publish()'s own in-flight guard, order-independent). When the
+    # withdrawal failed instead, the sidebar offers a "Retry withdrawal" action
+    # rather than a dead-end "pending" hint (INV-WITHDRAW).
+    from publication.models import PublicationTaskStatus
+
+    withdrawal_in_progress = (
+        bool(advisory.withdrawn_reason)
+        and advisory.publication_tasks.filter(
+            status__in=[PublicationTaskStatus.QUEUED, PublicationTaskStatus.RUNNING]
+        ).exists()
+    )
+
     is_triage = advisory.state == State.TRIAGE
     intake = getattr(advisory, "intake", None) if is_triage else None
     # Count of description edits, for the "history · N edits" trigger next to
@@ -386,6 +399,7 @@ def advisory_detail(request, advisory_id: str):
             if hasattr(advisory, "review_tasks")
             else None,
             "last_publication_task": last_publication_task,
+            "withdrawal_in_progress": withdrawal_in_progress,
             "is_ghsa_linked": advisory.kind == Kind.GHSA_LINKED,
             "can_sync_ghsa": perms.can_sync_ghsa(request.user, advisory),
             "is_triage": is_triage,

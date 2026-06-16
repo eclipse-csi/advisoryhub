@@ -282,8 +282,13 @@ withdrawal `revision_history` entry + document note — and the advisory flips t
 ([INV-VERSION-1](#inv-version-1)), and `publication.tasks.run_publication` keys the
 end state off the pinned version — `dismissed` when `withdrawn_reason` is set, else
 `published`. State flips **only after the push** ([INV-LIFECYCLE-3](#inv-lifecycle-3)):
-a failed withdrawal leaves the advisory `published` with a failed `PublicationTask`
-to retry. Any assigned CVE is orphaned for cve.org rejection.
+a failed withdrawal leaves the advisory `published` with `withdrawn_reason` still set
+and a failed `PublicationTask`, and is **retryable** — re-running the withdrawal
+(the advisory page's "Retry withdrawal" action, or the admin Publication page) starts
+a fresh run that completes it, since the failed task doesn't block the in-flight guard
+and `withdrawn_reason` is sticky on the pinned version. A stuck queued/running task is
+recovered to `failed` by the [INV-PUB-7](#inv-pub-7) reaper. Any assigned CVE is
+orphaned for cve.org rejection.
 
 **Authorization.** A global admin, or a **mature-publisher** project owner
 (`can_withdraw_published` — admin OR `is_mature_publisher_member`), may withdraw

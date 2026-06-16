@@ -360,6 +360,48 @@ def test_unwithdraw_reopens_to_published(setup):
 
 
 @pytest.mark.django_db
+def test_withdrawal_retry_after_failed_push(setup, monkeypatch):
+    """A failed withdrawal push leaves the advisory published with
+    withdrawn_reason set (and a failed task); re-running withdraw_advisory
+    completes it — the failed task never blocks the retry (INV-WITHDRAW)."""
+    import json
+
+    from advisories import services as adv_services
+
+    advisory = setup["advisory"]
+    t = pub_services.publish(advisory, by=setup["admin"])
+    pub_tasks.run_publication(t.pk)
+    advisory.refresh_from_db()
+    assert advisory.state == State.PUBLISHED
+
+    def boom(**_kwargs):
+        raise GitPublicationError("simulated push failure")
+
+    monkeypatch.setattr(pub_tasks, "publish_files", boom)
+    wt = adv_services.withdraw_advisory(advisory, by=setup["admin"], reason="dup")
+    pub_tasks.run_publication(wt.pk)
+    advisory.refresh_from_db()
+    wt.refresh_from_db()
+    assert advisory.state == State.PUBLISHED  # not flipped — push failed
+    assert advisory.withdrawn_reason == "dup"  # withdrawal still pending
+    assert wt.status == PublicationTaskStatus.FAILED
+
+    # Retry: push restored, re-run withdraw_advisory → a *new* task → completes.
+    monkeypatch.undo()
+    wt2 = adv_services.withdraw_advisory(advisory, by=setup["admin"], reason="dup")
+    assert wt2.pk != wt.pk
+    pub_tasks.run_publication(wt2.pk)
+    advisory.refresh_from_db()
+    assert advisory.state == State.DISMISSED
+
+    year = advisory.published_at.year
+    verify = setup["tmp_path"] / "verify-retry"
+    _clone(str(setup["bare_repo"]), str(verify))
+    osv = json.loads((verify / "osv" / str(year) / "ECL-cccc-ffff-gggg.json").read_text())
+    assert "withdrawn" in osv
+
+
+@pytest.mark.django_db
 def test_advisory_state_does_not_flip_until_after_push(setup, monkeypatch):
     """If push fails, advisory must stay in 'draft'."""
 

@@ -170,6 +170,37 @@ def test_request_withdrawal_view_forbidden_for_mature_owner(db, client, make_use
     assert resp.status_code == 403
 
 
+def test_failed_withdrawal_shows_retry_affordance(db, client, admin_user, make_project):
+    """A withdrawal that failed (published + withdrawn_reason set, no in-flight
+    task) offers a 'Retry withdrawal' action on the advisory page (INV-WITHDRAW)."""
+    adv = _published(make_project("alpha"), withdrawn_reason="dup")
+    client.force_login(admin_user)
+    resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert "Retry withdrawal" in body
+    assert reverse("advisories:withdraw", args=[adv.advisory_id]) in body
+
+
+def test_in_progress_withdrawal_shows_no_retry(db, client, admin_user, make_project):
+    """While the withdrawal's publication task is queued/running, the page shows
+    'in progress' and no retry button."""
+    from publication.models import PublicationTask, PublicationTaskStatus
+
+    adv = _published(make_project("alpha"), withdrawn_reason="dup")
+    PublicationTask.objects.create(
+        advisory=adv,
+        version=adv.versions.first(),
+        status=PublicationTaskStatus.QUEUED,
+        enqueued_by=admin_user,
+    )
+    client.force_login(admin_user)
+    resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
+    body = resp.content.decode()
+    assert "Withdrawal in progress" in body
+    assert "Retry withdrawal" not in body
+
+
 def test_withdrawal_request_appears_in_admin_inbox(db, client, admin_user, make_user, make_project):
     project = make_project("alpha")
     member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])

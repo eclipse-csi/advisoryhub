@@ -290,6 +290,15 @@ to retry. Any assigned CVE is orphaned for cve.org rejection.
 directly, even with an assigned CVE (the orphan cascade runs un-gated because the
 withdrawal itself was authorized). A non-mature owner cannot withdraw directly.
 
+**Reversible (un-withdraw).** A withdrawn advisory (`dismissed_from_state=published`)
+can be reopened back to `published` via `reopen_advisory`: it clears
+`withdrawn_reason`, reattaches the orphaned CVE (the existing reopen orphan
+disposition), and re-publishes — the export drops the withdrawn marker and the
+state returns to `published` after the push (`publish(allow_from_dismissed=True)`).
+Reopening a withdrawal needs publish authority (admin or mature-publisher owner),
+not the plain-owner gate that a draft/triage-origin reopen uses — see
+[INV-LIFECYCLE-4](#inv-lifecycle-4).
+
 **Rationale.** OSV/CSAF consumers cache and resolve advisory ids; deleting a record
 breaks them. OSV models exactly this with its first-class `withdrawn` field —
 "this record is no longer valid, but the id still resolves." Driving the export +
@@ -304,6 +313,8 @@ path.
 - `publication/tasks.py` — `run_publication` end-state branch + the withdrawal
   cascade (orphan CVE via `workflows.services.orphan_cve`).
 - `publication/osv.py` / `publication/csaf.py` — withdrawn rendering.
+- `advisories/services.py::reopen_advisory` + `advisories.permissions.can_reopen`
+  + `publication.services.publish(allow_from_dismissed=True)` — the un-withdraw path.
 
 **Violation impact.** A withdrawn advisory keeps masquerading as live in the public
 feed, or a published record is deleted and breaks downstream consumers.

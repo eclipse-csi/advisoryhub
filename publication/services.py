@@ -48,7 +48,9 @@ class PublicationInProgress(Exception):
 
 
 @transaction.atomic
-def publish(advisory: Advisory, *, by, system: bool = False) -> PublicationTask:
+def publish(
+    advisory: Advisory, *, by, system: bool = False, allow_from_dismissed: bool = False
+) -> PublicationTask:
     """Start a publication run for ``advisory`` (current content).
 
     Raises :class:`PermissionDenied` if ``by`` may not publish, or
@@ -60,10 +62,16 @@ def publish(advisory: Advisory, *, by, system: bool = False) -> PublicationTask:
     check (the policy decision is GitHub's, not a user's) but keeps every other
     guard — the dismissed block, the in-flight lock, and the GHSA
     ``refresh_for_publish`` gate. ``by`` is ``None`` for such runs.
+
+    ``allow_from_dismissed=True`` permits publishing a currently-``dismissed``
+    advisory — used only by the *un-withdraw* path
+    (`advisories.services.reopen_advisory` for a withdrawal), which clears
+    ``withdrawn_reason`` and re-exports without the withdrawn marker so the run
+    ends in ``published``. The normal dismissed block stays for every other caller.
     """
     if not system and not perms.can_publish(by, advisory):
         raise PermissionDenied("You cannot publish this advisory.")
-    if advisory.state == State.DISMISSED:
+    if advisory.state == State.DISMISSED and not allow_from_dismissed:
         raise PermissionDenied("Dismissed advisories cannot be published.")
 
     # Serialize concurrent publishers for this advisory: take a row lock

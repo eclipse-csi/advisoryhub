@@ -448,6 +448,48 @@ def reopen_advisory(advisory: Advisory, *, by) -> Advisory:
         if locked.state != State.DISMISSED:
             raise ValueError(f"Advisory is not in dismissed state (currently {locked.state}).")
 
+        # Un-withdraw: a dismissal that came from ``published`` is reopened by
+        # re-publishing *without* the withdrawn marker (INV-WITHDRAW). State
+        # flips back to ``published`` only after the re-export pushes
+        # (run_publication, INV-LIFECYCLE-3), so we stay ``dismissed`` here and
+        # let the pipeline finalise it.
+        if locked.dismissed_from_state == State.PUBLISHED:
+            from publication.services import publish
+
+            locked.withdrawn_reason = ""
+            locked.save(update_fields=["withdrawn_reason", "modified_at"])
+            # Reattach the CVE orphaned at withdrawal so the re-export carries
+            # it again — same disposition logic as the draft/triage reopen below.
+            if not locked.assigned_cve_id:
+                orphan = (
+                    OrphanCve.objects.filter(previous_advisory=locked)
+                    .order_by("-unassigned_at")
+                    .first()
+                )
+                if orphan is not None and orphan.status == OrphanCveStatus.ORPHANED:
+                    try:
+                        reassign_orphan_cve(orphan, by=by, advisory=locked)
+                    except ValueError:
+                        OrphanCveReassignmentTask.objects.create(
+                            orphan_cve=orphan, advisory=locked, requested_by=actor_or_none(by)
+                        )
+                elif orphan is not None and orphan.status == OrphanCveStatus.MARKED_REJECTED:
+                    if not OrphanCveReassignmentTask.objects.filter(
+                        orphan_cve=orphan, status=OrphanCveReassignmentStatus.QUEUED
+                    ).exists():
+                        OrphanCveReassignmentTask.objects.create(
+                            orphan_cve=orphan, advisory=locked, requested_by=actor_or_none(by)
+                        )
+            record_advisory_version(locked, editor=by, if_changed=True)
+            record(
+                action=Action.ADVISORY_REOPENED,
+                actor=by,
+                advisory=locked,
+                metadata={"advisory_id": locked.advisory_id, "unwithdraw": True},
+            )
+            publish(locked, by=by, system=True, allow_from_dismissed=True)
+            return locked
+
         target_state = locked.dismissed_from_state or State.DRAFT
         if target_state not in (State.TRIAGE, State.DRAFT):
             # Defensive: dismissed_from_state should never carry PUBLISHED

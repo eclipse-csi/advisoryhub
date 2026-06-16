@@ -147,10 +147,17 @@ can_dismiss, can_reopen.
   {% if can_reopen %}
     <div class="sidebar-card__row">
       {% url 'advisories:reopen' advisory.advisory_id as reopen_url %}
-      {% include "_confirm_action.html" with action=reopen_url dialog_id="advisory-reopen" trigger_label="Reopen" trigger_class="success" title="Reopen advisory" body="Move this advisory out of the dismissed state and back into the workflow. The dismissal reason stays in the audit log." confirm_label="Reopen" confirm_class="success" %}
-      <p class="sidebar-card__action-hint">
-        Move this advisory back to {% if advisory.dismissed_from_state == 'triage' %}triage{% else %}draft{% endif %}. The dismissal reason stays in the audit log. {% if advisory.orphaned_cves.all %}If the previous CVE wasn't yet rejected at cve.org it will be reattached automatically; if it was, an admin task will be queued.{% endif %}
-      </p>
+      {% if advisory.dismissed_from_state == 'published' %}
+        {% include "_confirm_action.html" with action=reopen_url dialog_id="advisory-reopen" trigger_label="Reopen (re-publish)" trigger_class="success" title="Reopen withdrawn advisory" body="Un-withdraw this advisory: it is re-published with the OSV/CSAF withdrawn marker cleared and returns to published once the export pushes." confirm_label="Reopen" confirm_class="success" %}
+        <p class="sidebar-card__action-hint">
+          Un-withdraw: re-publish this advisory (clears the public OSV/CSAF withdrawn marker) and return it to published. {% if advisory.orphaned_cves.all %}The previously-orphaned CVE is reattached automatically if it wasn't yet rejected at cve.org; otherwise an admin task is queued.{% endif %}
+        </p>
+      {% else %}
+        {% include "_confirm_action.html" with action=reopen_url dialog_id="advisory-reopen" trigger_label="Reopen" trigger_class="success" title="Reopen advisory" body="Move this advisory out of the dismissed state and back into the workflow. The dismissal reason stays in the audit log." confirm_label="Reopen" confirm_class="success" %}
+        <p class="sidebar-card__action-hint">
+          Move this advisory back to {% if advisory.dismissed_from_state == 'triage' %}triage{% else %}draft{% endif %}. The dismissal reason stays in the audit log. {% if advisory.orphaned_cves.all %}If the previous CVE wasn't yet rejected at cve.org it will be reattached automatically; if it was, an admin task will be queued.{% endif %}
+        </p>
+      {% endif %}
     </div>
   {% endif %}
 </section>

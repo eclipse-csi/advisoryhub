@@ -453,6 +453,37 @@ def test_withdraw_published_only_when_published(world):
         assert not perms.can_withdraw_published(world["admin"], a)
 
 
+@pytest.mark.django_db
+def test_reopen_withdrawn_requires_publish_authority(world):
+    """Reopening a withdrawal (dismissed_from_state=published) is an un-withdraw
+    re-publish, so it needs admin or mature-publisher — not a plain owner."""
+    a = world["advisory"]
+    a.state = State.DISMISSED
+    a.dismissed_from_state = State.PUBLISHED
+    a.dismissed_reason = "withdrawn"
+    a.save()
+    assert perms.can_reopen(world["admin"], a)
+    assert not perms.can_reopen(world["member"], a)  # non-mature owner
+    assert not perms.can_reopen(world["outsider"], a)
+    p = a.project
+    p.is_mature_publisher = True
+    p.save()
+    assert perms.can_reopen(world["member"], a)
+
+
+@pytest.mark.django_db
+def test_reopen_draft_dismissal_is_owner_gated(world):
+    """A draft/triage-origin dismissal reopens with plain owner authority."""
+    a = world["advisory"]
+    a.state = State.DISMISSED
+    a.dismissed_from_state = State.DRAFT
+    a.dismissed_reason = "dup"
+    a.save()
+    assert perms.can_reopen(world["member"], a)
+    assert perms.can_reopen(world["admin"], a)
+    assert not perms.can_reopen(world["outsider"], a)
+
+
 # ---- can_withdraw_review ---------------------------------------------------
 
 

@@ -80,6 +80,7 @@ stateDiagram-v2
 
     dismissed --> draft  : reopen_advisory<br/>(dismissed_from_state == "draft")
     dismissed --> triage : reopen_advisory<br/>(dismissed_from_state == "triage")
+    dismissed --> published : reopen_advisory (un-withdraw)<br/>(dismissed_from_state == "published", re-publish)
 ```
 
 Notes on the diagram:
@@ -91,9 +92,12 @@ Notes on the diagram:
   `advisories.services.reopen_advisory` ([INV-LIFECYCLE-4](./invariant.md#inv-lifecycle-4)). The advisory
   returns to its pre-dismissal state recorded in
   `Advisory.dismissed_from_state` (`triage` or `draft`); the `dismissed_reason`
-  and the audit trail stay as historical context. There is no
-  `dismissed → published` shortcut — re-publishing requires going through the
-  normal publication flow from the reopened state.
+  and the audit trail stay as historical context. The one exception is a
+  **withdrawal** (`dismissed_from_state == "published"`): reopening it is an
+  *un-withdraw* that re-publishes (clears the OSV/CSAF withdrawn marker) and
+  returns to `published` after the push — a `dismissed → published` transition
+  that still goes through the publication pipeline, never a bare state flip
+  ([INV-WITHDRAW](./invariant.md#inv-withdraw)).
 - The self-loop on `published` is logical, not a state change: edits append a
   new `AdvisoryVersion` and set `republish_required=True`, which makes the
   re-publish button surface; a successful re-publish writes a new commit on
@@ -126,6 +130,7 @@ satisfy any "owner" requirement.
 | 8 | `published` | `published` | `publication.services.publish` → `run_publication` again | Owner (publish-eligible — §7 of `permissions.md`) | Edit happened since last publish (`republish_required=True`) **or** explicit re-publish for any reason; review gate per §5 applies | Same set as row 7 | A new `PublicationTask` row pins the **latest** `AdvisoryVersion`; OSV/CSAF and the commit on the same Git path are regenerated; prior `PublicationArtifact` and version rows remain immutable |
 | 8a | `published` | `dismissed` | `advisories.services.withdraw_advisory` → `run_publication` (withdrawal branch) | Admin or **mature-publisher** owner (`can_withdraw_published`); non-mature owners request one (§ withdrawal request) | `withdrawn_reason` set + version appended; OSV/CSAF built **with** the withdrawn marker; Git push succeeded ([INV-WITHDRAW](./invariant.md#inv-withdraw)) | `ADVISORY_DISMISSED`, `ADVISORY_STATE_CHANGED` (metadata `withdrawn=True`); `CVE_UNASSIGNED` when a CVE was assigned; the usual `PUBLICATION_*` build/push audits | OSV gains `withdrawn`; CSAF gains a withdrawal `revision_history` entry (version `2`) + document note — the documents stay in the repo, updated not deleted; `state→dismissed` with `dismissed_from_state=published` **only after** the push (a failed push leaves it `published` + a retryable `PublicationTask`); any assigned CVE is orphaned for cve.org rejection |
 | 9 | `dismissed` | `dismissed_from_state` (`draft` or `triage`) | `advisories.services.reopen_advisory` | Owner (project security team or admin) | `can_reopen(user, advisory)`: state is dismissed | `ADVISORY_REOPENED`, `ADVISORY_STATE_CHANGED` (and, depending on orphan/CVE state: `CVE_REASSIGNED_FROM_ORPHAN` *or* `ORPHAN_REASSIGNMENT_REQUESTED`; `CVE_REQUESTED` if a cancelled queued request is re-created) | `state` flips to `dismissed_from_state`; `dismissed_reason` / `dismissed_from_state` kept as historical metadata; auto-cancelled `CveRequestTask` re-created in `queued` if no other open task and target is `draft`; latest `OrphanCve` reattached directly (orphan → `REASSIGNED`) when `ORPHANED`, else an `OrphanCveReassignmentTask` is queued for admin (see §3.1.4) when `MARKED_REJECTED`; `advisory_reopened` notification queued |
+| 9a | `dismissed` (`dismissed_from_state=published`) | `published` | `advisories.services.reopen_advisory` → `run_publication` (un-withdraw) | Admin or **mature-publisher** owner (`can_reopen` requires publish authority for a withdrawal) | `can_reopen`: state is dismissed and was withdrawn from `published` | `ADVISORY_REOPENED` (metadata `unwithdraw=True`), then `ADVISORY_PUBLISHED` + `PUBLICATION_*` on the re-export | `withdrawn_reason` cleared + version appended; the orphaned CVE is reattached (orphan → `REASSIGNED`, or an admin task when `MARKED_REJECTED`); the advisory re-publishes **without** the withdrawn marker and returns to `published` **only after** the push (`publish(allow_from_dismissed=True)`) |
 
 #### 3.1.1 Notes on row 1 — triage creation
 

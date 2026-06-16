@@ -320,6 +320,46 @@ def test_withdraw_published_advisory(setup):
 
 
 @pytest.mark.django_db
+def test_unwithdraw_reopens_to_published(setup):
+    """Reopening a withdrawn advisory re-publishes it without the withdrawn
+    marker, restores the CVE, and returns it to published (INV-WITHDRAW)."""
+    import json
+
+    from advisories import services as adv_services
+    from publication.models import PublicationTask
+
+    advisory = setup["advisory"]
+    advisory.assigned_cve_id = "CVE-2026-9999"
+    advisory.save(update_fields=["assigned_cve_id"])
+    setup["project"].is_mature_publisher = True
+    setup["project"].save(update_fields=["is_mature_publisher"])
+
+    t = pub_services.publish(advisory, by=setup["admin"])
+    pub_tasks.run_publication(t.pk)
+    wt = adv_services.withdraw_advisory(advisory, by=setup["admin"], reason="dup")
+    pub_tasks.run_publication(wt.pk)
+    advisory.refresh_from_db()
+    assert advisory.state == State.DISMISSED
+    assert advisory.assigned_cve_id == ""
+
+    # Un-withdraw (reopen). reopen_advisory enqueues a re-publish; run it.
+    adv_services.reopen_advisory(advisory, by=setup["admin"])
+    ut = PublicationTask.objects.filter(advisory=advisory).order_by("-pk").first()
+    pub_tasks.run_publication(ut.pk)
+
+    advisory.refresh_from_db()
+    assert advisory.state == State.PUBLISHED
+    assert advisory.withdrawn_reason == ""
+    assert advisory.assigned_cve_id == "CVE-2026-9999"  # reattached
+
+    year = advisory.published_at.year
+    verify = setup["tmp_path"] / "verify-unwithdraw"
+    _clone(str(setup["bare_repo"]), str(verify))
+    osv = json.loads((verify / "osv" / str(year) / "ECL-cccc-ffff-gggg.json").read_text())
+    assert "withdrawn" not in osv
+
+
+@pytest.mark.django_db
 def test_advisory_state_does_not_flip_until_after_push(setup, monkeypatch):
     """If push fails, advisory must stay in 'draft'."""
 

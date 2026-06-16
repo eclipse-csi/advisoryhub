@@ -308,15 +308,22 @@ def can_dismiss(user, advisory: Advisory) -> bool:
 def can_reopen(user, advisory: Advisory) -> bool:
     """Whether ``user`` can reopen a dismissed advisory.
 
-    Owners (project security team or global admin) only. Reopen flips state
-    back to the pre-dismissal value (``triage`` or ``draft``) recorded in
-    ``Advisory.dismissed_from_state``; the normal publication/review gates
-    re-engage on the way back out. There is no published→reopen path —
-    dismissed advisories never originated from ``published`` (the lifecycle
-    forbids ``published → dismissed``).
+    For a dismissal that came from ``triage``/``draft``, any owner (project
+    security team or global admin) may reopen — it flips straight back to the
+    pre-dismissal state recorded in ``Advisory.dismissed_from_state`` and the
+    normal review/publication gates re-engage. For a dismissal that came from
+    ``published`` — i.e. a **withdrawal** ([INV-WITHDRAW]) — reopening is an
+    *un-withdraw* that re-publishes, so it needs publish authority: a global
+    admin or a mature-publisher owner (same gate as ``can_withdraw_published``).
     """
     if advisory.state != State.DISMISSED:
         return False
+    if advisory.dismissed_from_state == State.PUBLISHED:
+        if is_global_admin(user):
+            return True
+        if not is_security_team_member(user, advisory.project):
+            return False
+        return is_mature_publisher_member(user, advisory.project)
     return resolved_permission(user, advisory) == "owner"
 
 

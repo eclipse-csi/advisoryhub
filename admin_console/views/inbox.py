@@ -238,19 +238,26 @@ def _withdrawal_items() -> list[InboxItem]:
         .select_related("project")
         .order_by("-withdrawal_requested_at")[:PER_SOURCE_LIMIT]
     )
-    return [
-        InboxItem(
-            kind="withdrawal",
-            badge="Withdraw",
-            badge_class="inbox-badge--pub",
-            title=a.advisory_id,
-            subtitle=f"withdrawal requested: {a.project.slug}",
-            age_dt=a.withdrawal_requested_at,
-            url=reverse("advisories:detail", args=[a.advisory_id]),
-            see_more_url=reverse("advisories:detail", args=[a.advisory_id]),
+    items: list[InboxItem] = []
+    for a in qs:
+        # Non-null by the isnull=False filter above; narrow for the type checker
+        # (the field is a nullable DateTimeField, so it is typed datetime | None).
+        requested_at = a.withdrawal_requested_at
+        if requested_at is None:
+            continue
+        items.append(
+            InboxItem(
+                kind="withdrawal",
+                badge="Withdraw",
+                badge_class="inbox-badge--pub",
+                title=a.advisory_id,
+                subtitle=f"withdrawal requested: {a.project.slug}",
+                age_dt=requested_at,
+                url=reverse("advisories:detail", args=[a.advisory_id]),
+                see_more_url=reverse("advisories:detail", args=[a.advisory_id]),
+            )
         )
-        for a in qs
-    ]
+    return items
 
 
 @admin_required

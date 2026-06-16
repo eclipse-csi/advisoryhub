@@ -4,7 +4,7 @@ import pytest
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 
-from advisories.models import Advisory, ReviewStatus, State
+from advisories.models import Advisory, Kind, ReviewStatus, State
 from audit.models import Action, AuditLogEntry
 from comments.models import AdvisoryComment
 from workflows import services as wf
@@ -515,6 +515,23 @@ def test_submit_blocked_for_admin(setup):
     """Admins are reviewers, not submitters."""
     with pytest.raises(PermissionDenied):
         wf.submit_for_review(setup["advisory"], by=setup["admin"])
+
+
+@pytest.mark.django_db
+def test_submit_blocked_for_ghsa_linked(setup):
+    """GHSA-linked advisories aren't reviewed in AdvisoryHub (INV-GHSA-1) —
+    refused even for an owner, since their content is synced from GitHub."""
+    ghsa = Advisory.objects.create(
+        project=setup["advisory"].project,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.DRAFT,
+        summary="x",
+    )
+    with pytest.raises(PermissionDenied):
+        wf.submit_for_review(ghsa, by=setup["member"])
 
 
 @pytest.mark.django_db

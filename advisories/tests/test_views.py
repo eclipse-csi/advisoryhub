@@ -106,6 +106,18 @@ def test_ghsa_linked_advisory_stays_cve_requestable(member_a, ghsa_advisory):
 
 
 @pytest.mark.django_db
+def test_ghsa_linked_detail_hides_review_card(client, member_a, ghsa_advisory):
+    """Review is N/A for GHSA-linked advisories — the review card isn't rendered."""
+    client.force_login(member_a)
+    resp = client.get(reverse("advisories:detail", args=[ghsa_advisory.advisory_id]))
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert "sidebar-card--review" not in body
+    submit_url = reverse("advisories:submit_review", args=[ghsa_advisory.advisory_id])
+    assert submit_url not in body
+
+
+@pytest.mark.django_db
 def test_ghsa_linked_detail_hides_reassignment_button(client, member_a, ghsa_advisory):
     """The reassignment affordance is gated by ``can_request_reassignment``,
     which refuses GHSA-linked advisories (INV-GHSA-1)."""

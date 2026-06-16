@@ -366,20 +366,23 @@ their own work and immediately approving it.
 
 **Statement.** A non-admin edit to an advisory that holds `review_status=approved`
 resets `review_status` to `none`; an admin's own edit leaves the approval standing
-(admins retract explicitly via `can_revoke_approval`). A GHSA sync that returns
-changed content resets unconditionally — the content author is upstream GHSA, not
-the user who pressed Sync. Either path also sets `republish_required=True` when the
-advisory is published.
+(admins retract explicitly via `can_revoke_approval`). This applies to **native**
+advisories only — GHSA-linked advisories carry no review at all (review is removed for
+them; their content is synced from GitHub, [INV-GHSA-1](#inv-ghsa-1)), so a GHSA sync
+never touches `review_status`; it only sets `republish_required=True` when changed
+content lands on a published advisory.
 
 **Rationale.** An approved review covers a specific content version; substantive
 edits invalidate that approval and must be re-reviewed or, for mature publishers,
-deliberately re-published.
+deliberately re-published. GHSA-linked content isn't human-editable, so there is no
+review to invalidate.
 
 **Enforced in.**
 - `advisories/views.py` — `advisory_edit` resets `review_status` for non-admin
   editors and sets `republish_required` on published rows.
-- `ghsa/services.py` — the sync path resets `review_status` and sets
-  `republish_required` unconditionally when content changed.
+- `ghsa/services.py` — the sync path sets `republish_required` when content changed
+  on a published advisory; it does **not** touch `review_status` (GHSA-linked have no
+  review).
 
 **Violation impact.** Publication of an unreviewed change; CSAF/OSV diverging from
 what was approved.
@@ -2209,9 +2212,9 @@ AdvisoryHub: there is no edit form for GHSA-linked advisories, and
 `Advisory.clean` rejects any `project` change on a GHSA-linked row. The **only**
 sanctioned project change is `ghsa.services.sync_project_repos_from_pmi`
 re-homing the advisory when PMI re-maps its repository to a different project;
-that path preserves an existing review approval (the security content is
-unchanged) while stamping the access-review banner and re-flagging
-`republish_required` when published.
+that path stamps the access-review banner and re-flags `republish_required` when
+published. (GHSA-linked advisories carry no AdvisoryHub review — it's removed for
+them; their content is vetted upstream on GitHub. See [INV-REVIEW-4](#inv-review-4).)
 
 **Rationale.** PMI (`projects.eclipse.org`) is the source of truth for the
 repo↔project mapping. A GHSA-linked advisory bridges a specific repository, so

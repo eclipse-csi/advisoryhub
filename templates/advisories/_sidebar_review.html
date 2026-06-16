@@ -10,6 +10,8 @@ Context required: advisory, can_edit, can_submit_for_review,
 can_withdraw_review, can_review, can_revoke_approval, open_review_task.
 {% endcomment %}
 {% load user_display advisoryhub %}
+{% comment %}GHSA-linked advisories aren't reviewed in AdvisoryHub (content is synced from GitHub) — hide the whole card.{% endcomment %}
+{% if not is_ghsa_linked %}
 <section class="sidebar-card sidebar-card--review">
   <header class="sidebar-card__header">
     <h2>Review</h2>
@@ -96,3 +98,4 @@ can_withdraw_review, can_review, can_revoke_approval, open_review_task.
     </div>
   {% endif %}
 </section>
+{% endif %}

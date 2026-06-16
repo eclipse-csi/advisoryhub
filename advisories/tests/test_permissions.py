@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 
 from advisories import permissions as perms
-from advisories.models import Advisory, ReviewStatus, State
+from advisories.models import Advisory, Kind, ReviewStatus, State
 
 
 @pytest.fixture
@@ -377,6 +377,46 @@ def test_publish_blocked_during_pending_review_for_mature_member(world):
     a.review_status = ReviewStatus.SUBMITTED
     a.save()
     assert not perms.can_publish(world["member"], a)
+
+
+# ---- GHSA-linked: review removed, owner can publish ------------------------
+
+
+def _ghsa_linked(project, **kwargs):
+    return Advisory.objects.create(
+        project=project,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.DRAFT,
+        **kwargs,
+    )
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_review_predicates_all_false(world):
+    """Review is not applicable to GHSA-linked advisories (INV-GHSA-1): the
+    three review predicates refuse them regardless of (synthetic) status."""
+    a = _ghsa_linked(world["project_a"])
+    assert not perms.can_submit_for_review(world["member"], a)
+    a.review_status = ReviewStatus.SUBMITTED
+    a.save()
+    assert not perms.can_withdraw_review(world["member"], a)
+    a.review_status = ReviewStatus.APPROVED
+    a.save()
+    assert not perms.can_revoke_approval(world["admin"], a)
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_owner_can_publish_on_non_mature_project(world):
+    """No review/mature-publisher gate for GHSA-linked — the upstream GitHub
+    advisory is the vetting, so any owner may publish; outsiders cannot."""
+    a = _ghsa_linked(world["project_a"])  # project_a is non-mature
+    assert not world["project_a"].is_mature_publisher
+    assert perms.can_publish(world["member"], a)
+    assert perms.can_publish(world["admin"], a)
+    assert not perms.can_publish(world["outsider"], a)
 
 
 # ---- can_withdraw_review ---------------------------------------------------

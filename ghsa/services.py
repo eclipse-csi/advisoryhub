@@ -21,7 +21,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from advisories import services as advisory_services
-from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, ReviewStatus, State
+from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, State
 from audit.models import Action
 from audit.services import record, redact_secrets
 from common.users import actor_or_none
@@ -288,17 +288,6 @@ def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
     if result.changed_field_names and advisory.state == State.PUBLISHED:
         advisory.republish_required = True
 
-    # A synced content change voids a standing approval exactly like a
-    # non-admin edit would (INV-REVIEW-4): the approval covered content that
-    # no longer exists. There is no admin carve-out — the content author is
-    # upstream GHSA, never the person who pressed Sync, so admin-authored
-    # trust does not apply (advisory-lifecycle.md §9). The PMI re-home path
-    # deliberately differs: a project move alone preserves approval.
-    invalidated_approval = (
-        bool(result.changed_field_names) and advisory.review_status == ReviewStatus.APPROVED
-    )
-    if invalidated_approval:
-        advisory.review_status = ReviewStatus.NONE
     advisory.save()
 
     # Append a new AdvisoryVersion when synced GHSA content moved an
@@ -321,15 +310,6 @@ def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
         },
         metadata={"ghsa_id": advisory.ghsa_id},
     )
-    if invalidated_approval:
-        record(
-            action=Action.ADVISORY_REVIEW_APPROVAL_INVALIDATED,
-            actor=by,
-            advisory=advisory,
-            previous_value={"review_status": ReviewStatus.APPROVED},
-            new_value={"review_status": ReviewStatus.NONE},
-            metadata={"ghsa_id": advisory.ghsa_id, "reason": "ghsa_sync"},
-        )
     if conflict:
         record(
             action=Action.GHSA_CVE_CONFLICT_DETECTED,

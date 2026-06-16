@@ -266,6 +266,13 @@ meaningful only while `state=draft`. Submission freezes the content under
 review against a specific `AdvisoryVersion` via `workflows.ReviewTask.version`
 ([INV-REVIEW-2](./invariant.md#inv-review-2), [INV-VERSION-2](./invariant.md#inv-version-2)).
 
+**Native advisories only.** GHSA-linked advisories do not participate in review — their
+content is synced from GitHub and isn't human-editable, so there is nothing to review
+([INV-GHSA-1](./invariant.md#inv-ghsa-1)). `can_submit_for_review` / `can_withdraw_review` /
+`can_revoke_approval` all refuse them, the review card is hidden, and a GHSA sync never touches
+`review_status`. They publish without an AdvisoryHub review (the upstream GitHub advisory is the
+vetting; see §5.2 and permissions.md footnote ¹⁰).
+
 ```mermaid
 stateDiagram-v2
     [*] --> none
@@ -502,10 +509,10 @@ into the orthogonal machines and the version log:
 | Edit on a draft with `review_status=approved`, by an admin | new row appended | unchanged | unchanged | Admin can re-approve at will |
 | Edit on a `published` advisory | new row appended | reset to `none` for non-admin if it was `approved` | set to `True` (re-publish required) | The Publish button becomes "Re-publish" in the UI |
 | Project change (native advisory, human editor) | new row appended (project is payload-visible) | reset to `none` if `approved` and editor is non-admin | set to `True` if `published` | `access_review_required_at` stamped — surfaces the access-review banner; `ADVISORY_PROJECT_CHANGED` audit; `advisory_created` notification queued for the new project's team; **any pending admin-reassignment request is fulfilled and cleared** (cause `accepted`, [INV-AUTH-9](./invariant.md#inv-auth-9)) |
-| PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1](./invariant.md#inv-ghsa-1)) | new row appended (`project_slug` is payload-visible) | **unchanged** — approval is preserved | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment`; `advisory_created` notification queued for the new project's team |
+| PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1](./invariant.md#inv-ghsa-1)) | new row appended (`project_slug` is payload-visible) | **unchanged** — GHSA-linked advisories carry no review | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment`; `advisory_created` notification queued for the new project's team |
 | Non-payload save (state-only flip, heartbeat sync, `republish_required` toggle, `access_review_required_at` stamp) | **no row** ([INV-VERSION-1](./invariant.md#inv-version-1)) | unchanged | depends on the field | — |
 | GHSA heartbeat sync that returned no payload changes | **no row** | unchanged | unchanged | `ghsa_metadata_synced_at` refreshed |
-| GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | reset to `none` if `approved`, audit `ADVISORY_REVIEW_APPROVAL_INVALIDATED` — no admin carve-out: the content author is upstream GHSA, not whoever pressed Sync ([INV-REVIEW-4](./invariant.md#inv-review-4)) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
+| GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | **unchanged** — GHSA-linked advisories carry no review (it's removed for them; [INV-GHSA-1](./invariant.md#inv-ghsa-1), [INV-REVIEW-4](./invariant.md#inv-review-4)) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
 
 The two key invariants in this table:
 

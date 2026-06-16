@@ -502,6 +502,10 @@ def mark_orphan_rejected(orphan: OrphanCve, *, by, notes: str = "") -> OrphanCve
 @transaction.atomic
 def submit_for_review(advisory: Advisory, *, by) -> ReviewTask:
     """Pin the current advisory version into a ReviewTask for the reviewer."""
+    if advisory.kind == Kind.GHSA_LINKED:
+        # GHSA-linked content is synced from GitHub and not human-editable, so
+        # there is nothing to review (INV-GHSA-1 / inbound-only lifecycle).
+        raise PermissionDenied("GHSA-linked advisories are not reviewed in AdvisoryHub.")
     if not perms.can_submit_for_review(by, advisory):
         raise PermissionDenied("You cannot submit this advisory for review.")
     if advisory.state != State.DRAFT:

@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 from django.utils import timezone
 
-from advisories.models import Advisory, AdvisoryVersion, Kind, ReviewStatus, State
+from advisories.models import Advisory, AdvisoryVersion, Kind, State
 from audit.models import Action, AuditLogEntry
 from ghsa import services
 from projects.models import ProjectGitHubRepository
@@ -98,23 +98,6 @@ def test_pmi_rehome_published_sets_republish_required(make_project):
     advisory.refresh_from_db()
     assert advisory.project_id == new.pk
     assert advisory.republish_required is True
-
-
-@pytest.mark.django_db
-def test_pmi_rehome_preserves_review_approval(make_project):
-    old = make_project("proj-old")
-    new = make_project("proj-new")
-    _active_repo(old)
-    advisory = _ghsa_advisory(old, review_status=ReviewStatus.APPROVED)
-
-    with patch("ghsa.services.fetch_project_repos") as mock_pmi:
-        mock_pmi.side_effect = _pmi_map({"proj-new": [(OWNER, REPO)]})
-        services.sync_project_repos_from_pmi(old, by=None)
-        services.sync_project_repos_from_pmi(new, by=None)
-
-    advisory.refresh_from_db()
-    assert advisory.project_id == new.pk
-    assert advisory.review_status == ReviewStatus.APPROVED  # approval preserved
 
 
 @pytest.mark.django_db

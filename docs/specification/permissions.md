@@ -184,11 +184,11 @@ asymmetries with the same-row entries.
 | Dismiss advisory | ✗ | ✗ | ✓ ² | ✓ |
 | Reopen dismissed advisory | ✗ | ✗ | ✓ ⁶ | ✓ ⁶ |
 | Request a CVE | ✗ | ✗ | ✓ ³ | ✓ ³ |
-| Submit advisory for review | ✗ | ✗ | ✓ | ✗ ⁴ |
-| Approve / request changes on a review | ✗ | ✗ | ✗ | ✓ |
-| Withdraw a pending review | ✗ | ✗ | ✓ | ✗ ⁴ |
-| Revoke an existing approval | ✗ | ✗ | ✗ | ✓ |
-| Publish | ✗ | ✗ | ✓ ⁵ | ✓ |
+| Submit advisory for review | ✗ | ✗ | ✓ ¹⁰ | ✗ ⁴ |
+| Approve / request changes on a review | ✗ | ✗ | ✗ | ✓ ¹⁰ |
+| Withdraw a pending review | ✗ | ✗ | ✓ ¹⁰ | ✗ ⁴ |
+| Revoke an existing approval | ✗ | ✗ | ✗ | ✓ ¹⁰ |
+| Publish | ✗ | ✗ | ✓ ⁵ ¹⁰ | ✓ |
 | Unassign a CVE | ✗ | ✗ | ✗ | ✓ |
 | Mark an orphan CVE rejected | — | — | — | ✓ |
 | Resolve an orphan CVE reassignment task | — | — | — | ✓ |
@@ -260,6 +260,16 @@ them the full edit form; the destination authority is re-checked per chosen proj
 `can_resolve_reassignment`. Defined by `can_request_reassignment` /
 `can_withdraw_reassignment_request` / `can_accept_reassignment_suggestion` /
 `can_pick_reassignment_target` / `can_resolve_reassignment`. See advisory-lifecycle §11.
+
+¹⁰ **GHSA-linked advisories are never reviewed in AdvisoryHub** — their content is synced
+from GitHub and isn't human-editable ([INV-GHSA-1](./invariant.md#inv-ghsa-1),
+[INV-REVIEW-4](./invariant.md#inv-review-4)), so the three review actions (submit / withdraw /
+revoke) are unavailable for them and a sync never invalidates an approval. Because there is no
+EF review, an **owner** may publish a GHSA-linked advisory directly — the mature-publisher /
+approved-review gate (footnote ⁵) does not apply; the upstream GitHub advisory is the vetting and
+`ghsa.services.refresh_for_publish` (GHSA must be published on GitHub, not 404, no CVE conflict)
+is the real precondition. Defined by `can_submit_for_review` / `can_withdraw_review` /
+`can_revoke_approval` / `can_publish`.
 
 ---
 

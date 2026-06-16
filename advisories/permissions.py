@@ -242,6 +242,11 @@ def can_request_cve(user, advisory: Advisory) -> bool:
 
 
 def can_submit_for_review(user, advisory: Advisory) -> bool:
+    # GHSA-linked advisories have no human-editable content (it's synced from
+    # GitHub), so review is not applicable — see INV-GHSA-1 and the inbound-only
+    # GHSA lifecycle. Refused for everyone.
+    if advisory.kind == Kind.GHSA_LINKED:
+        return False
     # Admins are the reviewers — they don't submit advisories for review.
     # They can publish directly (subject to the SUBMITTED gate in can_publish).
     if is_global_admin(user):
@@ -267,6 +272,8 @@ def can_revoke_approval(user, advisory: Advisory) -> bool:
     Same end state as auto-invalidation on edit; the separate audit
     action distinguishes "admin retracted" from "edit drift".
     """
+    if advisory.kind == Kind.GHSA_LINKED:
+        return False
     if not is_global_admin(user):
         return False
     return advisory.review_status == ReviewStatus.APPROVED
@@ -325,6 +332,13 @@ def can_publish(user, advisory: Advisory) -> bool:
         return False
     if is_global_admin(user):
         return True
+    # GHSA-linked advisories carry no AdvisoryHub review (it's removed for them):
+    # the upstream GitHub advisory is the vetting, so any owner (project security
+    # team) may publish directly — no mature-publisher / approved-review gate.
+    # The real precondition (GHSA published on GitHub, not 404, no CVE conflict)
+    # is enforced by ghsa.services.refresh_for_publish inside publish().
+    if advisory.kind == Kind.GHSA_LINKED:
+        return is_security_team_member(user, advisory.project)
     if not is_security_team_member(user, advisory.project):
         return False
     if advisory.is_mature_publisher_eligible_review_status:
@@ -343,6 +357,8 @@ def can_withdraw_review(user, advisory: Advisory) -> bool:
     unlock publishing for non-mature-publisher projects (``can_publish``
     still requires ``APPROVED`` for them).
     """
+    if advisory.kind == Kind.GHSA_LINKED:
+        return False
     if is_global_admin(user):
         return False
     if resolved_permission(user, advisory) != "owner":

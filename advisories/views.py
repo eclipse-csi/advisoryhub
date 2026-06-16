@@ -1101,7 +1101,7 @@ def advisory_request_reassignment_modal(request, advisory_id: str):
 @require_http_methods(["POST"])
 @html_ratelimit(rate="20/h")
 def advisory_request_reassignment(request, advisory_id: str):
-    """Request admin reassignment of a draft advisory (rendered in an HTMX modal)."""
+    """Request reassignment of a draft advisory (rendered in an HTMX modal)."""
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     note = (request.POST.get("note") or "").strip()
     raw_slug = (request.POST.get("suggested_project_slug") or "").strip()

@@ -4,8 +4,8 @@
         hx-target="#modal"
         hx-swap="innerHTML">
     {% csrf_token %}
-    <h3 id="reassign-request-modal-title">{% translate "Request admin reassignment" %}</h3>
-    <p>{% translate "Describe which project this advisory belongs to and why. An admin will re-home it — your team keeps working in the meantime." %}</p>
+    <h3 id="reassign-request-modal-title">{% translate "Request reassignment" %}</h3>
+    <p>{% translate "Describe which project this advisory belongs to and why. An admin will re-home it — your team can keep working on it in the meantime." %}</p>
     {% if error %}<p class="errors">{{ error }}</p>{% endif %}
     <label>{% translate "Where should this advisory go? (required)" %}
       <textarea name="note" required rows="4" autofocus></textarea>
@@ -18,7 +18,7 @@
         {% endfor %}
       </select>
     </label>
-    <p class="muted">{% translate "If you name a project, an admin can accept it in one click. The suggestion grants no access — it's just a hint." %}</p>
+    <p class="muted">{% translate "The suggestion grants no access — it's just a hint." %}</p>
     <div class="dialog-actions">
       <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
       <button type="submit">{% translate "Request reassignment" %}</button>

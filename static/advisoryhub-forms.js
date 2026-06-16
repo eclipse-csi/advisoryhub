@@ -6,7 +6,7 @@
  * disabled otherwise (so it is excluded from submission). Replaces the inline
  * `onclick="...disabled=..."` handlers on the orphan-CVE reassignment radios.
  *
- * Delegation handles HTMX-swapped fragments (e.g. the admin reassignment row).
+ * Delegation handles HTMX-swapped fragments (e.g. the reassignment row).
  */
 (function () {
   "use strict";

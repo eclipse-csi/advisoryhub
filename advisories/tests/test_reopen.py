@@ -244,7 +244,7 @@ def test_reopen_with_orphaned_orphan_reattaches_cve_directly(setup):
     orphan.refresh_from_db()
     assert advisory.assigned_cve_id == "CVE-2026-9999"
     assert orphan.status == OrphanCveStatus.REASSIGNED
-    # No admin reassignment task — direct reattachment doesn't need one.
+    # No reassignment task — direct reattachment doesn't need one.
     assert OrphanCveReassignmentTask.objects.filter(orphan_cve=orphan).count() == 0
     assert AuditLogEntry.objects.filter(action=Action.CVE_REASSIGNED_FROM_ORPHAN).exists()
 

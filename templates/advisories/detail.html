@@ -72,7 +72,7 @@
   {% if advisory.reassignment_requested_at %}
     <div class="advisory-banner advisory-banner--warning" role="status">
       <div class="advisory-banner__body">
-        <strong>Admin reassignment requested</strong>
+        <strong>Reassignment requested</strong>
         {% if advisory.reassignment_requested_by %}
           — requested by {% user_chip advisory.reassignment_requested_by %}
           on {% timestamp advisory.reassignment_requested_at %}

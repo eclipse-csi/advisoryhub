@@ -332,7 +332,7 @@ def test_detail_shows_request_button_for_owner(db, make_user, make_project, clie
     client.force_login(member)
     resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
     assert resp.status_code == 200
-    assert b"Request admin reassignment" in resp.content
+    assert b"Request reassignment" in resp.content
 
 
 def test_detail_renders_modal_host_for_request(db, make_user, make_project, client):
@@ -354,7 +354,7 @@ def test_detail_hides_request_button_for_admin(db, admin_user, make_project, cli
     client.force_login(admin_user)
     resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
     assert resp.status_code == 200
-    assert b"Request admin reassignment" not in resp.content
+    assert b"Request reassignment" not in resp.content
 
 
 def test_detail_shows_banner_when_requested(db, make_user, make_project, client):
@@ -364,7 +364,7 @@ def test_detail_shows_banner_when_requested(db, make_user, make_project, client)
     client.force_login(member)
     resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
     assert resp.status_code == 200
-    assert b"Admin reassignment requested" in resp.content
+    assert b"Reassignment requested" in resp.content
 
 
 # -------------------- Suggested target project + one-click accept ----------

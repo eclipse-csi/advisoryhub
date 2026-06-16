@@ -179,7 +179,7 @@ asymmetries with the same-row entries.
 | Grant / revoke access | ✗ | ✗ | ✓ | ✓ |
 | View duplicate-check results / trigger a re-run | ✗ | ✗ | ✓ ⁸ | ✓ ⁸ |
 | Change advisory's project | ✗ | ✗ | ✓ ¹ | ✓ |
-| Request admin reassignment (draft) | ✗ | ✗ | ✓ ⁹ | ✗ ⁹ |
+| Request reassignment (draft) | ✗ | ✗ | ✓ ⁹ | ✗ ⁹ |
 | Withdraw a reassignment request | ✗ | ✗ | ✓ ⁹ | ✓ ⁹ |
 | Dismiss advisory | ✗ | ✗ | ✓ ² | ✓ |
 | Reopen dismissed advisory | ✗ | ✗ | ✓ ⁶ | ✓ ⁶ |

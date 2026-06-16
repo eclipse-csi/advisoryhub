@@ -61,8 +61,8 @@ stateDiagram-v2
 Public reports for your project arrive in the **triage** state. Find them via the
 **triage** tab on `/advisories/`. Open one and decide:
 
-- **Promote to draft** (`…/promote/`) — accept the report as something worth
-  working on. It becomes a normal draft you can edit, review, and publish.
+- **Accept as draft** (`…/promote/`) — treat the report as a genuine vulnerability
+  worth working on. It becomes a normal draft you can edit, review, and publish.
 - **Dismiss** (`…/dismiss/`) — reject it (duplicate, not a vulnerability, out of
   scope). You must give a reason. Dismissed reports are reversible later (§9).
 - **Flag for admin routing** (`…/flag/`) — if the report clearly belongs to a

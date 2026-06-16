@@ -421,7 +421,7 @@ def _f_created(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
 
 @_register(Action.ADVISORY_TRIAGE_PROMOTED)
 def _f_triage_promoted(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
-    return "promoted this report from triage to draft"
+    return "accepted this report as a draft"
 
 
 @_register(Action.ADVISORY_STATE_CHANGED)

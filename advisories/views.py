@@ -484,7 +484,9 @@ def _lifecycle_hints(advisory: Advisory, *, last_publication_task) -> dict[str, 
                 "GHSA is accepted (→ draft) or published — no manual action here."
             )
         else:
-            lifecycle = "Untrusted report. Promote to start the standard workflow, or dismiss."
+            lifecycle = (
+                "Untrusted report. Accept it as a draft to start the standard workflow, or dismiss."
+            )
     elif state == State.DRAFT:
         lifecycle = "Authoring in progress. Edits append a new version."
     elif state == State.PUBLISHED:
@@ -500,7 +502,7 @@ def _lifecycle_hints(advisory: Advisory, *, last_publication_task) -> dict[str, 
 
     # Review -------------------------------------------------------------
     if state == State.TRIAGE:
-        review = "Review opens once the report is promoted to draft."
+        review = "Review opens once the report is accepted as a draft."
     elif state == State.DISMISSED:
         review = "Not applicable while dismissed."
     elif state == State.PUBLISHED and rs == ReviewStatus.NONE:
@@ -518,7 +520,7 @@ def _lifecycle_hints(advisory: Advisory, *, last_publication_task) -> dict[str, 
 
     # Publication --------------------------------------------------------
     if state == State.TRIAGE:
-        publication = "Available once the report is promoted (and reviewed)."
+        publication = "Available once the report is accepted (and reviewed)."
     elif state == State.DISMISSED:
         publication = "Not applicable while dismissed."
     elif state == State.DRAFT:
@@ -1014,7 +1016,7 @@ def advisory_promote(request, advisory_id: str):
         services.promote_triage_to_draft(advisory, by=request.user, project=target_project)
     except ValueError as exc:
         return _detail_with_error(request, advisory, str(exc))
-    messages.success(request, "Advisory promoted to draft.")
+    messages.success(request, "Advisory accepted as draft.")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 

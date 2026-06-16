@@ -40,7 +40,7 @@
   <section class="stats-section">
     <h2>{% translate "Time to first response" %}</h2>
     <p class="muted">
-      {% translate "Intake reports only: from submission to the first triage action (promote, dismiss, or flag for routing)." %}
+      {% translate "Intake reports only: from submission to the first triage action (accept, dismiss, or flag for routing)." %}
     </p>
     {% include "admin_console/_stats_chart.html" with spark=ttfr_sparkline %}
     <table class="stats">
@@ -51,7 +51,7 @@
           <th scope="col" class="stats__num">{% translate "n" %}</th>
           <th scope="col" class="stats__num">{% translate "Mean" %}</th>
           <th scope="col" class="stats__num">{% translate "p95" %}</th>
-          <th scope="col" class="stats__num"><abbr title="{% translate 'Intake reports promoted to draft and later dismissed, by dismissal date' %}">{% translate "Reverted" %}</abbr></th>
+          <th scope="col" class="stats__num"><abbr title="{% translate 'Intake reports accepted as draft and later dismissed, by dismissal date' %}">{% translate "Reverted" %}</abbr></th>
         </tr>
       </thead>
       <tbody>

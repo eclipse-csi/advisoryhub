@@ -328,7 +328,7 @@ def send_advisory_triage_event_email(advisory_pk: int, event: str) -> int:
     recipients = [u for u in recipients if get_pref(u).on_triage_event]
     subject_map = {
         "advisory_triage_submitted": "[AdvisoryHub] new vulnerability report (triage)",
-        "advisory_triage_promoted": "[AdvisoryHub] triage advisory promoted to draft",
+        "advisory_triage_promoted": "[AdvisoryHub] triage advisory accepted as draft",
         "advisory_triage_dismissed": "[AdvisoryHub] triage advisory dismissed",
         "advisory_triage_reassigned": "[AdvisoryHub] triage advisory reassigned to your project",
         "advisory_flagged_for_routing": "[AdvisoryHub] triage advisory flagged for admin re-routing",

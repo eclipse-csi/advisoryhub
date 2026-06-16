@@ -81,10 +81,10 @@ sequenceDiagram
     Form->>Hub: Create advisory (state = triage)
     Hub-->>Reporter: Thank-you page
     Hub->>Team: Notify
-    Team->>Hub: Triage → promote to draft, or dismiss
+    Team->>Hub: Triage → accept as draft, or dismiss
 ```
 
-From here the team will either **promote** your report to a working draft (and
+From here the team will either **accept** your report as a working draft (and
 eventually, perhaps, publish an advisory) or **dismiss** it (for example, if it
 turns out to be a duplicate or not a security issue). What happens next, and how
 the resulting advisory is written and published, is covered in the

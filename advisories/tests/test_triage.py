@@ -14,7 +14,7 @@ from django.urls import reverse
 from access.models import AdvisoryAccessGrant
 from advisories import permissions as perms
 from advisories import services
-from advisories.models import Advisory, AdvisoryIntakeMetadata, State
+from advisories.models import Advisory, AdvisoryIntakeMetadata, Kind, State
 from projects.models import Project
 
 
@@ -174,6 +174,24 @@ def test_can_flag_for_admin_routing_already_flagged(db, make_user, make_project)
     project = make_project("alpha")
     member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
     adv = _make_triage_advisory(project, flagged=True)
+    assert perms.can_flag_for_admin_routing(member, adv) is False
+
+
+def test_can_flag_for_admin_routing_excludes_ghsa_linked(db, make_user, make_project):
+    """Defensive: a GHSA-linked advisory's project follows PMI, never a routing
+    decision (INV-GHSA-1). GHSA-linked rows never reach triage naturally, so this
+    state is synthetic — the guard pins the invariant regardless."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = Advisory.objects.create(
+        project=project,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.TRIAGE,
+        summary="A vulnerability",
+    )
     assert perms.can_flag_for_admin_routing(member, adv) is False
 
 

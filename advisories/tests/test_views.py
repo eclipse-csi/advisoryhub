@@ -105,6 +105,40 @@ def test_ghsa_linked_advisory_stays_cve_requestable(member_a, ghsa_advisory):
     assert perms.can_request_cve(member_a, ghsa_advisory) is True
 
 
+@pytest.mark.django_db
+def test_ghsa_linked_detail_hides_reassignment_button(client, member_a, ghsa_advisory):
+    """The reassignment affordance is gated by ``can_request_reassignment``,
+    which refuses GHSA-linked advisories (INV-GHSA-1)."""
+    client.force_login(member_a)
+    resp = client.get(reverse("advisories:detail", args=[ghsa_advisory.advisory_id]))
+    assert resp.status_code == 200
+    modal_url = reverse("advisories:request_reassignment_modal", args=[ghsa_advisory.advisory_id])
+    assert modal_url not in resp.content.decode()
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_request_reassignment_modal_forbidden(client, member_a, ghsa_advisory):
+    """An owner cannot open the reassignment modal for a GHSA-linked advisory."""
+    client.force_login(member_a)
+    resp = client.get(
+        reverse("advisories:request_reassignment_modal", args=[ghsa_advisory.advisory_id])
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_request_reassignment_post_forbidden(client, member_a, ghsa_advisory):
+    """Even an owner's POST is refused, and no reassignment state is recorded."""
+    client.force_login(member_a)
+    resp = client.post(
+        reverse("advisories:request_reassignment", args=[ghsa_advisory.advisory_id]),
+        {"note": "belongs elsewhere"},
+    )
+    assert resp.status_code == 403
+    ghsa_advisory.refresh_from_db()
+    assert ghsa_advisory.reassignment_requested_at is None
+
+
 # ---- list -----------------------------------------------------------------
 
 

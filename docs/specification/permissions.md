@@ -248,7 +248,9 @@ Enforced by `similarity.views` via `resolved_permission == "owner"`.
 
 ⁹ Draft-only and **non-locking**: a pending request never removes the team's
 edit/publish capability ([INV-AUTH-9](./invariant.md#inv-auth-9)), unlike the triage
-routing flag (§6). Global admins cannot *request* (they reassign directly) but may
+routing flag (§6). **Native** drafts only — a GHSA-linked draft's project follows its
+source repository in PMI (cf. footnote ¹, [INV-GHSA-1](./invariant.md#inv-ghsa-1)), so
+`can_request_reassignment` is always false for it. Global admins cannot *request* (they reassign directly) but may
 *withdraw*; only one request is pending at a time. An optional suggested target project
 enables a one-click *accept* gated on the **suggested** project's security team (or a
 global admin) — never the requester; accepting moves the advisory and appends a version.

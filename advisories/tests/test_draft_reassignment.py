@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from advisories import permissions as perms
 from advisories import services
-from advisories.models import Advisory, State
+from advisories.models import Advisory, Kind, State
 from audit.models import Action, AuditLogEntry
 
 
@@ -86,6 +86,22 @@ def test_can_request_reassignment_denied_for_outsider(db, make_user, make_projec
     outsider = make_user(email="o@example.org")
     adv = _make_draft_advisory(project)
     assert perms.can_request_reassignment(outsider, adv) is False
+
+
+def test_can_request_reassignment_excludes_ghsa_linked(db, make_user, make_project):
+    """A GHSA-linked draft's project follows PMI, never a human request (INV-GHSA-1)."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = Advisory.objects.create(
+        project=project,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.DRAFT,
+        summary="A vulnerability",
+    )
+    assert perms.can_request_reassignment(member, adv) is False
 
 
 def test_can_withdraw_reassignment_owner_and_admin(db, make_user, make_project, admin_user):

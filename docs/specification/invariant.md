@@ -620,7 +620,9 @@ not on may ask an admin to re-home it (`request_admin_reassignment`). Unlike the
 routing flag ([INV-AUTH-6](#inv-auth-6)), a pending request does **not** strip the
 team's edit/publish capability — work continues while the request sits in the queue.
 Global admins cannot *request* (they reassign directly); only one request is pending at
-a time; requests exist only in `draft`. An optional **suggested target project** (never
+a time; requests exist only in `draft`. The request applies to **native** drafts only — a
+GHSA-linked draft's project follows PMI ([INV-GHSA-1](#inv-ghsa-1)) and is never hand-reassigned,
+so `can_request_reassignment` is always false for it. An optional **suggested target project** (never
 the advisory's current project) enables a one-click accept by a global admin **or** a
 security-team member of that target project — but never by the requester (who is on the
 current team, not the target). A **global admin** may also resolve the request by
@@ -2226,6 +2228,12 @@ letting PMI be the sole driver keeps the mapping coherent and self-healing.
 - `advisories/views.py` — `advisory_edit` raises `PermissionDenied` for
   GHSA-linked advisories (they have no editable fields); the detail sidebar
   hides the Edit button via `can_edit and not is_ghsa_linked`.
+- `advisories/permissions.py` — `can_request_reassignment` (and, defensively,
+  `can_flag_for_admin_routing`) refuse GHSA-linked advisories, so neither the
+  draft reassignment-request flow ([INV-AUTH-9](#inv-auth-9)) nor the triage
+  routing flag ([INV-AUTH-6](#inv-auth-6)) can become a human path to change
+  their project. The single predicate gates the button, the modal, and the
+  service re-check alike.
 - `ghsa/services.py` — `sync_project_repos_from_pmi` re-homes GHSA-linked
   advisories to follow PMI (`_reassign_ghsa_advisories_following_pmi`), appending
   a version, auditing `ADVISORY_PROJECT_CHANGED` with `reason=pmi_repo_reassignment`,

@@ -27,7 +27,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 
-from .models import Advisory, ReviewStatus, State
+from .models import Advisory, Kind, ReviewStatus, State
 
 Permission = Literal["viewer", "collaborator", "owner"]
 _RANK = {"viewer": 1, "collaborator": 2, "owner": 3}
@@ -412,9 +412,16 @@ def can_flag_for_admin_routing(user, advisory: Advisory) -> bool:
     advisories can't be re-flagged (the service would reject as a
     duplicate, but hiding the button keeps the UI honest). Admins are
     excluded because *they* are the routing destination: flagging would
-    bounce work back to themselves.
+    bounce work back to themselves. GHSA-linked advisories are excluded
+    too — their project follows PMI, not a hand-routing decision
+    (INV-GHSA-1); this is defensive, as GHSA-linked rows never enter
+    triage.
     """
     if advisory.state != State.TRIAGE:
+        return False
+    if advisory.kind == Kind.GHSA_LINKED:
+        # A GHSA-linked advisory's project follows its source repository in
+        # PMI, never a human routing decision (INV-GHSA-1).
         return False
     if advisory.project.slug == UNSORTED_PROJECT_SLUG:
         return False
@@ -450,9 +457,14 @@ def can_request_reassignment(user, advisory: Advisory) -> bool:
     flag, which locks the row — INV-AUTH-6). Admins are excluded because *they*
     are the destination — they reassign directly rather than queue a request to
     themselves. Refused once a request is already pending (one at a time) and in
-    any non-draft state.
+    any non-draft state. GHSA-linked advisories are refused outright: their
+    project follows PMI, never a human reassignment (INV-GHSA-1).
     """
     if advisory.state != State.DRAFT:
+        return False
+    if advisory.kind == Kind.GHSA_LINKED:
+        # A GHSA-linked advisory's project follows its source repository in
+        # PMI, never a human reassignment request (INV-GHSA-1).
         return False
     if advisory.reassignment_requested_at is not None:
         return False

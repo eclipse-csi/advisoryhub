@@ -376,6 +376,79 @@ def test_edit_project_change_sets_access_review_flag(client, admin_user, project
     ).exists()
 
 
+def _set_pending_reassignment(advisory, *, by, suggested):
+    from django.utils import timezone
+
+    advisory.reassignment_requested_at = timezone.now()
+    advisory.reassignment_requested_by = by
+    advisory.reassignment_request_note = "belongs to project-b"
+    advisory.reassignment_suggested_project = suggested
+    advisory.save(
+        update_fields=[
+            "reassignment_requested_at",
+            "reassignment_requested_by",
+            "reassignment_request_note",
+            "reassignment_suggested_project",
+        ]
+    )
+
+
+@pytest.mark.django_db
+def test_edit_project_change_clears_pending_reassignment(
+    client, admin_user, member_a, project_a, project_b
+):
+    """Re-homing a draft via the edit form fulfils a pending admin-reassignment
+    request — it clears just like the reassignment pane's accept (INV-AUTH-9)."""
+    advisory = Advisory.objects.create(project=project_a, summary="x")
+    _set_pending_reassignment(advisory, by=member_a, suggested=project_b)
+    client.force_login(admin_user)
+    response = client.post(
+        reverse("advisories:edit", args=[advisory.advisory_id]),
+        data={
+            "project": project_b.pk,
+            "summary": "x",
+            "details": "",
+            **empty_formsets_payload(),
+        },
+    )
+    assert response.status_code in (200, 302)
+    advisory.refresh_from_db()
+    assert advisory.project_id == project_b.pk
+    assert advisory.reassignment_requested_at is None
+    assert advisory.reassignment_requested_by_id is None
+    assert advisory.reassignment_request_note == ""
+    assert advisory.reassignment_suggested_project_id is None
+    cleared = AuditLogEntry.objects.filter(
+        action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED, advisory=advisory
+    ).get()
+    assert cleared.metadata["cause"] == "accepted"
+
+
+@pytest.mark.django_db
+def test_edit_without_project_change_keeps_pending_reassignment(
+    client, admin_user, member_a, project_a, project_b
+):
+    """A content edit that doesn't move the project leaves the request pending."""
+    advisory = Advisory.objects.create(project=project_a, summary="x")
+    _set_pending_reassignment(advisory, by=member_a, suggested=project_b)
+    client.force_login(admin_user)
+    response = client.post(
+        reverse("advisories:edit", args=[advisory.advisory_id]),
+        data={
+            "project": project_a.pk,  # unchanged
+            "summary": "edited summary",
+            "details": "",
+            **empty_formsets_payload(),
+        },
+    )
+    assert response.status_code in (200, 302)
+    advisory.refresh_from_db()
+    assert advisory.reassignment_requested_at is not None  # still pending
+    assert not AuditLogEntry.objects.filter(
+        action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED, advisory=advisory
+    ).exists()
+
+
 @pytest.mark.django_db
 def test_edit_records_changed_fields_in_audit_metadata(client, admin_user, project_a):
     """Editor-driven edits stamp the list of changed payload fields on the

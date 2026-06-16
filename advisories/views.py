@@ -723,6 +723,12 @@ def advisory_edit(request, advisory_id: str):
                         previous_value=previous["project"],
                         new_value=new_value["project"],
                     )
+                    # Re-homing the advisory fulfils any pending admin-reassignment
+                    # request (INV-AUTH-9): clear it, exactly as the reassignment
+                    # pane's accept would (cause "accepted"). No-op if none pending.
+                    services.clear_reassignment_request_if_pending(
+                        updated, by=user, cause="accepted"
+                    )
                     transaction.on_commit(partial(_queue_advisory_created, updated.pk))
                 messages.success(request, "Advisory saved.")
                 return redirect("advisories:detail", advisory_id=updated.advisory_id)

@@ -628,8 +628,9 @@ reassigning to **any** project of their choice (an in-banner picker), not only t
 suggestion — sparing them the full edit form. Either way the move onto the target appends
 an `AdvisoryVersion` (`project_slug` is payload-visible), flags an access review, clears
 the request, and is audited. The request is cleared — clearing all four `reassignment_*`
-fields — on withdraw (requester or admin), accept/reassign, or **any exit from draft**
-(dismiss / publish). Every transition is audited.
+fields — on withdraw (requester or admin), accept/reassign, **any project change made
+through the edit form** (which fulfils the request the same way — cleared with cause
+`accepted`), or **any exit from draft** (dismiss / publish). Every transition is audited.
 
 **Rationale.** The draft analogue of the triage routing flag, but draft work is trusted
 and collaborative, so a misrouting hint must not freeze the team the way an untrusted

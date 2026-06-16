@@ -623,11 +623,13 @@ Global admins cannot *request* (they reassign directly); only one request is pen
 a time; requests exist only in `draft`. An optional **suggested target project** (never
 the advisory's current project) enables a one-click accept by a global admin **or** a
 security-team member of that target project — but never by the requester (who is on the
-current team, not the target). Accepting moves the advisory onto the target, which
-appends an `AdvisoryVersion` (`project_slug` is payload-visible) and flags an access
-review. The request is cleared — clearing all four `reassignment_*` fields — on withdraw
-(requester or admin), accept, or **any exit from draft** (dismiss / publish). Every
-transition is audited.
+current team, not the target). A **global admin** may also resolve the request by
+reassigning to **any** project of their choice (an in-banner picker), not only the
+suggestion — sparing them the full edit form. Either way the move onto the target appends
+an `AdvisoryVersion` (`project_slug` is payload-visible), flags an access review, clears
+the request, and is audited. The request is cleared — clearing all four `reassignment_*`
+fields — on withdraw (requester or admin), accept/reassign, or **any exit from draft**
+(dismiss / publish). Every transition is audited.
 
 **Rationale.** The draft analogue of the triage routing flag, but draft work is trusted
 and collaborative, so a misrouting hint must not freeze the team the way an untrusted
@@ -637,7 +639,7 @@ don't have (owner is derived — [INV-AUTH-3](#inv-auth-3)).
 
 **Enforced in.**
 - `advisories/permissions.py` — `can_request_reassignment`, `can_withdraw_reassignment_request`,
-  `can_accept_reassignment_suggestion`.
+  `can_accept_reassignment_suggestion`, `can_pick_reassignment_target`, `can_resolve_reassignment`.
 - `advisories/services.py` — `request_admin_reassignment`, `withdraw_admin_reassignment`,
   `accept_reassignment_suggestion`, and the shared `clear_reassignment_request_if_pending`.
 - Auto-clear on draft exit: `advisories/views.py` `advisory_dismiss` and

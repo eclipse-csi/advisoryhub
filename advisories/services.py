@@ -30,11 +30,11 @@ from common.users import actor_or_none
 from .models import Advisory, AdvisoryIntakeMetadata, AdvisoryVersion, State
 from .permissions import (
     UNSORTED_PROJECT_SLUG,
-    can_accept_reassignment_suggestion,
     can_clear_admin_routing_flag,
     can_flag_for_admin_routing,
     can_reopen,
     can_request_reassignment,
+    can_resolve_reassignment,
     can_triage,
     can_view,
     can_withdraw_reassignment_request,
@@ -715,26 +715,31 @@ def withdraw_admin_reassignment(advisory: Advisory, *, by, note: str = "") -> Ad
     return locked
 
 
-def accept_reassignment_suggestion(advisory: Advisory, *, by) -> Advisory:
-    """One-click accept the suggested target: move the draft onto that project.
+def accept_reassignment_suggestion(advisory: Advisory, *, by, new_project=None) -> Advisory:
+    """Resolve a pending reassignment request by moving the draft onto a project.
 
-    Mirrors :func:`reassign_triage_project` for the draft state — changes the
+    Two callers share this body:
+
+    * **One-click accept** (``new_project=None``) — moves onto the *suggested*
+      project; used by non-admin target-team members and admins alike.
+    * **Admin picker** (``new_project`` given) — moves onto any chosen project,
+      sparing an admin the full edit form.
+
+    Mirrors :func:`reassign_triage_project` for the draft state: changes the
     project, appends a version (``project_slug`` is payload-visible), flags an
     access review (the previous team's implicit ownership no longer applies),
     audits the project change, and clears the request (cause ``accepted``).
-    Authorization (admin or target-team membership) is re-checked here.
+    Authorization is re-checked here via :func:`can_resolve_reassignment`.
     """
     with transaction.atomic():
         locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
-        if not can_accept_reassignment_suggestion(by, locked):
-            raise PermissionDenied("You may not accept this reassignment suggestion.")
-
-        target = locked.reassignment_suggested_project
+        target = new_project if new_project is not None else locked.reassignment_suggested_project
+        if not can_resolve_reassignment(by, locked, target):
+            raise PermissionDenied("You may not resolve this reassignment request.")
         if target is None:
-            # Unreachable in practice — can_accept_reassignment_suggestion already
-            # requires a suggested project — but narrows the Optional for the type
-            # checker and fails closed if the gate ever changes.
-            raise PermissionDenied("There is no suggested project to accept.")
+            # Unreachable once the gate passes (it requires a non-null target) —
+            # narrows the Optional for the type checker and fails closed.
+            raise PermissionDenied("There is no target project to reassign to.")
 
         previous_project = locked.project
         locked.project = target
@@ -751,7 +756,15 @@ def accept_reassignment_suggestion(advisory: Advisory, *, by) -> Advisory:
             new_value={"project_slug": target.slug},
             metadata={
                 "advisory_id": locked.advisory_id,
-                "cause": "reassignment_accepted",
+                # Distinguish "took the suggestion" from "admin chose another".
+                "cause": "reassignment_accepted"
+                if new_project is None
+                else "reassignment_resolved",
+                "suggested_project_slug": (
+                    locked.reassignment_suggested_project.slug
+                    if locked.reassignment_suggested_project
+                    else ""
+                ),
                 "in_triage": False,
             },
         )

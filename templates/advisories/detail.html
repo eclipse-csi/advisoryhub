@@ -84,9 +84,23 @@
           <p class="muted">Suggested target: <strong>{{ advisory.reassignment_suggested_project.name }}</strong></p>
         {% endif %}
       </div>
-      {% if can_accept_reassignment or can_withdraw_reassignment %}
+      {% if can_pick_reassignment_target or can_accept_reassignment or can_withdraw_reassignment %}
         <div class="advisory-banner__actions">
-          {% if can_accept_reassignment %}
+          {% if can_pick_reassignment_target %}
+            <form method="post"
+                  action="{% url 'advisories:accept_reassignment' advisory.advisory_id %}"
+                  class="inline">
+              {% csrf_token %}
+              <label for="reassign-target-project">Reassign to</label>
+              <select id="reassign-target-project" name="project_slug" data-combobox required>
+                {% if not advisory.reassignment_suggested_project %}<option value="">— choose a project —</option>{% endif %}
+                {% for p in reassignable_projects %}
+                  <option value="{{ p.slug }}" data-combobox-detail="{{ p.slug }}"{% if p.pk == advisory.reassignment_suggested_project_id %} selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="success">Reassign</button>
+            </form>
+          {% elif can_accept_reassignment %}
             <form method="post"
                   action="{% url 'advisories:accept_reassignment' advisory.advisory_id %}"
                   class="inline">

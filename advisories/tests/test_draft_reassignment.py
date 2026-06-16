@@ -435,15 +435,37 @@ def test_request_modal_lists_suggestable_projects(db, make_user, make_project, c
     assert 'value="unsorted"' not in body  # sentinel excluded
 
 
-def test_banner_shows_accept_for_admin(db, admin_user, make_user, make_project, client):
+def test_banner_shows_picker_for_admin(db, admin_user, make_user, make_project, client):
+    """An admin gets the project picker (default = suggested), not the one-click."""
     project = make_project("alpha")
     target = make_project("bravo")
+    make_project("charlie")  # another offered option
     member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
     adv = _make_draft_advisory(project, requested_by=member, suggested_project=target)
     client.force_login(admin_user)
     body = client.get(reverse("advisories:detail", args=[adv.advisory_id])).content.decode()
     assert "Suggested target" in body
-    assert "Accept — move to" in body
+    assert 'name="project_slug"' in body  # the picker is rendered
+    assert ">Reassign</button>" in body
+    # the suggested project is offered and pre-selected
+    assert f'value="{target.slug}" data-combobox-detail="{target.slug}" selected' in body
+    assert "Accept — move to" not in body  # admin no longer gets the one-click
+
+
+def test_banner_shows_one_click_for_target_member(db, make_user, make_project, client):
+    """A non-admin who is on the suggested team (and the current team, so they can
+    view) keeps the one-click accept — no admin picker."""
+    project = make_project("alpha")
+    target = make_project("bravo")
+    dual = make_user(
+        email="d@example.org",
+        groups=[f"{project.slug}-security", f"{target.slug}-security"],
+    )
+    adv = _make_draft_advisory(project, requested_by=dual, suggested_project=target)
+    client.force_login(dual)
+    body = client.get(reverse("advisories:detail", args=[adv.advisory_id])).content.decode()
+    assert "Accept — move to" in body  # one-click for the target team
+    assert 'name="project_slug"' not in body  # no admin picker
 
 
 def test_banner_hides_accept_for_requesting_member(db, make_user, make_project, client):
@@ -455,3 +477,171 @@ def test_banner_hides_accept_for_requesting_member(db, make_user, make_project, 
     body = client.get(reverse("advisories:detail", args=[adv.advisory_id])).content.decode()
     assert "Suggested target" in body  # banner + suggestion visible to all
     assert "Accept — move to" not in body  # but the requester can't accept
+
+
+# -------------------- Admin chosen-project reassignment --------------------
+
+
+def test_can_resolve_reassignment_matrix(db, admin_user, make_user, make_project):
+    project = make_project("alpha")
+    target = make_project("bravo")
+    other = make_project("charlie")
+    requester = make_user(email="r@example.org", groups=[f"{project.slug}-security"])
+    target_member = make_user(email="t@example.org", groups=[f"{target.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=requester, suggested_project=target)
+
+    # admin → any project that isn't the current one
+    assert perms.can_resolve_reassignment(admin_user, adv, target) is True
+    assert perms.can_resolve_reassignment(admin_user, adv, other) is True
+    # admin → current project / None rejected
+    assert perms.can_resolve_reassignment(admin_user, adv, project) is False
+    assert perms.can_resolve_reassignment(admin_user, adv, None) is False
+    # target-team member → only their own team
+    assert perms.can_resolve_reassignment(target_member, adv, target) is True
+    assert perms.can_resolve_reassignment(target_member, adv, other) is False
+    # requester (current team only) → never
+    assert perms.can_resolve_reassignment(requester, adv, target) is False
+
+
+def test_can_resolve_reassignment_requires_pending(db, admin_user, make_project):
+    project = make_project("alpha")
+    target = make_project("bravo")
+    adv = _make_draft_advisory(project)  # no request pending
+    assert perms.can_resolve_reassignment(admin_user, adv, target) is False
+
+
+def test_can_pick_reassignment_target(db, admin_user, make_user, make_project):
+    project = make_project("alpha")
+    target = make_project("bravo")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    pending = _make_draft_advisory(project, requested_by=member, suggested_project=target)
+    no_request = _make_draft_advisory(project)
+    assert perms.can_pick_reassignment_target(admin_user, pending) is True
+    assert perms.can_pick_reassignment_target(admin_user, no_request) is False  # needs a request
+    assert perms.can_pick_reassignment_target(member, pending) is False  # admin-only
+
+
+def test_accept_reassignment_admin_picks_other_project(db, admin_user, make_user, make_project):
+    project = make_project("alpha")
+    suggested = make_project("bravo")
+    chosen = make_project("charlie")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member, suggested_project=suggested)
+
+    services.accept_reassignment_suggestion(adv, by=admin_user, new_project=chosen)
+    adv.refresh_from_db()
+    assert adv.project == chosen  # admin overrode the suggestion
+    assert adv.reassignment_requested_at is None
+    assert adv.reassignment_suggested_project_id is None
+    assert adv.access_review_required_at is not None
+    assert services.latest_version(adv).payload["project_slug"] == chosen.slug
+    changed = AuditLogEntry.objects.filter(
+        advisory=adv, action=Action.ADVISORY_PROJECT_CHANGED
+    ).get()
+    assert changed.metadata["cause"] == "reassignment_resolved"  # not "accepted"
+    assert changed.metadata["suggested_project_slug"] == suggested.slug  # records the override
+    cleared = AuditLogEntry.objects.filter(
+        advisory=adv, action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED
+    ).get()
+    assert cleared.metadata["cause"] == "accepted"
+
+
+def test_accept_reassignment_admin_picks_without_suggestion(
+    db, admin_user, make_user, make_project
+):
+    project = make_project("alpha")
+    chosen = make_project("charlie")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member)  # no suggested project
+    services.accept_reassignment_suggestion(adv, by=admin_user, new_project=chosen)
+    adv.refresh_from_db()
+    assert adv.project == chosen
+    assert adv.reassignment_requested_at is None
+
+
+def test_accept_reassignment_view_admin_picks_project(
+    db, admin_user, make_user, make_project, client
+):
+    project = make_project("alpha")
+    suggested = make_project("bravo")
+    chosen = make_project("charlie")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member, suggested_project=suggested)
+    client.force_login(admin_user)
+    resp = client.post(
+        reverse("advisories:accept_reassignment", args=[adv.advisory_id]),
+        data={"project_slug": chosen.slug},
+    )
+    assert resp.status_code == 302
+    adv.refresh_from_db()
+    assert adv.project == chosen
+
+
+def test_accept_reassignment_view_unknown_slug(db, admin_user, make_user, make_project, client):
+    project = make_project("alpha")
+    suggested = make_project("bravo")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member, suggested_project=suggested)
+    client.force_login(admin_user)
+    resp = client.post(
+        reverse("advisories:accept_reassignment", args=[adv.advisory_id]),
+        data={"project_slug": "does-not-exist"},
+    )
+    assert resp.status_code == 400
+    adv.refresh_from_db()
+    assert adv.project == project  # unchanged
+
+
+def test_accept_reassignment_view_current_project_rejected(
+    db, admin_user, make_user, make_project, client
+):
+    project = make_project("alpha")
+    suggested = make_project("bravo")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member, suggested_project=suggested)
+    client.force_login(admin_user)
+    resp = client.post(
+        reverse("advisories:accept_reassignment", args=[adv.advisory_id]),
+        data={"project_slug": project.slug},
+    )
+    assert resp.status_code == 400
+    adv.refresh_from_db()
+    assert adv.project == project
+
+
+def test_accept_reassignment_view_nonadmin_foreign_project_denied(
+    db, make_user, make_project, client
+):
+    """A non-admin posting a project they're not on is rejected server-side."""
+    project = make_project("alpha")
+    suggested = make_project("bravo")
+    other = make_project("charlie")
+    dual = make_user(
+        email="d@example.org",
+        groups=[f"{project.slug}-security", f"{suggested.slug}-security"],
+    )
+    adv = _make_draft_advisory(project, requested_by=dual, suggested_project=suggested)
+    client.force_login(dual)
+    resp = client.post(
+        reverse("advisories:accept_reassignment", args=[adv.advisory_id]),
+        data={"project_slug": other.slug},  # not a team they're on
+    )
+    assert resp.status_code == 403
+    adv.refresh_from_db()
+    assert adv.project == project  # unchanged
+
+
+def test_accept_reassignment_view_target_member_one_click(db, make_user, make_project, client):
+    """No project_slug → the one-click path still moves to the suggested project."""
+    project = make_project("alpha")
+    suggested = make_project("bravo")
+    dual = make_user(
+        email="d@example.org",
+        groups=[f"{project.slug}-security", f"{suggested.slug}-security"],
+    )
+    adv = _make_draft_advisory(project, requested_by=dual, suggested_project=suggested)
+    client.force_login(dual)
+    resp = client.post(reverse("advisories:accept_reassignment", args=[adv.advisory_id]))
+    assert resp.status_code == 302
+    adv.refresh_from_db()
+    assert adv.project == suggested

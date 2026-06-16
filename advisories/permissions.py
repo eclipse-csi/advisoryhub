@@ -493,6 +493,46 @@ def can_accept_reassignment_suggestion(user, advisory: Advisory) -> bool:
     return is_security_team_member(user, target)
 
 
+def can_resolve_reassignment(user, advisory: Advisory, new_project) -> bool:
+    """Whether ``user`` may resolve a pending request by moving ``advisory`` onto
+    ``new_project``.
+
+    The server-side authority behind both the one-click accept (``new_project``
+    is the suggested project) and the admin's in-banner picker (``new_project``
+    is any chosen project). Like :func:`can_accept_reassignment_suggestion`,
+    authority must exist *at the destination*: a global admin (any project) or a
+    security-team member of ``new_project`` (a target team pulling the advisory
+    over). The requester — on the *current* team, not the destination — is
+    excluded.
+
+    Equivalent to :func:`can_accept_reassignment_suggestion` when ``new_project``
+    is the stored suggestion: ``request_admin_reassignment`` forbids suggesting
+    the current project, so the ``new_project != current`` clause is always true
+    there. That equivalence is load-bearing for the one-click tests.
+    """
+    if advisory.reassignment_requested_at is None:
+        return False
+    if new_project is None or new_project.pk == advisory.project_id:
+        return False
+    if is_global_admin(user):
+        return True
+    return is_security_team_member(user, new_project)
+
+
+def can_pick_reassignment_target(user, advisory: Advisory) -> bool:
+    """Whether ``user`` sees the in-banner project picker (display gate).
+
+    Admin-only: a global admin may resolve a pending request by reassigning to
+    *any* project, sparing them the full edit form. Non-admin target-team members
+    keep the one-click accept (:func:`can_accept_reassignment_suggestion`); the
+    requester gets neither. Server-side authority is re-checked per chosen
+    project by :func:`can_resolve_reassignment`.
+    """
+    if advisory.reassignment_requested_at is None:
+        return False
+    return is_global_admin(user)
+
+
 # ---- GHSA integration -------------------------------------------------------
 
 

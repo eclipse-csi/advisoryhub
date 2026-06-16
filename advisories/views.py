@@ -401,6 +401,10 @@ def advisory_detail(request, advisory_id: str):
             "can_accept_reassignment": perms.can_accept_reassignment_suggestion(
                 request.user, advisory
             ),
+            "can_pick_reassignment_target": perms.can_pick_reassignment_target(
+                request.user, advisory
+            ),
+            "reassignable_projects": _suggestable_projects(advisory),
             # Display-only gate for the duplicate-check panel loader; the
             # similarity endpoints re-enforce the owner check server-side.
             "similarity_enabled": settings.SIMILARITY_CHECK_ENABLED
@@ -1045,6 +1049,19 @@ def _detail_with_error(request, advisory: Advisory, message: str):
             and intake.needs_admin_routing
             and perms.can_clear_admin_routing_flag(request.user, advisory),
             "is_unsorted": is_triage and advisory.project.slug == UNSORTED_PROJECT_SLUG,
+            # Reassignment-request banner (INV-AUTH-9) — so an inline-error
+            # re-render still shows the request banner and its actions.
+            "can_request_reassignment": perms.can_request_reassignment(request.user, advisory),
+            "can_withdraw_reassignment": perms.can_withdraw_reassignment_request(
+                request.user, advisory
+            ),
+            "can_accept_reassignment": perms.can_accept_reassignment_suggestion(
+                request.user, advisory
+            ),
+            "can_pick_reassignment_target": perms.can_pick_reassignment_target(
+                request.user, advisory
+            ),
+            "reassignable_projects": _suggestable_projects(advisory),
             "error": message,
         },
         status=400,
@@ -1137,10 +1154,25 @@ def advisory_withdraw_reassignment(request, advisory_id: str):
 @login_required
 @require_http_methods(["POST"])
 def advisory_accept_reassignment(request, advisory_id: str):
-    """Accept the suggested target project in one click (admin or target team)."""
+    """Resolve a reassignment request by moving the advisory to a project.
+
+    No ``project_slug`` → one-click accept of the suggested project (non-admin
+    target-team members and admins). A ``project_slug`` → the admin's in-banner
+    picker chose that project. Authorization is re-checked in the service.
+    """
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
-    services.accept_reassignment_suggestion(advisory, by=request.user)
-    messages.success(request, "Advisory reassigned to the suggested project.")
+    raw_slug = (request.POST.get("project_slug") or "").strip()
+    new_project = None
+    if raw_slug:
+        new_project = Project.objects.filter(slug=raw_slug).first()
+        if new_project is None:
+            return _detail_with_error(request, advisory, f"Unknown project {raw_slug!r}.")
+        if new_project.pk == advisory.project_id:
+            return _detail_with_error(
+                request, advisory, "This advisory is already on that project."
+            )
+    services.accept_reassignment_suggestion(advisory, by=request.user, new_project=new_project)
+    messages.success(request, "Advisory reassigned.")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 

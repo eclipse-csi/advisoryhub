@@ -252,8 +252,12 @@ routing flag (§6). Global admins cannot *request* (they reassign directly) but 
 *withdraw*; only one request is pending at a time. An optional suggested target project
 enables a one-click *accept* gated on the **suggested** project's security team (or a
 global admin) — never the requester; accepting moves the advisory and appends a version.
-Defined by `can_request_reassignment` / `can_withdraw_reassignment_request` /
-`can_accept_reassignment_suggestion`. See advisory-lifecycle §11.
+A **global admin** additionally gets an in-banner project picker (`can_pick_reassignment_target`)
+to resolve the request by reassigning to **any** project, not just the suggestion — sparing
+them the full edit form; the destination authority is re-checked per chosen project by
+`can_resolve_reassignment`. Defined by `can_request_reassignment` /
+`can_withdraw_reassignment_request` / `can_accept_reassignment_suggestion` /
+`can_pick_reassignment_target` / `can_resolve_reassignment`. See advisory-lifecycle §11.
 
 ---
 

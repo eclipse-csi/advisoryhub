@@ -198,6 +198,7 @@ def test_withdraw_clears_fields_and_audits(db, make_user, make_project):
     ).get()
     assert entry.metadata["cause"] == "withdrawn"
     assert entry.metadata["previous_note"] == "belongs to bravo"
+    assert entry.metadata["note"] == "never mind"  # the withdraw reason is now recorded
 
 
 def test_clear_helper_is_noop_when_nothing_pending(db, make_user, make_project):
@@ -279,6 +280,46 @@ def test_withdraw_reassignment_view(db, make_user, make_project, client):
     assert resp.status_code == 302
     adv.refresh_from_db()
     assert adv.reassignment_requested_at is None
+
+
+def test_withdraw_reassignment_modal_get(db, make_user, make_project, admin_user, client):
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member)
+    url = reverse("advisories:withdraw_reassignment_modal", args=[adv.advisory_id])
+
+    client.force_login(member)
+    resp = client.get(url)
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert 'name="note"' in body  # the optional reason field lives in the modal
+    assert reverse("advisories:withdraw_reassignment", args=[adv.advisory_id]) in body
+
+    client.force_login(admin_user)  # admins can withdraw too
+    assert client.get(url).status_code == 200
+
+
+def test_withdraw_reassignment_modal_requires_pending(db, make_user, make_project, client):
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project)  # nothing pending
+    client.force_login(member)
+    resp = client.get(reverse("advisories:withdraw_reassignment_modal", args=[adv.advisory_id]))
+    assert resp.status_code == 403
+
+
+def test_banner_withdraw_opens_modal_and_host_present(db, make_user, make_project, client):
+    """The requester sees a Withdraw trigger pointing at the modal, the #modal host
+    is present (regression: the requester can't 'request', so the old host gate
+    omitted it -> htmx:targetError), and the reason field is no longer inline."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project, requested_by=member)
+    client.force_login(member)
+    body = client.get(reverse("advisories:detail", args=[adv.advisory_id])).content.decode()
+    assert reverse("advisories:withdraw_reassignment_modal", args=[adv.advisory_id]) in body
+    assert 'id="modal"' in body
+    assert "withdraw-reassign-note" not in body  # the inline textarea is gone
 
 
 # -------------------- Detail-page rendering gates --------------------------

@@ -660,7 +660,9 @@ def request_admin_reassignment(
     return locked
 
 
-def clear_reassignment_request_if_pending(advisory: Advisory, *, by, cause: str) -> bool:
+def clear_reassignment_request_if_pending(
+    advisory: Advisory, *, by, cause: str, note: str = ""
+) -> bool:
     """Clear a pending reassignment request, if any. Returns whether it cleared.
 
     The shared low-level helper behind withdraw / accept / and every exit from
@@ -668,7 +670,8 @@ def clear_reassignment_request_if_pending(advisory: Advisory, *, by, cause: str)
     caller (withdraw) authorizes first, while the auto-clear callers are
     state-exit side effects. A no-op — and no audit row — when nothing is
     pending. ``cause`` is recorded for context (``withdrawn`` / ``accepted`` /
-    ``dismissed`` / ``published``).
+    ``dismissed`` / ``published``); ``note`` is an optional actor-supplied reason
+    (e.g. the withdraw reason) preserved in the audit row.
     """
     if advisory.reassignment_requested_at is None:
         return False
@@ -694,6 +697,7 @@ def clear_reassignment_request_if_pending(advisory: Advisory, *, by, cause: str)
             "advisory_id": advisory.advisory_id,
             "cause": cause,
             "previous_note": previous_note,
+            "note": note,
         },
     )
     return True
@@ -702,15 +706,16 @@ def clear_reassignment_request_if_pending(advisory: Advisory, *, by, cause: str)
 def withdraw_admin_reassignment(advisory: Advisory, *, by, note: str = "") -> Advisory:
     """Retract a pending reassignment request (requesting team or admin).
 
-    ``note`` is accepted for caller symmetry with the view form; the meaningful
-    record is the cleared-request audit row (cause ``withdrawn`` + the original
-    note as ``previous_note``).
+    The optional ``note`` (collected by the withdraw modal) and the original
+    request note are both preserved on the cleared-request audit row (``note``
+    and ``previous_note``, cause ``withdrawn``).
     """
+    clean_note = (note or "").strip()
     with transaction.atomic():
         locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
         if not can_withdraw_reassignment_request(by, locked):
             raise PermissionDenied("You may not withdraw this reassignment request.")
-        clear_reassignment_request_if_pending(locked, by=by, cause="withdrawn")
+        clear_reassignment_request_if_pending(locked, by=by, cause="withdrawn", note=clean_note)
 
     return locked
 

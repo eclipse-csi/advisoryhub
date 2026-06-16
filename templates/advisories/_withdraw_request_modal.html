@@ -1,0 +1,17 @@
+{% load i18n %}
+<dialog class="confirm-dialog" aria-labelledby="withdraw-request-modal-title" data-light-dismiss>
+  <form hx-post="{% url 'advisories:withdraw_reassignment' advisory.advisory_id %}"
+        hx-target="#modal"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <h3 id="withdraw-request-modal-title">{% translate "Withdraw reassignment request" %}</h3>
+    <p>{% translate "This cancels the pending admin-reassignment request. The advisory stays on its current project and your team keeps working on it." %}</p>
+    <label>{% translate "Reason (optional)" %}
+      <textarea name="note" rows="3" autofocus></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
+      <button type="submit">{% translate "Withdraw request" %}</button>
+    </div>
+  </form>
+</dialog>

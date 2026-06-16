@@ -1141,6 +1141,15 @@ def advisory_request_reassignment(request, advisory_id: str):
 
 
 @login_required
+@require_http_methods(["GET"])
+def advisory_withdraw_reassignment_modal(request, advisory_id: str):
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_withdraw_reassignment_request(request.user, advisory):
+        raise PermissionDenied("Withdraw is not available for this user/advisory.")
+    return render(request, "advisories/_withdraw_request_modal.html", {"advisory": advisory})
+
+
+@login_required
 @require_http_methods(["POST"])
 def advisory_withdraw_reassignment(request, advisory_id: str):
     """Withdraw a pending reassignment request (requesting team or admin)."""
@@ -1148,6 +1157,12 @@ def advisory_withdraw_reassignment(request, advisory_id: str):
     note = (request.POST.get("note") or "").strip()
     services.withdraw_admin_reassignment(advisory, by=request.user, note=note)
     messages.success(request, "Reassignment request withdrawn.")
+    if getattr(request, "htmx", False):
+        from django.http import HttpResponse
+
+        resp = HttpResponse(status=204)
+        resp["HX-Refresh"] = "true"
+        return resp
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 

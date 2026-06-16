@@ -30,6 +30,11 @@ urlpatterns = [
         name="request_reassignment",
     ),
     path(
+        "<advid:advisory_id>/withdraw-reassignment/modal/",
+        views.advisory_withdraw_reassignment_modal,
+        name="withdraw_reassignment_modal",
+    ),
+    path(
         "<advid:advisory_id>/withdraw-reassignment/",
         views.advisory_withdraw_reassignment,
         name="withdraw_reassignment",

@@ -91,8 +91,7 @@
                   action="{% url 'advisories:accept_reassignment' advisory.advisory_id %}"
                   class="inline">
               {% csrf_token %}
-              <label for="reassign-target-project">Reassign to</label>
-              <select id="reassign-target-project" name="project_slug" data-combobox required>
+              <select name="project_slug" aria-label="Reassign to" data-combobox required>
                 {% if not advisory.reassignment_suggested_project %}<option value="">— choose a project —</option>{% endif %}
                 {% for p in reassignable_projects %}
                   <option value="{{ p.slug }}" data-combobox-detail="{{ p.slug }}"{% if p.pk == advisory.reassignment_suggested_project_id %} selected{% endif %}>{{ p.name }}</option>
@@ -109,17 +108,9 @@
             </form>
           {% endif %}
           {% if can_withdraw_reassignment %}
-            <details>
-              <summary class="advisory-banner__dismiss">Withdraw request</summary>
-              <form method="post"
-                    action="{% url 'advisories:withdraw_reassignment' advisory.advisory_id %}"
-                    class="inline">
-                {% csrf_token %}
-                <label for="withdraw-reassign-note">Optional reason</label>
-                <textarea id="withdraw-reassign-note" name="note" rows="2"></textarea>
-                <button type="submit">Withdraw request</button>
-              </form>
-            </details>
+            <button type="button" class="advisory-banner__dismiss"
+                    hx-get="{% url 'advisories:withdraw_reassignment_modal' advisory.advisory_id %}"
+                    hx-target="#modal" hx-swap="innerHTML">Withdraw request</button>
           {% endif %}
         </div>
       {% endif %}
@@ -368,7 +359,7 @@
 <div id="details-history-host" data-dialog-host></div>
 <div id="version-diff-host" data-dialog-host></div>
 
-{% if can_flag_routing or can_request_reassignment %}
+{% if can_flag_routing or can_request_reassignment or can_withdraw_reassignment %}
   <div id="modal" data-dialog-host></div>
 {% endif %}
 {% endblock %}

@@ -523,7 +523,27 @@ in the calling view. On success, any payload-visible drift is
 appended as a new `AdvisoryVersion` before the publication task
 pins the version.
 
-### 5.7 Feature gate
+### 5.7 Inbound lifecycle reactions
+
+GHSA-linked advisory lifecycle is **inbound-only**
+([INV-GHSA-3](./invariant.md#inv-ghsa-3)): AdvisoryHub mirrors GitHub and never
+writes lifecycle state back. After an *observing* sync — the webhook dispatcher,
+the manual single-sync, or a freshly-created advisory —
+`ghsa.services.react_to_ghsa_state` inspects the result and reacts.
+`refresh_for_publish` deliberately does **not** react, so
+`publish → refresh → sync → publish` cannot recurse.
+
+**Auto-publish.** When the linked GHSA is `published` and the AdvisoryHub
+advisory is still `draft`, the reaction enqueues `ghsa.tasks.run_ghsa_auto_publish`,
+which calls `publish(system=True)` — exporting OSV/CSAF/CVE through the normal
+pipeline, skipping only the human `can_publish` gate (the decision is GitHub's).
+It is idempotent (keyed off the current state; `publish()`'s in-flight lock
+dedupes a webhook-vs-reconcile double fire) and best-effort (a gating refusal —
+CVE conflict, missing upstream, concurrent run — is logged and skipped; a real
+export failure surfaces as a failed `PublicationTask`). Controlled by
+`GHSA_AUTO_PUBLISH_ENABLED` (default on).
+
+### 5.8 Feature gate
 
 The integration is fronted by the `GHSA_FEATURE_ENABLED` boolean
 flag. With the flag off, GHSA views and tasks short-circuit; the
@@ -864,6 +884,8 @@ must exceed the broker's 3600 s `visibility_timeout`): staleness
 thresholds for the beat-scheduled reaper (§6.2, [INV-PUB-7](./invariant.md#inv-pub-7)).
 
 **GHSA / GitHub App / PMI.** `GHSA_FEATURE_ENABLED` (default False),
+`GHSA_AUTO_PUBLISH_ENABLED` (default True — auto-publish a GHSA-linked advisory
+when GitHub publishes it, [INV-GHSA-3](./invariant.md#inv-ghsa-3)),
 `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH` (preferred in prod),
 `GITHUB_APP_PRIVATE_KEY` (inline fallback for dev),
 `GITHUB_APP_WEBHOOK_SECRET` (HMAC key — secret),

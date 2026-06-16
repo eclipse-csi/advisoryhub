@@ -124,6 +124,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PRIVACY-4](#inv-privacy-4) | Other users' email addresses are shown only to owners. | Privacy | Medium |
 | [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
 | [INV-GHSA-2](#inv-ghsa-2) | Stale queued/running CVE-push tasks are reaped to `failed`, correcting the advisory's CVE-push badge. | GHSA | Medium |
+| [INV-GHSA-3](#inv-ghsa-3) | GHSA-linked lifecycle is inbound-only: GitHub publishing auto-publishes in AdvisoryHub; AdvisoryHub never writes lifecycle state back to GitHub. | GHSA | Medium |
 | [INV-SIM-1](#inv-sim-1) | Duplicate-check results and endpoints are owner-only, enforced server-side. | Similarity | Critical |
 | [INV-SIM-2](#inv-sim-2) | `SIMILARITY_CHECK_ENABLED=False` (default) means zero advisory-content egress to the LLM provider. | Similarity | Critical |
 | [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
@@ -2301,6 +2302,53 @@ advisory's GHSA panel indefinitely. No functional block.
 
 **Related.** [INV-PUB-7](#inv-pub-7), [INV-SIM-5](#inv-sim-5),
 [INV-GHSA-1](#inv-ghsa-1).
+
+---
+
+<a id="inv-ghsa-3"></a>
+### INV-GHSA-3 — GHSA-linked lifecycle is inbound-only   [Medium]
+
+**Statement.** A GHSA-linked advisory's lifecycle is **inbound-only**: GitHub is
+the source of truth and AdvisoryHub *mirrors* it, never writing lifecycle state
+back to GitHub (the sole outbound write remains the EF-assigned CVE-id push —
+[INV-GHSA-2](#inv-ghsa-2)). When an observed sync (webhook, manual, or the
+periodic reconcile) finds the linked GHSA `published` and the AdvisoryHub
+advisory still in `draft`, AdvisoryHub **auto-publishes** it — exporting
+OSV/CSAF/CVE through the normal publication pipeline via `publish(system=True)`,
+which skips the human `can_publish` gate (the decision is GitHub's) but keeps
+every other guard (dismissed block, in-flight lock, `refresh_for_publish`). The
+trigger keys off the *current* state, not a delta, so a missed `published` event
+self-heals on the next sync; the `state == draft` guard plus `publish()`'s
+in-flight lock keep it idempotent and dedupe a webhook-vs-reconcile double fire;
+a dismissed advisory is never auto-published. Gated by `GHSA_AUTO_PUBLISH_ENABLED`
+(default on).
+
+**Rationale.** GitHub's repository advisory is the authoritative artifact for a
+GHSA-linked vulnerability; once GitHub discloses it, the EF feed should mirror it
+without a manual step. Driving GitHub's state *from* AdvisoryHub was deliberately
+rejected (authority expansion + partial-failure complexity), so the coupling is
+one-way. The reaction is decided by the *observing* callers, never inside
+`refresh_for_publish`, so `publish → refresh → sync → publish` cannot recurse.
+
+**Enforced in.**
+- `ghsa/services.py` — `react_to_ghsa_state` (the reaction decision), called by
+  the webhook dispatcher, the manual single-sync task, and
+  `create_ghsa_linked_advisory`; **not** called from `refresh_for_publish`.
+- `ghsa/tasks.py` — `run_ghsa_auto_publish` (best-effort; a gating refusal —
+  CVE conflict / missing upstream / concurrent run — is caught and skipped).
+- `publication/services.py` — `publish(system=True)` skips `can_publish` while
+  keeping the dismissed / in-flight / `refresh_for_publish` guards.
+- `config/settings/base.py` — `GHSA_AUTO_PUBLISH_ENABLED`.
+
+**Violation impact.** A GitHub-published advisory silently fails to reach the EF
+OSV/CSAF feed, or AdvisoryHub mutates a maintainer's GitHub advisory it should
+not.
+
+**Tests.** `ghsa/tests/test_inbound_lifecycle.py`,
+`publication/tests/test_pipeline.py`.
+
+**Related.** [INV-GHSA-1](#inv-ghsa-1), [INV-GHSA-2](#inv-ghsa-2),
+[INV-LIFECYCLE-3](#inv-lifecycle-3).
 
 ---
 

@@ -46,6 +46,11 @@ RATELIMIT_ENABLE = False
 # through the OIDC flow; the dedicated step-up tests re-enable it.
 STEP_UP_REQUIRED = False
 
+# Auto-publish would otherwise fire a publication pipeline on every webhook/sync
+# of a GitHub-published GHSA-linked advisory; the dedicated auto-publish tests
+# re-enable it via @override_settings.
+GHSA_AUTO_PUBLISH_ENABLED = False
+
 # Never bind the worker metrics exporter in tests (it's 0 by default too, but
 # pin it so a stray env var can't make worker_process_init try to open a port).
 PROMETHEUS_WORKER_METRICS_PORT = 0

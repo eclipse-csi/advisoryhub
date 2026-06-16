@@ -92,6 +92,10 @@ env = environ.Env(
     # short-circuit. Run ``manage.py discover_github_installations`` (or
     # wait for the first ``installation.created`` webhook) to populate it.
     GHSA_FEATURE_ENABLED=(bool, False),
+    # Auto-publish a GHSA-linked advisory (export OSV/CSAF/CVE) when GitHub
+    # publishes it (inbound-only GHSA lifecycle). On by default; ops can disable
+    # without turning off the whole GHSA feature.
+    GHSA_AUTO_PUBLISH_ENABLED=(bool, True),
     GITHUB_APP_ID=(int, 0),
     GITHUB_APP_PRIVATE_KEY_PATH=(str, ""),  # preferred in prod
     GITHUB_APP_PRIVATE_KEY=(str, ""),  # inline fallback for dev
@@ -462,6 +466,7 @@ PUB_TASK_STALE_QUEUED_AFTER_SECONDS = env("PUB_TASK_STALE_QUEUED_AFTER_SECONDS")
 # installation id is configured here too.
 # ---------------------------------------------------------------------------
 GHSA_FEATURE_ENABLED = env("GHSA_FEATURE_ENABLED")
+GHSA_AUTO_PUBLISH_ENABLED = env("GHSA_AUTO_PUBLISH_ENABLED")
 GITHUB_APP_ID = env("GITHUB_APP_ID")
 GITHUB_APP_PRIVATE_KEY_PATH = env("GITHUB_APP_PRIVATE_KEY_PATH")
 GITHUB_APP_PRIVATE_KEY = env("GITHUB_APP_PRIVATE_KEY")

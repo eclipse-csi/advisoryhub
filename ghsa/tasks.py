@@ -86,7 +86,32 @@ def run_ghsa_sync_all(user_id=None) -> dict:
 def run_single_ghsa_sync(advisory_id: str, user_id=None) -> dict:
     advisory = Advisory.objects.get(advisory_id=advisory_id)
     user = _resolve_user(user_id)
-    return services.sync_single_ghsa(advisory, by=user)
+    summary = services.sync_single_ghsa(advisory, by=user)
+    services.react_to_ghsa_state(advisory, summary, by=user)
+    return summary
+
+
+@shared_task(name="ghsa.tasks.run_ghsa_auto_publish")
+def run_ghsa_auto_publish(advisory_id: str) -> dict:
+    """Auto-publish a GHSA-linked advisory after GitHub published it.
+
+    System-initiated: skips the human publish gate (``publish(system=True)``).
+    Best-effort and non-blocking — a gating refusal (CVE conflict, missing
+    upstream, or a concurrent run) is logged and skipped; a real export failure
+    surfaces as a failed ``PublicationTask`` via the normal pipeline
+    (INV-LIFECYCLE-3), with the dashboard Retry path.
+    """
+    from django.core.exceptions import PermissionDenied
+
+    from publication.services import PublicationInProgress, publish
+
+    advisory = Advisory.objects.get(advisory_id=advisory_id)
+    try:
+        task = publish(advisory, by=None, system=True)
+    except (PermissionDenied, PublicationInProgress) as exc:
+        logger.info("auto-publish skipped for %s: %s", advisory_id, exc)
+        return {"advisory_id": advisory_id, "skipped": str(exc)}
+    return {"advisory_id": advisory_id, "task_id": task.pk}
 
 
 @shared_task(name="ghsa.tasks.run_cve_push")

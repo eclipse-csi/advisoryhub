@@ -151,6 +151,29 @@ def test_publish_allowed_for_mature_publisher_member(setup):
     assert task.status in (PublicationTaskStatus.QUEUED, PublicationTaskStatus.SUCCEEDED)
 
 
+@pytest.mark.django_db
+def test_system_publish_skips_can_publish(setup):
+    """system=True bypasses the human can_publish gate (by=None) — used by
+    auto-publish. A non-mature, unapproved advisory would otherwise be denied."""
+    task = pub_services.publish(setup["advisory"], by=None, system=True)
+    assert task.status in (PublicationTaskStatus.QUEUED, PublicationTaskStatus.SUCCEEDED)
+    assert task.enqueued_by is None
+
+
+@pytest.mark.django_db
+def test_system_publish_still_blocks_dismissed(setup):
+    """system=True keeps every guard but the human permission check — a
+    dismissed advisory is never (auto-)published."""
+    from django.core.exceptions import PermissionDenied
+
+    a = setup["advisory"]
+    a.state = State.DISMISSED
+    a.dismissed_reason = "x"
+    a.save()
+    with pytest.raises(PermissionDenied):
+        pub_services.publish(a, by=None, system=True)
+
+
 # ---- Concurrency --------------------------------------------------------
 
 

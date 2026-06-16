@@ -24,6 +24,7 @@ from advisories import services as advisory_services
 from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, State
 from audit.models import Action
 from audit.services import record, redact_secrets
+from common.enqueue import safe_enqueue
 from common.users import actor_or_none
 from projects.models import Project, ProjectGitHubRepository
 
@@ -326,6 +327,36 @@ def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
     }
 
 
+def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
+    """React to a freshly-observed GHSA state — the inbound-only lifecycle.
+
+    GitHub is the source of truth for a GHSA-linked advisory's lifecycle;
+    AdvisoryHub mirrors it. Called by the *observing* entry points (the webhook
+    dispatcher, the manual single-sync, the periodic reconcile) immediately
+    after :func:`sync_single_ghsa`. It is deliberately **not** called from
+    :func:`refresh_for_publish`: that path also syncs, and reacting there would
+    recurse through ``publish()``.
+
+    Auto-publish: when GitHub has published the advisory, mirror it to the EF
+    feed (export OSV/CSAF/CVE). Keyed off the *current* draft state — not a
+    delta — so a missed ``published`` event self-heals on the next sync; the
+    ``state == DRAFT`` guard plus ``publish()``'s in-flight lock keep it
+    idempotent and dedupe a webhook-vs-reconcile double fire. A dismissed
+    advisory is never auto-published.
+    """
+    if advisory.kind != Kind.GHSA_LINKED:
+        return
+    if (
+        getattr(settings, "GHSA_AUTO_PUBLISH_ENABLED", True)
+        and advisory.state == State.DRAFT
+        and not summary.get("missing_upstream")
+        and advisory.ghsa_state == GhsaState.PUBLISHED
+    ):
+        from .tasks import run_ghsa_auto_publish
+
+        transaction.on_commit(partial(safe_enqueue, run_ghsa_auto_publish, advisory.advisory_id))
+
+
 # ---------------------------------------------------------------------------
 # Discovery / create
 # ---------------------------------------------------------------------------
@@ -368,13 +399,18 @@ def create_ghsa_linked_advisory(
         metadata={"project_slug": project.slug},
     )
     try:
-        sync_single_ghsa(advisory, by=by)
+        summary = sync_single_ghsa(advisory, by=by)
     except GitHubApiError as exc:
         # We've created the row but couldn't sync. Leave the metadata
         # blank and let the dashboard surface a "sync failed" status;
         # the row itself is still useful (admins can retry).
         advisory.ghsa_metadata = {"sync_error": redact_secrets(str(exc))}
         advisory.save(update_fields=["ghsa_metadata", "modified_at"])
+        summary = None
+    # A brand-new advisory that GitHub has already published auto-publishes
+    # (inbound-only lifecycle). Skipped when the initial sync failed.
+    if summary is not None:
+        react_to_ghsa_state(advisory, summary, by=by)
     # Best-effort duplicate detection on the freshly synced content (no-op
     # while disabled, never fails the sync). The idempotent `return existing`
     # above keeps re-discovered GHSAs from re-triggering checks.
@@ -1024,9 +1060,11 @@ def _dispatch_repository_advisory_event(action: str, payload: dict) -> None:
     existing = Advisory.objects.filter(ghsa_id=ghsa_id).first()
     if existing is not None:
         try:
-            sync_single_ghsa(existing, by=None)
+            summary = sync_single_ghsa(existing, by=None)
         except GitHubApiError as exc:
             logger.warning("webhook refresh for %s failed: %s", ghsa_id, redact_secrets(str(exc)))
+            return
+        react_to_ghsa_state(existing, summary, by=None)
         return
 
     # Auto-create only when the repo is actively mirrored from PMI.

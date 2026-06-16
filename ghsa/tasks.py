@@ -91,6 +91,18 @@ def run_single_ghsa_sync(advisory_id: str, user_id=None) -> dict:
     return summary
 
 
+@shared_task(name="ghsa.tasks.reconcile_ghsa_linked_advisories")
+def reconcile_ghsa_linked_advisories() -> dict:
+    """Beat (every GHSA_SYNC_INTERVAL_HOURS): re-sync active GHSA-linked
+    advisories and mirror GitHub state (auto-publish / auto-dismiss).
+
+    The poll backstop for GitHub state changes that don't arrive as webhooks —
+    withdrawal / closure / deletion — plus any missed `published` event
+    (INV-GHSA-3). No-ops while GHSA_FEATURE_ENABLED is off.
+    """
+    return services.reconcile_ghsa_linked_advisories(by=None)
+
+
 @shared_task(name="ghsa.tasks.run_ghsa_auto_publish")
 def run_ghsa_auto_publish(advisory_id: str) -> dict:
     """Auto-publish a GHSA-linked advisory after GitHub published it.

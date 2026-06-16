@@ -585,7 +585,7 @@ use `rediss://` (TLS) + AUTH. `/readyz` can probe the broker when
 
 ### 6.2 Beat schedule
 
-Seven periodic jobs are registered in `config/settings/base.py`:
+Eight periodic jobs are registered in `config/settings/base.py`:
 
 ```python
 CELERY_BEAT_SCHEDULE = {
@@ -616,6 +616,10 @@ CELERY_BEAT_SCHEDULE = {
     "ghsa-cve-push-reaper": {
         "task": "ghsa.tasks.reap_stale_cve_push_tasks",
         "schedule": timedelta(minutes=10),
+    },
+    "ghsa-linked-reconcile": {
+        "task": "ghsa.tasks.reconcile_ghsa_linked_advisories",
+        "schedule": timedelta(hours=GHSA_SYNC_INTERVAL_HOURS),
     },
 }
 ```
@@ -676,9 +680,19 @@ guarded against newer push tasks (§5.4). DB-only — no GitHub egress —
 so it runs even while `GHSA_FEATURE_ENABLED` is off. `GhsaSyncRun`
 needs no reaper (§5.3 — atomic create+finalise). See [INV-GHSA-2](./invariant.md#inv-ghsa-2).
 
-GHSA *discovery* is intentionally not on beat — it is
-user-triggered, scoped (project or all), and recorded as a
-`GhsaSyncRun`.
+`ghsa-linked-reconcile` is the inbound-lifecycle poll backstop
+([INV-GHSA-3](./invariant.md#inv-ghsa-3)): every `GHSA_SYNC_INTERVAL_HOURS`
+(default 6) it re-syncs each active (draft/triage) GHSA-linked advisory via
+`sync_single_ghsa` and runs `react_to_ghsa_state`, mirroring the current GitHub
+state — auto-publishing a now-`published` draft and auto-dismissing a
+closed/withdrawn/deleted one. It exists because GitHub does **not** reliably
+emit `repository_advisory` webhooks for withdrawal/closure/deletion (and never
+for deletion), so the webhook path alone would miss them. Per-advisory failures
+are logged and skipped; no-ops while `GHSA_FEATURE_ENABLED` is off.
+
+GHSA *discovery* (auto-creating new advisories) is, by contrast,
+intentionally not on beat — it is user-triggered, scoped (project or all), and
+recorded as a `GhsaSyncRun`.
 
 ### 6.3 Task inventory
 
@@ -697,7 +711,9 @@ user-triggered, scoped (project or all), and recorded as a
 | `ghsa` | `run_pmi_repo_sync` | Beat-scheduled PMI mirror refresh. |
 | `ghsa` | `run_ghsa_sync_project` | On-demand GHSA discovery for one project. |
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
-| `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button). |
+| `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button); reacts to the observed state ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
+| `ghsa` | `run_ghsa_auto_publish` | System-initiated `publish(system=True)` when GitHub publishes a GHSA-linked draft ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
+| `ghsa` | `reconcile_ghsa_linked_advisories` | Beat-scheduled poll backstop: re-syncs active (draft/triage) GHSA-linked advisories and mirrors GitHub state — auto-publish / auto-dismiss ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
 | `ghsa` | `reap_stale_cve_push_tasks` | Beat-scheduled janitor: fails `GhsaCvePushTask` rows orphaned in queued/running and corrects the advisory's CVE-push badge ([INV-GHSA-2](./invariant.md#inv-ghsa-2)). |
 | `ghsa` | `process_webhook` | Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread. |
@@ -895,6 +911,8 @@ when GitHub publishes it, [INV-GHSA-3](./invariant.md#inv-ghsa-3)),
 the 3600 s broker `visibility_timeout`): staleness thresholds for the
 beat-scheduled CVE-push reaper (§6.2, [INV-GHSA-2](./invariant.md#inv-ghsa-2)), which runs even
 while the GHSA feature is disabled (DB-only, no GitHub egress),
+`GHSA_SYNC_INTERVAL_HOURS` (default 6 — cadence of the inbound-lifecycle
+reconcile poll, §6.2 / [INV-GHSA-3](./invariant.md#inv-ghsa-3)),
 `PMI_API_BASE_URL`, `PMI_API_TOKEN` (PMI is public; blank by
 default), `PMI_SYNC_INTERVAL_HOURS` (default 6).
 

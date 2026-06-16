@@ -111,6 +111,11 @@ env = environ.Env(
     # egress — so the reaper runs even while GHSA_FEATURE_ENABLED is off.
     GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS=(int, 1800),
     GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS=(int, 7200),
+    # Periodic reconcile of active (draft/triage) GHSA-linked advisories — the
+    # poll backstop for GitHub state changes that don't arrive as webhooks
+    # (withdrawal / closure / deletion) and for missed `published` events
+    # (INV-GHSA-3).
+    GHSA_SYNC_INTERVAL_HOURS=(int, 6),
     # Eclipse Foundation PMI API (source-of-truth for project↔repo)
     PMI_API_BASE_URL=(str, "https://projects.eclipse.org/api"),
     PMI_API_TOKEN=(str, ""),  # blank by default; PMI is public
@@ -477,6 +482,7 @@ GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS = env("GHSA_CVE_PUSH_STALE_QUEUED_AFTER
 PMI_API_BASE_URL = env("PMI_API_BASE_URL")
 PMI_API_TOKEN = env("PMI_API_TOKEN")
 PMI_SYNC_INTERVAL_HOURS = env("PMI_SYNC_INTERVAL_HOURS")
+GHSA_SYNC_INTERVAL_HOURS = env("GHSA_SYNC_INTERVAL_HOURS")
 PMI_ROSTER_SYNC_ENABLED = env("PMI_ROSTER_SYNC_ENABLED")
 PMI_ROSTER_SYNC_INTERVAL_HOURS = env("PMI_ROSTER_SYNC_INTERVAL_HOURS")
 ECLIPSE_API_BASE_URL = env("ECLIPSE_API_BASE_URL")
@@ -516,7 +522,9 @@ SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS = env("SIMILARITY_CHECK_STALE_QUEUED
 # fire run_pmi_repo_sync every PMI_SYNC_INTERVAL_HOURS hours, refreshing
 # the local ProjectGitHubRepository mirror from PMI. GHSA *discovery* (i.e.
 # auto-creating GHSA-linked advisories) happens via explicit user-triggered
-# sync, not from beat — see ghsa.tasks for the on-demand variants.
+# sync, not from beat — see ghsa.tasks for the on-demand variants. GHSA
+# *reconcile* (re-syncing already-known advisories to mirror GitHub state) IS
+# scheduled below — it's the poll backstop for missed webhooks (INV-GHSA-3).
 from datetime import timedelta  # noqa: E402
 
 CELERY_BEAT_SCHEDULE = {
@@ -573,6 +581,15 @@ CELERY_BEAT_SCHEDULE = {
     "ghsa-cve-push-reaper": {
         "task": "ghsa.tasks.reap_stale_cve_push_tasks",
         "schedule": timedelta(minutes=10),
+    },
+    # Re-sync every active (draft/triage) GHSA-linked advisory and mirror its
+    # current GitHub state: auto-publish a now-`published` draft, auto-dismiss a
+    # closed/withdrawn/deleted one (INV-GHSA-3). The poll backstop for state
+    # changes GitHub does not reliably deliver as webhooks. No-ops while
+    # GHSA_FEATURE_ENABLED is off.
+    "ghsa-linked-reconcile": {
+        "task": "ghsa.tasks.reconcile_ghsa_linked_advisories",
+        "schedule": timedelta(hours=GHSA_SYNC_INTERVAL_HOURS),
     },
 }
 

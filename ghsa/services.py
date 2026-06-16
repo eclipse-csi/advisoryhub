@@ -384,6 +384,39 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
         )
 
 
+def reconcile_ghsa_linked_advisories(*, by=None) -> dict:
+    """Periodic backstop: re-sync every active (draft/triage) GHSA-linked
+    advisory and react to its current GitHub state.
+
+    GitHub does not reliably emit webhooks for withdrawal / closure / deletion,
+    so this poll is the authoritative path for catching them — and for picking
+    up a missed ``published`` event (auto-publish). One observing call per row:
+    ``sync_single_ghsa`` then :func:`react_to_ghsa_state`. Per-advisory failures
+    are logged and skipped so one bad row never aborts the sweep. No-op while
+    ``GHSA_FEATURE_ENABLED`` is off ([INV-GHSA-3](#inv-ghsa-3)).
+    """
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        return {"skipped": "GHSA_FEATURE_ENABLED is False"}
+    checked = 0
+    errors = 0
+    advisories = Advisory.objects.filter(
+        kind=Kind.GHSA_LINKED, state__in=[State.DRAFT, State.TRIAGE]
+    ).order_by("pk")
+    for advisory in advisories:
+        try:
+            summary = sync_single_ghsa(advisory, by=by)
+            react_to_ghsa_state(advisory, summary, by=by)
+            checked += 1
+        except GitHubApiError as exc:
+            errors += 1
+            logger.warning(
+                "reconcile sync failed for %s: %s",
+                advisory.advisory_id,
+                redact_secrets(str(exc)),
+            )
+    return {"checked": checked, "errors": errors}
+
+
 # ---------------------------------------------------------------------------
 # Discovery / create
 # ---------------------------------------------------------------------------

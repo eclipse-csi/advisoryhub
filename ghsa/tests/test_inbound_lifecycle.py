@@ -20,11 +20,13 @@ from ghsa import services
 _OK_SUMMARY = {"changed": ["summary"], "conflict": False, "missing_upstream": False}
 
 
-def _ghsa_advisory(project, *, state=State.DRAFT, ghsa_state=GhsaState.PUBLISHED):
+def _ghsa_advisory(
+    project, *, state=State.DRAFT, ghsa_state=GhsaState.PUBLISHED, ghsa_id="GHSA-aaaa-bbbb-cccc"
+):
     adv = Advisory.objects.create(
         project=project,
         kind=Kind.GHSA_LINKED,
-        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_id=ghsa_id,
         ghsa_owner="eclipse",
         ghsa_repo="widget",
         state=state,
@@ -165,3 +167,69 @@ def test_refresh_for_publish_does_not_auto_publish(make_project, ghsa_payload):
         mock_get.return_value.get_advisory.return_value = ghsa_payload
         services.refresh_for_publish(adv, by=None)
     assert not enq.called
+
+
+# ---- periodic reconcile (poll backstop) ------------------------------------
+
+
+@override_settings(GHSA_FEATURE_ENABLED=True)
+@pytest.mark.django_db
+def test_reconcile_syncs_only_active_ghsa_linked(make_project):
+    """The reconcile sweep re-syncs draft/triage GHSA-linked advisories only —
+    not published or dismissed ones, and not native advisories."""
+    project = make_project("alpha")
+    draft = _ghsa_advisory(project, state=State.DRAFT, ghsa_id="GHSA-0000-0000-0001")
+    triage = _ghsa_advisory(project, state=State.TRIAGE, ghsa_id="GHSA-0000-0000-0002")
+    _ghsa_advisory(project, state=State.PUBLISHED, ghsa_id="GHSA-0000-0000-0003")
+    _ghsa_advisory(project, state=State.DISMISSED, ghsa_id="GHSA-0000-0000-0004")
+    Advisory.objects.create(project=project, state=State.DRAFT, summary="native")
+
+    synced: list[int] = []
+
+    def _fake_sync(advisory, *, by):
+        synced.append(advisory.pk)
+        return {"changed": [], "conflict": False, "missing_upstream": False}
+
+    with (
+        patch("ghsa.services.sync_single_ghsa", side_effect=_fake_sync),
+        patch("ghsa.services.react_to_ghsa_state"),
+    ):
+        result = services.reconcile_ghsa_linked_advisories(by=None)
+
+    assert set(synced) == {draft.pk, triage.pk}
+    assert result["checked"] == 2
+
+
+@pytest.mark.django_db
+def test_reconcile_noop_when_feature_disabled(make_project, settings):
+    settings.GHSA_FEATURE_ENABLED = False
+    _ghsa_advisory(make_project("alpha"))
+    with patch("ghsa.services.sync_single_ghsa") as sync:
+        result = services.reconcile_ghsa_linked_advisories(by=None)
+    assert "skipped" in result
+    assert not sync.called
+
+
+@override_settings(GHSA_FEATURE_ENABLED=True)
+@pytest.mark.django_db
+def test_reconcile_continues_past_per_row_error(make_project):
+    """A per-advisory GitHub error is logged and skipped — the sweep continues."""
+    from ghsa.client import GitHubApiError
+
+    project = make_project("alpha")
+    a1 = _ghsa_advisory(project, ghsa_id="GHSA-0000-0000-0001")
+    _ghsa_advisory(project, ghsa_id="GHSA-0000-0000-0002")
+
+    def _fake_sync(advisory, *, by):
+        if advisory.pk == a1.pk:
+            raise GitHubApiError("boom")
+        return {"changed": [], "conflict": False, "missing_upstream": False}
+
+    with (
+        patch("ghsa.services.sync_single_ghsa", side_effect=_fake_sync),
+        patch("ghsa.services.react_to_ghsa_state"),
+    ):
+        result = services.reconcile_ghsa_linked_advisories(by=None)
+
+    assert result["errors"] == 1
+    assert result["checked"] == 1

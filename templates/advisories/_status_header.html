@@ -7,7 +7,7 @@ the stepper is dimmed and a separate badge shows which non-terminal state
 the advisory was dismissed from.
 
 Context required:
-  advisory, last_publication_task, cve_request_state, is_ghsa_linked
+  advisory, last_publication_task, cve_request_state
 {% endcomment %}
 <section class="advisory-status-header" aria-label="Advisory lifecycle status">
   <ol class="lifecycle-stepper{% if advisory.state == 'dismissed' %} lifecycle-stepper--dismissed{% endif %}" aria-label="Lifecycle">
@@ -85,13 +85,6 @@ Context required:
     <p class="advisory-status-header__warn">
       <span class="badge republish needs-republish">re-publish required</span>
       <span class="submachine-status__hint">Edits landed after the last successful publish.</span>
-    </p>
-  {% endif %}
-
-  {% if is_ghsa_linked %}
-    <p class="advisory-status-header__ghsa">
-      <span class="badge ghsa-linked">GHSA-linked</span>
-      <span class="submachine-status__hint">OSV content is synced from GitHub and the project follows the source repository in PMI — neither is editable here.</span>
     </p>
   {% endif %}
 </section>

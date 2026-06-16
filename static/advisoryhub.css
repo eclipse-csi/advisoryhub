@@ -2624,8 +2624,7 @@ main.container section > p.empty {
   font-size: var(--text-sm);
   line-height: 1.4;
 }
-.advisory-status-header__warn,
-.advisory-status-header__ghsa {
+.advisory-status-header__warn {
   margin: 0;
   display: flex;
   align-items: center;

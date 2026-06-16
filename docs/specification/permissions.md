@@ -190,6 +190,8 @@ asymmetries with the same-row entries.
 | Revoke an existing approval | ✗ | ✗ | ✗ | ✓ ¹⁰ |
 | Publish | ✗ | ✗ | ✓ ⁵ ¹⁰ | ✓ |
 | Withdraw a published advisory | ✗ | ✗ | ✓ ¹¹ | ✓ |
+| Request withdrawal of a published advisory | ✗ | ✗ | ✓ ¹¹ | ✗ ¹¹ |
+| Approve / cancel a withdrawal request | ✗ | ✗ | ✗ / ✓ ¹¹ | ✓ |
 | Unassign a CVE | ✗ | ✗ | ✗ | ✓ |
 | Mark an orphan CVE rejected | — | — | — | ✓ |
 | Resolve an orphan CVE reassignment task | — | — | — | ✓ |

@@ -12,6 +12,21 @@ urlpatterns = [
     path("<advid:advisory_id>/dismiss/", views.advisory_dismiss, name="dismiss"),
     path("<advid:advisory_id>/reopen/", views.advisory_reopen, name="reopen"),
     path("<advid:advisory_id>/withdraw/", views.advisory_withdraw, name="withdraw"),
+    path(
+        "<advid:advisory_id>/request-withdrawal/",
+        views.advisory_request_withdrawal,
+        name="request_withdrawal",
+    ),
+    path(
+        "<advid:advisory_id>/cancel-withdrawal-request/",
+        views.advisory_cancel_withdrawal_request,
+        name="cancel_withdrawal_request",
+    ),
+    path(
+        "<advid:advisory_id>/approve-withdrawal/",
+        views.advisory_approve_withdrawal,
+        name="approve_withdrawal",
+    ),
     path("<advid:advisory_id>/promote/", views.advisory_promote, name="promote"),
     path("<advid:advisory_id>/flag/", views.advisory_flag, name="flag"),
     path("<advid:advisory_id>/flag/modal/", views.advisory_flag_modal, name="flag_modal"),

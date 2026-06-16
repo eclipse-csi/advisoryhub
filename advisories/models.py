@@ -232,6 +232,21 @@ class Advisory(models.Model):
         related_name="+",
     )
 
+    # Withdrawal request (INV-WITHDRAW): a non-mature project owner who can't
+    # withdraw a published advisory directly asks an admin to do it. The three
+    # fields clear together when the request is approved (the advisory is
+    # withdrawn) or cancelled. Workflow metadata, not advisory content — absent
+    # from ``to_payload`` so they are not versioned.
+    withdrawal_requested_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    withdrawal_requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    withdrawal_request_note = models.TextField(blank=True)
+
     # CVE assigned by the Eclipse Foundation acting as CNA. Distinct from the
     # editable ``aliases`` list: this is write-once, set by the CVE workflow
     # service on RESERVED, and merged into OSV/CSAF output at serialization

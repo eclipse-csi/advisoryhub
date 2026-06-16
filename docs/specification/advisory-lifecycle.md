@@ -592,7 +592,22 @@ helper (a no-op when nothing is pending). Outside `draft` the affordance does no
 
 ---
 
-## 12. Cross-reference: invariants per transition
+## 12. Withdrawal request (published advisories)
+
+A non-mature project owner cannot withdraw a published advisory directly
+(`can_withdraw_published` is admin / mature-publisher only), so they **request** one —
+the published analogue of the draft reassignment request (§11). `request_withdrawal`
+sets the three `withdrawal_requested_*` fields and records
+`ADVISORY_WITHDRAWAL_REQUESTED`; the request surfaces in the Admin Console Inbox. An
+admin **approves** it (`advisory_approve_withdrawal` → `withdraw_advisory`, using the
+request note as the withdrawal reason), which clears the request and starts the
+withdrawal (row 8a); the requester or an admin may **cancel** it
+(`cancel_withdrawal_request`). Mature-publisher owners and admins skip the queue and
+withdraw directly ([INV-WITHDRAW](./invariant.md#inv-withdraw)).
+
+---
+
+## 13. Cross-reference: invariants per transition
 
 A quick map from each transition above to the load-bearing invariants that
 constrain it. The first column matches the row number in §3.1; the review,
@@ -663,7 +678,7 @@ CVE, and publication tables are cited by their section.
 
 ---
 
-## 12. Out of scope
+## 14. Out of scope
 
 - **The static public website.** Lives in the publication Git repository
   and is rendered by that repo's CI/CD. Its visibility / caching policy is

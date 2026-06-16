@@ -368,6 +368,11 @@ def advisory_detail(request, advisory_id: str):
             "can_dismiss": perms.can_dismiss(request.user, advisory),
             "can_reopen": perms.can_reopen(request.user, advisory),
             "can_withdraw_published": perms.can_withdraw_published(request.user, advisory),
+            "can_request_withdrawal": perms.can_request_withdrawal(request.user, advisory),
+            "can_cancel_withdrawal_request": perms.can_cancel_withdrawal_request(
+                request.user, advisory
+            ),
+            "can_approve_withdrawal": perms.can_approve_withdrawal(request.user, advisory),
             "can_publish": perms.can_publish(request.user, advisory),
             "can_grant": perms.can_grant_access(request.user, advisory),
             "can_request_cve": perms.can_request_cve(request.user, advisory),
@@ -854,6 +859,59 @@ def advisory_withdraw(request, advisory_id: str):
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="20/h")
+def advisory_request_withdrawal(request, advisory_id: str):
+    """A non-mature owner requests withdrawal of a published advisory."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_request_withdrawal(request.user, advisory):
+        raise PermissionDenied("You cannot request withdrawal of this advisory.")
+    note = (request.POST.get("note") or "").strip()
+    if not note:
+        return _detail_with_error(request, advisory, "A withdrawal note is required.")
+    try:
+        services.request_withdrawal(advisory, by=request.user, note=note)
+    except (ValueError, PermissionDenied) as exc:
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Withdrawal requested — an admin will review it.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def advisory_cancel_withdrawal_request(request, advisory_id: str):
+    """Cancel a pending withdrawal request (requesting team or admin)."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_cancel_withdrawal_request(request.user, advisory):
+        raise PermissionDenied("You cannot cancel this withdrawal request.")
+    note = (request.POST.get("note") or "").strip()
+    services.cancel_withdrawal_request(advisory, by=request.user, note=note)
+    messages.success(request, "Withdrawal request cancelled.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def advisory_approve_withdrawal(request, advisory_id: str):
+    """An admin approves a pending withdrawal request — withdraws using its note."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_approve_withdrawal(request.user, advisory):
+        raise PermissionDenied("You cannot approve this withdrawal request.")
+    from publication.services import PublicationInProgress
+
+    reason = (advisory.withdrawal_request_note or "").strip() or "Withdrawal requested by the team."
+    try:
+        services.withdraw_advisory(advisory, by=request.user, reason=reason)
+    except (ValueError, PublicationInProgress) as exc:
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(
+        request,
+        "Withdrawal approved — the advisory will be marked withdrawn once the export pushes.",
+    )
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
 # ---------------------------------------------------------------------------
 # Access-review banner dismissal
 # ---------------------------------------------------------------------------
@@ -1013,6 +1071,11 @@ def _detail_with_error(request, advisory: Advisory, message: str):
             "can_dismiss": perms.can_dismiss(request.user, advisory),
             "can_reopen": perms.can_reopen(request.user, advisory),
             "can_withdraw_published": perms.can_withdraw_published(request.user, advisory),
+            "can_request_withdrawal": perms.can_request_withdrawal(request.user, advisory),
+            "can_cancel_withdrawal_request": perms.can_cancel_withdrawal_request(
+                request.user, advisory
+            ),
+            "can_approve_withdrawal": perms.can_approve_withdrawal(request.user, advisory),
             "can_publish": perms.can_publish(request.user, advisory),
             "can_grant": perms.can_grant_access(request.user, advisory),
             "can_request_cve": perms.can_request_cve(request.user, advisory),

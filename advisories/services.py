@@ -30,10 +30,12 @@ from common.users import actor_or_none
 from .models import Advisory, AdvisoryIntakeMetadata, AdvisoryVersion, State
 from .permissions import (
     UNSORTED_PROJECT_SLUG,
+    can_cancel_withdrawal_request,
     can_clear_admin_routing_flag,
     can_flag_for_admin_routing,
     can_reopen,
     can_request_reassignment,
+    can_request_withdrawal,
     can_resolve_reassignment,
     can_triage,
     can_view,
@@ -399,7 +401,94 @@ def withdraw_advisory(advisory: Advisory, *, by, reason: str):
         locked.withdrawn_reason = cleaned
         locked.save(update_fields=["withdrawn_reason", "modified_at"])
         record_advisory_version(locked, editor=by, if_changed=True)
+        # Approving a pending withdrawal request fulfils it.
+        clear_withdrawal_request_if_pending(locked, by=by, cause="approved")
         return publish(locked, by=by, system=True)
+
+
+def request_withdrawal(advisory: Advisory, *, by, note: str) -> Advisory:
+    """A non-mature owner asks an admin to withdraw a published advisory.
+
+    The published analogue of :func:`request_admin_reassignment`: the owner can't
+    withdraw directly (`can_withdraw_published` is mature-publisher/admin only), so
+    they queue a request an admin fulfils via :func:`withdraw_advisory`. Surfaced
+    in the Admin Console Inbox; cleared on approval or cancellation
+    ([INV-WITHDRAW](../specification/invariant.md#inv-withdraw)).
+    """
+    clean = (note or "").strip()
+    if not clean:
+        raise ValueError("A withdrawal note is required.")
+
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_request_withdrawal(by, locked):
+            raise PermissionDenied("You may not request withdrawal of this advisory.")
+        locked.withdrawal_requested_at = timezone.now()
+        locked.withdrawal_requested_by = by
+        locked.withdrawal_request_note = clean
+        locked.save(
+            update_fields=[
+                "withdrawal_requested_at",
+                "withdrawal_requested_by",
+                "withdrawal_request_note",
+                "modified_at",
+            ]
+        )
+        record(
+            action=Action.ADVISORY_WITHDRAWAL_REQUESTED,
+            actor=by,
+            advisory=locked,
+            metadata={"advisory_id": locked.advisory_id, "note": clean},
+        )
+    return locked
+
+
+def clear_withdrawal_request_if_pending(
+    advisory: Advisory, *, by, cause: str, note: str = ""
+) -> bool:
+    """Clear a pending withdrawal request, if any. Returns whether it cleared.
+
+    Shared low-level helper behind cancel and approve. No permission gate of its
+    own — callers authorize first. ``cause`` is recorded (``cancelled`` /
+    ``approved``); a no-op (and no audit row) when nothing is pending.
+    """
+    if advisory.withdrawal_requested_at is None:
+        return False
+    previous_note = advisory.withdrawal_request_note
+    advisory.withdrawal_requested_at = None
+    advisory.withdrawal_requested_by = None
+    advisory.withdrawal_request_note = ""
+    advisory.save(
+        update_fields=[
+            "withdrawal_requested_at",
+            "withdrawal_requested_by",
+            "withdrawal_request_note",
+            "modified_at",
+        ]
+    )
+    record(
+        action=Action.ADVISORY_WITHDRAWAL_REQUEST_CLEARED,
+        actor=by,
+        advisory=advisory,
+        metadata={
+            "advisory_id": advisory.advisory_id,
+            "cause": cause,
+            "previous_note": previous_note,
+            "note": note,
+        },
+    )
+    return True
+
+
+def cancel_withdrawal_request(advisory: Advisory, *, by, note: str = "") -> Advisory:
+    """Retract a pending withdrawal request (requesting team or admin)."""
+    clean = (note or "").strip()
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_cancel_withdrawal_request(by, locked):
+            raise PermissionDenied("You may not cancel this withdrawal request.")
+        clear_withdrawal_request_if_pending(locked, by=by, cause="cancelled", note=clean)
+    return locked
 
 
 def reopen_advisory(advisory: Advisory, *, by) -> Advisory:

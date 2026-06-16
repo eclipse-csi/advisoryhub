@@ -315,6 +315,12 @@ path.
 - `publication/osv.py` / `publication/csaf.py` — withdrawn rendering.
 - `advisories/services.py::reopen_advisory` + `advisories.permissions.can_reopen`
   + `publication.services.publish(allow_from_dismissed=True)` — the un-withdraw path.
+- `advisories/services.py` — `request_withdrawal` / `cancel_withdrawal_request` /
+  `clear_withdrawal_request_if_pending`, gated by `can_request_withdrawal` /
+  `can_cancel_withdrawal_request` / `can_approve_withdrawal`. A non-mature owner's
+  request (the `withdrawal_requested_*` fields) is surfaced in the Admin Console
+  Inbox; an admin approves it (withdraws using the request note) and the request
+  clears, or the requester/admin cancels it.
 
 **Violation impact.** A withdrawn advisory keeps masquerading as live in the public
 feed, or a published record is deleted and breaks downstream consumers.

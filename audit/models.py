@@ -134,6 +134,8 @@ class Action(models.TextChoices):
     # from draft (dismiss / publish).
     ADVISORY_REASSIGNMENT_REQUESTED = "advisory.reassignment_requested"
     ADVISORY_REASSIGNMENT_REQUEST_CLEARED = "advisory.reassignment_request_cleared"
+    ADVISORY_WITHDRAWAL_REQUESTED = "advisory.withdrawal_requested"
+    ADVISORY_WITHDRAWAL_REQUEST_CLEARED = "advisory.withdrawal_request_cleared"
     # Legacy intake actions — kept for read-only history, not emitted by new code.
     REPORT_SUBMITTED = "report.submitted"
     REPORT_TRIAGED_INTO_ADVISORY = "report.triaged_into_advisory"

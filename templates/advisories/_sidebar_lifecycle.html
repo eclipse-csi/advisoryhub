@@ -144,6 +144,31 @@ can_dismiss, can_reopen.
     {% endif %}
   {% endif %}
 
+  {% if can_request_withdrawal %}
+    <div class="sidebar-card__row">
+      <button type="button" class="danger"
+              data-dialog-open="advisory-request-withdrawal-dialog">Request withdrawal…</button>
+      <p class="sidebar-card__action-hint">
+        Ask an admin to withdraw this published advisory — your project isn't a mature publisher, so you can't withdraw it directly. Requires a reason.
+      </p>
+      <dialog id="advisory-request-withdrawal-dialog" class="confirm-dialog" aria-labelledby="advisory-request-withdrawal-title">
+        <form method="post" action="{% url 'advisories:request_withdrawal' advisory.advisory_id %}">
+          {% csrf_token %}
+          <h3 id="advisory-request-withdrawal-title">Request withdrawal</h3>
+          <p>
+            An admin will review and withdraw the advisory. The public OSV/CSAF documents stay in the feed but are re-exported marked <strong>withdrawn</strong>.
+          </p>
+          <label for="advisory-request-withdrawal-note">Reason</label>
+          <textarea id="advisory-request-withdrawal-note" name="note" rows="4" required></textarea>
+          <div class="dialog-actions">
+            <button type="button" data-dialog-close>Cancel</button>
+            <button type="submit" class="danger">Request withdrawal</button>
+          </div>
+        </form>
+      </dialog>
+    </div>
+  {% endif %}
+
   {% if can_reopen %}
     <div class="sidebar-card__row">
       {% url 'advisories:reopen' advisory.advisory_id as reopen_url %}

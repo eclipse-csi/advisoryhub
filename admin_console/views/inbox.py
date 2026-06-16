@@ -64,6 +64,7 @@ CATEGORY_PREDICATES: dict[str, Callable[[InboxItem], bool]] = {
     ),
     "orphan": lambda i: i.kind == "orphan",
     "reassignment": lambda i: i.kind == "reassignment",
+    "withdrawal": lambda i: i.kind == "withdrawal",
 }
 
 
@@ -226,6 +227,27 @@ def _reassignment_items(see_more_url: str) -> list[InboxItem]:
     ]
 
 
+def _withdrawal_items() -> list[InboxItem]:
+    qs = (
+        Advisory.objects.filter(withdrawal_requested_at__isnull=False)
+        .select_related("project")
+        .order_by("-withdrawal_requested_at")[:PER_SOURCE_LIMIT]
+    )
+    return [
+        InboxItem(
+            kind="withdrawal",
+            badge="Withdraw",
+            badge_class="inbox-badge--pub",
+            title=a.advisory_id,
+            subtitle=f"withdrawal requested: {a.project.slug}",
+            age_dt=a.withdrawal_requested_at,
+            url=reverse("advisories:detail", args=[a.advisory_id]),
+            see_more_url=reverse("advisories:detail", args=[a.advisory_id]),
+        )
+        for a in qs
+    ]
+
+
 @admin_required
 def inbox(request):
     cves_url = reverse("admin_console:cves")
@@ -239,6 +261,7 @@ def inbox(request):
             _triage_items(""),
             _orphan_items(cves_url),
             _reassignment_items(cves_url),
+            _withdrawal_items(),
         )
     )
     all_items.sort(key=lambda i: i.age_dt, reverse=True)
@@ -263,6 +286,7 @@ def inbox(request):
         "reassignment": OrphanCveReassignmentTask.objects.filter(
             status=OrphanCveReassignmentStatus.QUEUED
         ).count(),
+        "withdrawal": Advisory.objects.filter(withdrawal_requested_at__isnull=False).count(),
     }
 
     rendered_per_kind: dict[str, int] = {}

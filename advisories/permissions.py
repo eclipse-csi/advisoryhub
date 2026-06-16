@@ -372,6 +372,47 @@ def can_withdraw_published(user, advisory: Advisory) -> bool:
     return is_mature_publisher_member(user, advisory.project)
 
 
+def can_request_withdrawal(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may *request* withdrawal of a published advisory.
+
+    The non-mature analogue of :func:`can_withdraw_published`: a project owner who
+    can't withdraw directly asks an admin to do it. Excludes admins (they withdraw
+    directly) and mature-publisher owners (ditto). One request at a time.
+    """
+    if advisory.state != State.PUBLISHED:
+        return False
+    if advisory.withdrawal_requested_at is not None:
+        return False
+    if is_global_admin(user):
+        return False
+    if not is_security_team_member(user, advisory.project):
+        return False
+    return not is_mature_publisher_member(user, advisory.project)
+
+
+def can_cancel_withdrawal_request(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may cancel a pending withdrawal request.
+
+    The requesting team (project owners) may retract it, and admins may clear it.
+    """
+    if advisory.withdrawal_requested_at is None:
+        return False
+    if is_global_admin(user):
+        return True
+    return is_security_team_member(user, advisory.project)
+
+
+def can_approve_withdrawal(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may approve (fulfil) a pending withdrawal request.
+
+    Admin-only: the request was escalated *to* an admin. Approving withdraws the
+    advisory using the request note as the reason.
+    """
+    if advisory.withdrawal_requested_at is None:
+        return False
+    return is_global_admin(user)
+
+
 def can_withdraw_review(user, advisory: Advisory) -> bool:
     """Whether ``user`` can pull a pending review back to draft.
 

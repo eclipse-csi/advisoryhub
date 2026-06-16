@@ -685,9 +685,12 @@ def reassign_triage_project(advisory: Advisory, *, by, new_project, note: str = 
 
     Admin: any project (incl. the ``unsorted`` sentinel). Team member:
     only between projects they're on. Triage state is preserved so the
-    receiving team picks it up. Clears the admin-routing flag iff ``by``
-    is an admin (matching the legacy intake.services.reassign_project
-    semantics).
+    receiving team picks it up. Routing-flag handling depends on the
+    destination: re-routing to a *real* project clears the admin-routing
+    flag iff ``by`` is an admin (matching the legacy
+    intake.services.reassign_project semantics); moving onto the
+    ``unsorted`` sentinel instead (re)sets it, since anything parked there
+    needs routing by definition (INV-INTAKE-4).
     """
     clean_note = (note or "").strip()
 
@@ -714,7 +717,25 @@ def reassign_triage_project(advisory: Advisory, *, by, new_project, note: str = 
 
         intake = getattr(locked, "intake", None)
         cleared_flag = False
-        if admin and intake is not None and intake.needs_admin_routing:
+        flagged_for_routing = False
+        if new_project.slug == UNSORTED_PROJECT_SLUG:
+            # Parking on the routing sentinel means the advisory needs routing
+            # by definition (INV-INTAKE-4): (re)raise the flag rather than
+            # clearing it, so an advisory on ``unsorted`` is never left without
+            # a routing signal.
+            if intake is None:
+                intake, _ = AdvisoryIntakeMetadata.objects.get_or_create(advisory=locked)
+            if not intake.needs_admin_routing:
+                intake.needs_admin_routing = True
+                intake.admin_routing_note = clean_note or (
+                    "Reassigned to the Unsorted project for admin routing."
+                )
+                intake.flagged_for_routing_at = timezone.now()
+                intake.flagged_for_routing_by = by
+                intake.save(update_fields=_ROUTING_FLAG_FIELDS)
+                flagged_for_routing = True
+        elif admin and intake is not None and intake.needs_admin_routing:
+            # Re-routing to a real project resolves the routing question.
             _clear_routing_flag(intake)
             cleared_flag = True
 
@@ -728,6 +749,7 @@ def reassign_triage_project(advisory: Advisory, *, by, new_project, note: str = 
                 "advisory_id": locked.advisory_id,
                 "note": clean_note,
                 "cleared_flag": cleared_flag,
+                "flagged_for_routing": flagged_for_routing,
                 "in_triage": True,
             },
         )

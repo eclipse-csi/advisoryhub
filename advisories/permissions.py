@@ -529,8 +529,18 @@ def can_clear_admin_routing_flag(user, advisory: Advisory) -> bool:
     The reverse of :func:`can_flag_for_admin_routing`: admins AND project
     security team members may clear (broader than the flag side, which
     excludes admins because they are the routing destination).
+
+    Advisories on the ``unsorted`` sentinel project are excluded — mirroring
+    the flag side, which won't let that project be flagged. ``unsorted`` *is*
+    the "needs routing" bucket ([INV-INTAKE-4], [INV-PROJECT-2]), so its flag
+    can't be cleared in place: clear it by reassigning to a real project
+    (``reassign_triage_project``), or by promoting / dismissing the advisory.
+    Clearing in place stays available for a real project (a team retracting
+    its own misrouting handoff, [INV-AUTH-6]).
     """
     if advisory.state != State.TRIAGE:
+        return False
+    if advisory.project.slug == UNSORTED_PROJECT_SLUG:
         return False
     return resolved_permission(user, advisory) == "owner"
 

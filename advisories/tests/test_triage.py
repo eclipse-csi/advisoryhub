@@ -318,6 +318,21 @@ def test_clear_routing_flag_permission_denied_for_outsider(db, make_user, make_p
         services.clear_admin_routing_flag(adv, by=outsider)
 
 
+def test_clear_routing_flag_excludes_unsorted(db, admin_user, unsorted_project):
+    """The flag on an ``unsorted`` advisory can't be cleared in place — not
+    even by an admin. ``unsorted`` *is* the needs-routing bucket
+    (INV-INTAKE-4); the only way off the flag is reassigning to a real project
+    (or promoting / dismissing). Mirrors the flag side's unsorted exclusion."""
+    from django.core.exceptions import PermissionDenied
+
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    assert perms.can_clear_admin_routing_flag(admin_user, adv) is False
+    with pytest.raises(PermissionDenied):
+        services.clear_admin_routing_flag(adv, by=admin_user)
+    adv.intake.refresh_from_db()
+    assert adv.intake.needs_admin_routing is True
+
+
 def test_clear_routing_flag_requires_flagged_state(db, admin_user, make_project):
     project = make_project("alpha")
     adv = _make_triage_advisory(project, flagged=False)
@@ -397,6 +412,32 @@ def test_reassign_triage_project_team_member_cross_team_denied(db, make_user, ma
 
     with pytest.raises(PermissionDenied):
         services.reassign_triage_project(adv, by=src_member, new_project=dst)
+
+
+def test_reassign_triage_off_unsorted_clears_flag(db, admin_user, make_project, unsorted_project):
+    """Re-routing an ``unsorted`` advisory to a real project resolves the
+    routing question — the admin-routing flag is cleared as a side effect."""
+    dst = make_project("alpha")
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    services.reassign_triage_project(adv, by=admin_user, new_project=dst)
+    adv.refresh_from_db()
+    adv.intake.refresh_from_db()
+    assert adv.project == dst
+    assert adv.intake.needs_admin_routing is False
+
+
+def test_reassign_triage_onto_unsorted_sets_flag(db, admin_user, make_project, unsorted_project):
+    """Parking an advisory on the routing sentinel (re)raises the flag rather
+    than clearing it: anything on ``unsorted`` needs routing (INV-INTAKE-4)."""
+    src = make_project("alpha")
+    adv = _make_triage_advisory(src, flagged=False)
+    services.reassign_triage_project(adv, by=admin_user, new_project=unsorted_project)
+    adv.refresh_from_db()
+    adv.intake.refresh_from_db()
+    assert adv.project == unsorted_project
+    assert adv.intake.needs_admin_routing is True
+    assert adv.intake.admin_routing_note != ""
+    assert adv.intake.flagged_for_routing_by == admin_user
 
 
 # -------------------- Views -----------------------------------------------
@@ -506,6 +547,19 @@ def test_triage_clear_routing_flag_view_denies_outsider(db, make_user, make_proj
     resp = client.post(
         reverse("advisories:clear_routing_flag", args=[adv.advisory_id]),
     )
+    assert resp.status_code == 403
+    adv.intake.refresh_from_db()
+    assert adv.intake.needs_admin_routing is True
+
+
+def test_triage_clear_routing_flag_view_denied_on_unsorted(
+    db, admin_user, unsorted_project, client
+):
+    """A forced POST to clear the flag on an ``unsorted`` advisory is rejected
+    even for an admin — the button is hidden, so this only happens by hand."""
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    client.force_login(admin_user)
+    resp = client.post(reverse("advisories:clear_routing_flag", args=[adv.advisory_id]))
     assert resp.status_code == 403
     adv.intake.refresh_from_db()
     assert adv.intake.needs_admin_routing is True

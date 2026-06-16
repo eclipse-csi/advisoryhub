@@ -603,7 +603,9 @@ laundering content before promotion.
 admins can edit or triage the advisory. Project owners may *flag* a misrouted
 advisory (admins cannot — their queue is the destination) and may also *clear*
 the flag, retracting their own handoff; while the flag stands, every other
-mutation is admin-only.
+mutation is admin-only. In-place clearing applies only to advisories on a **real**
+project — an advisory on the `unsorted` sentinel can be unflagged solely by
+reassigning it off `unsorted` ([INV-INTAKE-4](#inv-intake-4)).
 
 **Rationale.** Misrouted reports must reach an admin for re-routing without the
 row being mutated underneath them. Flagging is a voluntary handoff: letting the
@@ -1191,15 +1193,28 @@ level on an untrusted triage row (see [INV-AUTH-5](#inv-auth-5)).
 ### INV-INTAKE-4 — `unsorted` reports default to admin routing   [High]
 
 **Statement.** Triage reports filed against the `unsorted` sentinel project
-automatically set `AdvisoryIntakeMetadata.needs_admin_routing=True`.
+automatically set `AdvisoryIntakeMetadata.needs_admin_routing=True`. The coupling
+is two-directional and holds for the whole time an advisory sits on `unsorted`
+in triage: while on `unsorted`, the flag may **not** be cleared in place — it is
+lifted only by moving the advisory *off* `unsorted` (reassign to a real project,
+promote, or dismiss); conversely, reassigning an advisory *onto* `unsorted`
+(re)sets the flag. An `unsorted` triage advisory with `needs_admin_routing=False`
+is an invalid limbo state.
 
 **Rationale.** When the reporter does not know the right project, the report must
-land with admins for re-routing, not in some default team's queue.
+land with admins for re-routing, not in some default team's queue. The flag *is*
+the routing signal; allowing it to be cleared while the advisory stays on
+`unsorted` would strand the report on the routing-bucket project with nothing
+flagging it for routing. Clearing in place stays valid only on a **real** project
+(a team retracting its own misrouting handoff, [INV-AUTH-6](#inv-auth-6)).
 
 **Enforced in.**
 - `advisories/services.py` — `submit_triage_report` sets the flag when
-  `project.slug == UNSORTED_PROJECT_SLUG`.
-- `advisories/permissions.py` — `UNSORTED_PROJECT_SLUG`.
+  `project.slug == UNSORTED_PROJECT_SLUG`; `reassign_triage_project` (re)sets the
+  flag when the destination is `unsorted` and clears it only when re-routing to a
+  real project.
+- `advisories/permissions.py` — `UNSORTED_PROJECT_SLUG`;
+  `can_clear_admin_routing_flag` rejects clearing while on `unsorted`.
 
 **Violation impact.** Misrouted reports get suppressed by the wrong team.
 

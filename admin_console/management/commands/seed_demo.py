@@ -713,6 +713,13 @@ class Command(BaseCommand):
         unsorted = Project.objects.get(slug="unsorted")
         now = timezone.now()
 
+        # Every triage row placed on the ``unsorted`` sentinel MUST carry
+        # ``needs_admin_routing=True`` — that flag is the routing signal, and an
+        # ``unsorted`` advisory without it is an invalid limbo state. The flag is
+        # cleared only by reassigning to a real project (or promoting / dismissing),
+        # never in place (INV-INTAKE-4, INV-PROJECT-2). Keep both ``project=unsorted``
+        # specs below flagged.
+
         # (advisory kwargs, sidecar kwargs, offset). Sidecar kwargs are
         # applied to AdvisoryIntakeMetadata. ``flag_by`` indirection avoids
         # needing the admin reference inside the data declaration.

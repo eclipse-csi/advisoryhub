@@ -2215,7 +2215,36 @@ p.state strong { color: var(--text); }
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 0 0 auto;
+  /* Shrink + wrap inside the (center-column) banner rather than overflowing to
+     the right when the cluster carries a project picker and/or a note drawer. */
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+/* Action forms wrap inside the cluster on a narrow column instead of pushing a
+   control out past the banner edge. */
+.advisory-banner__actions .inline { flex-wrap: wrap; }
+/* The admin project picker: size the combobox to the row, not the global
+   width:100% that selects/inputs inherit (mirrors .advisory-filters). */
+.advisory-banner__actions :is(select, .combobox__input) {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+/* An open note drawer (Withdraw request / Clear flag) takes the full banner
+   width and stacks its field, so the multi-line textarea never forces a wide
+   inline row off the right edge of the column. */
+.advisory-banner:has(.advisory-banner__actions details[open]) .advisory-banner__actions {
+  flex-basis: 100%;
+}
+.advisory-banner__actions details[open] > .inline {
+  display: flex;
+  margin-top: 0.4rem;
+}
+.advisory-banner__actions details[open] > .inline textarea {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 .advisory-banner__link {
   font-weight: 500;

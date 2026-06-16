@@ -93,10 +93,13 @@ def publish(
     # snapshotting, so the OSV/CSAF export reflects the upstream GHSA's
     # current state. The helper raises ``PermissionDenied`` if the GHSA
     # isn't published, vanished, or has an outstanding CVE conflict —
-    # those bubble up to the caller as a 4xx response.
+    # those bubble up to the caller as a 4xx response. A *withdrawal*
+    # (``withdrawn_reason`` set) skips the refresh: we're withdrawing precisely
+    # because the GHSA is no longer published/exists, so re-validating it would
+    # wrongly block the withdrawal (INV-WITHDRAW).
     from advisories.models import Kind as _Kind  # local import to avoid cycle
 
-    if advisory.kind == _Kind.GHSA_LINKED:
+    if advisory.kind == _Kind.GHSA_LINKED and not advisory.withdrawn_reason:
         from ghsa.services import refresh_for_publish
 
         # Refresh metadata from GitHub *before* pinning a version so the

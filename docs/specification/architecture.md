@@ -554,6 +554,16 @@ CVE conflict, missing upstream, concurrent run — is logged and skipped; a real
 export failure surfaces as a failed `PublicationTask`). Controlled by
 `GHSA_AUTO_PUBLISH_ENABLED` (default on).
 
+**Auto-dismiss / auto-withdraw.** When the linked GHSA is closed, withdrawn, or
+deleted (404), the reaction mirrors it: a `draft`/`triage` advisory is dismissed
+(`dismiss_advisory`), and a `published` one is **withdrawn**
+(`withdraw_advisory`, [INV-WITHDRAW](./invariant.md#inv-withdraw)) — the OSV/CSAF
+are re-exported marked withdrawn (the withdrawal `publish` skips
+`refresh_for_publish`, since the GHSA is gone). An advisory holding an EF CVE is
+left flagged for an admin instead — orphaning a CVE is a CNA action the system
+won't take. The periodic reconcile (§6.2) sweeps `draft`/`triage`/`published` so
+withdrawals/deletions GitHub doesn't webhook are still caught.
+
 ### 5.8 Feature gate
 
 The integration is fronted by the `GHSA_FEATURE_ENABLED` boolean
@@ -693,10 +703,11 @@ needs no reaper (§5.3 — atomic create+finalise). See [INV-GHSA-2](./invariant
 
 `ghsa-linked-reconcile` is the inbound-lifecycle poll backstop
 ([INV-GHSA-3](./invariant.md#inv-ghsa-3)): every `GHSA_SYNC_INTERVAL_HOURS`
-(default 6) it re-syncs each active (draft/triage) GHSA-linked advisory via
-`sync_single_ghsa` and runs `react_to_ghsa_state`, mirroring the current GitHub
-state — auto-publishing a now-`published` draft and auto-dismissing a
-closed/withdrawn/deleted one. It exists because GitHub does **not** reliably
+(default 6) it re-syncs each non-terminal (draft/triage/published) GHSA-linked
+advisory via `sync_single_ghsa` and runs `react_to_ghsa_state`, mirroring the
+current GitHub state — auto-publishing a now-`published` draft, auto-dismissing a
+closed/withdrawn/deleted draft, and auto-*withdrawing* a published one
+([INV-WITHDRAW](./invariant.md#inv-withdraw)). It exists because GitHub does **not** reliably
 emit `repository_advisory` webhooks for withdrawal/closure/deletion (and never
 for deletion), so the webhook path alone would miss them. Per-advisory failures
 are logged and skipped; no-ops while `GHSA_FEATURE_ENABLED` is off.
@@ -724,7 +735,7 @@ recorded as a `GhsaSyncRun`.
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
 | `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button); reacts to the observed state ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
 | `ghsa` | `run_ghsa_auto_publish` | System-initiated `publish(system=True)` when GitHub publishes a GHSA-linked draft ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
-| `ghsa` | `reconcile_ghsa_linked_advisories` | Beat-scheduled poll backstop: re-syncs active (draft/triage) GHSA-linked advisories and mirrors GitHub state — auto-publish / auto-dismiss ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
+| `ghsa` | `reconcile_ghsa_linked_advisories` | Beat-scheduled poll backstop: re-syncs draft/triage/published GHSA-linked advisories and mirrors GitHub state — auto-publish / auto-dismiss / auto-withdraw ([INV-GHSA-3](./invariant.md#inv-ghsa-3), [INV-WITHDRAW](./invariant.md#inv-withdraw)). |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
 | `ghsa` | `reap_stale_cve_push_tasks` | Beat-scheduled janitor: fails `GhsaCvePushTask` rows orphaned in queued/running and corrects the advisory's CVE-push badge ([INV-GHSA-2](./invariant.md#inv-ghsa-2)). |
 | `ghsa` | `process_webhook` | Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread. |

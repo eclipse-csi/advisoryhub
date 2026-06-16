@@ -369,28 +369,36 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
         GhsaState.CLOSED,
         GhsaState.WITHDRAWN,
     )
-    if gone and advisory.state in (State.DRAFT, State.TRIAGE):
-        if advisory.assigned_cve_id:
-            logger.info(
-                "GHSA %s gone upstream but advisory %s holds CVE %s — leaving for an admin",
-                advisory.ghsa_id,
-                advisory.advisory_id,
-                advisory.assigned_cve_id,
-            )
-            return
-        cause = "deleted" if summary.get("missing_upstream") else advisory.ghsa_state
-        advisory_services.dismiss_advisory(
-            advisory, by=by, reason=f"Linked GHSA was {cause} on GitHub."
+    if not gone or advisory.state not in (State.DRAFT, State.TRIAGE, State.PUBLISHED):
+        return
+    if advisory.assigned_cve_id:
+        # Orphaning a CVE is a CNA action (admin-only); the system never does it.
+        logger.info(
+            "GHSA %s gone upstream but advisory %s holds CVE %s — leaving for an admin",
+            advisory.ghsa_id,
+            advisory.advisory_id,
+            advisory.assigned_cve_id,
         )
+        return
+    cause = "deleted" if summary.get("missing_upstream") else advisory.ghsa_state
+    reason = f"Linked GHSA was {cause} on GitHub."
+    if advisory.state == State.PUBLISHED:
+        # A published advisory is *withdrawn* (OSV/CSAF re-exported marked
+        # withdrawn, doc not deleted), not dismissed in place — INV-WITHDRAW.
+        advisory_services.withdraw_advisory(advisory, by=by, reason=reason)
+    else:
+        advisory_services.dismiss_advisory(advisory, by=by, reason=reason)
 
 
 def reconcile_ghsa_linked_advisories(*, by=None) -> dict:
-    """Periodic backstop: re-sync every active (draft/triage) GHSA-linked
-    advisory and react to its current GitHub state.
+    """Periodic backstop: re-sync every non-terminal (draft/triage/published)
+    GHSA-linked advisory and react to its current GitHub state.
 
     GitHub does not reliably emit webhooks for withdrawal / closure / deletion,
-    so this poll is the authoritative path for catching them — and for picking
-    up a missed ``published`` event (auto-publish). One observing call per row:
+    so this poll is the authoritative path for catching them — auto-dismissing a
+    draft/triage row or auto-*withdrawing* a published one (INV-WITHDRAW) — and
+    for picking up a missed ``published`` event (auto-publish). One observing
+    call per row: ``sync_single_ghsa`` then :func:`react_to_ghsa_state`. Per-advisory failures
     ``sync_single_ghsa`` then :func:`react_to_ghsa_state`. Per-advisory failures
     are logged and skipped so one bad row never aborts the sweep. No-op while
     ``GHSA_FEATURE_ENABLED`` is off ([INV-GHSA-3](#inv-ghsa-3)).
@@ -399,8 +407,10 @@ def reconcile_ghsa_linked_advisories(*, by=None) -> dict:
         return {"skipped": "GHSA_FEATURE_ENABLED is False"}
     checked = 0
     errors = 0
+    # draft/triage → auto-publish (when GitHub publishes) or auto-dismiss (gone);
+    # published → auto-withdraw when GitHub withdraws/deletes it (INV-WITHDRAW).
     advisories = Advisory.objects.filter(
-        kind=Kind.GHSA_LINKED, state__in=[State.DRAFT, State.TRIAGE]
+        kind=Kind.GHSA_LINKED, state__in=[State.DRAFT, State.TRIAGE, State.PUBLISHED]
     ).order_by("pk")
     for advisory in advisories:
         try:

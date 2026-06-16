@@ -125,7 +125,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PRIVACY-4](#inv-privacy-4) | Other users' email addresses are shown only to owners. | Privacy | Medium |
 | [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
 | [INV-GHSA-2](#inv-ghsa-2) | Stale queued/running CVE-push tasks are reaped to `failed`, correcting the advisory's CVE-push badge. | GHSA | Medium |
-| [INV-GHSA-3](#inv-ghsa-3) | GHSA-linked lifecycle is inbound-only: GitHub publishing auto-publishes and GitHub close/withdraw/delete auto-dismisses (draft/triage) in AdvisoryHub; AdvisoryHub never writes lifecycle state back to GitHub. | GHSA | Medium |
+| [INV-GHSA-3](#inv-ghsa-3) | GHSA-linked lifecycle is inbound-only: GitHub publishing auto-publishes; GitHub close/withdraw/delete auto-dismisses (draft/triage) or auto-withdraws (published); AdvisoryHub never writes lifecycle state back to GitHub. | GHSA | Medium |
 | [INV-SIM-1](#inv-sim-1) | Duplicate-check results and endpoints are owner-only, enforced server-side. | Similarity | Critical |
 | [INV-SIM-2](#inv-sim-2) | `SIMILARITY_CHECK_ENABLED=False` (default) means zero advisory-content egress to the LLM provider. | Similarity | Critical |
 | [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
@@ -2392,14 +2392,16 @@ a dismissed advisory is never auto-published. Gated by `GHSA_AUTO_PUBLISH_ENABLE
 (default on).
 
 Symmetrically, when an observed sync finds the linked GHSA **closed**,
-**withdrawn**, or **deleted** (404 / `missing_upstream`), AdvisoryHub
-**auto-dismisses** the advisory if it is in `draft`/`triage` — via
-`advisories.services.dismiss_advisory` with the system actor (`None`). A
-`published` advisory is **not** auto-dismissed (it can't be — published rows are
-undismissable — and the EF feed is not retracted here; it is surfaced for manual
-handling). An advisory holding an `assigned_cve_id` is **not** auto-dismissed
-either: orphaning an EF CVE is a CNA action that `can_dismiss` keeps admin-only,
-so the system never performs it — the row is left flagged for an admin.
+**withdrawn**, or **deleted** (404 / `missing_upstream`), AdvisoryHub mirrors it:
+a `draft`/`triage` advisory is **auto-dismissed** (`dismiss_advisory`), and a
+`published` advisory is **auto-withdrawn** (`withdraw_advisory`, [INV-WITHDRAW](#inv-withdraw)) —
+the OSV/CSAF are re-exported marked withdrawn and it moves to `dismissed`; the
+document is never deleted. Both run with the system actor (`None`). An advisory
+holding an `assigned_cve_id` is **not** auto-dismissed or auto-withdrawn:
+orphaning an EF CVE is a CNA action that `can_dismiss` / `can_withdraw_published`
+keep admin-only, so the system never performs it — the row is left flagged for an
+admin. The periodic reconcile therefore sweeps `draft`/`triage`/`published`
+GHSA-linked advisories.
 
 **Rationale.** GitHub's repository advisory is the authoritative artifact for a
 GHSA-linked vulnerability; once GitHub discloses it, the EF feed should mirror it
@@ -2409,16 +2411,19 @@ one-way. The reaction is decided by the *observing* callers, never inside
 `refresh_for_publish`, so `publish → refresh → sync → publish` cannot recurse.
 
 **Enforced in.**
-- `ghsa/services.py` — `react_to_ghsa_state` (the auto-publish / auto-dismiss
-  decision), called by the webhook dispatcher, the manual single-sync task, and
-  `create_ghsa_linked_advisory`; **not** called from `refresh_for_publish`.
+- `ghsa/services.py` — `react_to_ghsa_state` (the auto-publish / auto-dismiss /
+  auto-withdraw decision), called by the webhook dispatcher, the manual
+  single-sync task, and `create_ghsa_linked_advisory`; **not** called from
+  `refresh_for_publish`. `reconcile_ghsa_linked_advisories` sweeps
+  `draft`/`triage`/`published`.
 - `ghsa/tasks.py` — `run_ghsa_auto_publish` (best-effort; a gating refusal —
   CVE conflict / missing upstream / concurrent run — is caught and skipped).
 - `publication/services.py` — `publish(system=True)` skips `can_publish` while
-  keeping the dismissed / in-flight / `refresh_for_publish` guards.
-- `advisories/services.py` — `dismiss_advisory` (the reusable dismissal core,
-  shared with the `advisory_dismiss` view) flips a draft/triage row to
-  `dismissed`; the system auto-dismiss only reaches it for a CVE-free advisory.
+  keeping the dismissed / in-flight guards; the GHSA `refresh_for_publish` is
+  skipped for a withdrawal (`withdrawn_reason` set), since the GHSA is gone.
+- `advisories/services.py` — `dismiss_advisory` (draft/triage) and
+  `withdraw_advisory` (published, [INV-WITHDRAW](#inv-withdraw)); the system path
+  only reaches them for a CVE-free advisory.
 - `config/settings/base.py` — `GHSA_AUTO_PUBLISH_ENABLED`.
 
 **Violation impact.** A GitHub-published advisory silently fails to reach the EF

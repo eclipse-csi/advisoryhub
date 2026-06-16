@@ -169,18 +169,85 @@ def test_refresh_for_publish_does_not_auto_publish(make_project, ghsa_payload):
     assert not enq.called
 
 
+# ---- auto-withdraw of published advisories (INV-WITHDRAW) ------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("ghsa_state", [GhsaState.CLOSED, GhsaState.WITHDRAWN])
+def test_react_auto_withdraws_published(make_project, ghsa_state):
+    adv = _ghsa_advisory(make_project("alpha"), state=State.PUBLISHED, ghsa_state=ghsa_state)
+    with patch("advisories.services.withdraw_advisory") as wd:
+        services.react_to_ghsa_state(
+            adv, {"changed": [], "conflict": False, "missing_upstream": False}, by=None
+        )
+    assert wd.called
+
+
+@pytest.mark.django_db
+def test_react_auto_withdraws_published_on_missing_upstream(make_project):
+    adv = _ghsa_advisory(make_project("alpha"), state=State.PUBLISHED, ghsa_state=GhsaState.CLOSED)
+    with patch("advisories.services.withdraw_advisory") as wd:
+        services.react_to_ghsa_state(
+            adv, {"changed": [], "conflict": False, "missing_upstream": True}, by=None
+        )
+    assert wd.called
+
+
+@pytest.mark.django_db
+def test_react_published_with_cve_not_auto_withdrawn(make_project):
+    """Orphaning a CVE is admin-only — a CVE-bearing published advisory is left
+    flagged for an admin, not auto-withdrawn."""
+    adv = _ghsa_advisory(
+        make_project("alpha"), state=State.PUBLISHED, ghsa_state=GhsaState.WITHDRAWN
+    )
+    adv.assigned_cve_id = "CVE-2026-0001"
+    adv.save(update_fields=["assigned_cve_id", "modified_at"])
+    with patch("advisories.services.withdraw_advisory") as wd:
+        services.react_to_ghsa_state(
+            adv, {"changed": [], "conflict": False, "missing_upstream": False}, by=None
+        )
+    assert not wd.called
+
+
+@pytest.mark.django_db
+def test_react_published_still_published_no_withdrawal(make_project):
+    adv = _ghsa_advisory(
+        make_project("alpha"), state=State.PUBLISHED, ghsa_state=GhsaState.PUBLISHED
+    )
+    with patch("advisories.services.withdraw_advisory") as wd:
+        services.react_to_ghsa_state(
+            adv, {"changed": [], "conflict": False, "missing_upstream": False}, by=None
+        )
+    assert not wd.called
+
+
+@pytest.mark.django_db
+def test_withdraw_ghsa_linked_skips_refresh_for_publish(make_project):
+    """A withdrawal skips refresh_for_publish — we're withdrawing precisely
+    because the GHSA is gone, so re-validating it would wrongly block."""
+    from advisories import services as adv_services
+
+    adv = _ghsa_advisory(make_project("alpha"), state=State.PUBLISHED)
+    with patch("ghsa.services.refresh_for_publish") as refresh:
+        adv_services.withdraw_advisory(adv, by=None, reason="Linked GHSA was deleted on GitHub.")
+    assert not refresh.called
+    adv.refresh_from_db()
+    assert adv.withdrawn_reason == "Linked GHSA was deleted on GitHub."
+
+
 # ---- periodic reconcile (poll backstop) ------------------------------------
 
 
 @override_settings(GHSA_FEATURE_ENABLED=True)
 @pytest.mark.django_db
-def test_reconcile_syncs_only_active_ghsa_linked(make_project):
-    """The reconcile sweep re-syncs draft/triage GHSA-linked advisories only —
-    not published or dismissed ones, and not native advisories."""
+def test_reconcile_syncs_non_terminal_ghsa_linked(make_project):
+    """The reconcile sweep re-syncs draft/triage/published GHSA-linked advisories
+    (so it can auto-withdraw a published one) — not dismissed ones, and not
+    native advisories."""
     project = make_project("alpha")
     draft = _ghsa_advisory(project, state=State.DRAFT, ghsa_id="GHSA-0000-0000-0001")
     triage = _ghsa_advisory(project, state=State.TRIAGE, ghsa_id="GHSA-0000-0000-0002")
-    _ghsa_advisory(project, state=State.PUBLISHED, ghsa_id="GHSA-0000-0000-0003")
+    published = _ghsa_advisory(project, state=State.PUBLISHED, ghsa_id="GHSA-0000-0000-0003")
     _ghsa_advisory(project, state=State.DISMISSED, ghsa_id="GHSA-0000-0000-0004")
     Advisory.objects.create(project=project, state=State.DRAFT, summary="native")
 
@@ -196,8 +263,8 @@ def test_reconcile_syncs_only_active_ghsa_linked(make_project):
     ):
         result = services.reconcile_ghsa_linked_advisories(by=None)
 
-    assert set(synced) == {draft.pk, triage.pk}
-    assert result["checked"] == 2
+    assert set(synced) == {draft.pk, triage.pk, published.pk}
+    assert result["checked"] == 3
 
 
 @pytest.mark.django_db

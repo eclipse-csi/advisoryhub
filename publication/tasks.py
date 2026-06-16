@@ -169,45 +169,99 @@ def run_publication(self, task_id: int) -> str:
         )
         metrics.publication_stage_total.labels(stage="git_push").inc()
 
-        # 4. Flip advisory state — only after a successful push.
+        # 4. Flip advisory state — only after a successful push. A pinned
+        # version carrying ``withdrawn_reason`` is a *withdrawal*: the OSV/CSAF
+        # just pushed carry the withdrawn marker, so the advisory lands in
+        # ``dismissed`` rather than ``published`` (INV-LIFECYCLE-4) — the
+        # document itself stays in the repo, never deleted.
+        is_withdrawal = bool(task.version.payload.get("withdrawn_reason"))
         with transaction.atomic():
             advisory = Advisory.objects.select_for_update().get(pk=task.advisory_id)
             previous_state = advisory.state
-            advisory.state = State.PUBLISHED
-            if advisory.published_at is None:
-                advisory.published_at = timezone.now()
-            advisory.republish_required = False
-            advisory.save(
-                update_fields=["state", "published_at", "republish_required", "modified_at"]
-            )
-            services.mark_succeeded(task, commit_sha=result.commit_sha)
-            record(
-                action=Action.ADVISORY_PUBLISHED,
-                actor=task.enqueued_by,
-                advisory=advisory,
-                previous_value={"state": previous_state},
-                new_value={"state": State.PUBLISHED, "commit_sha": result.commit_sha},
-            )
-            # Publishing exits draft — clear any pending admin-reassignment
-            # request (INV-AUTH-9: cleared on every exit from draft).
-            from advisories import services as advisory_services
+            if is_withdrawal:
+                reason = task.version.payload["withdrawn_reason"]
+                advisory.state = State.DISMISSED
+                advisory.dismissed_from_state = previous_state
+                advisory.dismissed_reason = reason
+                advisory.republish_required = False
+                advisory.save(
+                    update_fields=[
+                        "state",
+                        "dismissed_from_state",
+                        "dismissed_reason",
+                        "republish_required",
+                        "modified_at",
+                    ]
+                )
+                services.mark_succeeded(task, commit_sha=result.commit_sha)
+                record(
+                    action=Action.ADVISORY_DISMISSED,
+                    actor=task.enqueued_by,
+                    advisory=advisory,
+                    metadata={"withdrawn": True, "reason": reason, "from_state": previous_state},
+                )
+                record(
+                    action=Action.ADVISORY_STATE_CHANGED,
+                    actor=task.enqueued_by,
+                    advisory=advisory,
+                    previous_value={"state": previous_state},
+                    new_value={"state": State.DISMISSED, "withdrawn": True},
+                )
+                # A withdrawn advisory's CVE becomes an orphan (admin marks it
+                # rejected at cve.org). State is already DISMISSED, so the
+                # non-gated orphan helper won't re-flag republish_required.
+                if advisory.assigned_cve_id:
+                    from workflows.services import orphan_cve
 
-            advisory_services.clear_reassignment_request_if_pending(
-                advisory, by=task.enqueued_by, cause="published"
-            )
-            record(
-                action=Action.PUBLICATION_EXPORT_COMPLETED,
-                advisory=advisory,
-                new_value={"task_id": task.pk, "commit_sha": result.commit_sha},
-            )
+                    orphan_cve(
+                        advisory, by=task.enqueued_by, reason=f"Advisory withdrawn: {reason}"
+                    )
+                record(
+                    action=Action.PUBLICATION_EXPORT_COMPLETED,
+                    advisory=advisory,
+                    new_value={
+                        "task_id": task.pk,
+                        "commit_sha": result.commit_sha,
+                        "withdrawn": True,
+                    },
+                )
+            else:
+                advisory.state = State.PUBLISHED
+                if advisory.published_at is None:
+                    advisory.published_at = timezone.now()
+                advisory.republish_required = False
+                advisory.save(
+                    update_fields=["state", "published_at", "republish_required", "modified_at"]
+                )
+                services.mark_succeeded(task, commit_sha=result.commit_sha)
+                record(
+                    action=Action.ADVISORY_PUBLISHED,
+                    actor=task.enqueued_by,
+                    advisory=advisory,
+                    previous_value={"state": previous_state},
+                    new_value={"state": State.PUBLISHED, "commit_sha": result.commit_sha},
+                )
+                # Publishing exits draft — clear any pending admin-reassignment
+                # request (INV-AUTH-9: cleared on every exit from draft).
+                from advisories import services as advisory_services
 
-        # 5. Notify (best-effort)
-        try:
-            from notifications.tasks import send_advisory_event_email
+                advisory_services.clear_reassignment_request_if_pending(
+                    advisory, by=task.enqueued_by, cause="published"
+                )
+                record(
+                    action=Action.PUBLICATION_EXPORT_COMPLETED,
+                    advisory=advisory,
+                    new_value={"task_id": task.pk, "commit_sha": result.commit_sha},
+                )
 
-            send_advisory_event_email.delay(advisory.pk, "advisory_published")
-        except Exception:  # pragma: no cover
-            log.exception("Failed to enqueue advisory_published notification")
+        # 5. Notify (best-effort) — a withdrawal is not a "published" event.
+        if not is_withdrawal:
+            try:
+                from notifications.tasks import send_advisory_event_email
+
+                send_advisory_event_email.delay(advisory.pk, "advisory_published")
+            except Exception:  # pragma: no cover
+                log.exception("Failed to enqueue advisory_published notification")
 
         return PublicationTaskStatus.SUCCEEDED
 

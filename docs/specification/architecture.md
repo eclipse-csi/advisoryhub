@@ -381,6 +381,17 @@ audit rows live inside the atomic block
 ([INV-PUB-4](./invariant.md#inv-pub-4)). The post-commit
 `advisory_published` notification is enqueued best-effort.
 
+**Withdrawal mode.** The pipeline doubles as the *withdrawal* path
+([INV-WITHDRAW](./invariant.md#inv-withdraw)): a pinned version carrying
+`withdrawn_reason` exports OSV/CSAF *with* the withdrawn marker (OSV
+`withdrawn` timestamp; a CSAF withdrawal `revision_history` entry + document
+note) and the finalisation branch flips the advisory to `dismissed`
+(`dismissed_from_state=published`) instead of `published`, orphaning any
+assigned CVE — no new task type, the end state is keyed off the payload. The
+document is updated in place, never deleted; a failed withdrawal push leaves
+the advisory `published` with a retryable `PublicationTask`. The post-commit
+`advisory_published` notification is skipped for a withdrawal.
+
 ### 4.5 Failure handling
 
 Any of {`OsvValidationError`, `CsafValidationError`,

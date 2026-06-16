@@ -76,6 +76,7 @@ stateDiagram-v2
     draft --> published : publication worker<br/>(run_publication, success only)
 
     published --> published: re-publish<br/>(edit → republish_required → run_publication)
+    published --> dismissed : withdraw_advisory<br/>(OSV/CSAF marked withdrawn, INV-WITHDRAW)
 
     dismissed --> draft  : reopen_advisory<br/>(dismissed_from_state == "draft")
     dismissed --> triage : reopen_advisory<br/>(dismissed_from_state == "triage")
@@ -98,8 +99,12 @@ Notes on the diagram:
   re-publish button surface; a successful re-publish writes a new commit on
   the same path but the `state` value does not change ([INV-REVIEW-4](./invariant.md#inv-review-4),
   [INV-VERSION-1](./invariant.md#inv-version-1)).
-- There is no `published → draft` and no `published → dismissed` transition.
-  Corrections always go through Edit + Re-publish.
+- There is no `published → draft` transition; ordinary corrections go through
+  Edit + Re-publish. A `published → dismissed` transition exists only via
+  **withdrawal** (`advisories.services.withdraw_advisory`,
+  [INV-WITHDRAW](./invariant.md#inv-withdraw)): the OSV/CSAF documents are
+  re-exported marked withdrawn (never deleted) and the state flips to
+  `dismissed` only after that push, with `dismissed_from_state=published`.
 - `triage` is created **only** by the public intake handler
   ([INV-LIFECYCLE-2](./invariant.md#inv-lifecycle-2)); no admin or API path produces it.
 
@@ -119,6 +124,7 @@ satisfy any "owner" requirement.
 | 6a | `draft`/`triage` | `dismissed` | `advisories.services.dismiss_advisory` (system, via `ghsa.services.react_to_ghsa_state`) | System — GitHub closed/withdrew/deleted the linked GHSA ([INV-GHSA-3](./invariant.md#inv-ghsa-3)) | GHSA-linked; observed `ghsa_state ∈ {closed, withdrawn}` or 404 (`missing_upstream`); **no** `assigned_cve_id` (a CVE-bearing row is left flagged for an admin — orphaning is a CNA action) | `ADVISORY_DISMISSED`, `ADVISORY_STATE_CHANGED` | Same cascade as row 6; `dismissed_reason` records the GitHub cause; a `published` advisory is **not** auto-dismissed (undismissable; surfaced for manual handling) |
 | 7 | `draft` | `published` | `publication.tasks.run_publication` (success branch) | Celery worker, on behalf of the user who called `publication.services.publish` | `can_publish` was true at enqueue time; OSV+CSAF built and validated; Git clone, commit, and push succeeded; no other queued/running task ([INV-CONCURRENCY-1](./invariant.md#inv-concurrency-1)) | `ADVISORY_PUBLISHED`, `PUBLICATION_OSV_GENERATED`, `PUBLICATION_CSAF_GENERATED`, `PUBLICATION_CVE_GENERATED` (when a CVE is assigned), `PUBLICATION_GIT_COMMIT`, `PUBLICATION_GIT_PUSH`, `PUBLICATION_EXPORT_COMPLETED` | `published_at` stamped if previously null; `republish_required=False`; `PublicationTask.status=SUCCEEDED` with `commit_sha`; one `PublicationArtifact` row per kind — `osv`, `csaf`, plus `cve` when the pinned payload carries an `assigned_cve_id` ([INV-VERSION-3](./invariant.md#inv-version-3); architecture.md §4.2). The artifact rows and the build/commit/push audits land *outside* the final atomic block (artifacts before the push, the git audits right after it); the state flip, task success, and the `ADVISORY_PUBLISHED` / `PUBLICATION_EXPORT_COMPLETED` audits share one `transaction.atomic` block ([INV-PUB-4](./invariant.md#inv-pub-4)) |
 | 8 | `published` | `published` | `publication.services.publish` → `run_publication` again | Owner (publish-eligible — §7 of `permissions.md`) | Edit happened since last publish (`republish_required=True`) **or** explicit re-publish for any reason; review gate per §5 applies | Same set as row 7 | A new `PublicationTask` row pins the **latest** `AdvisoryVersion`; OSV/CSAF and the commit on the same Git path are regenerated; prior `PublicationArtifact` and version rows remain immutable |
+| 8a | `published` | `dismissed` | `advisories.services.withdraw_advisory` → `run_publication` (withdrawal branch) | Admin or **mature-publisher** owner (`can_withdraw_published`); non-mature owners request one (§ withdrawal request) | `withdrawn_reason` set + version appended; OSV/CSAF built **with** the withdrawn marker; Git push succeeded ([INV-WITHDRAW](./invariant.md#inv-withdraw)) | `ADVISORY_DISMISSED`, `ADVISORY_STATE_CHANGED` (metadata `withdrawn=True`); `CVE_UNASSIGNED` when a CVE was assigned; the usual `PUBLICATION_*` build/push audits | OSV gains `withdrawn`; CSAF gains a withdrawal `revision_history` entry (version `2`) + document note — the documents stay in the repo, updated not deleted; `state→dismissed` with `dismissed_from_state=published` **only after** the push (a failed push leaves it `published` + a retryable `PublicationTask`); any assigned CVE is orphaned for cve.org rejection |
 | 9 | `dismissed` | `dismissed_from_state` (`draft` or `triage`) | `advisories.services.reopen_advisory` | Owner (project security team or admin) | `can_reopen(user, advisory)`: state is dismissed | `ADVISORY_REOPENED`, `ADVISORY_STATE_CHANGED` (and, depending on orphan/CVE state: `CVE_REASSIGNED_FROM_ORPHAN` *or* `ORPHAN_REASSIGNMENT_REQUESTED`; `CVE_REQUESTED` if a cancelled queued request is re-created) | `state` flips to `dismissed_from_state`; `dismissed_reason` / `dismissed_from_state` kept as historical metadata; auto-cancelled `CveRequestTask` re-created in `queued` if no other open task and target is `draft`; latest `OrphanCve` reattached directly (orphan → `REASSIGNED`) when `ORPHANED`, else an `OrphanCveReassignmentTask` is queued for admin (see §3.1.4) when `MARKED_REJECTED`; `advisory_reopened` notification queued |
 
 #### 3.1.1 Notes on row 1 — triage creation

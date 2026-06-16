@@ -367,6 +367,7 @@ def advisory_detail(request, advisory_id: str):
             "can_edit": perms.can_edit(request.user, advisory),
             "can_dismiss": perms.can_dismiss(request.user, advisory),
             "can_reopen": perms.can_reopen(request.user, advisory),
+            "can_withdraw_published": perms.can_withdraw_published(request.user, advisory),
             "can_publish": perms.can_publish(request.user, advisory),
             "can_grant": perms.can_grant_access(request.user, advisory),
             "can_request_cve": perms.can_request_cve(request.user, advisory),
@@ -826,6 +827,33 @@ def advisory_reopen(request, advisory_id: str):
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
+@login_required
+@require_http_methods(["POST"])
+def advisory_withdraw(request, advisory_id: str):
+    """Withdraw a published advisory (admin / mature-publisher owner).
+
+    Marks the advisory withdrawn in OSV/CSAF (the documents stay in the feed)
+    and moves it to dismissed once the re-export pushes (INV-LIFECYCLE-4).
+    """
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_withdraw_published(request.user, advisory):
+        raise PermissionDenied("You cannot withdraw this advisory.")
+    reason = (request.POST.get("reason") or "").strip()
+    if not reason:
+        return _detail_with_error(request, advisory, "A withdrawal reason is required.")
+    from publication.services import PublicationInProgress
+
+    try:
+        services.withdraw_advisory(advisory, by=request.user, reason=reason)
+    except (ValueError, PublicationInProgress) as exc:
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(
+        request,
+        "Withdrawal started — the advisory will be marked withdrawn once the export pushes.",
+    )
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
 # ---------------------------------------------------------------------------
 # Access-review banner dismissal
 # ---------------------------------------------------------------------------
@@ -984,6 +1012,7 @@ def _detail_with_error(request, advisory: Advisory, message: str):
             "can_edit": perms.can_edit(request.user, advisory),
             "can_dismiss": perms.can_dismiss(request.user, advisory),
             "can_reopen": perms.can_reopen(request.user, advisory),
+            "can_withdraw_published": perms.can_withdraw_published(request.user, advisory),
             "can_publish": perms.can_publish(request.user, advisory),
             "can_grant": perms.can_grant_access(request.user, advisory),
             "can_request_cve": perms.can_request_cve(request.user, advisory),

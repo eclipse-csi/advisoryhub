@@ -419,6 +419,40 @@ def test_ghsa_linked_owner_can_publish_on_non_mature_project(world):
     assert not perms.can_publish(world["outsider"], a)
 
 
+# ---- can_withdraw_published ------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_withdraw_published_admin_and_mature_owner(world):
+    """Admin always; a mature-publisher owner directly; non-mature owner never;
+    outsider never; only while published."""
+    a = world["advisory"]
+    a.state = State.PUBLISHED
+    a.save()
+    # Non-mature project: owner cannot withdraw directly, admin can.
+    assert perms.can_withdraw_published(world["admin"], a)
+    assert not perms.can_withdraw_published(world["member"], a)
+    assert not perms.can_withdraw_published(world["outsider"], a)
+    # Mature publisher: owner can withdraw directly.
+    p = a.project
+    p.is_mature_publisher = True
+    p.save()
+    assert perms.can_withdraw_published(world["member"], a)
+
+
+@pytest.mark.django_db
+def test_withdraw_published_only_when_published(world):
+    a = world["advisory"]
+    p = a.project
+    p.is_mature_publisher = True
+    p.save()
+    for state in (State.TRIAGE, State.DRAFT, State.DISMISSED):
+        a.state = state
+        a.save()
+        assert not perms.can_withdraw_published(world["member"], a)
+        assert not perms.can_withdraw_published(world["admin"], a)
+
+
 # ---- can_withdraw_review ---------------------------------------------------
 
 

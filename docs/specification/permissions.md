@@ -189,6 +189,7 @@ asymmetries with the same-row entries.
 | Withdraw a pending review | ✗ | ✗ | ✓ ¹⁰ | ✗ ⁴ |
 | Revoke an existing approval | ✗ | ✗ | ✗ | ✓ ¹⁰ |
 | Publish | ✗ | ✗ | ✓ ⁵ ¹⁰ | ✓ |
+| Withdraw a published advisory | ✗ | ✗ | ✓ ¹¹ | ✓ |
 | Unassign a CVE | ✗ | ✗ | ✗ | ✓ |
 | Mark an orphan CVE rejected | — | — | — | ✓ |
 | Resolve an orphan CVE reassignment task | — | — | — | ✓ |
@@ -270,6 +271,13 @@ approved-review gate (footnote ⁵) does not apply; the upstream GitHub advisory
 `ghsa.services.refresh_for_publish` (GHSA must be published on GitHub, not 404, no CVE conflict)
 is the real precondition. Defined by `can_submit_for_review` / `can_withdraw_review` /
 `can_revoke_approval` / `can_publish`.
+
+¹¹ **Withdrawing a published advisory** ([INV-WITHDRAW](./invariant.md#inv-withdraw)) mirrors the
+publish authority: a global admin, or a **mature-publisher** project owner, may withdraw directly —
+even with an assigned CVE (the orphan cascade then runs). A non-mature owner cannot withdraw
+directly; they **request a withdrawal** an admin fulfils (§ withdrawal request). Withdrawal
+re-exports the OSV/CSAF marked withdrawn (the documents stay in the feed) and flips the advisory to
+`dismissed`. Defined by `can_withdraw_published`.
 
 ---
 

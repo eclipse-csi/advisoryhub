@@ -346,6 +346,25 @@ def can_publish(user, advisory: Advisory) -> bool:
     return is_mature_publisher_member(user, advisory.project)
 
 
+def can_withdraw_published(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may withdraw a *published* advisory.
+
+    Withdrawal re-exports the OSV/CSAF with a ``withdrawn`` marker (the doc is
+    never deleted) and flips the advisory to ``dismissed``. It mirrors the
+    publish authority: a global admin, or a **mature-publisher** project owner
+    (who may do it even with an assigned CVE — the orphan cascade runs). A
+    non-mature owner cannot withdraw directly; they request one
+    (:func:`can_request_withdrawal`). Only meaningful while ``published``.
+    """
+    if advisory.state != State.PUBLISHED:
+        return False
+    if is_global_admin(user):
+        return True
+    if not is_security_team_member(user, advisory.project):
+        return False
+    return is_mature_publisher_member(user, advisory.project)
+
+
 def can_withdraw_review(user, advisory: Advisory) -> bool:
     """Whether ``user`` can pull a pending review back to draft.
 

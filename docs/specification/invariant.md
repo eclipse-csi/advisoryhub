@@ -51,6 +51,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-LIFECYCLE-3](#inv-lifecycle-3) | `state` flips to `published` only after a successful Git push. | Lifecycle | Critical |
 | [INV-LIFECYCLE-4](#inv-lifecycle-4) | `dismissed` is reversible by owner or admin via `reopen_advisory`. | Lifecycle | High |
 | [INV-LIFECYCLE-5](#inv-lifecycle-5) | Triage→draft promotion preserves advisory identity (same row). | Lifecycle | High |
+| [INV-WITHDRAW](#inv-withdraw) | A published advisory is withdrawn, never deleted: OSV/CSAF are re-exported marked withdrawn and the row flips to dismissed. | Lifecycle | High |
 | [INV-REVIEW-1](#inv-review-1) | `review_status` is orthogonal to `state` — never a fifth lifecycle state. | Review | High |
 | [INV-REVIEW-2](#inv-review-2) | Review submission freezes content via an immutable snapshot. | Review | High |
 | [INV-REVIEW-3](#inv-review-3) | Admins cannot submit for review (only publish). | Review | High |
@@ -218,10 +219,13 @@ button stops being idempotent because the prior commit may never have happened.
 **Statement.** While `state=dismissed`, an advisory cannot be published, edited, or
 take CVE workflow actions. Owners and admins may **reopen** a dismissed advisory
 via `advisories.services.reopen_advisory`; reopening returns it to its
-pre-dismissal state (`triage` or `draft`, recorded in
-`Advisory.dismissed_from_state`). There is no direct `dismissed → published`
-transition — re-publishing requires going through the normal publication flow
-from the reopened state.
+pre-dismissal state (`triage`, `draft`, recorded in
+`Advisory.dismissed_from_state`). A **published** advisory reaches `dismissed`
+only by **withdrawal** ([INV-WITHDRAW](#inv-withdraw)) — which re-exports the
+OSV/CSAF marked withdrawn and flips state only after the push, so
+`dismissed_from_state` may also be `published`. There is no *direct* (publication-less)
+`published → dismissed` or `dismissed → published` transition — both go through the
+publication pipeline.
 
 **Rationale.** Dismissals are often the right call (duplicate, not-a-vuln,
 out-of-scope) but humans make mistakes and new information surfaces. Reopening
@@ -261,7 +265,54 @@ form could push a non-dismissed advisory into an unexpected target state.
 - `advisories/tests/test_permissions.py` — `can_publish` / `can_edit` still
   reject dismissed.
 
-**Related.** [INV-LIFECYCLE-1](#inv-lifecycle-1), [INV-AUTH-1](#inv-auth-1).
+**Related.** [INV-LIFECYCLE-1](#inv-lifecycle-1), [INV-AUTH-1](#inv-auth-1),
+[INV-WITHDRAW](#inv-withdraw).
+
+---
+
+<a id="inv-withdraw"></a>
+### INV-WITHDRAW — A published advisory is withdrawn, never deleted   [High]
+
+**Statement.** A published advisory may be **withdrawn**: the OSV/CSAF documents
+stay in the publication repo (consumers must keep resolving the id) but are
+**re-exported with a withdrawn marker** — OSV's `withdrawn` timestamp and a CSAF
+withdrawal `revision_history` entry + document note — and the advisory flips to
+`dismissed` (`dismissed_from_state=published`). It is driven by
+`Advisory.withdrawn_reason`: setting it appends an `AdvisoryVersion`
+([INV-VERSION-1](#inv-version-1)), and `publication.tasks.run_publication` keys the
+end state off the pinned version — `dismissed` when `withdrawn_reason` is set, else
+`published`. State flips **only after the push** ([INV-LIFECYCLE-3](#inv-lifecycle-3)):
+a failed withdrawal leaves the advisory `published` with a failed `PublicationTask`
+to retry. Any assigned CVE is orphaned for cve.org rejection.
+
+**Authorization.** A global admin, or a **mature-publisher** project owner
+(`can_withdraw_published` — admin OR `is_mature_publisher_member`), may withdraw
+directly, even with an assigned CVE (the orphan cascade runs un-gated because the
+withdrawal itself was authorized). A non-mature owner cannot withdraw directly.
+
+**Rationale.** OSV/CSAF consumers cache and resolve advisory ids; deleting a record
+breaks them. OSV models exactly this with its first-class `withdrawn` field —
+"this record is no longer valid, but the id still resolves." Driving the export +
+end state off `withdrawn_reason` reuses the whole publication pipeline (build →
+validate → push → atomic finalise) and its failure handling, instead of a parallel
+path.
+
+**Enforced in.**
+- `advisories/permissions.py` — `can_withdraw_published`.
+- `advisories/services.py` — `withdraw_advisory` (sets `withdrawn_reason`, appends a
+  version, runs the pipeline via `publish(system=True)`).
+- `publication/tasks.py` — `run_publication` end-state branch + the withdrawal
+  cascade (orphan CVE via `workflows.services.orphan_cve`).
+- `publication/osv.py` / `publication/csaf.py` — withdrawn rendering.
+
+**Violation impact.** A withdrawn advisory keeps masquerading as live in the public
+feed, or a published record is deleted and breaks downstream consumers.
+
+**Tests.** `publication/tests/test_pipeline.py` (`test_withdraw_published_advisory`),
+`advisories/tests/test_permissions.py`, `advisories/tests/test_views.py`.
+
+**Related.** [INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-LIFECYCLE-4](#inv-lifecycle-4),
+[INV-VERSION-1](#inv-version-1), [INV-VERSION-3](#inv-version-3).
 
 ---
 

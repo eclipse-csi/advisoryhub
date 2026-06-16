@@ -111,6 +111,39 @@ can_dismiss, can_reopen.
     </div>
   {% endif %}
 
+  {% if can_withdraw_published %}
+    {% if advisory.withdrawn_reason %}
+      <div class="sidebar-card__row">
+        <p class="sidebar-card__action-hint sidebar-card__action-hint--blocked">
+          Withdrawal pending — the OSV/CSAF re-export is in progress or failed; check the Publication status.
+        </p>
+      </div>
+    {% else %}
+      <div class="sidebar-card__row">
+        <button type="button" class="danger"
+                data-dialog-open="advisory-withdraw-dialog">Withdraw…</button>
+        <p class="sidebar-card__action-hint">
+          Withdraw this published advisory: the public OSV/CSAF documents stay in the feed (not deleted) but are re-exported marked <strong>withdrawn</strong>, and the advisory moves to dismissed. Requires a reason.{% if advisory.assigned_cve_id %} The assigned CVE (<code>{{ advisory.assigned_cve_id }}</code>) is unassigned for the security team to mark rejected at cve.org.{% endif %}
+        </p>
+        <dialog id="advisory-withdraw-dialog" class="confirm-dialog" aria-labelledby="advisory-withdraw-title">
+          <form method="post" action="{% url 'advisories:withdraw' advisory.advisory_id %}">
+            {% csrf_token %}
+            <h3 id="advisory-withdraw-title">Withdraw advisory</h3>
+            <p>
+              The OSV/CSAF documents stay in the public feed but are re-exported marked <strong>withdrawn</strong>; the advisory moves to dismissed once the export pushes.
+            </p>
+            <label for="advisory-withdraw-reason">Reason</label>
+            <textarea id="advisory-withdraw-reason" name="reason" rows="4" required></textarea>
+            <div class="dialog-actions">
+              <button type="button" data-dialog-close>Cancel</button>
+              <button type="submit" class="danger">Withdraw</button>
+            </div>
+          </form>
+        </dialog>
+      </div>
+    {% endif %}
+  {% endif %}
+
   {% if can_reopen %}
     <div class="sidebar-card__row">
       {% url 'advisories:reopen' advisory.advisory_id as reopen_url %}

@@ -265,20 +265,16 @@ def cancel_pending_review(advisory: Advisory, *, by, reason: str) -> ReviewTask 
 
 
 @transaction.atomic
-def unassign_cve(advisory: Advisory, *, by, reason: str) -> OrphanCve:
-    """Admin removes the EF-assigned CVE from an advisory.
+def orphan_cve(advisory: Advisory, *, by, reason: str) -> OrphanCve:
+    """Orphan the advisory's assigned CVE — the non-gated orphaning core.
 
-    Clears ``Advisory.assigned_cve_id`` and creates an ``OrphanCve`` row that
-    surfaces in the dashboard queue until the admin records the cve.org
-    rejection via ``mark_orphan_rejected``.
+    Shared by the admin :func:`unassign_cve` and the withdrawal cascade
+    (`advisories.services.withdraw_advisory`); both authorize *before* calling.
+    Creates an ``OrphanCve`` receipt, clears ``assigned_cve_id``, flags
+    ``republish_required`` while still published (the on-disk OSV/CSAF still
+    carry the now-orphaned id), and audits ``CVE_UNASSIGNED``. The caller must
+    ensure ``advisory.assigned_cve_id`` is set.
     """
-    if not perms.can_unassign_cve(by, advisory):
-        raise PermissionDenied("Only admins can unassign CVEs.")
-    if not advisory.assigned_cve_id:
-        raise ValueError("This advisory has no assigned CVE to remove.")
-    if not (reason or "").strip():
-        raise ValueError("A reason is required when unassigning a CVE.")
-
     previous_cve = advisory.assigned_cve_id
     orphan = OrphanCve.objects.create(
         cve_id=previous_cve,
@@ -288,9 +284,6 @@ def unassign_cve(advisory: Advisory, *, by, reason: str) -> OrphanCve:
         unassign_reason=reason,
     )
     advisory.assigned_cve_id = ""
-    # Mirror update_cve_status: removing the CVE on a published advisory
-    # means the on-disk OSV/CSAF still carry the now-orphaned id, so flag
-    # for re-publication.
     fields = ["assigned_cve_id", "modified_at"]
     if advisory.state == State.PUBLISHED and not advisory.republish_required:
         advisory.republish_required = True
@@ -305,6 +298,22 @@ def unassign_cve(advisory: Advisory, *, by, reason: str) -> OrphanCve:
         metadata={"reason_length": len(reason)},
     )
     return orphan
+
+
+def unassign_cve(advisory: Advisory, *, by, reason: str) -> OrphanCve:
+    """Admin removes the EF-assigned CVE from an advisory.
+
+    Clears ``Advisory.assigned_cve_id`` and creates an ``OrphanCve`` row that
+    surfaces in the dashboard queue until the admin records the cve.org
+    rejection via ``mark_orphan_rejected``.
+    """
+    if not perms.can_unassign_cve(by, advisory):
+        raise PermissionDenied("Only admins can unassign CVEs.")
+    if not advisory.assigned_cve_id:
+        raise ValueError("This advisory has no assigned CVE to remove.")
+    if not (reason or "").strip():
+        raise ValueError("A reason is required when unassigning a CVE.")
+    return orphan_cve(advisory, by=by, reason=reason)
 
 
 @transaction.atomic

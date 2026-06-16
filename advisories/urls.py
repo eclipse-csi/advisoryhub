@@ -11,6 +11,7 @@ urlpatterns = [
     path("<advid:advisory_id>/edit/", views.advisory_edit, name="edit"),
     path("<advid:advisory_id>/dismiss/", views.advisory_dismiss, name="dismiss"),
     path("<advid:advisory_id>/reopen/", views.advisory_reopen, name="reopen"),
+    path("<advid:advisory_id>/withdraw/", views.advisory_withdraw, name="withdraw"),
     path("<advid:advisory_id>/promote/", views.advisory_promote, name="promote"),
     path("<advid:advisory_id>/flag/", views.advisory_flag, name="flag"),
     path("<advid:advisory_id>/flag/modal/", views.advisory_flag_modal, name="flag_modal"),

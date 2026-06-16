@@ -1016,6 +1016,54 @@ def test_dismiss_advisory_service_dismisses_draft(member_a, project_a):
 
 
 @pytest.mark.django_db
+def test_withdraw_published_forbidden_for_non_mature_owner(client, member_a, project_a):
+    """A non-mature project owner cannot withdraw a published advisory directly."""
+    advisory = Advisory.objects.create(project=project_a, state=State.PUBLISHED, summary="x")
+    client.force_login(member_a)
+    resp = client.post(
+        reverse("advisories:withdraw", args=[advisory.advisory_id]),
+        data={"reason": "duplicate"},
+    )
+    assert resp.status_code == 403
+    advisory.refresh_from_db()
+    assert advisory.state == State.PUBLISHED
+    assert advisory.withdrawn_reason == ""
+
+
+@pytest.mark.django_db
+def test_withdraw_published_by_mature_owner_starts_withdrawal(client, member_a, project_a):
+    """A mature-publisher owner can withdraw: the reason is recorded and a
+    publication run is enqueued (the state flips to dismissed once it pushes)."""
+    from publication.models import PublicationTask
+
+    project_a.is_mature_publisher = True
+    project_a.save(update_fields=["is_mature_publisher"])
+    advisory = Advisory.objects.create(project=project_a, state=State.PUBLISHED, summary="x")
+    client.force_login(member_a)
+    resp = client.post(
+        reverse("advisories:withdraw", args=[advisory.advisory_id]),
+        data={"reason": "duplicate of Y"},
+    )
+    assert resp.status_code in (301, 302)
+    advisory.refresh_from_db()
+    assert advisory.withdrawn_reason == "duplicate of Y"
+    assert PublicationTask.objects.filter(advisory=advisory).exists()
+
+
+@pytest.mark.django_db
+def test_withdraw_requires_reason(client, admin_user, project_a):
+    advisory = Advisory.objects.create(project=project_a, state=State.PUBLISHED, summary="x")
+    client.force_login(admin_user)
+    resp = client.post(
+        reverse("advisories:withdraw", args=[advisory.advisory_id]),
+        data={"reason": "   "},
+    )
+    assert resp.status_code == 400  # re-rendered detail with an inline error
+    advisory.refresh_from_db()
+    assert advisory.withdrawn_reason == ""
+
+
+@pytest.mark.django_db
 def test_dismiss_admin_with_assigned_cve_creates_orphan(client, admin_user, project_a):
     from workflows.models import OrphanCve, OrphanCveStatus
 

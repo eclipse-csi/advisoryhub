@@ -276,6 +276,50 @@ def test_run_publication_writes_files_and_flips_state(setup):
 
 
 @pytest.mark.django_db
+def test_withdraw_published_advisory(setup):
+    """Withdrawing a published advisory re-exports OSV/CSAF with the withdrawn
+    marker, flips to dismissed, and orphans the assigned CVE (INV-LIFECYCLE-4).
+    The published documents stay in the repo — they are updated, not deleted."""
+    import json
+
+    from advisories import services as adv_services
+    from workflows.models import OrphanCve
+
+    advisory = setup["advisory"]
+    advisory.assigned_cve_id = "CVE-2026-9999"
+    advisory.save(update_fields=["assigned_cve_id"])
+
+    # Publish first.
+    task = pub_services.publish(advisory, by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+    advisory.refresh_from_db()
+    assert advisory.state == State.PUBLISHED
+
+    # Withdraw (admin authority). withdraw_advisory enqueues a publication run
+    # whose pinned version carries withdrawn_reason; run it directly.
+    wtask = adv_services.withdraw_advisory(advisory, by=setup["admin"], reason="duplicate of X")
+    pub_tasks.run_publication(wtask.pk)
+
+    advisory.refresh_from_db()
+    assert advisory.state == State.DISMISSED
+    assert advisory.dismissed_from_state == State.PUBLISHED
+    assert advisory.withdrawn_reason == "duplicate of X"
+    assert advisory.assigned_cve_id == ""  # orphaned for cve.org rejection
+    assert OrphanCve.objects.filter(previous_advisory=advisory).exists()
+
+    # The on-disk documents stay but now carry the withdrawal.
+    year = advisory.published_at.year
+    verify = setup["tmp_path"] / "verify-withdraw"
+    _clone(str(setup["bare_repo"]), str(verify))
+    osv = json.loads((verify / "osv" / str(year) / "ECL-cccc-ffff-gggg.json").read_text())
+    csaf = json.loads((verify / "csaf" / str(year) / "ECL-cccc-ffff-gggg.json").read_text())
+    assert "withdrawn" in osv
+    tracking = csaf["document"]["tracking"]
+    assert tracking["version"] == "2"
+    assert any(r["summary"] == "Advisory withdrawn" for r in tracking["revision_history"])
+
+
+@pytest.mark.django_db
 def test_advisory_state_does_not_flip_until_after_push(setup, monkeypatch):
     """If push fails, advisory must stay in 'draft'."""
 

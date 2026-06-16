@@ -97,7 +97,20 @@ def build_csaf(
         primary = cwe_ids[0]
         vuln["cwe"] = {"id": primary, "name": primary}
 
-    document = {
+    # CSAF has no native "withdrawn" status (only draft/interim/final). A
+    # withdrawn advisory keeps status `final` but records the withdrawal as a
+    # second revision_history entry (version bumped to 2) plus a document note,
+    # so consumers see the document was withdrawn without it being deleted.
+    withdrawn_reason = payload.get("withdrawn_reason")
+    revision_history = [{"date": initial, "number": "1", "summary": "Initial publication"}]
+    tracking_version = "1"
+    document_notes: list[dict[str, str]] = []
+    if withdrawn_reason:
+        tracking_version = "2"
+        revision_history.append({"date": current, "number": "2", "summary": "Advisory withdrawn"})
+        document_notes.append({"category": "other", "title": "Withdrawn", "text": withdrawn_reason})
+
+    document: dict[str, Any] = {
         "category": "csaf_security_advisory",
         "csaf_version": CSAF_VERSION,
         "title": payload.get("summary") or advisory_id,
@@ -111,16 +124,12 @@ def build_csaf(
             "current_release_date": current,
             "initial_release_date": initial,
             "status": "final",
-            "version": "1",
-            "revision_history": [
-                {
-                    "date": initial,
-                    "number": "1",
-                    "summary": "Initial publication",
-                }
-            ],
+            "version": tracking_version,
+            "revision_history": revision_history,
         },
     }
+    if document_notes:
+        document["notes"] = document_notes
 
     out: dict[str, Any] = {
         "document": document,

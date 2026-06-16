@@ -368,6 +368,40 @@ def dismiss_advisory(advisory: Advisory, *, by, reason: str) -> Advisory:
     return locked
 
 
+def withdraw_advisory(advisory: Advisory, *, by, reason: str):
+    """Withdraw a *published* advisory — mark it withdrawn, not delete it.
+
+    Sets ``withdrawn_reason`` (payload-visible, so a new ``AdvisoryVersion`` is
+    appended — INV-VERSION-1) and runs the publication pipeline. The pinned
+    version carrying ``withdrawn_reason`` drives the export (OSV ``withdrawn`` +
+    a CSAF withdrawal revision — the documents stay in the repo) **and** the
+    final state: ``publication.tasks.run_publication`` flips the advisory to
+    ``dismissed`` on a successful push, orphaning any assigned CVE
+    (INV-LIFECYCLE-4). Returns the ``PublicationTask``.
+
+    Authorization is the caller's responsibility (the view checks
+    ``can_withdraw_published``; the GHSA auto-withdraw is a system-policy action
+    with ``by=None``). ``publish(system=True)`` skips the human ``can_publish``
+    gate — withdrawal authority is ``can_withdraw_published``, not publish.
+    """
+    cleaned = (reason or "").strip()
+    if not cleaned:
+        raise ValueError("A withdrawal reason is required.")
+
+    from publication.services import publish
+
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if locked.state != State.PUBLISHED:
+            raise ValueError(
+                f"Only published advisories can be withdrawn (currently {locked.state})."
+            )
+        locked.withdrawn_reason = cleaned
+        locked.save(update_fields=["withdrawn_reason", "modified_at"])
+        record_advisory_version(locked, editor=by, if_changed=True)
+        return publish(locked, by=by, system=True)
+
+
 def reopen_advisory(advisory: Advisory, *, by) -> Advisory:
     """Return a dismissed advisory to its pre-dismissal state.
 

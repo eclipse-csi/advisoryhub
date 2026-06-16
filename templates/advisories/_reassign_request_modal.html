@@ -1,0 +1,27 @@
+{% load i18n %}
+<dialog class="confirm-dialog" aria-labelledby="reassign-request-modal-title" data-light-dismiss>
+  <form hx-post="{% url 'advisories:request_reassignment' advisory.advisory_id %}"
+        hx-target="#modal"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <h3 id="reassign-request-modal-title">{% translate "Request admin reassignment" %}</h3>
+    <p>{% translate "Describe which project this advisory belongs to and why. An admin will re-home it — your team keeps working in the meantime." %}</p>
+    {% if error %}<p class="errors">{{ error }}</p>{% endif %}
+    <label>{% translate "Where should this advisory go? (required)" %}
+      <textarea name="note" required rows="4" autofocus></textarea>
+    </label>
+    <label>{% translate "Suggested target project (optional)" %}
+      <select name="suggested_project_slug" data-combobox>
+        <option value="">{% translate "— I'm not sure —" %}</option>
+        {% for p in projects %}
+          <option value="{{ p.slug }}" data-combobox-detail="{{ p.slug }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="muted">{% translate "If you name a project, an admin can accept it in one click. The suggestion grants no access — it's just a hint." %}</p>
+    <div class="dialog-actions">
+      <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
+      <button type="submit">{% translate "Request reassignment" %}</button>
+    </div>
+  </form>
+</dialog>

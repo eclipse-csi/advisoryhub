@@ -128,6 +128,12 @@ class Action(models.TextChoices):
     ADVISORY_TRIAGE_PROMOTED = "advisory.triage_promoted"
     ADVISORY_FLAGGED_FOR_ROUTING = "advisory.flagged_for_routing"
     ADVISORY_ROUTING_FLAG_CLEARED = "advisory.routing_flag_cleared"
+    # Draft admin-reassignment request (the non-locking, draft-state analogue of
+    # the triage routing flag — see INV-AUTH-9). A project owner asks an admin to
+    # re-home a draft; the request is cleared on withdraw, accept, or any exit
+    # from draft (dismiss / publish).
+    ADVISORY_REASSIGNMENT_REQUESTED = "advisory.reassignment_requested"
+    ADVISORY_REASSIGNMENT_REQUEST_CLEARED = "advisory.reassignment_request_cleared"
     # Legacy intake actions — kept for read-only history, not emitted by new code.
     REPORT_SUBMITTED = "report.submitted"
     REPORT_TRIAGED_INTO_ADVISORY = "report.triaged_into_advisory"

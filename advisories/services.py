@@ -30,11 +30,14 @@ from common.users import actor_or_none
 from .models import Advisory, AdvisoryIntakeMetadata, AdvisoryVersion, State
 from .permissions import (
     UNSORTED_PROJECT_SLUG,
+    can_accept_reassignment_suggestion,
     can_clear_admin_routing_flag,
     can_flag_for_admin_routing,
     can_reopen,
+    can_request_reassignment,
     can_triage,
     can_view,
+    can_withdraw_reassignment_request,
     is_global_admin,
     is_security_team_member,
 )
@@ -599,6 +602,160 @@ def clear_admin_routing_flag(advisory: Advisory, *, by, note: str = "") -> Advis
         transaction.on_commit(
             partial(_enqueue_triage_notification, locked.pk, "advisory_routing_flag_cleared")
         )
+
+    return locked
+
+
+# ---- Draft admin-reassignment request (INV-AUTH-9) -------------------------
+
+
+def request_admin_reassignment(
+    advisory: Advisory, *, by, note: str, suggested_project=None
+) -> Advisory:
+    """Ask an admin to re-home a *draft* advisory, non-locking.
+
+    The draft-state analogue of :func:`flag_for_admin_routing`, but it does NOT
+    strip the team's edit capability (INV-AUTH-9) — work continues while the
+    request sits in the admin queue. A non-empty ``note`` is required; an
+    optional ``suggested_project`` (never the current one) lets an admin accept
+    in one click. Authorization is re-checked here; the pending-request and
+    admin exclusions live in :func:`can_request_reassignment`.
+    """
+    clean_note = (note or "").strip()
+    if not clean_note:
+        raise ValueError("A reassignment note is required.")
+
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_request_reassignment(by, locked):
+            raise PermissionDenied("You may not request reassignment of this advisory.")
+        if suggested_project is not None and suggested_project == locked.project:
+            raise ValueError("The suggested project is the advisory's current project.")
+
+        locked.reassignment_requested_at = timezone.now()
+        locked.reassignment_requested_by = by
+        locked.reassignment_request_note = clean_note
+        locked.reassignment_suggested_project = suggested_project
+        locked.save(
+            update_fields=[
+                "reassignment_requested_at",
+                "reassignment_requested_by",
+                "reassignment_request_note",
+                "reassignment_suggested_project",
+                "modified_at",
+            ]
+        )
+
+        record(
+            action=Action.ADVISORY_REASSIGNMENT_REQUESTED,
+            actor=by,
+            advisory=locked,
+            metadata={
+                "advisory_id": locked.advisory_id,
+                "note": clean_note,
+                "suggested_project_slug": suggested_project.slug if suggested_project else "",
+            },
+        )
+
+    return locked
+
+
+def clear_reassignment_request_if_pending(advisory: Advisory, *, by, cause: str) -> bool:
+    """Clear a pending reassignment request, if any. Returns whether it cleared.
+
+    The shared low-level helper behind withdraw / accept / and every exit from
+    draft (dismiss / publish). No permission gate of its own: the user-initiated
+    caller (withdraw) authorizes first, while the auto-clear callers are
+    state-exit side effects. A no-op — and no audit row — when nothing is
+    pending. ``cause`` is recorded for context (``withdrawn`` / ``accepted`` /
+    ``dismissed`` / ``published``).
+    """
+    if advisory.reassignment_requested_at is None:
+        return False
+    previous_note = advisory.reassignment_request_note
+    advisory.reassignment_requested_at = None
+    advisory.reassignment_requested_by = None
+    advisory.reassignment_request_note = ""
+    advisory.reassignment_suggested_project = None
+    advisory.save(
+        update_fields=[
+            "reassignment_requested_at",
+            "reassignment_requested_by",
+            "reassignment_request_note",
+            "reassignment_suggested_project",
+            "modified_at",
+        ]
+    )
+    record(
+        action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED,
+        actor=by,
+        advisory=advisory,
+        metadata={
+            "advisory_id": advisory.advisory_id,
+            "cause": cause,
+            "previous_note": previous_note,
+        },
+    )
+    return True
+
+
+def withdraw_admin_reassignment(advisory: Advisory, *, by, note: str = "") -> Advisory:
+    """Retract a pending reassignment request (requesting team or admin).
+
+    ``note`` is accepted for caller symmetry with the view form; the meaningful
+    record is the cleared-request audit row (cause ``withdrawn`` + the original
+    note as ``previous_note``).
+    """
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_withdraw_reassignment_request(by, locked):
+            raise PermissionDenied("You may not withdraw this reassignment request.")
+        clear_reassignment_request_if_pending(locked, by=by, cause="withdrawn")
+
+    return locked
+
+
+def accept_reassignment_suggestion(advisory: Advisory, *, by) -> Advisory:
+    """One-click accept the suggested target: move the draft onto that project.
+
+    Mirrors :func:`reassign_triage_project` for the draft state — changes the
+    project, appends a version (``project_slug`` is payload-visible), flags an
+    access review (the previous team's implicit ownership no longer applies),
+    audits the project change, and clears the request (cause ``accepted``).
+    Authorization (admin or target-team membership) is re-checked here.
+    """
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_accept_reassignment_suggestion(by, locked):
+            raise PermissionDenied("You may not accept this reassignment suggestion.")
+
+        target = locked.reassignment_suggested_project
+        if target is None:
+            # Unreachable in practice — can_accept_reassignment_suggestion already
+            # requires a suggested project — but narrows the Optional for the type
+            # checker and fails closed if the gate ever changes.
+            raise PermissionDenied("There is no suggested project to accept.")
+
+        previous_project = locked.project
+        locked.project = target
+        locked.access_review_required_at = timezone.now()
+        locked.save(update_fields=["project", "access_review_required_at", "modified_at"])
+        # project_slug is payload-visible, so the move is an edit → new version.
+        record_advisory_version(locked, editor=by, if_changed=True)
+
+        record(
+            action=Action.ADVISORY_PROJECT_CHANGED,
+            actor=by,
+            advisory=locked,
+            previous_value={"project_slug": previous_project.slug},
+            new_value={"project_slug": target.slug},
+            metadata={
+                "advisory_id": locked.advisory_id,
+                "cause": "reassignment_accepted",
+                "in_triage": False,
+            },
+        )
+        clear_reassignment_request_if_pending(locked, by=by, cause="accepted")
 
     return locked
 

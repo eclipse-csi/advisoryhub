@@ -179,6 +179,8 @@ asymmetries with the same-row entries.
 | Grant / revoke access | ✗ | ✗ | ✓ | ✓ |
 | View duplicate-check results / trigger a re-run | ✗ | ✗ | ✓ ⁸ | ✓ ⁸ |
 | Change advisory's project | ✗ | ✗ | ✓ ¹ | ✓ |
+| Request admin reassignment (draft) | ✗ | ✗ | ✓ ⁹ | ✗ ⁹ |
+| Withdraw a reassignment request | ✗ | ✗ | ✓ ⁹ | ✓ ⁹ |
 | Dismiss advisory | ✗ | ✗ | ✓ ² | ✓ |
 | Reopen dismissed advisory | ✗ | ✗ | ✓ ⁶ | ✓ ⁶ |
 | Request a CVE | ✗ | ✗ | ✓ ³ | ✓ ³ |
@@ -243,6 +245,15 @@ advisory can already see, and more than a per-advisory grantee may see
 ([INV-SIM-1](./invariant.md#inv-sim-1)). The whole surface 404s while
 `SIMILARITY_CHECK_ENABLED` is off ([INV-SIM-2](./invariant.md#inv-sim-2)).
 Enforced by `similarity.views` via `resolved_permission == "owner"`.
+
+⁹ Draft-only and **non-locking**: a pending request never removes the team's
+edit/publish capability ([INV-AUTH-9](./invariant.md#inv-auth-9)), unlike the triage
+routing flag (§6). Global admins cannot *request* (they reassign directly) but may
+*withdraw*; only one request is pending at a time. An optional suggested target project
+enables a one-click *accept* gated on the **suggested** project's security team (or a
+global admin) — never the requester; accepting moves the advisory and appends a version.
+Defined by `can_request_reassignment` / `can_withdraw_reassignment_request` /
+`can_accept_reassignment_suggestion`. See advisory-lifecycle §11.
 
 ---
 

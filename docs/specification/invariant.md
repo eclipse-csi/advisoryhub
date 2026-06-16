@@ -63,6 +63,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-AUTH-6](#inv-auth-6) | Admin-routing-flagged advisories are editable only by global admins. | Authorization | High |
 | [INV-AUTH-7](#inv-auth-7) | Publication state grants no implicit read access inside AdvisoryHub. | Authorization | Critical |
 | [INV-AUTH-8](#inv-auth-8) | A banned account is denied login and its live session is dropped on the next request. | Authorization | High |
+| [INV-AUTH-9](#inv-auth-9) | Draft admin-reassignment requests are non-locking; the team keeps editing while one is pending. | Authorization | High |
 | [INV-MAINT-1](#inv-maint-1) | While maintenance mode is on, only global admins may mutate state; everyone else is paused server-side. | Maintenance | Critical |
 | [INV-AUDIT-1](#inv-audit-1) | The audit log is append-only at both the application layer and the database. | Audit | Critical |
 | [INV-AUDIT-2](#inv-audit-2) | All user/CI-supplied strings are redacted before reaching audit / errors / notifications. | Audit | Critical |
@@ -608,6 +609,46 @@ retro-blocked by the ban.
 **Tests.** `accounts/test_ban.py`, `admin_console/test_ban.py`.
 
 **Related.** [INV-OIDC-3](#inv-oidc-3), [INV-AUTH-1](#inv-auth-1), [INV-AUDIT-1](#inv-audit-1).
+
+---
+
+<a id="inv-auth-9"></a>
+### INV-AUTH-9 — Draft admin-reassignment requests are non-locking   [High]
+
+**Statement.** A project owner who finds a **draft** advisory belongs to a team they're
+not on may ask an admin to re-home it (`request_admin_reassignment`). Unlike the triage
+routing flag ([INV-AUTH-6](#inv-auth-6)), a pending request does **not** strip the
+team's edit/publish capability — work continues while the request sits in the queue.
+Global admins cannot *request* (they reassign directly); only one request is pending at
+a time; requests exist only in `draft`. An optional **suggested target project** (never
+the advisory's current project) enables a one-click accept by a global admin **or** a
+security-team member of that target project — but never by the requester (who is on the
+current team, not the target). Accepting moves the advisory onto the target, which
+appends an `AdvisoryVersion` (`project_slug` is payload-visible) and flags an access
+review. The request is cleared — clearing all four `reassignment_*` fields — on withdraw
+(requester or admin), accept, or **any exit from draft** (dismiss / publish). Every
+transition is audited.
+
+**Rationale.** The draft analogue of the triage routing flag, but draft work is trusted
+and collaborative, so a misrouting hint must not freeze the team the way an untrusted
+triage row is frozen. The suggestion + scoped accept lets the *receiving* team (or an
+admin) pull the advisory over without handing the requester cross-team authority they
+don't have (owner is derived — [INV-AUTH-3](#inv-auth-3)).
+
+**Enforced in.**
+- `advisories/permissions.py` — `can_request_reassignment`, `can_withdraw_reassignment_request`,
+  `can_accept_reassignment_suggestion`.
+- `advisories/services.py` — `request_admin_reassignment`, `withdraw_admin_reassignment`,
+  `accept_reassignment_suggestion`, and the shared `clear_reassignment_request_if_pending`.
+- Auto-clear on draft exit: `advisories/views.py` `advisory_dismiss` and
+  `publication/tasks.py` (post-push finalisation).
+
+**Violation impact.** A misrouting hint silently locks a trusted team out of its own
+draft, or a requester gains the ability to move advisories onto teams they're not on.
+
+**Tests.** `advisories/tests/test_draft_reassignment.py`.
+
+**Related.** [INV-AUTH-6](#inv-auth-6), [INV-AUTH-3](#inv-auth-3), [INV-VERSION-1](#inv-version-1).
 
 ---
 

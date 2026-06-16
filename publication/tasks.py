@@ -188,6 +188,13 @@ def run_publication(self, task_id: int) -> str:
                 previous_value={"state": previous_state},
                 new_value={"state": State.PUBLISHED, "commit_sha": result.commit_sha},
             )
+            # Publishing exits draft — clear any pending admin-reassignment
+            # request (INV-AUTH-9: cleared on every exit from draft).
+            from advisories import services as advisory_services
+
+            advisory_services.clear_reassignment_request_if_pending(
+                advisory, by=task.enqueued_by, cause="published"
+            )
             record(
                 action=Action.PUBLICATION_EXPORT_COMPLETED,
                 advisory=advisory,

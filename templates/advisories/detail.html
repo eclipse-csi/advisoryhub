@@ -69,6 +69,49 @@
     </div>
   {% endif %}
 
+  {% if advisory.reassignment_requested_at %}
+    <div class="advisory-banner advisory-banner--warning" role="status">
+      <div class="advisory-banner__body">
+        <strong>Admin reassignment requested</strong>
+        {% if advisory.reassignment_requested_by %}
+          — requested by {% user_chip advisory.reassignment_requested_by %}
+          on {% timestamp advisory.reassignment_requested_at %}
+        {% endif %}
+        {% if advisory.reassignment_request_note %}
+          <blockquote>{{ advisory.reassignment_request_note }}</blockquote>
+        {% endif %}
+        {% if advisory.reassignment_suggested_project %}
+          <p class="muted">Suggested target: <strong>{{ advisory.reassignment_suggested_project.name }}</strong></p>
+        {% endif %}
+      </div>
+      {% if can_accept_reassignment or can_withdraw_reassignment %}
+        <div class="advisory-banner__actions">
+          {% if can_accept_reassignment %}
+            <form method="post"
+                  action="{% url 'advisories:accept_reassignment' advisory.advisory_id %}"
+                  class="inline">
+              {% csrf_token %}
+              <button type="submit" class="success">Accept — move to {{ advisory.reassignment_suggested_project.name }}</button>
+            </form>
+          {% endif %}
+          {% if can_withdraw_reassignment %}
+            <details>
+              <summary class="advisory-banner__dismiss">Withdraw request</summary>
+              <form method="post"
+                    action="{% url 'advisories:withdraw_reassignment' advisory.advisory_id %}"
+                    class="inline">
+                {% csrf_token %}
+                <label for="withdraw-reassign-note">Optional reason</label>
+                <textarea id="withdraw-reassign-note" name="note" rows="2"></textarea>
+                <button type="submit">Withdraw request</button>
+              </form>
+            </details>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <dl>
     <dt>Project</dt>
     <dd>

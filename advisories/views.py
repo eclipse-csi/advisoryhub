@@ -392,6 +392,15 @@ def advisory_detail(request, advisory_id: str):
             and intake.needs_admin_routing
             and perms.can_clear_admin_routing_flag(request.user, advisory),
             "is_unsorted": is_triage and advisory.project.slug == UNSORTED_PROJECT_SLUG,
+            # Draft admin-reassignment request (INV-AUTH-9). Display-only gates;
+            # the views/services re-enforce authorization server-side.
+            "can_request_reassignment": perms.can_request_reassignment(request.user, advisory),
+            "can_withdraw_reassignment": perms.can_withdraw_reassignment_request(
+                request.user, advisory
+            ),
+            "can_accept_reassignment": perms.can_accept_reassignment_suggestion(
+                request.user, advisory
+            ),
             # Display-only gate for the duplicate-check panel loader; the
             # similarity endpoints re-enforce the owner check server-side.
             "similarity_enabled": settings.SIMILARITY_CHECK_ENABLED
@@ -793,6 +802,11 @@ def advisory_dismiss(request, advisory_id: str):
                     previous_value=previous_state,
                     new_value=State.DISMISSED,
                 )
+                # Dismissal exits draft — clear any pending admin-reassignment
+                # request (INV-AUTH-9: cleared on every exit from draft).
+                services.clear_reassignment_request_if_pending(
+                    advisory, by=request.user, cause="dismissed"
+                )
                 # An open CVE request on a now-dismissed advisory is dead
                 # work — auto-cancel it so the admin queue doesn't carry
                 # the row.
@@ -1035,6 +1049,99 @@ def _detail_with_error(request, advisory: Advisory, message: str):
         },
         status=400,
     )
+
+
+# ---------------------------------------------------------------------------
+# Draft admin-reassignment request (INV-AUTH-9)
+# ---------------------------------------------------------------------------
+
+
+def _suggestable_projects(advisory: Advisory):
+    """Projects an admin could re-home this draft to: every project except the
+    advisory's current one and the ``unsorted`` sentinel. The suggestion is a
+    hint only (it grants no access), so the full roster is offered."""
+    return (
+        Project.objects.exclude(pk=advisory.project_id)
+        .exclude(slug=UNSORTED_PROJECT_SLUG)
+        .order_by("name")
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def advisory_request_reassignment_modal(request, advisory_id: str):
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_request_reassignment(request.user, advisory):
+        raise PermissionDenied("Reassignment request is not available for this user/advisory.")
+    return render(
+        request,
+        "advisories/_reassign_request_modal.html",
+        {"advisory": advisory, "projects": _suggestable_projects(advisory)},
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="20/h")
+def advisory_request_reassignment(request, advisory_id: str):
+    """Request admin reassignment of a draft advisory (rendered in an HTMX modal)."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    note = (request.POST.get("note") or "").strip()
+    raw_slug = (request.POST.get("suggested_project_slug") or "").strip()
+    is_htmx = bool(getattr(request, "htmx", False))
+
+    suggested_project = None
+    if raw_slug:
+        # Unknown slug → treat as no suggestion (the field is optional and the
+        # picker only ever offers real projects); never 500 on a stale value.
+        suggested_project = Project.objects.filter(slug=raw_slug).first()
+
+    try:
+        services.request_admin_reassignment(
+            advisory, by=request.user, note=note, suggested_project=suggested_project
+        )
+    except ValueError as exc:
+        if is_htmx:
+            return render(
+                request,
+                "advisories/_reassign_request_modal.html",
+                {
+                    "advisory": advisory,
+                    "projects": _suggestable_projects(advisory),
+                    "error": str(exc),
+                },
+                status=400,
+            )
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Reassignment requested — an admin will re-home this advisory.")
+    if is_htmx:
+        from django.http import HttpResponse
+
+        resp = HttpResponse(status=204)
+        resp["HX-Refresh"] = "true"
+        return resp
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def advisory_withdraw_reassignment(request, advisory_id: str):
+    """Withdraw a pending reassignment request (requesting team or admin)."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    note = (request.POST.get("note") or "").strip()
+    services.withdraw_admin_reassignment(advisory, by=request.user, note=note)
+    messages.success(request, "Reassignment request withdrawn.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def advisory_accept_reassignment(request, advisory_id: str):
+    """Accept the suggested target project in one click (admin or target team)."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    services.accept_reassignment_suggestion(advisory, by=request.user)
+    messages.success(request, "Advisory reassigned to the suggested project.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
 # ---------------------------------------------------------------------------

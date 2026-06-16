@@ -438,6 +438,61 @@ def can_clear_admin_routing_flag(user, advisory: Advisory) -> bool:
     return resolved_permission(user, advisory) == "owner"
 
 
+# ---- Draft admin-reassignment request (INV-AUTH-9) -------------------------
+
+
+def can_request_reassignment(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may ask an admin to re-home a *draft* advisory.
+
+    The non-locking, draft-state analogue of :func:`can_flag_for_admin_routing`:
+    a project owner who finds a draft belongs to a team they're not on asks an
+    admin to move it, while the team keeps editing (contrast the triage routing
+    flag, which locks the row — INV-AUTH-6). Admins are excluded because *they*
+    are the destination — they reassign directly rather than queue a request to
+    themselves. Refused once a request is already pending (one at a time) and in
+    any non-draft state.
+    """
+    if advisory.state != State.DRAFT:
+        return False
+    if advisory.reassignment_requested_at is not None:
+        return False
+    if is_global_admin(user):
+        return False
+    return resolved_permission(user, advisory) == "owner"
+
+
+def can_withdraw_reassignment_request(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may withdraw a pending reassignment request.
+
+    The requesting team (project owners) may retract their own handoff, and
+    admins may clear it too. Requires a request to actually be pending.
+    """
+    if advisory.reassignment_requested_at is None:
+        return False
+    if is_global_admin(user):
+        return True
+    return resolved_permission(user, advisory) == "owner"
+
+
+def can_accept_reassignment_suggestion(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may one-click accept the suggested target project.
+
+    Requires a pending request that names a suggested project. Accepting moves
+    the advisory onto the target, so only someone with authority *there* may do
+    it: a global admin, or a security-team member of the suggested project. The
+    requester (on the *current* team, not the target) cannot accept their own
+    suggestion — that's the whole point of escalating.
+    """
+    if advisory.reassignment_requested_at is None:
+        return False
+    target = advisory.reassignment_suggested_project
+    if target is None:
+        return False
+    if is_global_admin(user):
+        return True
+    return is_security_team_member(user, target)
+
+
 # ---- GHSA integration -------------------------------------------------------
 
 

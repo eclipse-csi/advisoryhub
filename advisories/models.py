@@ -208,6 +208,30 @@ class Advisory(models.Model):
     # dismisses the banner.
     access_review_required_at = models.DateTimeField(null=True, blank=True)
 
+    # Draft admin-reassignment request (INV-AUTH-9): a project owner who finds a
+    # draft belongs to a team they're not on asks an admin to re-home it, while
+    # the team keeps working (non-locking — contrast the triage routing flag,
+    # INV-AUTH-6). All four fields clear together on withdraw, accept, or any
+    # exit from draft (dismiss / publish). These are workflow metadata, not
+    # advisory content — deliberately absent from ``to_payload`` so they are not
+    # versioned.
+    reassignment_requested_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    reassignment_requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    reassignment_request_note = models.TextField(blank=True)
+    reassignment_suggested_project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
     # CVE assigned by the Eclipse Foundation acting as CNA. Distinct from the
     # editable ``aliases`` list: this is write-once, set by the CVE workflow
     # service on RESERVED, and merged into OSV/CSAF output at serialization

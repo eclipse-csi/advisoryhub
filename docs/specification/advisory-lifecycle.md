@@ -548,7 +548,29 @@ also counted in the page's separate *reverted* tally.
 
 ---
 
-## 11. Cross-reference: invariants per transition
+## 11. Draft admin-reassignment request
+
+A **draft**-state escalation, parallel to the triage routing flag (§10) but
+**non-locking** ([INV-AUTH-9](./invariant.md#inv-auth-9)): a project owner who finds a
+draft belongs to a team they're not on asks an admin to re-home it, while the team keeps
+editing. The four `Advisory.reassignment_*` fields hold the pending request; none is
+payload-visible, so requesting/withdrawing never appends a version. These transitions
+ride alongside the lifecycle; only *accept* changes the advisory's project.
+
+| Trigger | Actor | Preconditions | Audit action | Effect |
+|---|---|---|---|---|
+| `advisories.services.request_admin_reassignment` | Owner (project security team) — **not** admin | Lifecycle `state=draft`; no request already pending; non-empty note; optional suggested project ≠ current | `ADVISORY_REASSIGNMENT_REQUESTED` | Sets `reassignment_requested_at`/`_by`, `reassignment_request_note`, optional `reassignment_suggested_project`. The team's edit/publish capability is **unchanged** ([INV-AUTH-9](./invariant.md#inv-auth-9)) |
+| `advisories.services.withdraw_admin_reassignment` | Requesting team (owner) or admin | A request is pending | `ADVISORY_REASSIGNMENT_REQUEST_CLEARED` (`cause=withdrawn`) | Clears all four `reassignment_*` fields |
+| `advisories.services.accept_reassignment_suggestion` | Admin, or a security-team member of the **suggested** project (never the requester) | A request is pending with a suggested project | `ADVISORY_PROJECT_CHANGED` + `ADVISORY_REASSIGNMENT_REQUEST_CLEARED` (`cause=accepted`) | Moves the advisory onto the suggested project; appends a version (`project_slug` is payload-visible); flags an access review (`access_review_required_at`); clears the request |
+
+The request is also cleared automatically on **any exit from draft** — `cause=dismissed`
+when `advisory_dismiss` dismisses a draft, `cause=published` in the publication task's
+post-push finalisation — through the shared `clear_reassignment_request_if_pending`
+helper (a no-op when nothing is pending). Outside `draft` the affordance does not exist.
+
+---
+
+## 12. Cross-reference: invariants per transition
 
 A quick map from each transition above to the load-bearing invariants that
 constrain it. The first column matches the row number in §3.1; the review,
@@ -569,6 +591,7 @@ CVE, and publication tables are cited by their section.
 | §7 publication-task transitions | [INV-PUB-4](./invariant.md#inv-pub-4), [INV-LIFECYCLE-3](./invariant.md#inv-lifecycle-3) | [INV-PUB-1](./invariant.md#inv-pub-1), [INV-PUB-3](./invariant.md#inv-pub-3), [INV-PUB-5](./invariant.md#inv-pub-5), [INV-PUB-6](./invariant.md#inv-pub-6), [INV-PUB-7](./invariant.md#inv-pub-7), [INV-CONCURRENCY-1](./invariant.md#inv-concurrency-1), [INV-SECRET-1](./invariant.md#inv-secret-1), [INV-SECRET-3](./invariant.md#inv-secret-3) |
 | §9 edit side-effects | [INV-VERSION-1](./invariant.md#inv-version-1), [INV-IMPL-5](./invariant.md#inv-impl-5) | [INV-REVIEW-4](./invariant.md#inv-review-4), [INV-VERSION-2](./invariant.md#inv-version-2) |
 | §10 triage sub-transitions | [INV-AUTH-5](./invariant.md#inv-auth-5), [INV-AUTH-6](./invariant.md#inv-auth-6) | [INV-INTAKE-4](./invariant.md#inv-intake-4), [INV-PROJECT-2](./invariant.md#inv-project-2) |
+| §11 draft reassignment request | [INV-AUTH-9](./invariant.md#inv-auth-9), [INV-AUTH-3](./invariant.md#inv-auth-3) | [INV-VERSION-1](./invariant.md#inv-version-1) (accept appends), [INV-AUDIT-1](./invariant.md#inv-audit-1) |
 
 [INV-AUTH-1](./invariant.md#inv-auth-1): ./invariant.md#inv-auth-1
 [INV-AUTH-3](./invariant.md#inv-auth-3): ./invariant.md#inv-auth-3

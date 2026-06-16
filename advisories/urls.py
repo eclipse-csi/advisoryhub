@@ -20,6 +20,26 @@ urlpatterns = [
         name="clear_routing_flag",
     ),
     path(
+        "<advid:advisory_id>/request-reassignment/modal/",
+        views.advisory_request_reassignment_modal,
+        name="request_reassignment_modal",
+    ),
+    path(
+        "<advid:advisory_id>/request-reassignment/",
+        views.advisory_request_reassignment,
+        name="request_reassignment",
+    ),
+    path(
+        "<advid:advisory_id>/withdraw-reassignment/",
+        views.advisory_withdraw_reassignment,
+        name="withdraw_reassignment",
+    ),
+    path(
+        "<advid:advisory_id>/accept-reassignment/",
+        views.advisory_accept_reassignment,
+        name="accept_reassignment",
+    ),
+    path(
         "<advid:advisory_id>/access-review/dismiss/",
         views.advisory_access_review_dismiss,
         name="access_review_dismiss",

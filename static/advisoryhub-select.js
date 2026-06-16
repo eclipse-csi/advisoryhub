@@ -93,14 +93,75 @@
   // ---- floating panel (singleton, body-positioned like the siblings) ----
 
   function ensurePanel() {
-    if (panel) return panel;
+    // Rebuild if a previous host (e.g. a modal dialog the panel was parented
+    // into, see panelParent) was torn down and took the panel out of the DOM.
+    if (panel && panel.isConnected) return panel;
     panel = document.createElement("div");
     panel.id = PANEL_ID;
     panel.className = "combobox-panel";
     panel.setAttribute("role", "listbox");
     panel.hidden = true;
+    // Keep the wheel on the list: translate the delta to scrollTop and
+    // preventDefault so it never chains to the page's root scroller (the wanted
+    // behaviour for an open dropdown everywhere). Belt-and-braces alongside
+    // `overscroll-behavior: contain`. `passive: false` so we may preventDefault.
+    // deltaMode: 0=pixels, 1=lines, 2=pages.
+    panel.addEventListener(
+      "wheel",
+      function (e) {
+        if (!isOpen()) return;
+        var f = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? panel.clientHeight : 1;
+        panel.scrollTop += e.deltaY * f;
+        e.preventDefault();
+      },
+      { passive: false }
+    );
     document.body.appendChild(panel);
     return panel;
+  }
+
+  // Where the panel must live to both paint above its surroundings and receive
+  // events from them. A modal <dialog> (showModal()) sits in the top layer and
+  // makes the rest of the document (incl. <body>) inert, so a body-level panel
+  // is painted *behind* the dialog and can't receive pointer/wheel events.
+  // Making the panel a *descendant of the open dialog* fixes both: a positioned
+  // child paints above the dialog's own content, and — being inside the
+  // (non-inert) dialog subtree — it receives wheel/click directly, exactly like
+  // the dialog's own form fields do.
+  //
+  // We deliberately do NOT promote the panel to the top layer (popover): a
+  // top-layer popover nested in a modal dialog has inconsistent wheel/pointer
+  // event delivery across engines — fine in Chromium, but the events fall
+  // through to the page behind in WebKit/Firefox. A plain positioned descendant
+  // is engine-agnostic.
+  function panelParent() {
+    if (activeInput) {
+      var dlg = activeInput.closest("dialog");
+      if (dlg && dlg.open) return dlg;
+    }
+    return document.body;
+  }
+
+  // Reparent the panel under the right host (the open dialog, or <body>) and
+  // toggle visibility with the ``hidden`` attribute. ``isOpen`` is the single
+  // "is the panel visible" predicate.
+  function showPanel() {
+    var p = ensurePanel();
+    var parent = panelParent();
+    if (p.parentNode !== parent) parent.appendChild(p);
+    p.hidden = false;
+  }
+
+  function hidePanel() {
+    if (!panel) return;
+    panel.hidden = true;
+    // Park the singleton back on <body> between sessions so a closing host
+    // dialog (whose subtree gets cleared) can't take the panel down with it.
+    if (panel.parentNode !== document.body) document.body.appendChild(panel);
+  }
+
+  function isOpen() {
+    return !!panel && !panel.hidden;
   }
 
   function optionId(i) {
@@ -110,9 +171,13 @@
   function positionPanel(input) {
     var rect = input.getBoundingClientRect();
     var p = ensurePanel();
-    p.style.position = "absolute";
-    p.style.left = window.scrollX + rect.left + "px";
-    p.style.top = window.scrollY + rect.bottom + 2 + "px";
+    // Viewport-relative fixed positioning works whether the panel sits on <body>
+    // or is reparented inside a modal dialog (no combobox host establishes a
+    // transformed containing block, so `fixed` stays viewport-relative). The
+    // capture-phase scroll/resize listeners re-run this to follow the input.
+    p.style.position = "fixed";
+    p.style.left = rect.left + "px";
+    p.style.top = rect.bottom + 2 + "px";
     p.style.minWidth = Math.max(rect.width, 240) + "px";
   }
 
@@ -165,11 +230,13 @@
       }
       p.innerHTML = html;
     }
-    p.hidden = false;
     input.setAttribute("aria-expanded", "true");
     if (activeIndex >= 0) input.setAttribute("aria-activedescendant", optionId(activeIndex));
     else input.removeAttribute("aria-activedescendant");
+    // Position the (still-hidden) panel first, then reveal, so it never paints
+    // for a frame at a stale position.
     positionPanel(input);
+    showPanel();
     // Bring the active row into view so opening a long list lands on the
     // current choice rather than the top.
     if (activeIndex >= 0) {
@@ -179,7 +246,7 @@
   }
 
   function hide() {
-    if (panel) panel.hidden = true;
+    hidePanel();
     if (activeInput) {
       activeInput.setAttribute("aria-expanded", "false");
       activeInput.removeAttribute("aria-activedescendant");
@@ -310,7 +377,7 @@
   // Commit on mousedown so focus stays on the input and the blur/revert handler
   // doesn't fire before the click registers.
   document.addEventListener("mousedown", function (e) {
-    if (!panel || panel.hidden || !activeInput) return;
+    if (!isOpen() || !activeInput) return;
     var opt = e.target.closest && e.target.closest(".combobox-option");
     if (!opt) return;
     e.preventDefault();
@@ -319,7 +386,7 @@
   });
 
   document.addEventListener("keydown", function (e) {
-    if (!activeInput || !panel || panel.hidden) return;
+    if (!activeInput || !isOpen()) return;
     if (!isComboInput(e.target)) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -353,13 +420,13 @@
   window.addEventListener(
     "scroll",
     function () {
-      if (activeInput && panel && !panel.hidden) positionPanel(activeInput);
+      if (activeInput && isOpen()) positionPanel(activeInput);
     },
     true
   );
 
   window.addEventListener("resize", function () {
-    if (activeInput && panel && !panel.hidden) positionPanel(activeInput);
+    if (activeInput && isOpen()) positionPanel(activeInput);
   });
 
   // Enhance existing selects, then watch for ones inserted later (HTMX swaps,

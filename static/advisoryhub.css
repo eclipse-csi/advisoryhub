@@ -1343,6 +1343,9 @@ fieldset small { color: var(--text-muted); font-size: var(--text-xs); }
   max-height: 18rem;
   max-width: min(92vw, 30rem);
   overflow-y: auto;
+  /* Keep wheel/touch scrolling on the list; never chain to the page behind
+     (the panel is reparented into an open modal dialog — see advisoryhub-select.js). */
+  overscroll-behavior: contain;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);

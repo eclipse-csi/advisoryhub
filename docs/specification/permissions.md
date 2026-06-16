@@ -317,8 +317,11 @@ the matrix:
   team may unflag, retracting their own handoff — **except** on the
   `unsorted` sentinel project, where the flag cannot be cleared in place
   and is lifted only by reassigning to a real project (or promoting /
-  dismissing). Project owners may *flag* a misrouted report only when
-  not already flagged and not on the `unsorted` sentinel project
+  dismissing). Admins resolve routing by reassigning the advisory to a
+  real project — offered as an admin-only "assign to project" picker on
+  the routing banner (`reassign_triage`), or via the edit form. Project
+  owners may *flag* a misrouted report only when not already flagged and
+  not on the `unsorted` sentinel project
   ([INV-AUTH-6](./invariant.md#inv-auth-6), [INV-INTAKE-4](./invariant.md#inv-intake-4)).
 
 - **`review_status=submitted`.** `Edit advisory content` is blocked for

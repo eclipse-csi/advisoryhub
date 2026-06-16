@@ -411,6 +411,10 @@ def advisory_detail(request, advisory_id: str):
             and intake is not None
             and intake.needs_admin_routing
             and perms.can_clear_admin_routing_flag(request.user, advisory),
+            "can_reassign_triage": is_triage
+            and intake is not None
+            and intake.needs_admin_routing
+            and perms.can_reassign_triage(request.user, advisory),
             "is_unsorted": is_triage and advisory.project.slug == UNSORTED_PROJECT_SLUG,
             # Draft admin-reassignment request (INV-AUTH-9). Display-only gates;
             # the views/services re-enforce authorization server-side.
@@ -1077,6 +1081,36 @@ def advisory_clear_routing_flag(request, advisory_id: str):
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
+@login_required
+@require_http_methods(["POST"])
+def advisory_reassign_triage(request, advisory_id: str):
+    """Reassign a flagged triage advisory to a real project, straight from the
+    routing banner.
+
+    The in-place way to resolve admin routing now that the flag can't be cleared
+    on the ``unsorted`` sentinel: an admin picks a destination and the existing
+    :func:`~advisories.services.reassign_triage_project` service moves the
+    advisory (clearing the routing flag when the target is a real project). The
+    picker is admin-only; the service re-checks authority and a non-admin POST
+    raises ``PermissionDenied`` (403).
+    """
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if advisory.state != State.TRIAGE:
+        raise PermissionDenied("This advisory is not in triage.")
+    raw_slug = (request.POST.get("project_slug") or "").strip()
+    new_project = Project.objects.filter(slug=raw_slug).first() if raw_slug else None
+    if new_project is None:
+        return _detail_with_error(request, advisory, "Choose a project to assign this advisory to.")
+    if new_project.pk == advisory.project_id:
+        return _detail_with_error(request, advisory, "This advisory is already on that project.")
+    try:
+        services.reassign_triage_project(advisory, by=request.user, new_project=new_project)
+    except ValueError as exc:
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, f"Advisory assigned to {new_project.name}.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
 def _detail_with_error(request, advisory: Advisory, message: str):
     """Re-render the advisory detail with an inline error banner."""
     is_triage = advisory.state == State.TRIAGE
@@ -1118,6 +1152,10 @@ def _detail_with_error(request, advisory: Advisory, message: str):
             and intake is not None
             and intake.needs_admin_routing
             and perms.can_clear_admin_routing_flag(request.user, advisory),
+            "can_reassign_triage": is_triage
+            and intake is not None
+            and intake.needs_admin_routing
+            and perms.can_reassign_triage(request.user, advisory),
             "is_unsorted": is_triage and advisory.project.slug == UNSORTED_PROJECT_SLUG,
             # Reassignment-request banner (INV-AUTH-9) — so an inline-error
             # re-render still shows the request banner and its actions.

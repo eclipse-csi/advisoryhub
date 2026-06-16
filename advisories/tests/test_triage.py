@@ -210,6 +210,34 @@ def test_can_triage_excludes_ghsa_linked(db, make_user, make_project, admin_user
     assert perms.can_triage(admin_user, adv) is False
 
 
+def test_can_reassign_triage_admin(db, admin_user, make_project):
+    project = make_project("alpha")
+    adv = _make_triage_advisory(project, flagged=True)
+    assert perms.can_reassign_triage(admin_user, adv) is True
+
+
+def test_can_reassign_triage_denies_non_admin_owner(db, make_user, make_project):
+    """The in-banner picker is admin-only: routing while flagged is admin-only
+    (INV-AUTH-6), even for the project's own security team."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_triage_advisory(project, flagged=True)
+    assert perms.can_reassign_triage(member, adv) is False
+
+
+def test_can_reassign_triage_excludes_ghsa_linked(db, admin_user, make_project):
+    """GHSA-linked rows follow PMI, never manual routing (INV-GHSA-1)."""
+    project = make_project("alpha")
+    adv = _make_ghsa_triage_advisory(project)
+    assert perms.can_reassign_triage(admin_user, adv) is False
+
+
+def test_can_reassign_triage_only_in_triage_state(db, admin_user, make_project):
+    project = make_project("alpha")
+    adv = Advisory.objects.create(project=project, state=State.DRAFT, summary="d", details="")
+    assert perms.can_reassign_triage(admin_user, adv) is False
+
+
 # -------------------- Services --------------------------------------------
 
 
@@ -573,6 +601,81 @@ def test_triage_edit_view_denies_team_member_when_flagged(db, make_user, make_pr
     client.force_login(member)
     resp = client.get(reverse("advisories:edit", args=[adv.advisory_id]))
     assert resp.status_code == 403
+
+
+def test_triage_reassign_view_clears_flag_and_moves(
+    db, admin_user, make_project, unsorted_project, client
+):
+    """The in-banner picker assigns an unsorted advisory to a real project and
+    clears the routing flag as a side effect."""
+    dst = make_project("alpha")
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    client.force_login(admin_user)
+    resp = client.post(
+        reverse("advisories:reassign_triage", args=[adv.advisory_id]),
+        data={"project_slug": dst.slug},
+    )
+    assert resp.status_code == 302
+    adv.refresh_from_db()
+    adv.intake.refresh_from_db()
+    assert adv.project == dst
+    assert adv.intake.needs_admin_routing is False
+
+
+def test_triage_reassign_view_requires_project(db, admin_user, unsorted_project, client):
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    client.force_login(admin_user)
+    resp = client.post(reverse("advisories:reassign_triage", args=[adv.advisory_id]), data={})
+    assert resp.status_code == 400
+    adv.refresh_from_db()
+    assert adv.project == unsorted_project  # unchanged
+
+
+def test_triage_reassign_view_denies_non_admin(
+    db, make_user, make_project, unsorted_project, client
+):
+    """A non-admin can't reassign a flagged advisory — the service raises
+    PermissionDenied (403); the picker is hidden from them anyway."""
+    dst = make_project("alpha")
+    outsider = make_user(email="o@example.org")
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    client.force_login(outsider)
+    resp = client.post(
+        reverse("advisories:reassign_triage", args=[adv.advisory_id]),
+        data={"project_slug": dst.slug},
+    )
+    assert resp.status_code == 403
+    adv.refresh_from_db()
+    assert adv.project == unsorted_project
+
+
+def test_triage_routing_banner_unsorted_shows_picker_not_clear(
+    db, admin_user, unsorted_project, client
+):
+    """On `unsorted`, the admin sees the assign-to-project picker and NOT the
+    in-place 'Clear flag' control."""
+    adv = _make_triage_advisory(unsorted_project, flagged=True)
+    client.force_login(admin_user)
+    resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
+    assert resp.status_code == 200
+    assert resp.context["can_reassign_triage"] is True
+    assert resp.context["can_clear_routing"] is False
+    body = resp.content.decode()
+    assert reverse("advisories:reassign_triage", args=[adv.advisory_id]) in body
+    assert reverse("advisories:clear_routing_flag", args=[adv.advisory_id]) not in body
+
+
+def test_triage_routing_banner_admin_sees_both_on_real_project(
+    db, admin_user, make_project, client
+):
+    """On a real-project flagged advisory, the admin sees BOTH assign-to-project
+    and clear-flag controls."""
+    project = make_project("alpha")
+    adv = _make_triage_advisory(project, flagged=True)
+    client.force_login(admin_user)
+    resp = client.get(reverse("advisories:detail", args=[adv.advisory_id]))
+    assert resp.context["can_reassign_triage"] is True
+    assert resp.context["can_clear_routing"] is True
 
 
 def test_triage_detail_403_for_outsider(db, make_user, make_project, client):

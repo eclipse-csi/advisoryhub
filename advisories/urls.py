@@ -36,6 +36,11 @@ urlpatterns = [
         name="clear_routing_flag",
     ),
     path(
+        "<advid:advisory_id>/reassign/",
+        views.advisory_reassign_triage,
+        name="reassign_triage",
+    ),
+    path(
         "<advid:advisory_id>/request-reassignment/modal/",
         views.advisory_request_reassignment_modal,
         name="request_reassignment_modal",

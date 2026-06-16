@@ -545,6 +545,26 @@ def can_clear_admin_routing_flag(user, advisory: Advisory) -> bool:
     return resolved_permission(user, advisory) == "owner"
 
 
+def can_reassign_triage(user, advisory: Advisory) -> bool:
+    """Whether ``user`` sees the in-banner "assign to project" picker on a
+    flagged triage advisory (display gate).
+
+    Admin-only, mirroring :func:`can_pick_reassignment_target` for the draft
+    state. While flagged, routing decisions are admin-only ([INV-AUTH-6]) and on
+    the ``unsorted`` sentinel only admins have access at all, so the picker is
+    always admin-facing — it's the in-place way to resolve routing now that the
+    flag can't be cleared on ``unsorted``. GHSA-linked rows are excluded: their
+    project follows PMI, never a manual routing decision ([INV-GHSA-1]). The
+    service (:func:`advisories.services.reassign_triage_project`) re-checks
+    authority server-side.
+    """
+    if advisory.state != State.TRIAGE:
+        return False
+    if advisory.kind == Kind.GHSA_LINKED:
+        return False
+    return is_global_admin(user)
+
+
 # ---- Draft admin-reassignment request (INV-AUTH-9) -------------------------
 
 

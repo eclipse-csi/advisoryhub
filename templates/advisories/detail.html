@@ -32,19 +32,35 @@
           <blockquote>{{ intake.admin_routing_note }}</blockquote>
         {% endif %}
       </div>
-      {% if can_clear_routing %}
+      {% if can_reassign_triage or can_clear_routing %}
         <div class="advisory-banner__actions">
-          <details>
-            <summary class="advisory-banner__dismiss">Clear flag</summary>
+          {% if can_reassign_triage %}
             <form method="post"
-                  action="{% url 'advisories:clear_routing_flag' advisory.advisory_id %}"
+                  action="{% url 'advisories:reassign_triage' advisory.advisory_id %}"
                   class="inline">
               {% csrf_token %}
-              <label for="clear-flag-note">Optional reason</label>
-              <textarea id="clear-flag-note" name="note" rows="2"></textarea>
-              <button type="submit">Clear routing flag</button>
+              <select name="project_slug" aria-label="Assign to project" data-combobox required>
+                <option value="">— choose a project —</option>
+                {% for p in reassignable_projects %}
+                  <option value="{{ p.slug }}" data-combobox-detail="{{ p.slug }}">{{ p.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="success">Assign to project</button>
             </form>
-          </details>
+          {% endif %}
+          {% if can_clear_routing %}
+            <details>
+              <summary class="advisory-banner__dismiss">Clear flag</summary>
+              <form method="post"
+                    action="{% url 'advisories:clear_routing_flag' advisory.advisory_id %}"
+                    class="inline">
+                {% csrf_token %}
+                <label for="clear-flag-note">Optional reason</label>
+                <textarea id="clear-flag-note" name="note" rows="2"></textarea>
+                <button type="submit">Clear routing flag</button>
+              </form>
+            </details>
+          {% endif %}
         </div>
       {% endif %}
     </div>

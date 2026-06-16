@@ -2305,12 +2305,14 @@ letting PMI be the sole driver keeps the mapping coherent and self-healing.
 - `advisories/views.py` — `advisory_edit` raises `PermissionDenied` for
   GHSA-linked advisories (they have no editable fields); the detail sidebar
   hides the Edit button via `can_edit and not is_ghsa_linked`.
-- `advisories/permissions.py` — `can_request_reassignment` (and, defensively,
-  `can_flag_for_admin_routing`) refuse GHSA-linked advisories, so neither the
+- `advisories/permissions.py` — `can_request_reassignment` and
+  `can_flag_for_admin_routing` refuse GHSA-linked advisories, so neither the
   draft reassignment-request flow ([INV-AUTH-9](#inv-auth-9)) nor the triage
   routing flag ([INV-AUTH-6](#inv-auth-6)) can become a human path to change
-  their project. The single predicate gates the button, the modal, and the
-  service re-check alike.
+  their project — even though a GHSA-linked row can now sit in `triage` as a
+  read-only GitHub mirror ([INV-GHSA-3](#inv-ghsa-3)), its project still follows
+  PMI. The single predicate gates the button, the modal, and the service
+  re-check alike.
 - `ghsa/services.py` — `sync_project_repos_from_pmi` re-homes GHSA-linked
   advisories to follow PMI (`_reassign_ghsa_advisories_following_pmi`), appending
   a version, auditing `ADVISORY_PROJECT_CHANGED` with `reason=pmi_repo_reassignment`,
@@ -2384,14 +2386,29 @@ advisory's GHSA panel indefinitely. No functional block.
 **Statement.** A GHSA-linked advisory's lifecycle is **inbound-only**: GitHub is
 the source of truth and AdvisoryHub *mirrors* it, never writing lifecycle state
 back to GitHub (the sole outbound write remains the EF-assigned CVE-id push —
-[INV-GHSA-2](#inv-ghsa-2)). When an observed sync (webhook, manual, or the
+[INV-GHSA-2](#inv-ghsa-2)). The mirror covers the *pre-publication* lifecycle
+too: a GHSA-linked advisory's initial `state` is derived from GitHub's
+`ghsa_state` at creation — `triage` when the GHSA is still in triage upstream (a
+private vulnerability report not yet accepted into a draft), else `draft`. A
+GHSA-linked `triage` row is **read-only**: it carries no human triage affordances
+(`can_triage` and `can_flag_for_admin_routing` return `False` for it; it is kept
+out of the admin-console Inbox) and advances only by mirroring GitHub — forward
+to `draft` when GitHub accepts the report into a draft (`react_to_ghsa_state`,
+state-only flip, forward-only — a `draft` is never demoted back to `triage`), to
+`published` via auto-publish, or to `dismissed` via auto-dismiss. Discovery feeds
+this both on demand and via two pushes: the `repository_advisory.reported`
+webhook auto-creates a row for a newly-reported GHSA, and a slow beat-scheduled
+discovery sweep (`run_scheduled_ghsa_discovery`, every `GHSA_DISCOVERY_INTERVAL_HOURS`)
+backstops `reported` webhooks GitHub may not deliver.
+
+When an observed sync (webhook, manual, or the
 periodic reconcile) finds the linked GHSA `published` and the AdvisoryHub
-advisory still in `draft`, AdvisoryHub **auto-publishes** it — exporting
+advisory in `draft` or `triage`, AdvisoryHub **auto-publishes** it — exporting
 OSV/CSAF/CVE through the normal publication pipeline via `publish(system=True)`,
 which skips the human `can_publish` gate (the decision is GitHub's) but keeps
 every other guard (dismissed block, in-flight lock, `refresh_for_publish`). The
 trigger keys off the *current* state, not a delta, so a missed `published` event
-self-heals on the next sync; the `state == draft` guard plus `publish()`'s
+self-heals on the next sync; the `state ∈ {draft, triage}` guard plus `publish()`'s
 in-flight lock keep it idempotent and dedupe a webhook-vs-reconcile double fire;
 a dismissed advisory is never auto-published. Gated by `GHSA_AUTO_PUBLISH_ENABLED`
 (default on).
@@ -2416,13 +2433,23 @@ one-way. The reaction is decided by the *observing* callers, never inside
 `refresh_for_publish`, so `publish → refresh → sync → publish` cannot recurse.
 
 **Enforced in.**
-- `ghsa/services.py` — `react_to_ghsa_state` (the auto-publish / auto-dismiss /
-  auto-withdraw decision), called by the webhook dispatcher, the manual
-  single-sync task, and `create_ghsa_linked_advisory`; **not** called from
-  `refresh_for_publish`. `reconcile_ghsa_linked_advisories` sweeps
-  `draft`/`triage`/`published`.
+- `ghsa/services.py` — `react_to_ghsa_state` (the triage→draft promotion plus the
+  auto-publish / auto-dismiss / auto-withdraw decision), called by the webhook
+  dispatcher, the manual single-sync task, and `create_ghsa_linked_advisory`;
+  **not** called from `refresh_for_publish`. `create_ghsa_linked_advisory`
+  derives the initial `state` from the synced `ghsa_state` (triage vs draft).
+  `_dispatch_repository_advisory_event` auto-creates on
+  `published`/`updated`/`edited`/`reopened`/**`reported`**.
+  `reconcile_ghsa_linked_advisories` sweeps `draft`/`triage`/`published`.
+- `advisories/permissions.py` — `can_triage` / `can_flag_for_admin_routing`
+  return `False` for GHSA-linked rows (read-only triage mirror).
+- `admin_console/views/inbox.py` — GHSA-linked rows excluded from the triage
+  work queue and its count.
 - `ghsa/tasks.py` — `run_ghsa_auto_publish` (best-effort; a gating refusal —
-  CVE conflict / missing upstream / concurrent run — is caught and skipped).
+  CVE conflict / missing upstream / concurrent run — is caught and skipped);
+  `run_scheduled_ghsa_discovery` (beat backstop, no-ops while the feature is off).
+- `config/settings/base.py` — `GHSA_DISCOVERY_INTERVAL_HOURS` + the
+  `ghsa-discovery` beat entry.
 - `publication/services.py` — `publish(system=True)` skips `can_publish` while
   keeping the dismissed / in-flight guards; the GHSA `refresh_for_publish` is
   skipped for a withdrawal (`withdrawn_reason` set), since the GHSA is gone.

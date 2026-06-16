@@ -116,6 +116,12 @@ env = environ.Env(
     # (withdrawal / closure / deletion) and for missed `published` events
     # (INV-GHSA-3).
     GHSA_SYNC_INTERVAL_HOURS=(int, 6),
+    # Periodic full GHSA *discovery* across every project's repo mirror — the
+    # backstop for `repository_advisory.reported` webhooks GitHub may not
+    # deliver, so a newly-reported (triage) GHSA still gets linked. Lists every
+    # repo (heavier than reconcile, which only re-syncs already-known rows), so
+    # a slower default cadence.
+    GHSA_DISCOVERY_INTERVAL_HOURS=(int, 24),
     # Eclipse Foundation PMI API (source-of-truth for project↔repo)
     PMI_API_BASE_URL=(str, "https://projects.eclipse.org/api"),
     PMI_API_TOKEN=(str, ""),  # blank by default; PMI is public
@@ -483,6 +489,7 @@ PMI_API_BASE_URL = env("PMI_API_BASE_URL")
 PMI_API_TOKEN = env("PMI_API_TOKEN")
 PMI_SYNC_INTERVAL_HOURS = env("PMI_SYNC_INTERVAL_HOURS")
 GHSA_SYNC_INTERVAL_HOURS = env("GHSA_SYNC_INTERVAL_HOURS")
+GHSA_DISCOVERY_INTERVAL_HOURS = env("GHSA_DISCOVERY_INTERVAL_HOURS")
 PMI_ROSTER_SYNC_ENABLED = env("PMI_ROSTER_SYNC_ENABLED")
 PMI_ROSTER_SYNC_INTERVAL_HOURS = env("PMI_ROSTER_SYNC_INTERVAL_HOURS")
 ECLIPSE_API_BASE_URL = env("ECLIPSE_API_BASE_URL")
@@ -520,11 +527,13 @@ SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS = env("SIMILARITY_CHECK_STALE_QUEUED
 
 # Celery beat schedule. The worker that runs `celery -A config beat` will
 # fire run_pmi_repo_sync every PMI_SYNC_INTERVAL_HOURS hours, refreshing
-# the local ProjectGitHubRepository mirror from PMI. GHSA *discovery* (i.e.
-# auto-creating GHSA-linked advisories) happens via explicit user-triggered
-# sync, not from beat — see ghsa.tasks for the on-demand variants. GHSA
-# *reconcile* (re-syncing already-known advisories to mirror GitHub state) IS
-# scheduled below — it's the poll backstop for missed webhooks (INV-GHSA-3).
+# the local ProjectGitHubRepository mirror from PMI. GHSA *discovery*
+# (auto-creating GHSA-linked advisories for GHSAs not yet mirrored) runs both
+# on demand (user-triggered, see ghsa.tasks) AND on a slow beat schedule
+# (ghsa-discovery below) — the backstop for `repository_advisory.reported`
+# webhooks GitHub may not deliver. GHSA *reconcile* (re-syncing already-known
+# advisories to mirror GitHub state) is the separate poll backstop for missed
+# state-change webhooks (INV-GHSA-3).
 from datetime import timedelta  # noqa: E402
 
 CELERY_BEAT_SCHEDULE = {
@@ -590,6 +599,16 @@ CELERY_BEAT_SCHEDULE = {
     "ghsa-linked-reconcile": {
         "task": "ghsa.tasks.reconcile_ghsa_linked_advisories",
         "schedule": timedelta(hours=GHSA_SYNC_INTERVAL_HOURS),
+    },
+    # Slow full-discovery sweep: list every GHSA in every project's repo mirror
+    # and auto-create rows for any not yet linked. The backstop for missed
+    # `repository_advisory.reported` webhooks (a privately-reported GHSA enters
+    # triage upstream and is mirrored as a triage row). On-demand discovery from
+    # the admin console stays the primary path; this just catches drift. No-ops
+    # while GHSA_FEATURE_ENABLED is off.
+    "ghsa-discovery": {
+        "task": "ghsa.tasks.run_scheduled_ghsa_discovery",
+        "schedule": timedelta(hours=GHSA_DISCOVERY_INTERVAL_HOURS),
     },
 }
 

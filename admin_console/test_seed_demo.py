@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from django.core.management import call_command
 
-from advisories.models import Advisory, AdvisoryIntakeMetadata, State
+from advisories.models import Advisory, AdvisoryIntakeMetadata, GhsaState, Kind, State
 from intake.models import HoneypotSubmission
 from projects.models import Project
 
@@ -41,6 +41,12 @@ def test_seed_demo_then_reset_does_not_choke_on_protected_versions():
     # points at it (the unrouted demo cases).
     unsorted = Project.objects.get(slug="unsorted")
     assert Advisory.objects.filter(state=State.TRIAGE, project=unsorted).exists()
+    # GHSA-linked demo rows span the inbound-only lifecycle, including one
+    # mirrored read-only in triage (ghsa_state == triage; INV-GHSA-3).
+    assert Advisory.objects.filter(
+        kind=Kind.GHSA_LINKED, state=State.TRIAGE, ghsa_state=GhsaState.TRIAGE
+    ).exists()
+    assert Advisory.objects.filter(kind=Kind.GHSA_LINKED, state=State.PUBLISHED).exists()
 
     call_command("seed_demo", reset=True)
 

@@ -15,9 +15,11 @@ from django.core.exceptions import PermissionDenied
 from django.test import override_settings
 
 from advisories.models import Advisory, GhsaState, Kind, State
+from audit.models import Action, AuditLogEntry
 from ghsa import services
 
 _OK_SUMMARY = {"changed": ["summary"], "conflict": False, "missing_upstream": False}
+_NO_CHANGE_SUMMARY = {"changed": [], "conflict": False, "missing_upstream": False}
 
 
 def _ghsa_advisory(
@@ -97,6 +99,64 @@ def test_auto_publish_task_skips_on_gating_failure(make_project):
     with patch("publication.services.publish", side_effect=PermissionDenied("nope")):
         result = run_ghsa_auto_publish(adv.advisory_id)
     assert "skipped" in result
+
+
+# ---- triage mirror (GitHub triage <-> draft) -------------------------------
+
+
+@pytest.mark.django_db
+def test_react_promotes_triage_to_draft_when_ghsa_accepted(make_project):
+    """When GitHub accepts a reported GHSA into a draft (`ghsa_state` triage ->
+    draft), the mirrored triage row is promoted triage -> draft."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.TRIAGE, ghsa_state=GhsaState.DRAFT)
+    services.react_to_ghsa_state(adv, _NO_CHANGE_SUMMARY, by=None)
+    adv.refresh_from_db()
+    assert adv.state == State.DRAFT
+    assert AuditLogEntry.objects.filter(advisory=adv, action=Action.ADVISORY_STATE_CHANGED).exists()
+
+
+@pytest.mark.django_db
+def test_react_does_not_demote_draft_to_triage(make_project):
+    """Forward-only: a GHSA reverting to triage upstream never demotes a draft."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.DRAFT, ghsa_state=GhsaState.TRIAGE)
+    services.react_to_ghsa_state(adv, _NO_CHANGE_SUMMARY, by=None)
+    adv.refresh_from_db()
+    assert adv.state == State.DRAFT
+
+
+@pytest.mark.django_db
+def test_react_triage_stays_triage_when_ghsa_still_triage(make_project):
+    """A GHSA still in triage upstream leaves the mirrored triage row untouched —
+    no promotion, no publish, no dismiss."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.TRIAGE, ghsa_state=GhsaState.TRIAGE)
+    with patch("ghsa.services.safe_enqueue") as enq:
+        services.react_to_ghsa_state(adv, _NO_CHANGE_SUMMARY, by=None)
+    adv.refresh_from_db()
+    assert adv.state == State.TRIAGE
+    assert not enq.called
+
+
+@override_settings(GHSA_AUTO_PUBLISH_ENABLED=True)
+@pytest.mark.django_db(transaction=True)
+def test_react_auto_publishes_from_triage(make_project):
+    """A GHSA published straight from triage upstream auto-publishes the mirrored
+    triage row (the guard covers draft OR triage)."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.TRIAGE, ghsa_state=GhsaState.PUBLISHED)
+    with patch("ghsa.services.safe_enqueue") as enq:
+        services.react_to_ghsa_state(adv, _OK_SUMMARY, by=None)
+    assert enq.called
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("ghsa_state", [GhsaState.CLOSED, GhsaState.WITHDRAWN])
+def test_react_auto_dismisses_triage_when_ghsa_gone(make_project, ghsa_state):
+    """A GHSA closed/withdrawn while AdvisoryHub mirrors it in triage is
+    auto-dismissed, just like a draft (row 6a)."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.TRIAGE, ghsa_state=ghsa_state)
+    services.react_to_ghsa_state(adv, _NO_CHANGE_SUMMARY, by=None)
+    adv.refresh_from_db()
+    assert adv.state == State.DISMISSED
+    assert adv.dismissed_from_state == State.TRIAGE
 
 
 # ---- auto-dismiss on GitHub close / withdraw / delete ----------------------

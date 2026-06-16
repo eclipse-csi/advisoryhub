@@ -82,6 +82,29 @@ def run_ghsa_sync_all(user_id=None) -> dict:
     }
 
 
+@shared_task(name="ghsa.tasks.run_scheduled_ghsa_discovery")
+def run_scheduled_ghsa_discovery() -> dict:
+    """Beat (every GHSA_DISCOVERY_INTERVAL_HOURS): discover GHSAs across every
+    project's repo mirror and auto-create rows for any not yet linked.
+
+    The backstop for `repository_advisory.reported` webhooks GitHub may not
+    deliver — a newly-reported (triage) GHSA is mirrored as a triage row. Unlike
+    ``reconcile_ghsa_linked_advisories`` (which only re-syncs already-known
+    advisories), this lists every repo, so it runs on a slower cadence. No-ops
+    while GHSA_FEATURE_ENABLED is off.
+    """
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        return {"skipped": "GHSA_FEATURE_ENABLED is False"}
+    run = services.sync_ghsas_for_all_projects(by=None)
+    return {
+        "run_id": run.pk,
+        "status": run.status,
+        "created": run.advisories_created,
+        "updated": run.advisories_updated,
+        "errors": run.errors_count,
+    }
+
+
 @shared_task(name="ghsa.tasks.run_single_ghsa_sync")
 def run_single_ghsa_sync(advisory_id: str, user_id=None) -> dict:
     advisory = Advisory.objects.get(advisory_id=advisory_id)

@@ -16,7 +16,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.urls import reverse
 
-from advisories.models import Advisory, State
+from advisories.models import Advisory, Kind, State
 from publication.models import PublicationTask, PublicationTaskStatus
 from workflows.models import (
     CveRequestStatus,
@@ -153,8 +153,13 @@ def _publication_items(see_more_url: str) -> list[InboxItem]:
 
 
 def _triage_items(see_more_url: str) -> list[InboxItem]:
+    # GHSA-linked triage rows are a read-only mirror of GitHub's triage state
+    # (INV-GHSA-3) — they advance automatically and carry no human action, so
+    # they stay out of the actionable inbox (they still show in the advisory
+    # list's triage tab).
     qs = (
         Advisory.objects.filter(state=State.TRIAGE)
+        .exclude(kind=Kind.GHSA_LINKED)
         .select_related("project", "intake", "intake__reporter_user")
         .order_by("-created_at")[:PER_SOURCE_LIMIT]
     )
@@ -278,7 +283,9 @@ def inbox(request):
         "cve_open": CveRequestTask.objects.filter(status=CveRequestStatus.QUEUED).count(),
         "review_open": ReviewTask.objects.filter(status=ReviewTaskStatus.OPEN).count(),
         "pub_failed": PublicationTask.objects.filter(status=PublicationTaskStatus.FAILED).count(),
-        "triage": Advisory.objects.filter(state=State.TRIAGE).count(),
+        "triage": Advisory.objects.filter(state=State.TRIAGE)
+        .exclude(kind=Kind.GHSA_LINKED)
+        .count(),
         "triage_routing": Advisory.objects.filter(
             state=State.TRIAGE, intake__needs_admin_routing=True
         ).count(),

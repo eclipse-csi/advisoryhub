@@ -557,6 +557,12 @@ class Command(BaseCommand):
         # demo above, so it runs even on a re-seed of an older demo DB.
         self._seed_stats_demo(projects, admin)
 
+        # GHSA-linked demo advisories (detail panel / refresh / conflict banner,
+        # no sandbox GitHub App needed). Idempotent get_or_create like the
+        # backfills above, and seeded *before* the advisory-exists guard so they
+        # appear on a normal first `seed_demo` — not only under --reset.
+        self._seed_ghsa_demo(projects, admin)
+
         if Advisory.objects.exists() and not reset:
             self.stdout.write("Advisories already exist; skipping advisory creation.")
             return
@@ -664,11 +670,6 @@ class Command(BaseCommand):
             # Approve it so it shows as ready-to-publish in the dashboard.
             review_task = wf.submit_for_review(published, by=member_lantern)
             wf.approve_review(review_task, by=admin, notes="LGTM")
-
-        # GHSA-linked demo advisories so a developer can click around the
-        # full flow (detail panel, refresh, conflict banner) without
-        # registering a sandbox GitHub App.
-        self._seed_ghsa_demo(projects, admin)
 
         self.stdout.write(self.style.SUCCESS("Seed complete."))
         self.stdout.write(
@@ -1143,11 +1144,13 @@ class Command(BaseCommand):
 
         # 3) Canned GHSA REST payload — fields the panel template relies
         # on (summary, severity, cwes, vulnerabilities, html_url).
-        def _payload(ghsa_id: str, owner: str, repo: str, summary: str) -> dict:
+        def _payload(
+            ghsa_id: str, owner: str, repo: str, summary: str, state: str = "published"
+        ) -> dict:
             return {
                 "ghsa_id": ghsa_id,
                 "html_url": (f"https://github.com/{owner}/{repo}/security/advisories/{ghsa_id}"),
-                "state": "published",
+                "state": state,
                 "summary": summary,
                 "description": "Demo advisory synced from a (mock) GHSA.",
                 "severity": "high",
@@ -1167,16 +1170,19 @@ class Command(BaseCommand):
                 "references": [f"https://github.com/{owner}/{repo}/security/advisories/{ghsa_id}"],
             }
 
-        # 4) Three GHSA-linked advisories: two draft, one published with
-        # ``republish_required`` so the dashboard signal is visible.
-        demo_advisories: list[tuple[str, str, str, str, str, bool]] = [
+        # 4) Four GHSA-linked advisories spanning the inbound-only lifecycle:
+        # two draft, one published (``republish_required`` so the dashboard
+        # signal shows), and one still in GitHub *triage* — mirrored read-only
+        # as an AdvisoryHub triage row (INV-GHSA-3; it has no human triage
+        # controls and stays out of the admin Inbox).
+        demo_advisories: list[tuple[str, str, str, str, str, str]] = [
             (
                 "demotech.lantern",
                 "demo-org",
                 "lantern",
                 "GHSA-demo-lntn-aaaa",
                 "Path traversal in static file handler",
-                False,  # draft
+                "draft",
             ),
             (
                 "demotech.beacon",
@@ -1184,7 +1190,7 @@ class Command(BaseCommand):
                 "beacon",
                 "GHSA-demo-bcn-bbbb",
                 "XML external entity in REST parser",
-                False,  # draft
+                "draft",
             ),
             (
                 "demotech.lantern",
@@ -1192,14 +1198,29 @@ class Command(BaseCommand):
                 "lantern",
                 "GHSA-demo-lntn2-cccc",
                 "HTTP/2 header smuggling regression",
-                True,  # published, republish_required
+                "published",
+            ),
+            (
+                "demotech.beacon",
+                "demo-labs",
+                "beacon",
+                "GHSA-demo-bcn2-dddd",
+                "Privately reported deserialization flaw (triage upstream)",
+                "triage",
             ),
         ]
-        for slug, owner, repo, ghsa_id, summary, published in demo_advisories:
+        # GitHub state -> (mirrored ghsa_state, AdvisoryHub lifecycle state).
+        ghsa_demo_states = {
+            "draft": (GhsaState.DRAFT, State.DRAFT),
+            "published": (GhsaState.PUBLISHED, State.PUBLISHED),
+            "triage": (GhsaState.TRIAGE, State.TRIAGE),
+        }
+        for slug, owner, repo, ghsa_id, summary, gh_state in demo_advisories:
             project = projects.get(slug)
             if project is None:
                 continue
-            payload = _payload(ghsa_id, owner, repo, summary)
+            ghsa_state, adv_state = ghsa_demo_states[gh_state]
+            payload = _payload(ghsa_id, owner, repo, summary, state=gh_state)
             advisory, created = Advisory.objects.get_or_create(
                 ghsa_id=ghsa_id,
                 defaults={
@@ -1207,7 +1228,7 @@ class Command(BaseCommand):
                     "kind": Kind.GHSA_LINKED,
                     "ghsa_owner": owner,
                     "ghsa_repo": repo,
-                    "ghsa_state": GhsaState.PUBLISHED,
+                    "ghsa_state": ghsa_state,
                     "ghsa_metadata": payload,
                     "ghsa_metadata_synced_at": now,
                     "summary": summary,
@@ -1239,7 +1260,10 @@ class Command(BaseCommand):
                     "created_by": admin,
                 },
             )
-            if created and published:
+            # The model default lifecycle state is draft; nudge published/triage
+            # rows to mirror GitHub. A state-only flip appends no version
+            # (INV-VERSION-1).
+            if created and adv_state == State.PUBLISHED:
                 advisory.state = State.PUBLISHED
                 advisory.published_at = now
                 advisory.republish_required = True
@@ -1251,6 +1275,9 @@ class Command(BaseCommand):
                         "modified_at",
                     ]
                 )
+            elif created and adv_state == State.TRIAGE:
+                advisory.state = State.TRIAGE
+                advisory.save(update_fields=["state", "modified_at"])
 
     def _make_bulk_advisories(
         self,

@@ -8,7 +8,7 @@ publication pipeline.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.core.exceptions import PermissionDenied
@@ -54,6 +54,47 @@ def test_create_ghsa_linked_advisory_is_idempotent(project_with_repo, ghsa_paylo
     a1.refresh_from_db()
     assert a1.kind == Kind.GHSA_LINKED
     assert a1.summary == "Path traversal in example library"
+
+
+@pytest.mark.django_db
+def test_create_ghsa_linked_advisory_mirrors_triage_state(
+    project_with_repo, ghsa_payload, ghsa_settings
+):
+    """A GHSA still in triage upstream is mirrored as a triage row, not a draft
+    ([INV-GHSA-3])."""
+    triage_payload = dict(ghsa_payload, state="triage")
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = triage_payload
+        advisory = services.create_ghsa_linked_advisory(
+            project=project_with_repo,
+            ghsa_id="GHSA-abcd-1234-efgh",
+            owner="eclipse",
+            repo="example",
+            by=None,
+        )
+    advisory.refresh_from_db()
+    assert advisory.ghsa_state == GhsaState.TRIAGE
+    assert advisory.state == State.TRIAGE
+
+
+@pytest.mark.django_db
+def test_create_ghsa_linked_advisory_draft_when_not_triage(
+    project_with_repo, ghsa_payload, ghsa_settings
+):
+    """A GHSA in draft upstream is created as a draft (the default)."""
+    draft_payload = dict(ghsa_payload, state="draft")
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = draft_payload
+        advisory = services.create_ghsa_linked_advisory(
+            project=project_with_repo,
+            ghsa_id="GHSA-abcd-1234-efgh",
+            owner="eclipse",
+            repo="example",
+            by=None,
+        )
+    advisory.refresh_from_db()
+    assert advisory.ghsa_state == GhsaState.DRAFT
+    assert advisory.state == State.DRAFT
 
 
 @pytest.mark.django_db
@@ -232,6 +273,31 @@ def test_push_reserved_cve_records_failure_without_rollback(project_with_repo, g
     assert advisory.assigned_cve_id == "CVE-2026-0001"
     # And the token from the error is redacted before it lands in the row.
     assert "ghs_secret_token" not in push_task.last_error
+
+
+@pytest.mark.django_db
+def test_scheduled_discovery_noop_when_feature_disabled(settings):
+    settings.GHSA_FEATURE_ENABLED = False
+    from ghsa.tasks import run_scheduled_ghsa_discovery
+
+    with patch("ghsa.services.sync_ghsas_for_all_projects") as mock_sync:
+        result = run_scheduled_ghsa_discovery()
+    assert "skipped" in result
+    assert not mock_sync.called
+
+
+@pytest.mark.django_db
+def test_scheduled_discovery_runs_when_enabled(settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    from ghsa.tasks import run_scheduled_ghsa_discovery
+
+    fake_run = MagicMock(
+        pk=7, status="succeeded", advisories_created=2, advisories_updated=1, errors_count=0
+    )
+    with patch("ghsa.services.sync_ghsas_for_all_projects", return_value=fake_run) as mock_sync:
+        result = run_scheduled_ghsa_discovery()
+    mock_sync.assert_called_once_with(by=None)
+    assert result["created"] == 2
 
 
 @pytest.mark.django_db

@@ -177,13 +177,9 @@ def test_can_flag_for_admin_routing_already_flagged(db, make_user, make_project)
     assert perms.can_flag_for_admin_routing(member, adv) is False
 
 
-def test_can_flag_for_admin_routing_excludes_ghsa_linked(db, make_user, make_project):
-    """Defensive: a GHSA-linked advisory's project follows PMI, never a routing
-    decision (INV-GHSA-1). GHSA-linked rows never reach triage naturally, so this
-    state is synthetic — the guard pins the invariant regardless."""
-    project = make_project("alpha")
-    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
-    adv = Advisory.objects.create(
+def _make_ghsa_triage_advisory(project):
+    """A GHSA-linked advisory mirrored in triage (read-only, INV-GHSA-3)."""
+    return Advisory.objects.create(
         project=project,
         kind=Kind.GHSA_LINKED,
         ghsa_id="GHSA-aaaa-bbbb-cccc",
@@ -192,7 +188,26 @@ def test_can_flag_for_admin_routing_excludes_ghsa_linked(db, make_user, make_pro
         state=State.TRIAGE,
         summary="A vulnerability",
     )
+
+
+def test_can_flag_for_admin_routing_excludes_ghsa_linked(db, make_user, make_project):
+    """A GHSA-linked advisory's project follows PMI, never a routing decision
+    (INV-GHSA-1) — even though it can now sit in triage as a read-only GitHub
+    mirror (INV-GHSA-3)."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_ghsa_triage_advisory(project)
     assert perms.can_flag_for_admin_routing(member, adv) is False
+
+
+def test_can_triage_excludes_ghsa_linked(db, make_user, make_project, admin_user):
+    """A GHSA-linked triage row is a read-only mirror of GitHub (INV-GHSA-3): no
+    human promote/dismiss-via-triage, for owners or admins."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_ghsa_triage_advisory(project)
+    assert perms.can_triage(member, adv) is False
+    assert perms.can_triage(admin_user, adv) is False
 
 
 # -------------------- Services --------------------------------------------

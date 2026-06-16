@@ -476,9 +476,15 @@ def can_triage(user, advisory: Advisory) -> bool:
 
     Replaces ``intake.permissions.can_act_on_report``. Triage advisories
     flagged for admin routing are admin-only; otherwise the standard owner
-    resolution (project security team or global admin) applies.
+    resolution (project security team or global admin) applies. GHSA-linked
+    triage rows are excluded: they are a read-only mirror of GitHub's triage
+    state (INV-GHSA-3) and advance automatically (triage → draft on
+    acceptance, → published on publish, → dismissed on close), never by a
+    human promote/dismiss decision.
     """
     if advisory.state != State.TRIAGE:
+        return False
+    if advisory.kind == Kind.GHSA_LINKED:
         return False
     intake = getattr(advisory, "intake", None)
     if intake is not None and intake.needs_admin_routing and not is_global_admin(user):
@@ -496,9 +502,10 @@ def can_flag_for_admin_routing(user, advisory: Advisory) -> bool:
     duplicate, but hiding the button keeps the UI honest). Admins are
     excluded because *they* are the routing destination: flagging would
     bounce work back to themselves. GHSA-linked advisories are excluded
-    too — their project follows PMI, not a hand-routing decision
-    (INV-GHSA-1); this is defensive, as GHSA-linked rows never enter
-    triage.
+    too: a GHSA-linked row *can* sit in triage as a read-only mirror of
+    GitHub's triage state (INV-GHSA-3), but its project still follows PMI,
+    never a hand-routing decision (INV-GHSA-1), so the routing flag stays
+    unavailable.
     """
     if advisory.state != State.TRIAGE:
         return False

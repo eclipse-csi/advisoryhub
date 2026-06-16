@@ -339,11 +339,17 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
     recurse through ``publish()``.
 
     Auto-publish: when GitHub has published the advisory, mirror it to the EF
-    feed (export OSV/CSAF/CVE). Keyed off the *current* draft state — not a
-    delta — so a missed ``published`` event self-heals on the next sync; the
-    ``state == DRAFT`` guard plus ``publish()``'s in-flight lock keep it
-    idempotent and dedupe a webhook-vs-reconcile double fire. A dismissed
+    feed (export OSV/CSAF/CVE). Keyed off the *current* state — not a delta —
+    so a missed ``published`` event self-heals on the next sync; the
+    ``state in (DRAFT, TRIAGE)`` guard plus ``publish()``'s in-flight lock keep
+    it idempotent and dedupe a webhook-vs-reconcile double fire. A dismissed
     advisory is never auto-published.
+
+    Forward triage promotion: when GitHub accepts a privately-reported GHSA into
+    a draft (``triage`` → ``draft`` upstream), promote the mirrored row from
+    ``triage`` to ``draft`` too. Forward-only — a ``draft`` row is never demoted
+    back to ``triage`` (GitHub's lifecycle doesn't, and a demotion would be
+    surprising). A state-only flip appends no version (INV-VERSION-1).
 
     Auto-dismiss: when GitHub closes/withdraws the advisory or deletes it (404,
     ``missing_upstream``), dismiss the AdvisoryHub draft/triage row. Skipped for
@@ -356,13 +362,30 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
         return
     if (
         getattr(settings, "GHSA_AUTO_PUBLISH_ENABLED", True)
-        and advisory.state == State.DRAFT
+        and advisory.state in (State.DRAFT, State.TRIAGE)
         and not summary.get("missing_upstream")
         and advisory.ghsa_state == GhsaState.PUBLISHED
     ):
         from .tasks import run_ghsa_auto_publish
 
         transaction.on_commit(partial(safe_enqueue, run_ghsa_auto_publish, advisory.advisory_id))
+        return
+
+    # GitHub accepted a privately-reported GHSA into a draft: mirror the
+    # triage → draft promotion (forward-only, system actor). The standard
+    # workflow then takes over from draft.
+    if advisory.ghsa_state == GhsaState.DRAFT and advisory.state == State.TRIAGE:
+        previous_state = advisory.state
+        advisory.state = State.DRAFT
+        advisory.save(update_fields=["state", "modified_at"])
+        record(
+            action=Action.ADVISORY_STATE_CHANGED,
+            actor=by,
+            advisory=advisory,
+            previous_value={"state": previous_state},
+            new_value={"state": advisory.state},
+            metadata={"ghsa_id": advisory.ghsa_id, "reason": "ghsa_accepted_to_draft"},
+        )
         return
 
     gone = bool(summary.get("missing_upstream")) or advisory.ghsa_state in (
@@ -480,6 +503,14 @@ def create_ghsa_linked_advisory(
     # A brand-new advisory that GitHub has already published auto-publishes
     # (inbound-only lifecycle). Skipped when the initial sync failed.
     if summary is not None:
+        # Mirror GitHub's pre-publication state: a GHSA still in *triage*
+        # upstream (a private report not yet accepted into a draft) lands as a
+        # read-only triage row, not a draft (INV-GHSA-3). Set before
+        # react_to_ghsa_state so its state-keyed guards see the mirrored state.
+        # A state-only flip appends no new version (INV-VERSION-1).
+        if advisory.ghsa_state == GhsaState.TRIAGE and advisory.state == State.DRAFT:
+            advisory.state = State.TRIAGE
+            advisory.save(update_fields=["state", "modified_at"])
         react_to_ghsa_state(advisory, summary, by=by)
     # Best-effort duplicate detection on the freshly synced content (no-op
     # while disabled, never fails the sync). The idempotent `return existing`
@@ -1138,8 +1169,12 @@ def _dispatch_repository_advisory_event(action: str, payload: dict) -> None:
         return
 
     # Auto-create only when the repo is actively mirrored from PMI.
-    if action not in ("published", "updated", "edited", "reopened"):
+    if action not in ("published", "updated", "edited", "reopened", "reported"):
         # withdrawn/closed events for unknown GHSAs aren't worth a row.
+        # ``reported`` is GitHub's private-vulnerability-report event: the GHSA
+        # enters *triage* upstream, and we mirror it as a triage row (the
+        # initial state is derived from the synced ``ghsa_state`` in
+        # ``create_ghsa_linked_advisory``).
         return
     repo_row = ProjectGitHubRepository.objects.filter(
         owner=owner, name=name, soft_removed_at__isnull=True

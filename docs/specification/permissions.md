@@ -302,6 +302,15 @@ the matrix:
   `flag_for_admin_routing` follow the `owner` column, with the
   asymmetry that admins cannot flag (their queue is the destination).
 
+  **GHSA-linked exception.** A GHSA-linked advisory can also sit in `triage`,
+  but as a *read-only mirror* of GitHub's triage state
+  ([INV-GHSA-3](./invariant.md#inv-ghsa-3)), not an untrusted human report.
+  `can_triage` and `can_flag_for_admin_routing` return `False` for it, so
+  promote / dismiss-via-triage / flag are all unavailable; it advances only by
+  mirroring GitHub (triage → draft on acceptance, → published via auto-publish,
+  → dismissed on close). It is also kept out of the admin-console Inbox work
+  queue.
+
 - **`triage` with `needs_admin_routing=True`.** Edit and triage
   decisions are further restricted to **global admins only**. Clearing
   the flag is owner-level: a global admin *or* the project's security

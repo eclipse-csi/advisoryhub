@@ -467,12 +467,18 @@ sync emits a `PMI_PROJECT_REPOS_SYNCED` audit row.
 
 ### 5.3 GHSA discovery & per-advisory sync
 
-GHSA discovery happens on demand — `ghsa.services.sync_ghsas_for_project`
+GHSA discovery runs on demand — `ghsa.services.sync_ghsas_for_project`
 for one project or `sync_ghsas_for_all_projects` for the whole org;
-the admin console exposes both. Discovery walks each `(owner, name)`
-in the project's repo mirror, lists GHSAs, and creates or updates
+the admin console exposes both — **and** on a slow beat schedule
+(`run_scheduled_ghsa_discovery`, §6.2) as a backstop for missed
+`repository_advisory.reported` webhooks. Discovery walks each
+`(owner, name)` in the project's repo mirror, lists GHSAs (all upstream
+states: `draft,triage,published,closed,withdrawn`), and creates or updates
 `Advisory(kind=ghsa_linked)` rows whose `ghsa_id` is uniquely
-mapped ([INV-ID-2](./invariant.md#inv-id-2)). A run is recorded as
+mapped ([INV-ID-2](./invariant.md#inv-id-2)). A newly-created row's `state`
+mirrors GitHub's `ghsa_state` — `triage` when the GHSA is still in triage
+upstream (a private report not yet accepted into a draft), else `draft`
+([INV-GHSA-3](./invariant.md#inv-ghsa-3)). A run is recorded as
 a `GhsaSyncRun` with counts and last error.
 
 Both sync functions are `transaction.atomic`, and that atomicity is
@@ -518,7 +524,12 @@ Inbound webhook deliveries are HMAC-verified against
 `GITHUB_APP_WEBHOOK_SECRET` and deduplicated by delivery id via
 the `WebhookDelivery` table. Recognised events route to handlers in
 `ghsa.webhooks`; unrecognised events are logged as
-`GHSA_WEBHOOK_REJECTED` and dropped. Installation lifecycle events
+`GHSA_WEBHOOK_REJECTED` and dropped. A `repository_advisory` event for an
+*existing* advisory always refreshes and reacts; for an *unknown* GHSA on a
+PMI-mirrored repo it auto-creates a row on
+`published`/`updated`/`edited`/`reopened`/`reported` — `reported` is GitHub's
+private-vulnerability-report event, so the new row mirrors GitHub's triage state
+(§5.3, [INV-GHSA-3](./invariant.md#inv-ghsa-3)). Installation lifecycle events
 (`installation.created`, `suspended`, `unsuspended`,
 `deleted`) update `GitHubAppInstallation` rows accordingly.
 
@@ -544,8 +555,17 @@ the manual single-sync, or a freshly-created advisory —
 `refresh_for_publish` deliberately does **not** react, so
 `publish → refresh → sync → publish` cannot recurse.
 
+**Triage mirror.** A GHSA-linked advisory created while the GHSA is in triage
+upstream lands in `state=triage` as a read-only mirror (§5.3) — no human
+promote/dismiss/flag (`can_triage` / `can_flag_for_admin_routing` return `False`;
+it is kept out of the admin-console Inbox). When GitHub accepts the report into a
+draft (`ghsa_state` `triage` → `draft`), the reaction flips the row `triage` →
+`draft` (forward-only state flip, no version appended) and the standard workflow
+takes over.
+
 **Auto-publish.** When the linked GHSA is `published` and the AdvisoryHub
-advisory is still `draft`, the reaction enqueues `ghsa.tasks.run_ghsa_auto_publish`,
+advisory is in `draft` or `triage` (a GHSA published straight from triage
+upstream), the reaction enqueues `ghsa.tasks.run_ghsa_auto_publish`,
 which calls `publish(system=True)` — exporting OSV/CSAF/CVE through the normal
 pipeline, skipping only the human `can_publish` gate (the decision is GitHub's).
 It is idempotent (keyed off the current state; `publish()`'s in-flight lock
@@ -642,6 +662,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "ghsa.tasks.reconcile_ghsa_linked_advisories",
         "schedule": timedelta(hours=GHSA_SYNC_INTERVAL_HOURS),
     },
+    "ghsa-discovery": {
+        "task": "ghsa.tasks.run_scheduled_ghsa_discovery",
+        "schedule": timedelta(hours=GHSA_DISCOVERY_INTERVAL_HOURS),
+    },
 }
 ```
 
@@ -704,17 +728,24 @@ needs no reaper (§5.3 — atomic create+finalise). See [INV-GHSA-2](./invariant
 `ghsa-linked-reconcile` is the inbound-lifecycle poll backstop
 ([INV-GHSA-3](./invariant.md#inv-ghsa-3)): every `GHSA_SYNC_INTERVAL_HOURS`
 (default 6) it re-syncs each non-terminal (draft/triage/published) GHSA-linked
-advisory via `sync_single_ghsa` and runs `react_to_ghsa_state`, mirroring the
-current GitHub state — auto-publishing a now-`published` draft, auto-dismissing a
-closed/withdrawn/deleted draft, and auto-*withdrawing* a published one
-([INV-WITHDRAW](./invariant.md#inv-withdraw)). It exists because GitHub does **not** reliably
-emit `repository_advisory` webhooks for withdrawal/closure/deletion (and never
-for deletion), so the webhook path alone would miss them. Per-advisory failures
-are logged and skipped; no-ops while `GHSA_FEATURE_ENABLED` is off.
+advisory **that already exists** via `sync_single_ghsa` and runs
+`react_to_ghsa_state`, mirroring the current GitHub state — promoting a now-
+accepted triage row to draft, auto-publishing a now-`published` draft/triage row,
+auto-dismissing a closed/withdrawn/deleted draft/triage row, and auto-*withdrawing*
+a published one ([INV-WITHDRAW](./invariant.md#inv-withdraw)). It exists because
+GitHub does **not** reliably emit `repository_advisory` webhooks for
+withdrawal/closure/deletion (and never for deletion), so the webhook path alone
+would miss them. It does **not** discover new GHSAs. Per-advisory failures are
+logged and skipped; no-ops while `GHSA_FEATURE_ENABLED` is off.
 
-GHSA *discovery* (auto-creating new advisories) is, by contrast,
-intentionally not on beat — it is user-triggered, scoped (project or all), and
-recorded as a `GhsaSyncRun`.
+`ghsa-discovery` is the *discovery* backstop: every
+`GHSA_DISCOVERY_INTERVAL_HOURS` (default 24 — heavier than reconcile, as it lists
+every repo) `run_scheduled_ghsa_discovery` runs `sync_ghsas_for_all_projects`,
+auto-creating rows for GHSAs not yet mirrored. It catches `repository_advisory.reported`
+webhooks GitHub may not deliver (a newly-reported GHSA enters triage upstream and
+is mirrored as a triage row). On-demand discovery from the admin console stays the
+primary path; each run is recorded as a `GhsaSyncRun`. No-ops while
+`GHSA_FEATURE_ENABLED` is off.
 
 ### 6.3 Task inventory
 
@@ -733,9 +764,10 @@ recorded as a `GhsaSyncRun`.
 | `ghsa` | `run_pmi_repo_sync` | Beat-scheduled PMI mirror refresh. |
 | `ghsa` | `run_ghsa_sync_project` | On-demand GHSA discovery for one project. |
 | `ghsa` | `run_ghsa_sync_all` | On-demand GHSA discovery for the whole org. |
+| `ghsa` | `run_scheduled_ghsa_discovery` | Beat-scheduled GHSA discovery backstop (org-wide): auto-creates rows for GHSAs not yet mirrored, catching missed `repository_advisory.reported` webhooks ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). No-op unless `GHSA_FEATURE_ENABLED`. |
 | `ghsa` | `run_single_ghsa_sync` | Per-advisory GHSA metadata refresh (advisory-page Sync button); reacts to the observed state ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
-| `ghsa` | `run_ghsa_auto_publish` | System-initiated `publish(system=True)` when GitHub publishes a GHSA-linked draft ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
-| `ghsa` | `reconcile_ghsa_linked_advisories` | Beat-scheduled poll backstop: re-syncs draft/triage/published GHSA-linked advisories and mirrors GitHub state — auto-publish / auto-dismiss / auto-withdraw ([INV-GHSA-3](./invariant.md#inv-ghsa-3), [INV-WITHDRAW](./invariant.md#inv-withdraw)). |
+| `ghsa` | `run_ghsa_auto_publish` | System-initiated `publish(system=True)` when GitHub publishes a GHSA-linked draft/triage row ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). |
+| `ghsa` | `reconcile_ghsa_linked_advisories` | Beat-scheduled poll backstop: re-syncs already-known draft/triage/published GHSA-linked advisories and mirrors GitHub state — triage→draft promotion / auto-publish / auto-dismiss / auto-withdraw ([INV-GHSA-3](./invariant.md#inv-ghsa-3), [INV-WITHDRAW](./invariant.md#inv-withdraw)). |
 | `ghsa` | `run_cve_push` | Push EF-assigned CVE to a linked GHSA. |
 | `ghsa` | `reap_stale_cve_push_tasks` | Beat-scheduled janitor: fails `GhsaCvePushTask` rows orphaned in queued/running and corrects the advisory's CVE-push badge ([INV-GHSA-2](./invariant.md#inv-ghsa-2)). |
 | `ghsa` | `process_webhook` | Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread. |
@@ -935,6 +967,8 @@ beat-scheduled CVE-push reaper (§6.2, [INV-GHSA-2](./invariant.md#inv-ghsa-2)),
 while the GHSA feature is disabled (DB-only, no GitHub egress),
 `GHSA_SYNC_INTERVAL_HOURS` (default 6 — cadence of the inbound-lifecycle
 reconcile poll, §6.2 / [INV-GHSA-3](./invariant.md#inv-ghsa-3)),
+`GHSA_DISCOVERY_INTERVAL_HOURS` (default 24 — cadence of the org-wide discovery
+backstop sweep, §6.2 / [INV-GHSA-3](./invariant.md#inv-ghsa-3)),
 `PMI_API_BASE_URL`, `PMI_API_TOKEN` (PMI is public; blank by
 default), `PMI_SYNC_INTERVAL_HOURS` (default 6).
 

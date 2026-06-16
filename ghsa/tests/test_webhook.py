@@ -223,6 +223,40 @@ def test_repository_advisory_auto_creates_when_repo_in_pmi(ghsa_settings, make_p
 
 
 @pytest.mark.django_db
+def test_repository_advisory_reported_auto_creates(ghsa_settings, make_project):
+    """GitHub's `reported` event (a private vulnerability report → triage
+    upstream) auto-creates a row for an unknown GHSA on a PMI-mirrored repo;
+    the row's state is mirrored from `ghsa_state` by create_ghsa_linked_advisory."""
+    from ghsa import services
+
+    project = make_project("eclipse-z")
+    ProjectGitHubRepository.objects.create(
+        project=project,
+        owner="eclipse",
+        name="reported-repo",
+        last_seen_in_pmi_at=timezone.now(),
+    )
+    delivery = WebhookDelivery.objects.create(
+        delivery_id="d-adv-reported-1",
+        event="repository_advisory",
+        action="reported",
+        status=WebhookDeliveryStatus.RECEIVED,
+    )
+    payload = {
+        "action": "reported",
+        "repository_advisory": {"ghsa_id": "GHSA-rprt-eeee-ffff"},
+        "repository": {"full_name": "eclipse/reported-repo"},
+    }
+    with patch("ghsa.services.create_ghsa_linked_advisory") as mock_create:
+        mock_create.return_value = None
+        services.dispatch_webhook(delivery, payload)
+    mock_create.assert_called_once()
+    assert mock_create.call_args.kwargs["ghsa_id"] == "GHSA-rprt-eeee-ffff"
+    delivery.refresh_from_db()
+    assert delivery.status == WebhookDeliveryStatus.PROCESSED
+
+
+@pytest.mark.django_db
 def test_repository_advisory_skips_when_repo_unknown(ghsa_settings):
     from ghsa import services
 

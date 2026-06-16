@@ -189,6 +189,36 @@ def test_inbox_marks_flagged_triage_advisory(client, setup):
 
 
 @pytest.mark.django_db
+def test_inbox_excludes_ghsa_linked_triage(client, setup):
+    """A GHSA-linked triage row is a read-only GitHub mirror (INV-GHSA-3) with no
+    human action, so it stays out of the actionable inbox feed and triage count —
+    while a native triage row on the same project still shows."""
+    from advisories.models import Kind
+
+    Advisory.objects.create(
+        project=setup["project"],
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        summary="mirrored from github",
+        state=State.TRIAGE,
+    )
+    Advisory.objects.create(
+        project=setup["project"],
+        summary="native triage report",
+        created_by=setup["member"],
+        state=State.TRIAGE,
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index"))
+    titles = {i.title for i in response.context["page"].object_list}
+    assert "native triage report" in titles
+    assert "mirrored from github" not in titles
+    assert response.context["counts"]["triage"] == 1
+
+
+@pytest.mark.django_db
 def test_inbox_flagged_subtitle_includes_routing_note(client, setup):
     flagged = Advisory.objects.create(
         project=setup["project"],

@@ -686,16 +686,25 @@ The integration's high-level shape:
   the Celery beat task `ghsa.tasks.run_pmi_repo_sync`, which runs
   every `PMI_SYNC_INTERVAL_HOURS` hours and is the authoritative
   source for which `(owner, name)` repos belong to which project.
-- **GHSA discovery** happens on-demand: admins can sync one project
+- **GHSA discovery** happens on-demand — admins can sync one project
   or all projects from the admin console; project security-team
-  members can sync their own project. Discovery creates new
-  `Advisory(kind=ghsa_linked)` rows (or updates existing ones)
-  whose `ghsa_id` is uniquely mapped
-  ([INV-ID-2](./invariant.md#inv-id-2)).
+  members can sync their own project — **and** on a slow beat schedule
+  (`run_scheduled_ghsa_discovery`, every `GHSA_DISCOVERY_INTERVAL_HOURS`)
+  as a backstop for `repository_advisory.reported` webhooks GitHub may
+  not deliver. Discovery creates new `Advisory(kind=ghsa_linked)` rows
+  (or updates existing ones) whose `ghsa_id` is uniquely mapped
+  ([INV-ID-2](./invariant.md#inv-id-2)). A new row's `state` mirrors
+  GitHub's `ghsa_state` — `triage` when the GHSA is still in triage
+  upstream, else `draft` ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). A
+  GHSA-linked `triage` row is a read-only mirror — it advances to
+  `draft`/`published`/`dismissed` only by mirroring GitHub, never a
+  human triage decision.
 - **Per-advisory sync** refreshes metadata from GitHub for a single
   advisory; updates that change payload-visible fields append a new
   `AdvisoryVersion`, updates that are heartbeats (no change) only
-  refresh `ghsa_metadata_synced_at`.
+  refresh `ghsa_metadata_synced_at`. The sync also mirrors GitHub's
+  pre-publication lifecycle: a `triage` row whose GHSA was accepted into
+  a draft upstream is promoted `triage` → `draft`.
 - **CVE push.** When an admin reserves an EF-assigned CVE on a
   GHSA-linked advisory, AdvisoryHub queues a `GhsaCvePushTask` that
   writes the CVE back to the upstream GHSA. Push success / failure /

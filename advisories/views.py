@@ -474,7 +474,13 @@ def _lifecycle_hints(advisory: Advisory, *, last_publication_task) -> dict[str, 
 
     # Lifecycle ----------------------------------------------------------
     if state == State.TRIAGE:
-        lifecycle = "Untrusted report. Promote to start the standard workflow, or dismiss."
+        if advisory.kind == Kind.GHSA_LINKED:
+            lifecycle = (
+                "Mirrored from GitHub (triage). Advances automatically when the "
+                "GHSA is accepted (→ draft) or published — no manual action here."
+            )
+        else:
+            lifecycle = "Untrusted report. Promote to start the standard workflow, or dismiss."
     elif state == State.DRAFT:
         lifecycle = "Authoring in progress. Edits append a new version."
     elif state == State.PUBLISHED:

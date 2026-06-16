@@ -692,6 +692,68 @@ def test_summary_for_dismissed_includes_reason(setup):
 
 
 @pytest.mark.django_db
+def test_summary_for_reassignment_requested_with_suggestion(setup):
+    e = record(
+        action=Action.ADVISORY_REASSIGNMENT_REQUESTED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+        metadata={"note": "wrong project", "suggested_project_slug": "beta"},
+    )
+    assert tl.summary_for(e) == "requested reassignment to beta"
+
+
+@pytest.mark.django_db
+def test_summary_for_reassignment_requested_without_suggestion(setup):
+    e = record(
+        action=Action.ADVISORY_REASSIGNMENT_REQUESTED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+        metadata={"note": "no idea where this goes", "suggested_project_slug": ""},
+    )
+    assert tl.summary_for(e) == "requested admin reassignment of this advisory"
+
+
+@pytest.mark.django_db
+def test_summary_for_reassignment_request_cleared_withdrawn(setup):
+    e = record(
+        action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+        metadata={"cause": "withdrawn", "previous_note": "wrong project", "note": ""},
+    )
+    assert tl.summary_for(e) == "withdrew the reassignment request"
+
+
+def test_reassignment_actions_are_tier_a():
+    """The draft reassignment request & withdrawal are visible to all viewers."""
+    viewer_tier = tl.TIMELINE_ACTIONS_BY_TIER["viewer"]
+    assert Action.ADVISORY_REASSIGNMENT_REQUESTED in viewer_tier
+    assert Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED in viewer_tier
+
+
+@pytest.mark.django_db
+def test_events_for_advisory_only_surfaces_withdrawn_cleared_rows(setup):
+    """A request-cleared row appears only when the requester withdrew it;
+    the accepted/dismissed/published causes are dropped at the DB layer."""
+    advisory = setup["advisory"]
+    withdrawn = record(
+        action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED,
+        actor=setup["owner"],
+        advisory=advisory,
+        metadata={"cause": "withdrawn"},
+    )
+    record(
+        action=Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED,
+        actor=setup["owner"],
+        advisory=advisory,
+        metadata={"cause": "accepted"},
+    )
+    actions = {e.pk for e in tl.events_for_advisory(advisory, viewer=setup["owner"])}
+    assert withdrawn.pk in actions
+    assert len(actions) == 1
+
+
+@pytest.mark.django_db
 def test_summary_for_unknown_action_falls_back_to_action_name(setup):
     e = record(
         action=Action.PUBLICATION_GIT_PUSH,

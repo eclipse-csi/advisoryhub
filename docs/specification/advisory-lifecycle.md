@@ -599,6 +599,13 @@ when `advisory_dismiss` dismisses a draft, `cause=published` in the publication 
 post-push finalisation — through the shared `clear_reassignment_request_if_pending`
 helper (a no-op when nothing is pending). Outside `draft` the affordance does not exist.
 
+The **request** (`ADVISORY_REASSIGNMENT_REQUESTED`) and its **withdrawal**
+(`ADVISORY_REASSIGNMENT_REQUEST_CLEARED`, `cause=withdrawn` only) surface on the advisory
+activity timeline at tier A (visible to every viewer, matching the in-banner request
+display). The *accept* path is represented there by the existing
+`ADVISORY_PROJECT_CHANGED` row; the `accepted`/`dismissed`/`published` clear rows are
+suppressed as duplicates of their companion events (see `advisories.timeline`).
+
 ---
 
 ## 12. Withdrawal request (published advisories)

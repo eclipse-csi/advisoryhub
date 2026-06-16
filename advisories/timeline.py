@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from django.db.models import Q
+
 from accounts.utils import mask_email
 from audit.models import Action, AuditLogEntry
 from audit.services import pruned_history_floor
@@ -41,6 +43,8 @@ _TIER_A_ACTIONS: frozenset[str] = frozenset(
         Action.ADVISORY_PUBLISHED,
         Action.ADVISORY_DISMISSED,
         Action.ADVISORY_PROJECT_CHANGED,
+        Action.ADVISORY_REASSIGNMENT_REQUESTED,
+        Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED,
         Action.ADVISORY_SUBMITTED_FOR_REVIEW,
         Action.ADVISORY_REVIEW_APPROVED,
         Action.ADVISORY_REVIEW_CHANGES_REQUESTED,
@@ -120,8 +124,14 @@ def events_for_advisory(advisory: Advisory, *, viewer) -> Iterable[AuditLogEntry
     allowed = visible_actions(viewer, advisory)
     if not allowed:
         return AuditLogEntry.objects.none()
+    cleared = Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED
     return (
         AuditLogEntry.objects.filter(advisory=advisory, action__in=allowed)
+        # The request-cleared row is only meaningful here when the requester
+        # withdrew it; accepted/dismissed/published are already narrated by
+        # their companion rows (project change / dismiss / publish), so drop
+        # those duplicates at the DB layer.
+        .exclude(Q(action=cleared) & ~Q(metadata__cause="withdrawn"))
         .select_related("actor")
         .prefetch_related("actor__groups")
         .order_by("created_at")
@@ -454,6 +464,23 @@ def _f_dismissed(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
 @_register(Action.ADVISORY_PROJECT_CHANGED)
 def _f_project_changed(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
     return f"moved this advisory from {_project_of(e.previous_value)} to {_project_of(e.new_value)}"
+
+
+@_register(Action.ADVISORY_REASSIGNMENT_REQUESTED)
+def _f_reassignment_requested(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
+    slug = _as_dict(e.metadata).get("suggested_project_slug")
+    if slug:
+        return f"requested reassignment to {slug}"
+    return "requested admin reassignment of this advisory"
+
+
+@_register(Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED)
+def _f_reassignment_request_cleared(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
+    # Only cause=withdrawn reaches the timeline (see events_for_advisory);
+    # branch defensively for the rest.
+    if _as_dict(e.metadata).get("cause") == "withdrawn":
+        return "withdrew the reassignment request"
+    return "cleared the reassignment request"
 
 
 @_register(Action.ADVISORY_EDITED)

@@ -294,6 +294,19 @@ def test_detail_shows_request_button_for_owner(db, make_user, make_project, clie
     assert b"Request admin reassignment" in resp.content
 
 
+def test_detail_renders_modal_host_for_request(db, make_user, make_project, client):
+    """The request button targets ``#modal`` over HTMX, so the dialog host must
+    be in the DOM on a draft for the owner. Regression: the host used to be
+    rendered only for the triage routing flag (``can_flag_routing``), so a draft
+    owner clicking the button hit an htmx:targetError."""
+    project = make_project("alpha")
+    member = make_user(email="m@example.org", groups=[f"{project.slug}-security"])
+    adv = _make_draft_advisory(project)
+    client.force_login(member)
+    body = client.get(reverse("advisories:detail", args=[adv.advisory_id])).content.decode()
+    assert 'id="modal"' in body
+
+
 def test_detail_hides_request_button_for_admin(db, admin_user, make_project, client):
     project = make_project("alpha")
     adv = _make_draft_advisory(project)

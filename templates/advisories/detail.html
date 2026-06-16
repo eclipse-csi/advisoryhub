@@ -354,7 +354,7 @@
 <div id="details-history-host" data-dialog-host></div>
 <div id="version-diff-host" data-dialog-host></div>
 
-{% if can_flag_routing %}
+{% if can_flag_routing or can_request_reassignment %}
   <div id="modal" data-dialog-host></div>
 {% endif %}
 {% endblock %}

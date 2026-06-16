@@ -991,6 +991,31 @@ def test_dismiss_blocked_for_non_admin_when_cve_assigned(client, member_a, proje
 
 
 @pytest.mark.django_db
+def test_dismiss_advisory_service_dismisses_draft(member_a, project_a):
+    """The extracted dismiss_advisory service (reusable core behind the view and
+    the GHSA auto-dismiss path) flips state, records the audit pair, and is
+    idempotent."""
+    from advisories import services
+
+    advisory = Advisory.objects.create(project=project_a, state=State.DRAFT, summary="x")
+    services.dismiss_advisory(advisory, by=member_a, reason="duplicate")
+    advisory.refresh_from_db()
+    assert advisory.state == State.DISMISSED
+    assert advisory.dismissed_from_state == State.DRAFT
+    assert advisory.dismissed_reason == "duplicate"
+    assert AuditLogEntry.objects.filter(
+        action=Action.ADVISORY_DISMISSED, advisory=advisory
+    ).exists()
+    assert AuditLogEntry.objects.filter(
+        action=Action.ADVISORY_STATE_CHANGED, advisory=advisory
+    ).exists()
+    # Idempotent: a second call is a no-op (reason is not overwritten).
+    services.dismiss_advisory(advisory, by=member_a, reason="again")
+    advisory.refresh_from_db()
+    assert advisory.dismissed_reason == "duplicate"
+
+
+@pytest.mark.django_db
 def test_dismiss_admin_with_assigned_cve_creates_orphan(client, admin_user, project_a):
     from workflows.models import OrphanCve, OrphanCveStatus
 

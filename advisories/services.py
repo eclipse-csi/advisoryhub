@@ -305,6 +305,69 @@ def dismiss_triage(advisory: Advisory, *, by, reason: str) -> Advisory:
     return locked
 
 
+def dismiss_advisory(advisory: Advisory, *, by, reason: str) -> Advisory:
+    """Dismiss a non-triage advisory (the draft-state dismissal core).
+
+    The reusable service behind the ``advisory_dismiss`` view's non-triage
+    branch and the GHSA auto-dismiss path (``ghsa.services.react_to_ghsa_state``
+    with ``by=None`` when GitHub closes/withdraws/deletes the linked advisory).
+    Authorization is the *caller's* responsibility — the view checks
+    ``can_dismiss`` first; the GHSA auto-dismiss is a system-policy action and
+    only ever reaches here for an advisory with no assigned CVE (the CVE-bearing
+    case stays admin-only, exactly as ``can_dismiss`` requires). Idempotent: a
+    no-op if the advisory is already dismissed.
+    """
+    cleaned_reason = (reason or "").strip()
+    if not cleaned_reason:
+        raise ValueError("Dismissal reason is required.")
+
+    from workflows.services import cancel_open_cve_request, cancel_pending_review, unassign_cve
+
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if locked.state == State.DISMISSED:
+            return locked
+        previous_state = locked.state
+        locked.state = State.DISMISSED
+        locked.dismissed_reason = cleaned_reason
+        locked.dismissed_from_state = previous_state
+        locked.save(
+            update_fields=["state", "dismissed_reason", "dismissed_from_state", "modified_at"]
+        )
+        record(
+            action=Action.ADVISORY_DISMISSED,
+            actor=by,
+            advisory=locked,
+            metadata={
+                "advisory_id": locked.advisory_id,
+                "project_slug": locked.project.slug,
+                "reason": cleaned_reason,
+                "from_state": previous_state,
+            },
+        )
+        record(
+            action=Action.ADVISORY_STATE_CHANGED,
+            actor=by,
+            advisory=locked,
+            previous_value={"state": previous_state},
+            new_value={"state": State.DISMISSED},
+        )
+        # Dismissal exits draft — clear any pending admin-reassignment request
+        # (INV-AUTH-9: cleared on every exit from draft).
+        clear_reassignment_request_if_pending(locked, by=by, cause="dismissed")
+        # An open CVE request on a now-dismissed advisory is dead work.
+        cancel_open_cve_request(locked, by=by, reason=f"Advisory dismissed: {cleaned_reason}")
+        # Tear down any pending review so a later reopen lands in a clean draft.
+        cancel_pending_review(locked, by=by, reason=f"Advisory dismissed: {cleaned_reason}")
+        # A reserved CVE becomes an orphan (admin must mark it rejected at
+        # cve.org). ``can_dismiss`` guarantees an admin actor when a CVE is
+        # assigned; the system auto-dismiss never reaches here with one set.
+        if locked.assigned_cve_id:
+            unassign_cve(locked, by=by, reason=f"Advisory dismissed: {cleaned_reason}")
+
+    return locked
+
+
 def reopen_advisory(advisory: Advisory, *, by) -> Advisory:
     """Return a dismissed advisory to its pre-dismissal state.
 

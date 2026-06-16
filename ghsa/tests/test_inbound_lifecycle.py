@@ -97,6 +97,61 @@ def test_auto_publish_task_skips_on_gating_failure(make_project):
     assert "skipped" in result
 
 
+# ---- auto-dismiss on GitHub close / withdraw / delete ----------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("ghsa_state", [GhsaState.CLOSED, GhsaState.WITHDRAWN])
+def test_react_auto_dismisses_closed_or_withdrawn_draft(make_project, ghsa_state):
+    adv = _ghsa_advisory(make_project("alpha"), ghsa_state=ghsa_state)
+    services.react_to_ghsa_state(
+        adv, {"changed": [], "conflict": False, "missing_upstream": False}, by=None
+    )
+    adv.refresh_from_db()
+    assert adv.state == State.DISMISSED
+    assert "GitHub" in adv.dismissed_reason
+
+
+@pytest.mark.django_db
+def test_react_auto_dismisses_on_missing_upstream(make_project):
+    adv = _ghsa_advisory(make_project("alpha"), ghsa_state=GhsaState.CLOSED)
+    services.react_to_ghsa_state(
+        adv, {"changed": [], "conflict": False, "missing_upstream": True}, by=None
+    )
+    adv.refresh_from_db()
+    assert adv.state == State.DISMISSED
+    assert "deleted" in adv.dismissed_reason
+
+
+@pytest.mark.django_db
+def test_react_does_not_dismiss_published(make_project):
+    """A published advisory whose GHSA is withdrawn is not auto-dismissed — it
+    can't be (published advisories are undismissable) and the EF feed isn't
+    retracted here; it's surfaced for manual handling instead."""
+    adv = _ghsa_advisory(
+        make_project("alpha"), state=State.PUBLISHED, ghsa_state=GhsaState.WITHDRAWN
+    )
+    services.react_to_ghsa_state(
+        adv, {"changed": [], "conflict": False, "missing_upstream": False}, by=None
+    )
+    adv.refresh_from_db()
+    assert adv.state == State.PUBLISHED
+
+
+@pytest.mark.django_db
+def test_react_does_not_dismiss_when_cve_assigned(make_project):
+    """A CVE-bearing advisory is left for an admin — orphaning a CVE is a CNA
+    action that can_dismiss keeps admin-only, so the system never does it."""
+    adv = _ghsa_advisory(make_project("alpha"), ghsa_state=GhsaState.CLOSED)
+    adv.assigned_cve_id = "CVE-2026-0001"
+    adv.save(update_fields=["assigned_cve_id", "modified_at"])
+    services.react_to_ghsa_state(
+        adv, {"changed": [], "conflict": False, "missing_upstream": False}, by=None
+    )
+    adv.refresh_from_db()
+    assert adv.state == State.DRAFT
+
+
 @override_settings(GHSA_AUTO_PUBLISH_ENABLED=True)
 @pytest.mark.django_db(transaction=True)
 def test_refresh_for_publish_does_not_auto_publish(make_project, ghsa_payload):

@@ -233,8 +233,9 @@ def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
     client = get_client()
     payload = client.get_advisory(advisory.ghsa_owner, advisory.ghsa_repo, advisory.ghsa_id)
     if payload is None:
-        # GHSA was deleted upstream. Don't auto-dismiss; surface as state
-        # change so the owner can decide.
+        # GHSA was deleted upstream. Record it as a state change here; the
+        # *observing* caller (react_to_ghsa_state) decides whether to
+        # auto-dismiss — sync itself stays a pure observer (no recursion).
         previous_state = advisory.ghsa_state
         advisory.ghsa_state = GhsaState.CLOSED
         advisory.ghsa_metadata = {"missing_upstream": True}
@@ -343,6 +344,13 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
     ``state == DRAFT`` guard plus ``publish()``'s in-flight lock keep it
     idempotent and dedupe a webhook-vs-reconcile double fire. A dismissed
     advisory is never auto-published.
+
+    Auto-dismiss: when GitHub closes/withdraws the advisory or deletes it (404,
+    ``missing_upstream``), dismiss the AdvisoryHub draft/triage row. Skipped for
+    ``published`` advisories (they can't be dismissed, and the EF feed isn't
+    retracted here — surfaced for manual handling) and for advisories holding an
+    assigned CVE (orphaning a CVE is an admin/CNA action — ``can_dismiss`` keeps
+    that path admin-only, so the system never does it).
     """
     if advisory.kind != Kind.GHSA_LINKED:
         return
@@ -355,6 +363,25 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
         from .tasks import run_ghsa_auto_publish
 
         transaction.on_commit(partial(safe_enqueue, run_ghsa_auto_publish, advisory.advisory_id))
+        return
+
+    gone = bool(summary.get("missing_upstream")) or advisory.ghsa_state in (
+        GhsaState.CLOSED,
+        GhsaState.WITHDRAWN,
+    )
+    if gone and advisory.state in (State.DRAFT, State.TRIAGE):
+        if advisory.assigned_cve_id:
+            logger.info(
+                "GHSA %s gone upstream but advisory %s holds CVE %s — leaving for an admin",
+                advisory.ghsa_id,
+                advisory.advisory_id,
+                advisory.assigned_cve_id,
+            )
+            return
+        cause = "deleted" if summary.get("missing_upstream") else advisory.ghsa_state
+        advisory_services.dismiss_advisory(
+            advisory, by=by, reason=f"Linked GHSA was {cause} on GitHub."
+        )
 
 
 # ---------------------------------------------------------------------------

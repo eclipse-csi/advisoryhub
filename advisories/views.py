@@ -793,59 +793,11 @@ def advisory_dismiss(request, advisory_id: str):
                 messages.success(request, "Advisory dismissed.")
                 return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
-            from workflows.services import (
-                cancel_open_cve_request,
-                cancel_pending_review,
-                unassign_cve,
-            )
-
-            with transaction.atomic():
-                previous_state = advisory.state
-                advisory.state = State.DISMISSED
-                advisory.dismissed_reason = reason
-                advisory.dismissed_from_state = previous_state
-                advisory.save()
-                record_from_request(
-                    request,
-                    action=Action.ADVISORY_DISMISSED,
-                    advisory=advisory,
-                    previous_value=previous_state,
-                    new_value=State.DISMISSED,
-                )
-                # Dismissal exits draft — clear any pending admin-reassignment
-                # request (INV-AUTH-9: cleared on every exit from draft).
-                services.clear_reassignment_request_if_pending(
-                    advisory, by=request.user, cause="dismissed"
-                )
-                # An open CVE request on a now-dismissed advisory is dead
-                # work — auto-cancel it so the admin queue doesn't carry
-                # the row.
-                cancel_open_cve_request(
-                    advisory,
-                    by=request.user,
-                    reason=f"Advisory dismissed: {reason}",
-                )
-                # Tear down any pending review state so a later reopen
-                # lands in a clean draft (no stale CHANGES_REQUESTED
-                # badge, no orphan OPEN ReviewTask on the admin queue, no
-                # surviving APPROVED that would bypass review on the way
-                # back out).
-                cancel_pending_review(
-                    advisory,
-                    by=request.user,
-                    reason=f"Advisory dismissed: {reason}",
-                )
-                # If a CVE was reserved for this advisory, it becomes an
-                # orphan — the security team still needs to mark it rejected
-                # at cve.org. ``can_dismiss`` guarantees the actor is an admin
-                # when ``assigned_cve_id`` is set, so the admin-gated
-                # ``unassign_cve`` will not raise PermissionDenied here.
-                if advisory.assigned_cve_id:
-                    unassign_cve(
-                        advisory,
-                        by=request.user,
-                        reason=f"Advisory dismissed: {reason}",
-                    )
+            # The reusable dismissal core (also used by the GHSA auto-dismiss
+            # path). can_dismiss was already checked above; for a CVE-bearing
+            # advisory it guarantees an admin actor, so the cascade's admin-gated
+            # unassign_cve won't raise here.
+            services.dismiss_advisory(advisory, by=request.user, reason=reason)
             messages.success(request, "Advisory dismissed.")
             return redirect("advisories:detail", advisory_id=advisory.advisory_id)
     else:

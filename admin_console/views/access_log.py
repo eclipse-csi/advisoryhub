@@ -53,7 +53,11 @@ def access_log(request):
     if not user_filtered_time:
         selected_preset = "7d"
 
-    qs = AccessLogEntry.objects.select_related("actor", "advisory").order_by("-created_at")
+    qs = (
+        AccessLogEntry.objects.select_related("actor", "advisory")
+        .prefetch_related("actor__groups")
+        .order_by("-created_at")
+    )
 
     if selected_actions:
         qs = qs.filter(action__in=selected_actions)

@@ -168,6 +168,58 @@ class TestUserChipEmailGating:
 
 
 @pytest.mark.django_db
+class TestUserChipSecurityTeamMarker:
+    """A shield marker flags global security-team / admin members (members of
+    ``OIDC_ADMIN_GROUP``) wherever they're named. Per-project security teams are
+    a different concept and must not be marked."""
+
+    SEAL = "user-chip__seal"
+    LABEL = "Eclipse Foundation Security Team"
+
+    def test_marker_present_for_global_admin(self):
+        u = User.objects.create_user(email="admin@example.org")
+        u.display_name = "Adam Admin"
+        u.save()
+        u.groups.add(Group.objects.get_or_create(name="advisoryhub-security")[0])
+        html = _render(u)
+        assert self.SEAL in html
+        assert self.LABEL in html
+
+    def test_marker_absent_for_non_admin(self):
+        u = User.objects.create_user(email="nobody@example.org")
+        u.display_name = "Nora Nobody"
+        u.save()
+        html = _render(u)
+        assert self.SEAL not in html
+        assert self.LABEL not in html
+
+    def test_marker_absent_for_project_security_team_only(self):
+        """Membership in a *project* security-team group is not the global team."""
+        u = User.objects.create_user(email="proj@example.org")
+        u.display_name = "Pat Project"
+        u.save()
+        u.groups.add(Group.objects.get_or_create(name="eclipse-jetty-security")[0])
+        html = _render(u)
+        assert self.SEAL not in html
+
+    def test_marker_present_even_when_email_gated(self):
+        """A non-owner viewing an admin's plain chip (no popover) still sees the
+        marker — identifying the security team must not depend on email visibility."""
+        u = User.objects.create_user(email="admin@example.org")
+        u.display_name = "Adam Admin"
+        u.save()
+        u.groups.add(Group.objects.get_or_create(name="advisoryhub-security")[0])
+        html = _render(u, can_see_emails=False)
+        assert "user-chip--plain" in html
+        assert "user-chip__pop" not in html  # popover suppressed
+        assert self.SEAL in html  # marker survives
+
+    def test_marker_absent_for_none_user(self):
+        html = _render(None, fallback="system")
+        assert self.SEAL not in html
+
+
+@pytest.mark.django_db
 class TestUserChipNoNPlusOne:
     def test_groups_prefetched_avoids_n_plus_one(self):
         """When callers prefetch ``groups`` on the User queryset, rendering

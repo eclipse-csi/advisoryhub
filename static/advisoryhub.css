@@ -3469,6 +3469,16 @@ dialog.drawer--right {
 .user-chip:focus { outline: none; }
 .user-chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-2xs); }
 .user-chip__name { color: inherit; }
+/* Shield marker flagging a global security-team / admin member, beside the name.
+   Brand-tinted; the SVG inherits color via currentColor. */
+.user-chip__seal {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 0.25rem;
+  color: var(--brand-fg);
+  vertical-align: -0.1em;
+}
+.user-chip__seal .adv-icon { width: 0.9em; height: 0.9em; }
 .user-chip--missing {
   color: var(--text-muted);
   font-style: italic;

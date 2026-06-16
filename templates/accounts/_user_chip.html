@@ -2,7 +2,7 @@
 {% if user %}
   {% if reveal %}
   <span class="user-chip" tabindex="0">
-    <span class="user-chip__name">{{ name }}</span>
+    <span class="user-chip__name">{{ name }}</span>{% if is_security_team %}<span class="user-chip__seal" role="img" aria-label="Eclipse Foundation Security Team" title="Eclipse Foundation Security Team">{% include "advisories/_icons.html" with icon="shield" %}</span>{% endif %}
     <span class="user-chip__pop" role="tooltip">
       {% if user.email %}<span class="user-chip__email">{{ user.email }}</span>{% endif %}
       {% with groups=user.groups.all %}
@@ -16,7 +16,7 @@
     </span>
   </span>
   {% else %}
-  <span class="user-chip user-chip--plain">{{ name }}</span>
+  <span class="user-chip user-chip--plain">{{ name }}{% if is_security_team %}<span class="user-chip__seal" role="img" aria-label="Eclipse Foundation Security Team" title="Eclipse Foundation Security Team">{% include "advisories/_icons.html" with icon="shield" %}</span>{% endif %}</span>
   {% endif %}
 {% else %}
   <span class="user-chip user-chip--missing">{{ fallback }}</span>

@@ -65,7 +65,11 @@ def audit(request):
         selected_preset = ""
     selected_q = (request.GET.get("q") or "").strip()[:200]
 
-    qs = AuditLogEntry.objects.select_related("actor", "advisory").order_by("-created_at")
+    qs = (
+        AuditLogEntry.objects.select_related("actor", "advisory")
+        .prefetch_related("actor__groups")
+        .order_by("-created_at")
+    )
 
     if selected_actions:
         qs = qs.filter(action__in=selected_actions)

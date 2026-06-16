@@ -11,6 +11,7 @@ names only, because another participant's email is PII they don't need (see
 from __future__ import annotations
 
 from django import template
+from django.conf import settings
 
 from accounts.utils import mask_email
 
@@ -44,4 +45,20 @@ def user_chip(context, user, fallback: str = "—"):
     else:
         name = (user.display_name or "").strip() or mask_email(user.email) or fallback
 
-    return {"user": user, "fallback": fallback, "name": name, "reveal": reveal}
+    # Mark global security-team / admin members so they're identifiable wherever
+    # they're named. Iterate the already-loaded ``groups.all()`` rather than the
+    # ``User.is_global_admin`` property (a separate ``.exists()`` query): this
+    # reuses the prefetch cache and the same fetch the popover performs, so admin
+    # chips add no extra queries when callers prefetch ``groups`` (INV-AUTH-1 —
+    # display only; authorization stays server-side).
+    is_security_team = user is not None and any(
+        g.name == settings.OIDC_ADMIN_GROUP for g in user.groups.all()
+    )
+
+    return {
+        "user": user,
+        "fallback": fallback,
+        "name": name,
+        "reveal": reveal,
+        "is_security_team": is_security_team,
+    }

@@ -139,7 +139,7 @@ reviewer:
 
 | Role | How you get it | In short |
 |---|---|---|
-| **viewer** | Granted on a specific advisory, or auto-granted on a report you filed while signed in | Read the advisory and its history; post public comments. |
+| **viewer** | Granted on a specific advisory, or auto-granted on a report you filed while signed in | Read the advisory and its history; post comments. |
 | **collaborator** | Granted on a specific advisory | Everything a viewer can, plus edit content and use internal comments. |
 | **owner** | Be on the advisory's project security team (not grantable) | Full control of that project's advisories: edit, manage access, request CVEs, submit for review, publish, dismiss. |
 | **global administrator** | Member of the admin group in the identity provider | Owner on *every* advisory, plus the exclusive reviewer and the Admin Console. |
@@ -156,10 +156,12 @@ state, is in [`permissions.md`](../specification/permissions.md).
 These appear in more than one guide; each guide explains them from its own
 perspective, but here is the shared vocabulary.
 
-- **Comments — public vs internal.** Public comments are visible to everyone who
-  can see the advisory; internal comments are visible to collaborators, owners,
-  and administrators only. Whether a comment is internal is fixed when it is
-  posted. You can `@`-mention a person or a whole `@team`.
+- **Comments — visibility.** A comment is visible to everyone who can see the
+  advisory; an internal comment is visible to collaborators, owners, and
+  administrators only. Comments are never published or disclosed externally —
+  at most they are visible to people with access to the advisory here. Whether a
+  comment is internal is fixed when it is posted. You can `@`-mention a person or
+  a whole `@team`.
 - **Version history.** Editing an advisory's content appends a new, immutable
   version; nothing is overwritten. You can view the history and diff any two
   versions.

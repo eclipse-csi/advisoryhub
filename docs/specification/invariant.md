@@ -1740,7 +1740,7 @@ the audit trail must answer "who gave whom access to what, when?"
 **Statement.** `AdvisoryComment.is_internal` is fixed when the comment is created
 and is not mutated afterwards.
 
-**Rationale.** Flipping internal/public after the fact would silently broaden or
+**Rationale.** Flipping the internal flag after the fact would silently broaden or
 narrow the visibility of an already-readable comment, including by past readers
 who already saw it.
 

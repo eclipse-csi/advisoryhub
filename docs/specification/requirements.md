@@ -52,7 +52,7 @@ and the public surface is whatever that branch becomes.
 - Access control on every advisory, with per-advisory grants and
   invitations on top of project-derived ownership.
 - Comments with markdown rendering, mentions, and per-comment
-  internal-vs-public scoping.
+  visibility (internal vs. everyone with advisory access).
 - An append-only audit log over every governance action.
 - Generation, validation, and Git-push of OSV + CSAF documents.
 - GHSA integration: linking advisories to GitHub Security Advisories,
@@ -407,7 +407,7 @@ Authenticated reporters are auto-granted `viewer` on the new advisory
 from their dashboard. Triage advisories are owner-only for editing,
 publishing, CVE requesting, and internal commenting
 ([INV-AUTH-5](./invariant.md#inv-auth-5)); the reporter's auto-grant
-gives read and public-comment only.
+gives read and non-internal commenting only.
 
 The triage queue and per-advisory detail pages live under the admin
 console's Inbox section; admins can promote
@@ -435,7 +435,10 @@ retroactively.
 are visible only to collaborators and owners; visibility is
 re-checked at *read* time so a revoked collaborator stops seeing
 internal comments immediately
-([INV-COMMENT-2](./invariant.md#inv-comment-2)).
+([INV-COMMENT-2](./invariant.md#inv-comment-2)). Comments are never
+published or disclosed externally: at most a comment is visible to
+people with viewer+ access to the advisory inside AdvisoryHub, and
+internal comments are further restricted to collaborators and owners.
 
 Mentions are written as `@email` or `@local-part`; the parser
 resolves them against the user table and emits a mention notification
@@ -996,7 +999,7 @@ is required.
 
 ### 6.8 Comment with @-mention
 
-1. A collaborator opens the advisory and posts a public comment
+1. A collaborator opens the advisory and posts a comment
    mentioning `@alice` and `@bob@example.org`.
 2. The markdown is rendered through the nh3 allowlist and saved
    to `AdvisoryComment.body`; `CommentVersion` v1 carries the same

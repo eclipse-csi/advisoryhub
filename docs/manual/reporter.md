@@ -15,7 +15,7 @@ quick. For shared concepts and the glossary, see the
 |---|---|
 | Submit a vulnerability report through the public form | See other advisories or any private data |
 | Optionally sign in first, so you can follow your own report afterwards | Edit, dismiss, publish, or request a CVE |
-| Post **public** comments on your own report (only if you were signed in) | Read internal team discussion |
+| Post comments on your own report (only if you were signed in) | Read internal team discussion |
 
 Everything beyond filing a report is handled by the project's **security team**,
 who will *triage* what you send (see §4).
@@ -113,12 +113,14 @@ submit, two things change:
 - You are automatically granted **viewer** access to the advisory you filed
   ([INV-INTAKE-3](../specification/invariant.md#inv-intake-3)). That means you can:
   - find it later in your advisory list at `/advisories/`, and
-  - read it and post **public comments** on it (for example, to answer the
+  - read it and post **comments** on it (for example, to answer the
     team's follow-up questions).
 
-You still cannot edit it, see internal team comments, or take any team action —
-viewer is read-and-public-comment only. If you later need fuller involvement, an
-owner can grant you collaborator access; see the
+Comments are never published or disclosed externally; at most they are visible
+to people with access to the advisory inside AdvisoryHub. You still cannot edit
+it, see internal team comments, or take any team action — viewer is
+read-and-comment only (you cannot post internal comments). If you later need
+fuller involvement, an owner can grant you collaborator access; see the
 [Collaborator & Viewer Guide](./collaborator-and-viewer.md).
 
 ---

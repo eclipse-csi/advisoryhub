@@ -332,7 +332,7 @@ def test_cancel_open_cve_request_transitions_and_audits(setup):
     assert task.finished_at is not None
     assert task.notes == "Advisory dismissed: duplicate"
     assert AuditLogEntry.objects.filter(action=Action.CVE_REQUEST_CANCELLED).exists()
-    # No public comment is created on auto-cancellation (unlike rejection).
+    # No comment is created on auto-cancellation (unlike rejection).
     assert not AdvisoryComment.objects.filter(advisory=setup["advisory"]).exists()
 
 

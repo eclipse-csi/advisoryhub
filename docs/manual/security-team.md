@@ -73,7 +73,7 @@ Public reports for your project arrive in the **triage** state. Find them via th
   (`…/clear-routing-flag/`) to take the report back.
 
 While an advisory is in triage, owners are the only people who can act on it; the
-reporter (and any viewer) can read it and post public comments but nothing more.
+reporter (and any viewer) can read it and post comments but nothing more.
 
 > **Possible duplicates.** On deployments that enable it, the advisory page
 > shows owners a **Possible duplicates** panel: a background check compares the
@@ -300,7 +300,7 @@ Three behaviours to expect:
 
 - **Comments.** The advisory page ends with the **Activity** timeline — comments
   merged chronologically with recorded actions — and the comment box lives
-  there. As an owner you can post **public** and **internal** comments and
+  there. As an owner you can post ordinary or **internal** comments and
   `@`-mention people or a whole `@team`. Whether a comment is internal is fixed
   when posted. Authors can edit their comments (history is kept) or **redact**
   them; redaction hides the text but leaves the entry visible in the timeline.

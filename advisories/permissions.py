@@ -156,7 +156,7 @@ def can_comment(user, advisory: Advisory) -> bool:
     discussion away from the auto-granted reporter (viewer). That concern
     is now handled by the per-comment ``is_internal`` flag: a triager can
     discuss internally on the triage row, and the viewer sees only
-    public comments. See :func:`can_post_internal_comment` /
+    non-internal comments. See :func:`can_post_internal_comment` /
     :func:`can_see_internal_comment`.
 
     Comment lock (dispute cool-down): when ``advisory.comments_locked`` is set,

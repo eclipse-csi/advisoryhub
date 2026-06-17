@@ -22,7 +22,7 @@ and a viewer on another:
 | You can… | Viewer | Collaborator |
 |---|---|---|
 | View the advisory and its version history | ✓ | ✓ |
-| Post **public** comments | ✓ | ✓ |
+| Post comments | ✓ | ✓ |
 | See and post **internal** comments | ✗ | ✓ |
 | Edit the advisory's content | ✗ | ✓ |
 | Grant access, dismiss, request a CVE, submit for review, or publish | ✗ | ✗ |
@@ -82,12 +82,14 @@ timeline. As a viewer or collaborator you can:
 Scroll to the **Activity** timeline at the end of the advisory page and use the
 comment box.
 
-- **Public vs internal.** Public comments are visible to everyone who can see the
+- **Comment visibility.** A comment is visible to everyone who can see the
   advisory. **Internal** comments are visible only to collaborators, owners, and
-  administrators — viewers never see them. If you are a **viewer**, every comment
-  you post is public. If you are a **collaborator**, you can choose internal when
-  posting. Whether a comment is internal is fixed at posting time and cannot be
-  changed afterward.
+  administrators — viewers never see them. Comments are never published or
+  disclosed externally; at most they are visible to people with access to the
+  advisory here. If you are a **viewer**, every comment you post is visible to
+  everyone with access (you cannot post internal comments). If you are a
+  **collaborator**, you can mark a comment internal when posting. Whether a
+  comment is internal is fixed at posting time and cannot be changed afterward.
 - **Mentions.** Type `@` and a name to notify a specific person, or `@team` to
   notify a project's security team. Mentioned people are emailed.
 - **Editing your comments.** You can edit a comment you wrote; edits are

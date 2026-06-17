@@ -1307,7 +1307,7 @@ Tested concerns include but are not limited to:
 - Append-only guards (model layer for all three append-only
   tables, plus the Postgres triggers under the Postgres CI run).
 - Triage flow (submit, promote, dismiss, reassign, flag, unflag).
-- Comment threading, mentions, internal-vs-public visibility.
+- Comment threading, mentions, comment visibility (internal vs. everyone with access).
 - Notification recipient resolution across grant changes and
   per-advisory overrides.
 - Publication pipeline including push success, push failure

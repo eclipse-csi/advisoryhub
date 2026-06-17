@@ -14,6 +14,15 @@ from django.db import models
 
 
 class AdvisoryComment(models.Model):
+    """A comment on an advisory.
+
+    Comments are never published or disclosed externally — nothing in the
+    thread reaches the exported OSV/CSAF or the public advisory website. At
+    most, a comment (``is_internal=False``) is visible to anyone with viewer+
+    access to the advisory *inside AdvisoryHub*; an internal comment
+    (``is_internal=True``) is further restricted to collaborators and owners.
+    """
+
     advisory = models.ForeignKey(
         "advisories.Advisory", on_delete=models.CASCADE, related_name="comments"
     )

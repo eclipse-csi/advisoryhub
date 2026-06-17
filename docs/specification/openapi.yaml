@@ -149,9 +149,11 @@ paths:
       operationId: listComments
       summary: List comments on an advisory
       description: >-
-        Internal comments are omitted for users without internal-comment
-        visibility. Author emails are masked unless the caller may see user
-        emails on this advisory (INV-PRIVACY-4).
+        Comments are never published or disclosed externally; they are visible
+        only to users with access to the advisory inside AdvisoryHub. Internal
+        comments are omitted for users without internal-comment visibility.
+        Author emails are masked unless the caller may see user emails on this
+        advisory (INV-PRIVACY-4).
       responses:
         "200":
           description: All comments visible to the caller, oldest first.
@@ -993,9 +995,12 @@ components:
           type: boolean
           default: false
           description: >-
-            Internal comments are hidden from users without internal-comment
-            visibility. With a form-encoded body any non-empty string is
-            truthy — use JSON for reliable boolean semantics.
+            When false (the default) the comment is visible to everyone with
+            access to the advisory; when true it is hidden from users without
+            internal-comment visibility. Either way the comment is never
+            published or disclosed externally. With a form-encoded body any
+            non-empty string is truthy — use JSON for reliable boolean
+            semantics.
 
     Grant:
       type: object

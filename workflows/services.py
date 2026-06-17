@@ -82,7 +82,7 @@ def transition_cve_request(
     if new_status == CveRequestStatus.RESERVED and not cve_id:
         raise ValueError("cve_id is required when reserving a CVE")
     if new_status == CveRequestStatus.REJECTED and not (notes or "").strip():
-        # The rejection reason is mandatory because it becomes a public comment
+        # The rejection reason is mandatory because it becomes a comment
         # on the advisory.
         raise ValueError("notes are required when rejecting a CVE request")
     if ban_future_requests and new_status != CveRequestStatus.REJECTED:

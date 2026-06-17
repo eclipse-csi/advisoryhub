@@ -5,7 +5,7 @@
     {% csrf_token %}
     <input type="hidden" name="status" value="rejected">
     <h3 id="cve-reject-modal-title">Reject CVE request for {{ task.advisory.advisory_id }}</h3>
-    <p>The reason below will be posted as a public comment on the advisory.</p>
+    <p>The reason below will be posted as a comment on the advisory.</p>
     <label>Reason (required)
       <textarea name="notes" required rows="4"></textarea>
     </label>

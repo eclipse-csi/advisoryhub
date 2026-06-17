@@ -171,7 +171,7 @@ asymmetries with the same-row entries.
 | Action | Viewer | Collaborator | Owner (security team) | Global admin |
 |---|---|---|---|---|
 | View advisory | ✓ | ✓ | ✓ | ✓ |
-| Post public comment | ✓ ¹² | ✓ ¹² | ✓ | ✓ |
+| Post comment | ✓ ¹² | ✓ ¹² | ✓ | ✓ |
 | See internal comments | ✗ | ✓ | ✓ | ✓ |
 | Post internal comment | ✗ | ✓ ¹² | ✓ | ✓ |
 | Lock / unlock comments | ✗ | ✗ | ✓ ¹² | ✓ ¹² |
@@ -285,7 +285,7 @@ re-exports the OSV/CSAF marked withdrawn (the documents stay in the feed) and fl
 ¹² **Comment lock (dispute cool-down).** An owner or admin can pause new comments on an advisory in
 **any** lifecycle state (`Lock / unlock comments`, defined by `can_lock_comments` — owner-only:
 global admins + the project security team). While a lock is in effect, only owners/admins may post —
-collaborators and viewers are blocked for **both** public and internal comments. The lock is enforced
+collaborators and viewers are blocked from posting **any** comment (internal or not). The lock is enforced
 through the single `can_comment` gate (consulted by the web view, JSON API, the `add_comment` service,
 and the comment-form template), so it lands on every write path ([INV-AUTH-1](./invariant.md#inv-auth-1)).
 It is **not** versioned — `comments_locked` is workflow metadata, absent from `Advisory.to_payload`.
@@ -305,7 +305,7 @@ the matrix:
 
 - **`triage`.** Only the `owner` row of the matrix applies; collaborator
   and viewer rows are suppressed for *every* action other than `View
-  advisory` and `Post public comment`. The reporter's auto-granted
+  advisory` and `Post comment`. The reporter's auto-granted
   viewer can therefore read and comment on their report, but cannot
   edit, publish, or request a CVE on it ([INV-AUTH-5](./invariant.md#inv-auth-5)). Internal
   comments still require collaborator+. In addition: `Submit advisory

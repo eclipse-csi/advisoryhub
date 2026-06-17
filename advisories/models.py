@@ -247,6 +247,25 @@ class Advisory(models.Model):
     )
     withdrawal_request_note = models.TextField(blank=True)
 
+    # Comment lock (dispute cool-down): an owner/admin pauses new comments on
+    # this advisory. Orthogonal to lifecycle state — lockable in any state.
+    # Owners/admins can still post while locked (the override is enforced in
+    # ``permissions.can_comment``); collaborators and viewers are blocked. The
+    # optional reason is shown to everyone with access (the locked banner) and
+    # recorded, redacted, in the audit log. Workflow metadata, not advisory
+    # content — deliberately absent from ``to_payload`` so toggling it is not
+    # versioned.
+    comments_locked = models.BooleanField(default=False)
+    comments_locked_at = models.DateTimeField(null=True, blank=True)
+    comments_locked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    comments_lock_reason = models.TextField(blank=True)
+
     # CVE assigned by the Eclipse Foundation acting as CNA. Distinct from the
     # editable ``aliases`` list: this is write-once, set by the CVE workflow
     # service on RESERVED, and merged into OSV/CSAF output at serialization

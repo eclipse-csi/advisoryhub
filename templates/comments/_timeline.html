@@ -14,6 +14,21 @@
       <p class="empty">Nothing has happened on this advisory yet.</p>
     {% endfor %}
   </div>
+  {% if advisory.comments_locked %}
+    <div class="comment-lock-notice" role="status">
+      <p>
+        <strong>Comments are locked.</strong>
+        {% if can_comment %}
+          New comments are paused for collaborators and viewers; as an owner or admin you can still post.
+        {% else %}
+          New comments are paused while a dispute cools down. Owners and admins can re-enable them.
+        {% endif %}
+      </p>
+      {% if advisory.comments_lock_reason %}
+        <p class="comment-lock-notice__reason">{{ advisory.comments_lock_reason }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
   {% if can_comment %}
     {% include "comments/_form.html" with form=form advisory=advisory can_post_internal=can_post_internal %}
   {% endif %}

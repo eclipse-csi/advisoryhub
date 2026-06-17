@@ -36,6 +36,16 @@ urlpatterns = [
         name="clear_routing_flag",
     ),
     path(
+        "<advid:advisory_id>/lock-comments/",
+        views.advisory_lock_comments,
+        name="lock_comments",
+    ),
+    path(
+        "<advid:advisory_id>/unlock-comments/",
+        views.advisory_unlock_comments,
+        name="unlock_comments",
+    ),
+    path(
         "<advid:advisory_id>/reassign/",
         views.advisory_reassign_triage,
         name="reassign_triage",

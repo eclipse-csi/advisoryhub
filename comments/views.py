@@ -118,7 +118,7 @@ def comment_create(request, advisory_id: str):
             "timeline": services.advisory_timeline(advisory, viewer=request.user),
             **_email_visibility(request, advisory),
             "form": CommentForm(),
-            "can_comment": True,
+            "can_comment": perms.can_comment(request.user, advisory),
             "can_post_internal": perms.can_post_internal_comment(request.user, advisory),
         },
     )

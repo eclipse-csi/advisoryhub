@@ -171,9 +171,10 @@ asymmetries with the same-row entries.
 | Action | Viewer | Collaborator | Owner (security team) | Global admin |
 |---|---|---|---|---|
 | View advisory | ✓ | ✓ | ✓ | ✓ |
-| Post public comment | ✓ | ✓ | ✓ | ✓ |
+| Post public comment | ✓ ¹² | ✓ ¹² | ✓ | ✓ |
 | See internal comments | ✗ | ✓ | ✓ | ✓ |
-| Post internal comment | ✗ | ✓ | ✓ | ✓ |
+| Post internal comment | ✗ | ✓ ¹² | ✓ | ✓ |
+| Lock / unlock comments | ✗ | ✗ | ✓ ¹² | ✓ ¹² |
 | See other users' email addresses | ✗ ⁷ | ✗ ⁷ | ✓ | ✓ |
 | Edit advisory content | ✗ | ✓ | ✓ | ✓ |
 | Grant / revoke access | ✗ | ✗ | ✓ | ✓ |
@@ -280,6 +281,18 @@ even with an assigned CVE (the orphan cascade then runs). A non-mature owner can
 directly; they **request a withdrawal** an admin fulfils (§ withdrawal request). Withdrawal
 re-exports the OSV/CSAF marked withdrawn (the documents stay in the feed) and flips the advisory to
 `dismissed`. Defined by `can_withdraw_published`.
+
+¹² **Comment lock (dispute cool-down).** An owner or admin can pause new comments on an advisory in
+**any** lifecycle state (`Lock / unlock comments`, defined by `can_lock_comments` — owner-only:
+global admins + the project security team). While a lock is in effect, only owners/admins may post —
+collaborators and viewers are blocked for **both** public and internal comments. The lock is enforced
+through the single `can_comment` gate (consulted by the web view, JSON API, the `add_comment` service,
+and the comment-form template), so it lands on every write path ([INV-AUTH-1](./invariant.md#inv-auth-1)).
+It is **not** versioned — `comments_locked` is workflow metadata, absent from `Advisory.to_payload`.
+Lock and unlock are recorded in the audit log and surfaced in the activity timeline
+(`ADVISORY_COMMENTS_LOCKED` / `ADVISORY_COMMENTS_UNLOCKED`); an optional, secret-redacted reason is
+shown to everyone with access. Defined by `can_lock_comments` /
+`advisories.services.lock_advisory_comments` / `unlock_advisory_comments`.
 
 ---
 

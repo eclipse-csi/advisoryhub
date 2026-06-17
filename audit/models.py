@@ -136,6 +136,10 @@ class Action(models.TextChoices):
     ADVISORY_REASSIGNMENT_REQUEST_CLEARED = "advisory.reassignment_request_cleared"
     ADVISORY_WITHDRAWAL_REQUESTED = "advisory.withdrawal_requested"
     ADVISORY_WITHDRAWAL_REQUEST_CLEARED = "advisory.withdrawal_request_cleared"
+    # Comment lock (dispute cool-down): an owner/admin pauses or re-enables new
+    # comments on an advisory. Orthogonal to lifecycle state.
+    ADVISORY_COMMENTS_LOCKED = "advisory.comments_locked"
+    ADVISORY_COMMENTS_UNLOCKED = "advisory.comments_unlocked"
     # Legacy intake actions — kept for read-only history, not emitted by new code.
     REPORT_SUBMITTED = "report.submitted"
     REPORT_TRIAGED_INTO_ADVISORY = "report.triaged_into_advisory"

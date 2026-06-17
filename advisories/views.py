@@ -430,6 +430,9 @@ def advisory_detail(request, advisory_id: str):
                 request.user, advisory
             ),
             "reassignable_projects": _suggestable_projects(advisory),
+            # Display-only gate for the comment-lock toggle (owner/admin, any
+            # state); the lock/unlock views re-enforce authority server-side.
+            "can_lock_comments": perms.can_lock_comments(request.user, advisory),
             # Display-only gate for the duplicate-check panel loader; the
             # similarity endpoints re-enforce the owner check server-side.
             "similarity_enabled": settings.SIMILARITY_CHECK_ENABLED
@@ -1086,6 +1089,40 @@ def advisory_clear_routing_flag(request, advisory_id: str):
 
 @login_required
 @require_http_methods(["POST"])
+@html_ratelimit(rate="20/h")
+def advisory_lock_comments(request, advisory_id: str):
+    """Pause new comments on an advisory (dispute cool-down).
+
+    Owner/admin-only; the service re-checks authority (a non-owner POST raises
+    ``PermissionDenied`` → 403). Lockable in any state. The reason is optional.
+    """
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    reason = (request.POST.get("reason") or "").strip()
+    try:
+        services.lock_advisory_comments(advisory, by=request.user, reason=reason)
+    except ValueError as exc:
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Comments locked.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="20/h")
+def advisory_unlock_comments(request, advisory_id: str):
+    """Re-enable comments after a lock. Owner/admin-only (re-checked in the
+    service)."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    try:
+        services.unlock_advisory_comments(advisory, by=request.user)
+    except ValueError as exc:
+        return _detail_with_error(request, advisory, str(exc))
+    messages.success(request, "Comments unlocked.")
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
+@require_http_methods(["POST"])
 def advisory_reassign_triage(request, advisory_id: str):
     """Reassign a flagged triage advisory to a real project, straight from the
     routing banner.
@@ -1173,6 +1210,7 @@ def _detail_with_error(request, advisory: Advisory, message: str):
                 request.user, advisory
             ),
             "reassignable_projects": _suggestable_projects(advisory),
+            "can_lock_comments": perms.can_lock_comments(request.user, advisory),
             "error": message,
         },
         status=400,

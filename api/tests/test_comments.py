@@ -97,6 +97,34 @@ def test_comments_post_form_encoded_works_too(client, setup):
 
 
 @pytest.mark.django_db
+def test_comments_post_blocked_when_locked(client, setup, make_user):
+    """A comment lock blocks a viewer's API POST (403) while the owner override
+    still lets the security-team member post."""
+    from advisories import services as adv_services
+
+    viewer = make_user(email="v@example.org")
+    grant_to_user(setup["advisory"], viewer, AccessPermission.VIEWER, by=setup["member"])
+    adv_services.lock_advisory_comments(setup["advisory"], by=setup["member"])
+    url = reverse("api:comments", args=[setup["advisory"].advisory_id])
+
+    client.force_login(viewer)
+    assert (
+        client.post(
+            url, data=json.dumps({"body": "blocked"}), content_type="application/json"
+        ).status_code
+        == 403
+    )
+
+    client.force_login(setup["member"])
+    assert (
+        client.post(
+            url, data=json.dumps({"body": "closing note"}), content_type="application/json"
+        ).status_code
+        == 201
+    )
+
+
+@pytest.mark.django_db
 def test_comments_post_rejects_empty_body(client, setup):
     client.force_login(setup["member"])
     response = client.post(

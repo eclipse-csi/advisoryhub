@@ -9,7 +9,7 @@ flat actions panel.
 
 Context required: advisory, is_triage, is_unsorted,
 can_edit, can_triage, can_flag_routing, can_request_reassignment,
-can_dismiss, can_reopen.
+can_dismiss, can_reopen, can_lock_comments.
 {% endcomment %}
 <section class="sidebar-card sidebar-card--lifecycle">
   <header class="sidebar-card__header">
@@ -186,6 +186,38 @@ can_dismiss, can_reopen.
         <p class="sidebar-card__action-hint">
           Move this advisory back to {% if advisory.dismissed_from_state == 'triage' %}triage{% else %}draft{% endif %}. The dismissal reason stays in the audit log. {% if advisory.orphaned_cves.all %}If the previous CVE wasn't yet rejected at cve.org it will be reattached automatically; if it was, an admin task will be queued.{% endif %}
         </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if can_lock_comments %}
+    <div class="sidebar-card__row">
+      {% if advisory.comments_locked %}
+        {% url 'advisories:unlock_comments' advisory.advisory_id as unlock_comments_url %}
+        {% include "_confirm_action.html" with action=unlock_comments_url dialog_id="advisory-unlock-comments" trigger_label="Unlock comments" trigger_class="success" title="Unlock comments" body="Re-enable comments for everyone with access to this advisory." confirm_label="Unlock comments" confirm_class="success" %}
+        <p class="sidebar-card__action-hint">
+          Comments are locked — only owners and admins can post. Unlock to let collaborators and viewers comment again.
+        </p>
+      {% else %}
+        <button type="button" data-dialog-open="advisory-lock-comments-dialog">Lock comments…</button>
+        <p class="sidebar-card__action-hint">
+          Pause new comments to cool down a dispute. Owners and admins can still post; collaborators and viewers are blocked until you unlock.
+        </p>
+        <dialog id="advisory-lock-comments-dialog" class="confirm-dialog" aria-labelledby="advisory-lock-comments-title">
+          <form method="post" action="{% url 'advisories:lock_comments' advisory.advisory_id %}">
+            {% csrf_token %}
+            <h3 id="advisory-lock-comments-title">Lock comments</h3>
+            <p>
+              Pause new comments from collaborators and viewers; owners and admins can still post. The reason is optional — it's shown to everyone with access and recorded in the audit log.
+            </p>
+            <label for="advisory-lock-comments-reason">Reason (optional)</label>
+            <textarea id="advisory-lock-comments-reason" name="reason" rows="4"></textarea>
+            <div class="dialog-actions">
+              <button type="button" data-dialog-close>Cancel</button>
+              <button type="submit">Lock comments</button>
+            </div>
+          </form>
+        </dialog>
       {% endif %}
     </div>
   {% endif %}

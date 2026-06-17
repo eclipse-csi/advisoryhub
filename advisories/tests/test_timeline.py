@@ -197,6 +197,47 @@ def test_summary_for_state_change(setup):
 
 
 @pytest.mark.django_db
+def test_summary_for_comments_locked_with_reason(setup):
+    e = record(
+        action=Action.ADVISORY_COMMENTS_LOCKED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+        metadata={"reason": "cooling off a dispute"},
+    )
+    assert tl.summary_for(e) == "locked comments: cooling off a dispute"
+
+
+@pytest.mark.django_db
+def test_summary_for_comments_locked_without_reason(setup):
+    e = record(
+        action=Action.ADVISORY_COMMENTS_LOCKED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+    )
+    assert tl.summary_for(e) == "locked comments"
+
+
+@pytest.mark.django_db
+def test_summary_for_comments_unlocked(setup):
+    e = record(
+        action=Action.ADVISORY_COMMENTS_UNLOCKED,
+        actor=setup["owner"],
+        advisory=setup["advisory"],
+    )
+    assert tl.summary_for(e) == "unlocked comments"
+
+
+@pytest.mark.django_db
+def test_comments_lock_actions_visible_to_viewer(setup, make_user):
+    """Both lock actions are Tier A — a plain viewer sees them on the timeline."""
+    viewer = make_user(email="viewer@example.org")
+    grant_to_user(setup["advisory"], viewer, AccessPermission.VIEWER, by=setup["owner"])
+    visible = tl.visible_actions(viewer, setup["advisory"])
+    assert Action.ADVISORY_COMMENTS_LOCKED in visible
+    assert Action.ADVISORY_COMMENTS_UNLOCKED in visible
+
+
+@pytest.mark.django_db
 def test_summary_for_state_change_falls_back_for_review_status(setup):
     e = record(
         action=Action.ADVISORY_STATE_CHANGED,

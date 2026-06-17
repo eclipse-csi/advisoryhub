@@ -22,7 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from audit.models import Action
-from audit.services import record, record_from_request
+from audit.services import record, record_from_request, redact_secrets
 from common.enqueue import safe_enqueue
 from common.net import client_ip
 from common.users import actor_or_none
@@ -33,6 +33,7 @@ from .permissions import (
     can_cancel_withdrawal_request,
     can_clear_admin_routing_flag,
     can_flag_for_admin_routing,
+    can_lock_comments,
     can_reopen,
     can_request_reassignment,
     can_request_withdrawal,
@@ -851,6 +852,94 @@ def clear_admin_routing_flag(advisory: Advisory, *, by, note: str = "") -> Advis
 
         transaction.on_commit(
             partial(_enqueue_triage_notification, locked.pk, "advisory_routing_flag_cleared")
+        )
+
+    return locked
+
+
+# ---- Comment lock (dispute cool-down) --------------------------------------
+
+
+def lock_advisory_comments(advisory: Advisory, *, by, reason: str = "") -> Advisory:
+    """Pause new comments on an advisory to cool down a dispute.
+
+    Owner/admin-only (re-checked here); lockable in any lifecycle state. While
+    locked, owners/admins can still post — collaborators and viewers are blocked
+    by :func:`permissions.can_comment`. The optional ``reason`` is shown to
+    everyone with access and recorded, redacted, in the audit log.
+    """
+    clean_reason = (reason or "").strip()
+
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_lock_comments(by, locked):
+            raise PermissionDenied("You may not lock comments on this advisory.")
+        if locked.comments_locked:
+            raise ValueError("Comments are already locked.")
+
+        locked.comments_locked = True
+        locked.comments_locked_at = timezone.now()
+        locked.comments_locked_by = by
+        locked.comments_lock_reason = clean_reason
+        locked.save(
+            update_fields=[
+                "comments_locked",
+                "comments_locked_at",
+                "comments_locked_by",
+                "comments_lock_reason",
+            ]
+        )
+
+        record(
+            action=Action.ADVISORY_COMMENTS_LOCKED,
+            actor=by,
+            advisory=locked,
+            metadata={
+                "advisory_id": locked.advisory_id,
+                "project_slug": locked.project.slug,
+                "reason": redact_secrets(clean_reason),
+            },
+        )
+
+    return locked
+
+
+def unlock_advisory_comments(advisory: Advisory, *, by) -> Advisory:
+    """Re-enable comments after a lock, reversing :func:`lock_advisory_comments`.
+
+    Owner/admin-only (re-checked here). The stored lock reason is cleared; the
+    lock/unlock pair stays in the audit log and activity timeline.
+    """
+    with transaction.atomic():
+        locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        if not can_lock_comments(by, locked):
+            raise PermissionDenied("You may not unlock comments on this advisory.")
+        if not locked.comments_locked:
+            raise ValueError("Comments are not locked.")
+
+        previous_reason = locked.comments_lock_reason
+        locked.comments_locked = False
+        locked.comments_locked_at = None
+        locked.comments_locked_by = None
+        locked.comments_lock_reason = ""
+        locked.save(
+            update_fields=[
+                "comments_locked",
+                "comments_locked_at",
+                "comments_locked_by",
+                "comments_lock_reason",
+            ]
+        )
+
+        record(
+            action=Action.ADVISORY_COMMENTS_UNLOCKED,
+            actor=by,
+            advisory=locked,
+            metadata={
+                "advisory_id": locked.advisory_id,
+                "project_slug": locked.project.slug,
+                "previous_reason": redact_secrets(previous_reason),
+            },
         )
 
     return locked

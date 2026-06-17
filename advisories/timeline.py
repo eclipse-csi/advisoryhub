@@ -45,6 +45,8 @@ _TIER_A_ACTIONS: frozenset[str] = frozenset(
         Action.ADVISORY_PROJECT_CHANGED,
         Action.ADVISORY_REASSIGNMENT_REQUESTED,
         Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED,
+        Action.ADVISORY_COMMENTS_LOCKED,
+        Action.ADVISORY_COMMENTS_UNLOCKED,
         Action.ADVISORY_SUBMITTED_FOR_REVIEW,
         Action.ADVISORY_REVIEW_APPROVED,
         Action.ADVISORY_REVIEW_CHANGES_REQUESTED,
@@ -481,6 +483,19 @@ def _f_reassignment_request_cleared(e: AuditLogEntry, _labels: PrincipalLabels) 
     if _as_dict(e.metadata).get("cause") == "withdrawn":
         return "withdrew the reassignment request"
     return "cleared the reassignment request"
+
+
+@_register(Action.ADVISORY_COMMENTS_LOCKED)
+def _f_comments_locked(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
+    reason = (_as_dict(e.metadata).get("reason") or "").strip()
+    if reason:
+        return f"locked comments: {reason}"
+    return "locked comments"
+
+
+@_register(Action.ADVISORY_COMMENTS_UNLOCKED)
+def _f_comments_unlocked(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
+    return "unlocked comments"
 
 
 @_register(Action.ADVISORY_EDITED)

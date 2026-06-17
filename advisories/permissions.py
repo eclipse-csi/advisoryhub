@@ -150,7 +150,7 @@ def can_see_user_emails(user, advisory: Advisory) -> bool:
 
 
 def can_comment(user, advisory: Advisory) -> bool:
-    """Anyone with view access may comment.
+    """Anyone with view access may comment — unless comments are locked.
 
     Triage rows were previously blocked here to keep triager-internal
     discussion away from the auto-granted reporter (viewer). That concern
@@ -158,8 +158,30 @@ def can_comment(user, advisory: Advisory) -> bool:
     discuss internally on the triage row, and the viewer sees only
     public comments. See :func:`can_post_internal_comment` /
     :func:`can_see_internal_comment`.
+
+    Comment lock (dispute cool-down): when ``advisory.comments_locked`` is set,
+    only owners/admins may still post (the override that lets a maintainer add a
+    closing note); collaborators and viewers are blocked. This single gate is
+    consulted by the HTML view, the JSON API, the ``add_comment`` service, and
+    the template's form-visibility check, so the lock lands on every write path.
     """
-    return resolved_permission(user, advisory) is not None
+    perm = resolved_permission(user, advisory)
+    if perm is None:
+        return False
+    if advisory.comments_locked:
+        return perm == "owner"
+    return True
+
+
+def can_lock_comments(user, advisory: Advisory) -> bool:
+    """Whether ``user`` may lock or unlock comments on this advisory.
+
+    Owner-only (global admins + the project security team), in any lifecycle
+    state — collaborators and viewers cannot moderate the thread. Re-checked
+    server-side in :func:`advisories.services.lock_advisory_comments` /
+    :func:`advisories.services.unlock_advisory_comments`.
+    """
+    return resolved_permission(user, advisory) == "owner"
 
 
 def can_post_internal_comment(user, advisory: Advisory) -> bool:

@@ -263,6 +263,11 @@ but `Advisory.state` itself is unchanged:
   the advisory's `state` (§6).
 - Flagging / un-flagging an advisory for admin routing — toggles
   `AdvisoryIntakeMetadata.needs_admin_routing`, not `state` ([INV-AUTH-6](./invariant.md#inv-auth-6)).
+- Locking / unlocking new comments (dispute cool-down) — toggles
+  `Advisory.comments_locked` in **any** state; owner/admin-only, enforced through
+  `can_comment` so only owners/admins may still post while locked. Workflow
+  metadata, absent from `to_payload`, so it is not versioned (§ permissions.md
+  footnote ¹²).
 - Running a duplicate-detection check (`similarity` app) — enqueued on every
   advisory-creation path and re-runnable by owners; it reads the pinned
   `AdvisoryVersion` payload and writes only its own `SimilarityCheck` /
@@ -526,7 +531,7 @@ into the orthogonal machines and the version log:
 | Edit on a `published` advisory | new row appended | reset to `none` for non-admin if it was `approved` | set to `True` (re-publish required) | The Publish button becomes "Re-publish" in the UI |
 | Project change (native advisory, human editor) | new row appended (project is payload-visible) | reset to `none` if `approved` and editor is non-admin | set to `True` if `published` | `access_review_required_at` stamped — surfaces the access-review banner; `ADVISORY_PROJECT_CHANGED` audit; `advisory_created` notification queued for the new project's team; **any pending admin-reassignment request is fulfilled and cleared** (cause `accepted`, [INV-AUTH-9](./invariant.md#inv-auth-9)) |
 | PMI re-home of a GHSA-linked advisory (system, [INV-GHSA-1](./invariant.md#inv-ghsa-1)) | new row appended (`project_slug` is payload-visible) | **unchanged** — GHSA-linked advisories carry no review | set to `True` if `published` | `access_review_required_at` stamped; `ADVISORY_PROJECT_CHANGED` audit with `reason=pmi_repo_reassignment`; `advisory_created` notification queued for the new project's team |
-| Non-payload save (state-only flip, heartbeat sync, `republish_required` toggle, `access_review_required_at` stamp) | **no row** ([INV-VERSION-1](./invariant.md#inv-version-1)) | unchanged | depends on the field | — |
+| Non-payload save (state-only flip, heartbeat sync, `republish_required` toggle, `access_review_required_at` stamp, `comments_locked` toggle) | **no row** ([INV-VERSION-1](./invariant.md#inv-version-1)) | unchanged | depends on the field | — |
 | GHSA heartbeat sync that returned no payload changes | **no row** | unchanged | unchanged | `ghsa_metadata_synced_at` refreshed |
 | GHSA sync that returned changed fields (`result.changed_field_names` non-empty) | new row appended | **unchanged** — GHSA-linked advisories carry no review (it's removed for them; [INV-GHSA-1](./invariant.md#inv-ghsa-1), [INV-REVIEW-4](./invariant.md#inv-review-4)) | set to `True` if `published` | `GHSA_METADATA_FETCHED` audit |
 

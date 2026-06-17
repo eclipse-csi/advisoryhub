@@ -1593,6 +1593,20 @@ p.state strong { color: var(--text); }
 .comment-form textarea { min-height: 5em; }
 .comments .empty { color: var(--text-muted); font-style: italic; }
 
+/* Dispute cool-down notice shown in place of / above the comment form when an
+   owner/admin has locked new comments. Reuses the warn tokens of the page-level
+   .advisory-banner, scaled down for the comments section. */
+.comment-lock-notice {
+  margin-top: 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid #f3d9a3;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.comment-lock-notice p { margin: 0; }
+.comment-lock-notice__reason { margin-top: 0.35rem; white-space: pre-wrap; }
+
 /* ------------------------------------------------------------ advisory detail layout */
 
 .advisory-detail--with-sidebar {

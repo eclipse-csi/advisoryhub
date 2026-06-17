@@ -51,7 +51,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-LIFECYCLE-3](#inv-lifecycle-3) | `state` flips to `published` only after a successful Git push. | Lifecycle | Critical |
 | [INV-LIFECYCLE-4](#inv-lifecycle-4) | `dismissed` is reversible by owner or admin via `reopen_advisory`. | Lifecycle | High |
 | [INV-LIFECYCLE-5](#inv-lifecycle-5) | Triage→draft promotion preserves advisory identity (same row). | Lifecycle | High |
-| [INV-WITHDRAW](#inv-withdraw) | A published advisory is withdrawn, never deleted: OSV/CSAF are re-exported marked withdrawn and the row flips to dismissed. | Lifecycle | High |
+| [INV-WITHDRAW](#inv-withdraw) | A published advisory is withdrawn, never deleted: OSV/CSAF are re-exported marked withdrawn (any assigned CVE re-exported REJECTED) and the row flips to dismissed. | Lifecycle | High |
 | [INV-REVIEW-1](#inv-review-1) | `review_status` is orthogonal to `state` — never a fifth lifecycle state. | Review | High |
 | [INV-REVIEW-2](#inv-review-2) | Review submission freezes content via an immutable snapshot. | Review | High |
 | [INV-REVIEW-3](#inv-review-3) | Admins cannot submit for review (only publish). | Review | High |
@@ -288,7 +288,11 @@ and a failed `PublicationTask`, and is **retryable** — re-running the withdraw
 a fresh run that completes it, since the failed task doesn't block the in-flight guard
 and `withdrawn_reason` is sticky on the pinned version. A stuck queued/running task is
 recovered to `failed` by the [INV-PUB-7](#inv-pub-7) reaper. Any assigned CVE is
-orphaned for cve.org rejection.
+orphaned for cve.org rejection (a DB-side `OrphanCve` an admin later marks rejected — that
+flow is unchanged), and its on-disk record is **re-exported as a `REJECTED` CVE 5.x record**
+(`cveMetadata.state=REJECTED`, `containers.cna.rejectedReasons`=the withdrawal reason) in the
+same push, so the publication repo — a mirror of cve.org — reflects the rejection instead of
+a stale `PUBLISHED` record.
 
 **Authorization.** A global admin, or a **mature-publisher** project owner
 (`can_withdraw_published` — admin OR `is_mature_publisher_member`), may withdraw
@@ -298,8 +302,12 @@ withdrawal itself was authorized). A non-mature owner cannot withdraw directly.
 **Reversible (un-withdraw).** A withdrawn advisory (`dismissed_from_state=published`)
 can be reopened back to `published` via `reopen_advisory`: it clears
 `withdrawn_reason`, reattaches the orphaned CVE (the existing reopen orphan
-disposition), and re-publishes — the export drops the withdrawn marker and the
-state returns to `published` after the push (`publish(allow_from_dismissed=True)`).
+disposition), and re-publishes — the export drops the withdrawn marker, the
+reattached CVE's record is re-exported `PUBLISHED` again, and the state returns
+to `published` after the push (`publish(allow_from_dismissed=True)`). (If the
+orphan was already `MARKED_REJECTED`, reopen queues an admin reassignment task
+instead of reattaching, so the CVE record correctly stays `REJECTED` until that
+is resolved.)
 Reopening a withdrawal needs publish authority (admin or mature-publisher owner),
 not the plain-owner gate that a draft/triage-origin reopen uses — see
 [INV-LIFECYCLE-4](#inv-lifecycle-4).
@@ -315,9 +323,11 @@ path.
 - `advisories/permissions.py` — `can_withdraw_published`.
 - `advisories/services.py` — `withdraw_advisory` (sets `withdrawn_reason`, appends a
   version, runs the pipeline via `publish(system=True)`).
-- `publication/tasks.py` — `run_publication` end-state branch + the withdrawal
-  cascade (orphan CVE via `workflows.services.orphan_cve`).
+- `publication/tasks.py` — `run_publication` end-state branch, the withdrawal
+  cascade (orphan CVE via `workflows.services.orphan_cve`), and the CVE-build
+  branch that emits a REJECTED record on withdrawal.
 - `publication/osv.py` / `publication/csaf.py` — withdrawn rendering.
+- `publication/cve.py` — `build_rejected_cve` (the `REJECTED` record on withdrawal).
 - `advisories/services.py::reopen_advisory` + `advisories.permissions.can_reopen`
   + `publication.services.publish(allow_from_dismissed=True)` — the un-withdraw path.
 - `advisories/services.py` — `request_withdrawal` / `cancel_withdrawal_request` /
@@ -330,8 +340,10 @@ path.
 **Violation impact.** A withdrawn advisory keeps masquerading as live in the public
 feed, or a published record is deleted and breaks downstream consumers.
 
-**Tests.** `publication/tests/test_pipeline.py` (`test_withdraw_published_advisory`),
-`advisories/tests/test_permissions.py`, `advisories/tests/test_views.py`.
+**Tests.** `publication/tests/test_pipeline.py` (`test_withdraw_published_advisory`,
+`test_unwithdraw_reopens_to_published`), `publication/tests/test_cve.py`
+(`build_rejected_cve`), `advisories/tests/test_permissions.py`,
+`advisories/tests/test_views.py`.
 
 **Related.** [INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-LIFECYCLE-4](#inv-lifecycle-4),
 [INV-VERSION-1](#inv-version-1), [INV-VERSION-3](#inv-version-3).

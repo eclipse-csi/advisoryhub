@@ -498,3 +498,95 @@ def test_validate_cve_rejects_missing_descriptions(version):
     del doc["containers"]["cna"]["descriptions"]
     with pytest.raises(cve_mod.CveValidationError):
         cve_mod.validate_cve(doc)
+
+
+# ---- Rejected record (withdrawal) ----------------------------------------
+
+
+def _build_rejected(version, **kwargs):
+    kwargs.setdefault("assigner_org_id", TEST_ORG_ID)
+    kwargs.setdefault("assigner_short_name", "eclipse")
+    kwargs.setdefault("reason", "Duplicate of CVE-2026-0001.")
+    return cve_mod.build_rejected_cve(version, **kwargs)
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_round_trip(version):
+    rejected_dt = datetime(2026, 6, 7, 12, 0, 0, tzinfo=UTC)
+    doc = _build_rejected(version, date_rejected=rejected_dt)
+
+    assert doc["dataType"] == "CVE_RECORD"
+    assert doc["dataVersion"] == "5.2.0"
+    meta = doc["cveMetadata"]
+    assert meta["cveId"] == "CVE-2026-0001"
+    assert meta["state"] == "REJECTED"
+    assert meta["assignerOrgId"] == TEST_ORG_ID
+    assert meta["assignerShortName"] == "eclipse"
+    assert meta["dateRejected"] == "2026-06-07T12:00:00.000Z"
+    assert meta["dateUpdated"] == "2026-06-07T12:00:00.000Z"
+
+    cna = doc["containers"]["cna"]
+    assert cna["providerMetadata"]["orgId"] == TEST_ORG_ID
+    assert cna["rejectedReasons"] == [{"lang": "en", "value": "Duplicate of CVE-2026-0001."}]
+    # A rejected record carries none of the published-only content.
+    assert "affected" not in cna
+    assert "references" not in cna
+    assert "descriptions" not in cna
+
+    cve_mod.validate_cve(doc)
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_passes_upstream_schema(version):
+    cve_mod.validate_cve(_build_rejected(version))
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_is_deterministic(version):
+    rejected_dt = datetime(2026, 6, 7, 12, 0, 0, tzinfo=UTC)
+    a = cve_mod.serialize_cve(_build_rejected(version, date_rejected=rejected_dt))
+    b = cve_mod.serialize_cve(_build_rejected(version, date_rejected=rejected_dt))
+    assert a == b
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_carries_date_published_when_set(version):
+    """The original publication date is retained alongside dateRejected
+    (matching the cve.org rejected-record convention)."""
+    advisory = version.advisory
+    advisory.published_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+    advisory.save(update_fields=["published_at"])
+    doc = _build_rejected(version)
+    assert doc["cveMetadata"]["datePublished"] == "2026-01-02T03:04:05.000Z"
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_omits_date_published_when_never_published(version):
+    # The fixture advisory was never published, so published_at is None.
+    assert version.advisory.published_at is None
+    assert "datePublished" not in _build_rejected(version)["cveMetadata"]
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_requires_reason(version):
+    with pytest.raises(cve_mod.CveBuildError):
+        _build_rejected(version, reason="   ")
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_requires_assigned_cve(make_project):
+    project = make_project("p-rej-noid")
+    advisory = Advisory.objects.create(
+        project=project,
+        advisory_id="ECL-rej1-rej2-rej3",
+        summary="no cve to reject",
+    )
+    version = advisory.versions.get(version=1)
+    with pytest.raises(cve_mod.CveBuildError):
+        _build_rejected(version)
+
+
+@pytest.mark.django_db
+def test_build_rejected_cve_requires_assigner_org_id(version):
+    with pytest.raises(cve_mod.CveAssignerNotConfigured):
+        cve_mod.build_rejected_cve(version, assigner_org_id="", reason="dup")

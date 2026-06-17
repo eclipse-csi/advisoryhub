@@ -295,6 +295,11 @@ either succeeds or marks the task `failed` and returns):
    (`publication.cve.build_cve` + `validate_cve` +
    `PUBLICATION_CVE_GENERATED`) — EF-assigned CVEs only, read from the
    pinned payload, never live data ([INV-VERSION-3](./invariant.md#inv-version-3)).
+   On a *withdrawal* run (the pinned version carries `withdrawn_reason`) the
+   CVE Record is built by `publication.cve.build_rejected_cve` instead — a
+   `REJECTED` record whose `rejectedReasons` is the withdrawal reason — so the
+   repo mirrors the cve.org rejection rather than re-asserting `PUBLISHED`
+   ([INV-WITHDRAW](./invariant.md#inv-withdraw)).
    Validation is schema-based against the JSON Schemas vendored in
    `publication/schemas/` ([INV-PUB-6](./invariant.md#inv-pub-6)).
 5. Persist `PublicationArtifact` rows for each kind (`osv`, `csaf`,
@@ -385,7 +390,9 @@ audit rows live inside the atomic block
 ([INV-WITHDRAW](./invariant.md#inv-withdraw)): a pinned version carrying
 `withdrawn_reason` exports OSV/CSAF *with* the withdrawn marker (OSV
 `withdrawn` timestamp; a CSAF withdrawal `revision_history` entry + document
-note) and the finalisation branch flips the advisory to `dismissed`
+note), re-exports any assigned CVE record as a `REJECTED` record
+(`build_rejected_cve`, `rejectedReasons` = the withdrawal reason — mirroring
+cve.org), and the finalisation branch flips the advisory to `dismissed`
 (`dismissed_from_state=published`) instead of `published`, orphaning any
 assigned CVE — no new task type, the end state is keyed off the payload. The
 document is updated in place, never deleted; a failed withdrawal push leaves

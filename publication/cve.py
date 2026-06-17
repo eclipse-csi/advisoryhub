@@ -16,6 +16,13 @@ schema is strict — any gap raises :class:`CveValidationError` and the
 publication task fails (the advisory keeps its prior state per
 ``INV-LIFECYCLE-3``).
 
+When a published advisory is *withdrawn* (``INV-WITHDRAW``),
+:func:`build_rejected_cve` instead emits a ``REJECTED`` record — the
+``cnaRejectedContainer`` shape (``providerMetadata`` + ``rejectedReasons``)
+— so the publication repo mirrors the cve.org rejection. The upstream
+schema's top-level ``oneOf`` accepts either state, so the same
+:func:`validate_cve` covers both.
+
 The Eclipse Foundation acts as the assigning CNA, so the record carries
 the EF CNA organization UUID in both ``cveMetadata.assignerOrgId`` and
 ``containers.cna.providerMetadata.orgId``. That UUID is operator-supplied
@@ -164,6 +171,40 @@ def _format_ts(dt) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S") + f".{dt.microsecond // 1000:03d}Z"
 
 
+def _require_cve_id_and_assigner(payload: dict[str, Any], assigner_org_id: str) -> tuple[str, str]:
+    """Validate the assigned CVE id and assigner org UUID; return both cleaned.
+
+    Shared by :func:`build_cve` (PUBLISHED) and :func:`build_rejected_cve`
+    (REJECTED) — both require a well-formed assigned id and a valid v4-UUID
+    CNA org id before emitting anything. Raises :class:`CveBuildError` for a
+    missing/malformed id and :class:`CveAssignerNotConfigured` for a
+    missing/invalid ``PUB_CVE_ASSIGNER_ORG_ID``.
+    """
+    cve_id = (payload.get("assigned_cve_id") or "").strip()
+    if not cve_id:
+        raise CveBuildError("Advisory has no assigned CVE; nothing to export.")
+    # Defend against ids pinned into a frozen payload before the stricter
+    # validator landed: the schema's cveId requires a 4–19 digit sequence.
+    if not CVE_ID_RE.match(cve_id):
+        raise CveBuildError(
+            f"assigned CVE id {cve_id!r} is malformed; expected CVE-YYYY-NNNN "
+            "with a 4–19 digit sequence number."
+        )
+
+    assigner_org_id = (assigner_org_id or "").strip()
+    if not assigner_org_id:
+        raise CveAssignerNotConfigured(
+            "PUB_CVE_ASSIGNER_ORG_ID is not configured; cannot build a CVE record. "
+            "Set it to the Eclipse Foundation CNA organization UUID."
+        )
+    if not _UUID_RE.match(assigner_org_id):
+        raise CveAssignerNotConfigured(
+            f"PUB_CVE_ASSIGNER_ORG_ID ({assigner_org_id!r}) is not a valid v4 UUID; "
+            "set it to the Eclipse Foundation CNA organization UUID."
+        )
+    return cve_id, assigner_org_id
+
+
 def build_cve(
     version: AdvisoryVersion,
     *,
@@ -188,28 +229,7 @@ def build_cve(
     payload = version.payload
     advisory = version.advisory
 
-    cve_id = (payload.get("assigned_cve_id") or "").strip()
-    if not cve_id:
-        raise CveBuildError("Advisory has no assigned CVE; nothing to export.")
-    # Defend against ids pinned into a frozen payload before the stricter
-    # validator landed: the schema's cveId requires a 4–19 digit sequence.
-    if not CVE_ID_RE.match(cve_id):
-        raise CveBuildError(
-            f"assigned CVE id {cve_id!r} is malformed; expected CVE-YYYY-NNNN "
-            "with a 4–19 digit sequence number."
-        )
-
-    assigner_org_id = (assigner_org_id or "").strip()
-    if not assigner_org_id:
-        raise CveAssignerNotConfigured(
-            "PUB_CVE_ASSIGNER_ORG_ID is not configured; cannot build a CVE record. "
-            "Set it to the Eclipse Foundation CNA organization UUID."
-        )
-    if not _UUID_RE.match(assigner_org_id):
-        raise CveAssignerNotConfigured(
-            f"PUB_CVE_ASSIGNER_ORG_ID ({assigner_org_id!r}) is not a valid v4 UUID; "
-            "set it to the Eclipse Foundation CNA organization UUID."
-        )
+    cve_id, assigner_org_id = _require_cve_id_and_assigner(payload, assigner_org_id)
 
     published = _format_ts(date_published or version.created_at)
     updated = _format_ts(date_updated or version.created_at)
@@ -265,6 +285,75 @@ def build_cve(
         "dataVersion": CVE_DATA_VERSION,
         "cveMetadata": cve_metadata,
         "containers": {"cna": cna},
+    }
+
+
+def build_rejected_cve(
+    version: AdvisoryVersion,
+    *,
+    assigner_org_id: str,
+    assigner_short_name: str = "",
+    reason: str,
+    date_rejected=None,
+) -> dict[str, Any]:
+    """Build a CVE 5.2.0 ``REJECTED`` record from a pinned advisory version.
+
+    Emitted in place of :func:`build_cve` when a *published* advisory carrying
+    an assigned CVE is withdrawn (``INV-WITHDRAW``): the on-disk CVE record is
+    re-exported as ``REJECTED`` so the publication repo mirrors the cve.org
+    rejection that follows. ``reason`` is the advisory's ``withdrawn_reason``
+    (read from the pinned payload by the caller — ``INV-VERSION-3``) and
+    becomes the record's ``rejectedReasons``.
+
+    Unlike :func:`build_cve`, a rejected record carries no affected/reference
+    data — the ``cnaRejectedContainer`` requires only ``providerMetadata`` +
+    ``rejectedReasons`` — so a withdrawn advisory remains rejectable even if it
+    never carried (or has since lost) that content.
+
+    ``date_rejected`` defaults to the version's ``created_at``, keeping the
+    output deterministic for a given pinned version (matching :func:`build_cve`).
+    Raises the same id/assigner guards as :func:`build_cve`.
+    """
+    payload = version.payload
+    advisory = version.advisory
+
+    cve_id, assigner_org_id = _require_cve_id_and_assigner(payload, assigner_org_id)
+
+    cleaned_reason = (reason or "").strip()
+    if not cleaned_reason:
+        raise CveBuildError(f"{cve_id}: a rejected CVE record requires a rejection reason.")
+
+    rejected = _format_ts(date_rejected or version.created_at)
+
+    provider_metadata: dict[str, Any] = {"orgId": assigner_org_id, "dateUpdated": rejected}
+    if assigner_short_name:
+        provider_metadata["shortName"] = assigner_short_name
+
+    cve_metadata: dict[str, Any] = {
+        "cveId": cve_id,
+        "assignerOrgId": assigner_org_id,
+        "state": "REJECTED",
+        "dateRejected": rejected,
+        "dateUpdated": rejected,
+    }
+    if assigner_short_name:
+        cve_metadata["assignerShortName"] = assigner_short_name
+    # The original publication date is immutable history on the advisory row;
+    # carry it through when set so the rejected record matches the cve.org
+    # convention of retaining ``datePublished`` alongside ``dateRejected``.
+    if advisory.published_at is not None:
+        cve_metadata["datePublished"] = _format_ts(advisory.published_at)
+
+    return {
+        "dataType": CVE_DATA_TYPE,
+        "dataVersion": CVE_DATA_VERSION,
+        "cveMetadata": cve_metadata,
+        "containers": {
+            "cna": {
+                "providerMetadata": provider_metadata,
+                "rejectedReasons": [{"lang": "en", "value": cleaned_reason[:4096]}],
+            }
+        },
     }
 
 

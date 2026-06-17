@@ -318,6 +318,12 @@ def test_withdraw_published_advisory(setup):
     assert tracking["version"] == "2"
     assert any(r["summary"] == "Advisory withdrawn" for r in tracking["revision_history"])
 
+    # The CVE record is re-exported REJECTED (mirroring cve.org), not left
+    # PUBLISHED (INV-WITHDRAW). cvelistV5 layout: cves/<year>/<bucket>/<id>.json.
+    cve = json.loads((verify / "cves" / "2026" / "9xxx" / "CVE-2026-9999.json").read_text())
+    assert cve["cveMetadata"]["state"] == "REJECTED"
+    assert cve["containers"]["cna"]["rejectedReasons"][0]["value"] == "duplicate of X"
+
 
 @pytest.mark.django_db
 def test_unwithdraw_reopens_to_published(setup):
@@ -357,6 +363,9 @@ def test_unwithdraw_reopens_to_published(setup):
     _clone(str(setup["bare_repo"]), str(verify))
     osv = json.loads((verify / "osv" / str(year) / "ECL-cccc-ffff-gggg.json").read_text())
     assert "withdrawn" not in osv
+    # The reattached CVE's record returns to PUBLISHED (INV-WITHDRAW un-withdraw).
+    cve = json.loads((verify / "cves" / "2026" / "9xxx" / "CVE-2026-9999.json").read_text())
+    assert cve["cveMetadata"]["state"] == "PUBLISHED"
 
 
 @pytest.mark.django_db

@@ -71,6 +71,13 @@ def run_publication(self, task_id: int) -> str:
     try:
         config = active_config()
 
+        # A pinned version carrying ``withdrawn_reason`` is a *withdrawal*: the
+        # OSV/CSAF carry the withdrawn marker and any assigned CVE record is
+        # re-exported REJECTED rather than re-asserted PUBLISHED (INV-WITHDRAW).
+        # Computed up front so the CVE build (step 1) can pick the right shape.
+        withdrawn_reason = task.version.payload.get("withdrawn_reason")
+        is_withdrawal = bool(withdrawn_reason)
+
         # 1. Build OSV / CSAF
         osv_doc = osv_builder.build_osv(task.version)
         osv_builder.validate_osv(osv_doc)
@@ -92,22 +99,32 @@ def run_publication(self, task_id: int) -> str:
 
         # A CVE record is exported only when the Eclipse Foundation has
         # assigned a CVE to this advisory. The id is read from the pinned
-        # version payload (INV-VERSION-3), never live form data.
+        # version payload (INV-VERSION-3), never live form data. On a
+        # withdrawal it is re-exported REJECTED (rejectedReasons = the
+        # withdrawal reason) so the repo mirrors the cve.org rejection.
         cve_doc = None
         cve_path = None
         assigned_cve = task.version.payload.get("assigned_cve_id")
         if assigned_cve:
-            cve_doc = cve_builder.build_cve(
-                task.version,
-                assigner_org_id=config.cve_assigner_org_id,
-                assigner_short_name=config.cve_assigner_short_name,
-            )
+            if is_withdrawal:
+                cve_doc = cve_builder.build_rejected_cve(
+                    task.version,
+                    assigner_org_id=config.cve_assigner_org_id,
+                    assigner_short_name=config.cve_assigner_short_name,
+                    reason=withdrawn_reason,
+                )
+            else:
+                cve_doc = cve_builder.build_cve(
+                    task.version,
+                    assigner_org_id=config.cve_assigner_org_id,
+                    assigner_short_name=config.cve_assigner_short_name,
+                )
             cve_builder.validate_cve(cve_doc)
             cve_path = config.cve_path(assigned_cve)
             record(
                 action=Action.PUBLICATION_CVE_GENERATED,
                 advisory=task.advisory,
-                new_value={"task_id": task.pk, "cve_id": assigned_cve},
+                new_value={"task_id": task.pk, "cve_id": assigned_cve, "rejected": is_withdrawal},
             )
             metrics.publication_stage_total.labels(stage="cve_generated").inc()
 
@@ -171,15 +188,15 @@ def run_publication(self, task_id: int) -> str:
 
         # 4. Flip advisory state — only after a successful push. A pinned
         # version carrying ``withdrawn_reason`` is a *withdrawal*: the OSV/CSAF
-        # just pushed carry the withdrawn marker, so the advisory lands in
-        # ``dismissed`` rather than ``published`` (INV-LIFECYCLE-4) — the
-        # document itself stays in the repo, never deleted.
-        is_withdrawal = bool(task.version.payload.get("withdrawn_reason"))
+        # just pushed carry the withdrawn marker (and any CVE record was
+        # re-exported REJECTED), so the advisory lands in ``dismissed`` rather
+        # than ``published`` (INV-LIFECYCLE-4) — the documents stay in the repo,
+        # never deleted.
         with transaction.atomic():
             advisory = Advisory.objects.select_for_update().get(pk=task.advisory_id)
             previous_state = advisory.state
             if is_withdrawal:
-                reason = task.version.payload["withdrawn_reason"]
+                reason = withdrawn_reason
                 advisory.state = State.DISMISSED
                 advisory.dismissed_from_state = previous_state
                 advisory.dismissed_reason = reason

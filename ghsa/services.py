@@ -345,6 +345,13 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
     it idempotent and dedupe a webhook-vs-reconcile double fire. A dismissed
     advisory is never auto-published.
 
+    Auto-re-publish: when the advisory is already ``published`` and a sync moved
+    its content (``republish_required`` set), re-export to push the update —
+    publication strictly follows the GHSA, so there is no human re-publish step
+    (INV-GHSA-3). Same task and in-flight lock as auto-publish, gated on the GHSA
+    still being ``published`` upstream so it never collides with the ``gone``
+    branch.
+
     Forward triage promotion: when GitHub accepts a privately-reported GHSA into
     a draft (``triage`` → ``draft`` upstream), promote the mirrored row from
     ``triage`` to ``draft`` too. Forward-only — a ``draft`` row is never demoted
@@ -365,6 +372,25 @@ def react_to_ghsa_state(advisory: Advisory, summary: dict, *, by) -> None:
         and advisory.state in (State.DRAFT, State.TRIAGE)
         and not summary.get("missing_upstream")
         and advisory.ghsa_state == GhsaState.PUBLISHED
+    ):
+        from .tasks import run_ghsa_auto_publish
+
+        transaction.on_commit(partial(safe_enqueue, run_ghsa_auto_publish, advisory.advisory_id))
+        return
+
+    # Auto-re-publish: an already-published advisory whose synced GHSA content
+    # changed (``sync_single_ghsa`` set ``republish_required`` and appended a
+    # version) — push the update to the EF feed without a human. Mutually
+    # exclusive with the auto-dismiss/withdraw ``gone`` branch below: this
+    # requires the GHSA still ``published`` upstream. Reuses the same task and
+    # in-flight lock, so it's idempotent; ``run_publication`` clears
+    # ``republish_required`` on success.
+    if (
+        getattr(settings, "GHSA_AUTO_PUBLISH_ENABLED", True)
+        and advisory.state == State.PUBLISHED
+        and advisory.ghsa_state == GhsaState.PUBLISHED
+        and not summary.get("missing_upstream")
+        and advisory.republish_required
     ):
         from .tasks import run_ghsa_auto_publish
 

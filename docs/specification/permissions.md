@@ -268,11 +268,15 @@ them the full edit form; the destination authority is re-checked per chosen proj
 ¹⁰ **GHSA-linked advisories are never reviewed in AdvisoryHub** — their content is synced
 from GitHub and isn't human-editable ([INV-GHSA-1](./invariant.md#inv-ghsa-1),
 [INV-REVIEW-4](./invariant.md#inv-review-4)), so the three review actions (submit / withdraw /
-revoke) are unavailable for them and a sync never invalidates an approval. Because there is no
-EF review, an **owner** may publish a GHSA-linked advisory directly — the mature-publisher /
-approved-review gate (footnote ⁵) does not apply; the upstream GitHub advisory is the vetting and
-`ghsa.services.refresh_for_publish` (GHSA must be published on GitHub, not 404, no CVE conflict)
-is the real precondition. Defined by `can_submit_for_review` / `can_withdraw_review` /
+revoke) are unavailable for them and a sync never invalidates an approval. Publication is
+**system-driven** ([INV-GHSA-3](./invariant.md#inv-ghsa-3)): the EF feed mirrors the GHSA
+automatically (auto-publish when GitHub publishes, auto-re-publish when synced content changes),
+so `can_publish` returns `False` for **owners** — they get **no** Publish/Re-publish button. A
+manual owner publish would be a no-op anyway, since `ghsa.services.refresh_for_publish` (GHSA must
+be published on GitHub, not 404, no CVE conflict) only lets one through once GitHub has published.
+Global admins keep a manual **break-glass** publish/retry (to re-drive a stuck/failed run, or
+publish while `GHSA_AUTO_PUBLISH_ENABLED` is off), still gated by `refresh_for_publish` so they
+cannot push it public ahead of GitHub. Defined by `can_submit_for_review` / `can_withdraw_review` /
 `can_revoke_approval` / `can_publish`.
 
 ¹¹ **Withdrawing a published advisory** ([INV-WITHDRAW](./invariant.md#inv-withdraw)) mirrors the
@@ -348,7 +352,10 @@ the matrix:
   published; corrections go through Edit + Re-publish). Edits append a
   new `AdvisoryVersion` and set `republish_required=True`, which makes
   the existing matrix-allowed `Publish` action surface a re-publish
-  button ([INV-VERSION-1](./invariant.md#inv-version-1), [INV-REVIEW-4](./invariant.md#inv-review-4)). Non-admin edits that would
+  button ([INV-VERSION-1](./invariant.md#inv-version-1), [INV-REVIEW-4](./invariant.md#inv-review-4)).
+  *(GHSA-linked exception, footnote ¹⁰: there is no owner re-publish button — a
+  synced content change auto-re-publishes via [INV-GHSA-3](./invariant.md#inv-ghsa-3);
+  only the admin break-glass surfaces the button.)* Non-admin edits that would
   otherwise invalidate an `approved` review reset `review_status`
   automatically; an admin's edit leaves the approval standing (the admin
   *is* the reviewer — explicit retraction goes through `Revoke an

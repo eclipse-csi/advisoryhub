@@ -118,6 +118,30 @@ def test_ghsa_linked_detail_hides_review_card(client, member_a, ghsa_advisory):
 
 
 @pytest.mark.django_db
+def test_ghsa_linked_detail_hides_publish_button_from_owner(client, member_a, ghsa_advisory):
+    """Owners get no manual Publish button on a GHSA-linked advisory — publication
+    is system-driven (INV-GHSA-3). The publication hint explains the automatic flow."""
+    client.force_login(member_a)
+    resp = client.get(reverse("advisories:detail", args=[ghsa_advisory.advisory_id]))
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    publish_url = reverse("publication:publish", args=[ghsa_advisory.advisory_id])
+    assert publish_url not in body
+    assert "Publishes automatically when the linked GHSA is published on GitHub." in body
+
+
+@pytest.mark.django_db
+def test_ghsa_linked_detail_shows_publish_button_to_admin(client, admin_user, ghsa_advisory):
+    """A global admin keeps the manual break-glass Publish button (the publish view
+    still re-checks the GHSA state via refresh_for_publish)."""
+    client.force_login(admin_user)
+    resp = client.get(reverse("advisories:detail", args=[ghsa_advisory.advisory_id]))
+    assert resp.status_code == 200
+    publish_url = reverse("publication:publish", args=[ghsa_advisory.advisory_id])
+    assert publish_url in resp.content.decode()
+
+
+@pytest.mark.django_db
 def test_ghsa_linked_detail_hides_reassignment_button(client, member_a, ghsa_advisory):
     """The reassignment affordance is gated by ``can_request_reassignment``,
     which refuses GHSA-linked advisories (INV-GHSA-1)."""

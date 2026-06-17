@@ -409,14 +409,22 @@ def test_ghsa_linked_review_predicates_all_false(world):
 
 
 @pytest.mark.django_db
-def test_ghsa_linked_owner_can_publish_on_non_mature_project(world):
-    """No review/mature-publisher gate for GHSA-linked — the upstream GitHub
-    advisory is the vetting, so any owner may publish; outsiders cannot."""
+def test_ghsa_linked_publish_is_admin_only(world):
+    """GHSA-linked publication is system-driven (INV-GHSA-3): owners get no
+    manual publish (the EF feed mirrors the GHSA automatically); only a global
+    admin keeps a manual break-glass, and outsiders never publish. Holds in
+    both draft and published (re-publish) states."""
     a = _ghsa_linked(world["project_a"])  # project_a is non-mature
     assert not world["project_a"].is_mature_publisher
-    assert perms.can_publish(world["member"], a)
+    assert not perms.can_publish(world["member"], a)
     assert perms.can_publish(world["admin"], a)
     assert not perms.can_publish(world["outsider"], a)
+    # Same in the published / re-publish state.
+    a.state = State.PUBLISHED
+    a.republish_required = True
+    a.save()
+    assert not perms.can_publish(world["member"], a)
+    assert perms.can_publish(world["admin"], a)
 
 
 # ---- can_withdraw_published ------------------------------------------------

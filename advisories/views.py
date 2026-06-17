@@ -523,7 +523,18 @@ def _lifecycle_hints(advisory: Advisory, *, last_publication_task) -> dict[str, 
         review = ""
 
     # Publication --------------------------------------------------------
-    if state == State.TRIAGE:
+    # GHSA-linked publication is system-driven (INV-GHSA-3): no manual button for
+    # owners — the EF feed follows the linked GHSA's state automatically.
+    if advisory.kind == Kind.GHSA_LINKED and state in (State.TRIAGE, State.DRAFT):
+        publication = "Publishes automatically when the linked GHSA is published on GitHub."
+    elif advisory.kind == Kind.GHSA_LINKED and state == State.PUBLISHED:
+        if advisory.republish_required:
+            publication = "Re-publishes automatically when the linked GHSA changes."
+        elif last_publication_task and last_publication_task.status == "failed":
+            publication = "Last publication run failed — see details below."
+        else:
+            publication = "Live in the publication repo (mirrors the linked GHSA)."
+    elif state == State.TRIAGE:
         publication = "Available once the report is accepted (and reviewed)."
     elif state == State.DISMISSED:
         publication = "Not applicable while dismissed."

@@ -353,6 +353,10 @@ paths:
         only after the Git push succeeds (INV-LIFECYCLE-3). Requires a fresh
         step-up authentication when `STEP_UP_REQUIRED` is enabled. Rate
         limited to 10 requests/hour per user. No request body.
+        For GHSA-linked advisories publication is system-driven (INV-GHSA-3):
+        owners receive `403` (the EF feed mirrors the GHSA automatically); only
+        global admins may call this as a break-glass, still gated on the linked
+        GHSA being published upstream.
       security:
         - sessionCookie: []
           csrfToken: []

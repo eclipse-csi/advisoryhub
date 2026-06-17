@@ -101,6 +101,66 @@ def test_auto_publish_task_skips_on_gating_failure(make_project):
     assert "skipped" in result
 
 
+# ---- auto-re-publish on synced content change ------------------------------
+
+
+@override_settings(GHSA_AUTO_PUBLISH_ENABLED=True)
+@pytest.mark.django_db(transaction=True)
+def test_react_auto_republishes_published_on_content_change(make_project):
+    """A published advisory whose synced content changed (republish_required)
+    is auto-re-published — publication strictly follows the GHSA (INV-GHSA-3),
+    so there is no human re-publish step."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.PUBLISHED)
+    adv.republish_required = True
+    adv.save(update_fields=["republish_required", "modified_at"])
+    with patch("ghsa.services.safe_enqueue") as enq:
+        services.react_to_ghsa_state(adv, _OK_SUMMARY, by=None)
+    assert enq.called
+
+
+@override_settings(GHSA_AUTO_PUBLISH_ENABLED=True)
+@pytest.mark.django_db(transaction=True)
+def test_react_no_republish_when_not_required(make_project):
+    """A published advisory with nothing pending is left alone."""
+    adv = _ghsa_advisory(make_project("alpha"), state=State.PUBLISHED)
+    assert not adv.republish_required
+    with patch("ghsa.services.safe_enqueue") as enq:
+        services.react_to_ghsa_state(adv, _NO_CHANGE_SUMMARY, by=None)
+    assert not enq.called
+
+
+@override_settings(GHSA_AUTO_PUBLISH_ENABLED=False)
+@pytest.mark.django_db(transaction=True)
+def test_react_no_republish_when_flag_off(make_project):
+    adv = _ghsa_advisory(make_project("alpha"), state=State.PUBLISHED)
+    adv.republish_required = True
+    adv.save(update_fields=["republish_required", "modified_at"])
+    with patch("ghsa.services.safe_enqueue") as enq:
+        services.react_to_ghsa_state(adv, _OK_SUMMARY, by=None)
+    assert not enq.called
+
+
+@override_settings(GHSA_AUTO_PUBLISH_ENABLED=True)
+@pytest.mark.django_db(transaction=True)
+def test_react_gone_wins_over_republish_for_published(make_project):
+    """A published advisory that needs re-publishing but whose GHSA went away
+    upstream takes the withdraw path, not the plain re-publish path — the two
+    branches are mutually exclusive (re-publish requires the GHSA still
+    published upstream)."""
+    adv = _ghsa_advisory(
+        make_project("alpha"), state=State.PUBLISHED, ghsa_state=GhsaState.WITHDRAWN
+    )
+    adv.republish_required = True
+    adv.save(update_fields=["republish_required", "modified_at"])
+    with (
+        patch("ghsa.services.advisory_services.withdraw_advisory") as withdraw,
+        patch("ghsa.services.safe_enqueue") as enq,
+    ):
+        services.react_to_ghsa_state(adv, _NO_CHANGE_SUMMARY, by=None)
+    assert withdraw.called
+    assert not enq.called
+
+
 # ---- triage mirror (GitHub triage <-> draft) -------------------------------
 
 

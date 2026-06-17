@@ -361,13 +361,17 @@ def can_publish(user, advisory: Advisory) -> bool:
         return False
     if is_global_admin(user):
         return True
-    # GHSA-linked advisories carry no AdvisoryHub review (it's removed for them):
-    # the upstream GitHub advisory is the vetting, so any owner (project security
-    # team) may publish directly — no mature-publisher / approved-review gate.
-    # The real precondition (GHSA published on GitHub, not 404, no CVE conflict)
-    # is enforced by ghsa.services.refresh_for_publish inside publish().
+    # GHSA-linked publication is system-driven: GitHub is the source of truth
+    # (INV-GHSA-3), so the EF feed mirrors the GHSA automatically — auto-publish
+    # when GitHub publishes, auto-re-publish when synced content changes, and
+    # auto-withdraw when the GHSA goes away. Owners get no manual publish button
+    # (it would be a no-op decision — refresh_for_publish only lets a publish
+    # through once the GHSA is already published upstream). Admins keep a manual
+    # break-glass via the earlier is_global_admin short-circuit (to re-drive a
+    # stuck/failed run, or publish when GHSA_AUTO_PUBLISH_ENABLED is off); that
+    # path stays GHSA-state-gated by refresh_for_publish inside publish().
     if advisory.kind == Kind.GHSA_LINKED:
-        return is_security_team_member(user, advisory.project)
+        return False
     if not is_security_team_member(user, advisory.project):
         return False
     if advisory.is_mature_publisher_eligible_review_status:

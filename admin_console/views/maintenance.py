@@ -13,6 +13,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from accounts.step_up import require_step_up_or_redirect
 from audit.models import Action
 from audit.services import record_from_request
 
@@ -30,6 +31,11 @@ def maintenance(request):
     prev_message = obj.message
 
     if request.method == "POST":
+        # Toggling the org-wide write freeze is a break-glass action (INV-MAINT-1);
+        # require a fresh OIDC re-auth before mutating. Viewing the page (GET) is open.
+        redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
+        if redirect_resp is not None:
+            return redirect_resp
         form = MaintenanceModeForm(request.POST, instance=obj)
         if form.is_valid():
             obj = form.save(commit=False)

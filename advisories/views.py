@@ -23,6 +23,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from accounts.step_up import require_step_up_or_redirect
 from audit.models import Action
 from audit.services import record_from_request
 from common.constants import SECURITY_TEAM_DISPLAY_NAME
@@ -884,6 +885,11 @@ def advisory_withdraw(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     if not perms.can_withdraw_published(request.user, advisory):
         raise PermissionDenied("You cannot withdraw this advisory.")
+    # Withdrawal re-exports OSV/CSAF and pushes to the public Git repo (the
+    # inverse of publish); require a fresh OIDC re-auth, like publish does.
+    redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
+    if redirect_resp is not None:
+        return redirect_resp
     reason = (request.POST.get("reason") or "").strip()
     if not reason:
         return _detail_with_error(request, advisory, "A withdrawal reason is required.")
@@ -939,6 +945,10 @@ def advisory_approve_withdrawal(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     if not perms.can_approve_withdrawal(request.user, advisory):
         raise PermissionDenied("You cannot approve this withdrawal request.")
+    # Approving triggers the same public-repo re-export as a direct withdrawal.
+    redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
+    if redirect_resp is not None:
+        return redirect_resp
     from publication.services import PublicationInProgress
 
     reason = (advisory.withdrawal_request_note or "").strip() or "Withdrawal requested by the team."

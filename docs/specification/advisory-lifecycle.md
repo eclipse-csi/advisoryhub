@@ -628,6 +628,12 @@ withdrawal (row 8a); the requester or an admin may **cancel** it
 (`cancel_withdrawal_request`). Mature-publisher owners and admins skip the queue and
 withdraw directly ([INV-WITHDRAW](./invariant.md#inv-withdraw)).
 
+The direct withdrawal (`advisory_withdraw`) and the admin approval
+(`advisory_approve_withdrawal`) both re-export and push to the public repo, so — like
+publish — they require a fresh **step-up** re-authentication
+([`permissions.md` §8](./permissions.md#8-step-up-authentication)); merely requesting or
+cancelling a withdrawal does not.
+
 ---
 
 ## 13. Cross-reference: invariants per transition

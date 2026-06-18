@@ -852,8 +852,10 @@ grantable ([INV-AUTH-3](./invariant.md#inv-auth-3),
 and per-state overrides (triage, review-submitted, published,
 dismissed) are in [`permissions.md` §5 and §6](./permissions.md#5-capability-matrix).
 
-**Step-up authentication.** Publishing and connecting/modifying the
-GitHub App require a recent OIDC re-authentication
+**Step-up authentication.** Publishing or withdrawing an advisory,
+connecting/modifying the GitHub App, org-wide GHSA operations, retrying a
+CVE push, and break-glass admin actions (forget user, ban/unban, toggling
+maintenance mode) require a recent OIDC re-authentication
 (`step_up_auth_at` within `STEP_UP_MAX_AGE_SECONDS`, default 300 s),
 gated by `accounts.step_up.require_step_up_or_redirect`. The check is
 session-scoped and is set only when the IdP returned from a

@@ -402,11 +402,20 @@ missing or older than `STEP_UP_MAX_AGE_SECONDS` (default 300 s), the
 view redirects through `require_step_up_or_redirect` for a forced
 re-prompt.
 
-The actions currently gated by step-up are:
+Two rationales drive the gated set: **actions that emit to / reconfigure
+an external system** (the public Git repo, the GitHub App, GHSA), and a
+small number of **break-glass admin actions** that are irreversible or
+have an org-wide blast radius. The actions currently gated by step-up
+are:
 
 - **Publish / retry a publication** — `publication/views.py`; the JSON
   API equivalents answer `401 step_up_required` instead of redirecting
   (`api/views_publication.py`).
+- **Withdraw / approve a withdrawal of a published advisory** —
+  `advisories/views.py` (`advisory_withdraw`, `advisory_approve_withdrawal`).
+  Withdrawal re-exports OSV/CSAF and pushes to the same public Git repo as
+  publish, so it carries the same gate. Merely *requesting* or *cancelling*
+  a withdrawal request is *not* gated (no external push).
 - **Connect the GitHub App / rescan installations** — `ghsa/views.py`.
 - **Org-wide GHSA operations** — `ghsa/views.py`: `sync_all_ghsas`,
   `sync_all_pmi_repos`, `reconcile_now`, `discover_now`, `catch_up_webhooks`
@@ -414,6 +423,11 @@ The actions currently gated by step-up are:
   dashboard). The project-scoped sync is *not* step-up gated.
 - **Retry a failed CVE push to GHSA** — `ghsa/views.py` (`retry_cve_push`
   single, `retry_all_cve_pushes` bulk).
+- **Break-glass admin actions** — `admin_console/views/`: forget a user
+  (`users.py` `user_forget`, irreversible GDPR erasure), ban / unban a user
+  (`user_ban` / `user_unban`, account lockout), and toggling maintenance mode
+  (`maintenance.py`, org-wide write freeze — only the POST that flips the
+  switch is gated; viewing the page is not).
 
 The whole mechanism is switched off when `STEP_UP_REQUIRED=False`
 (default in the `test` settings module so test clients can `force_login`

@@ -129,6 +129,159 @@ def test_api_publish_proceeds_when_step_up_fresh(client, setup, monkeypatch):
     assert response.status_code == 202
 
 
+# ---- withdrawal endpoints (Tier 1) --------------------------------------
+#
+# Withdrawal re-exports OSV/CSAF and pushes to the public repo, just like
+# publish, so it carries the same step-up gate. We stub the heavy
+# ``withdraw_advisory`` service to isolate the gate from the publish pipeline.
+
+
+def _published_advisory(project):
+    from advisories.models import Advisory, State
+
+    return Advisory.objects.create(project=project, summary="pub", state=State.PUBLISHED)
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_withdraw_redirects_to_step_up_when_stale(client, setup, monkeypatch):
+    called: dict = {}
+    monkeypatch.setattr(
+        "advisories.services.withdraw_advisory", lambda *a, **k: called.setdefault("ran", True)
+    )
+    adv = _published_advisory(setup["advisory"].project)
+    client.force_login(setup["admin"])
+    response = client.post(reverse("advisories:withdraw", args=[adv.advisory_id]), {"reason": "x"})
+    assert response.status_code == 302
+    assert reverse("step_up_initiate") in response["Location"]
+    assert "ran" not in called  # gate fired before the withdrawal service ran
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_withdraw_proceeds_when_step_up_fresh(client, setup, monkeypatch):
+    called: dict = {}
+    monkeypatch.setattr(
+        "advisories.services.withdraw_advisory", lambda *a, **k: called.setdefault("ran", True)
+    )
+    adv = _published_advisory(setup["advisory"].project)
+    client.force_login(setup["admin"])
+    _stamp_fresh(client)
+    response = client.post(reverse("advisories:withdraw", args=[adv.advisory_id]), {"reason": "x"})
+    assert reverse("step_up_initiate") not in (response.get("Location") or "")
+    assert called.get("ran") is True
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_approve_withdrawal_redirects_to_step_up_when_stale(client, setup, monkeypatch):
+    from django.utils import timezone
+
+    called: dict = {}
+    monkeypatch.setattr(
+        "advisories.services.withdraw_advisory", lambda *a, **k: called.setdefault("ran", True)
+    )
+    adv = _published_advisory(setup["advisory"].project)
+    adv.withdrawal_requested_at = timezone.now()
+    adv.withdrawal_request_note = "please withdraw"
+    adv.save(update_fields=["withdrawal_requested_at", "withdrawal_request_note"])
+    client.force_login(setup["admin"])
+    response = client.post(reverse("advisories:approve_withdrawal", args=[adv.advisory_id]))
+    assert response.status_code == 302
+    assert reverse("step_up_initiate") in response["Location"]
+    assert "ran" not in called
+
+
+# ---- break-glass admin endpoints (Tier 2) -------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_user_ban_redirects_to_step_up_when_stale(client, setup, make_user):
+    target = make_user(email="target@example.org")
+    client.force_login(setup["admin"])
+    response = client.post(reverse("admin_console:user_ban", args=[target.pk]), {"reason": "spam"})
+    assert response.status_code == 302
+    assert reverse("step_up_initiate") in response["Location"]
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_user_ban_proceeds_when_step_up_fresh(client, setup, make_user):
+    target = make_user(email="target@example.org")
+    client.force_login(setup["admin"])
+    _stamp_fresh(client)
+    response = client.post(reverse("admin_console:user_ban", args=[target.pk]), {"reason": "spam"})
+    # Past the gate → the ban runs and redirects back to the user detail page.
+    assert response["Location"] == reverse("admin_console:user_detail", args=[target.pk])
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_user_unban_redirects_to_step_up_when_stale(client, setup, make_user):
+    target = make_user(email="target@example.org")
+    client.force_login(setup["admin"])
+    response = client.post(reverse("admin_console:user_unban", args=[target.pk]))
+    assert response.status_code == 302
+    assert reverse("step_up_initiate") in response["Location"]
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_user_forget_redirects_to_step_up_when_stale(client, setup, make_user):
+    target = make_user(email="target@example.org")
+    client.force_login(setup["admin"])
+    response = client.post(
+        reverse("admin_console:user_forget", args=[target.pk]),
+        {"reason": "gdpr", "confirm_email": target.email},
+    )
+    assert response.status_code == 302
+    assert reverse("step_up_initiate") in response["Location"]
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_user_forget_proceeds_when_step_up_fresh(client, setup, make_user):
+    """A fresh step-up gets past the gate; an empty reason then bounces back
+    (so the erasure never runs) — proving the gate, not the side effect."""
+    target = make_user(email="target@example.org")
+    client.force_login(setup["admin"])
+    _stamp_fresh(client)
+    response = client.post(reverse("admin_console:user_forget", args=[target.pk]), {})
+    assert response["Location"] == reverse("admin_console:user_detail", args=[target.pk])
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_maintenance_post_redirects_to_step_up_when_stale(client, setup):
+    client.force_login(setup["admin"])
+    response = client.post(
+        reverse("admin_console:maintenance"), {"is_enabled": "on", "message": "down"}
+    )
+    assert response.status_code == 302
+    assert reverse("step_up_initiate") in response["Location"]
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_maintenance_post_proceeds_when_step_up_fresh(client, setup):
+    client.force_login(setup["admin"])
+    _stamp_fresh(client)
+    response = client.post(
+        reverse("admin_console:maintenance"), {"is_enabled": "on", "message": "down"}
+    )
+    assert response["Location"] == reverse("admin_console:maintenance")
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_REQUIRED=True, STEP_UP_MAX_AGE_SECONDS=300)
+def test_maintenance_get_is_not_step_up_gated(client, setup):
+    """Viewing the toggle page (GET) is open; only the POST that flips it is gated."""
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:maintenance"))
+    assert response.status_code == 200
+
+
 # ---- signal handler ------------------------------------------------------
 
 
@@ -150,6 +303,13 @@ def test_login_signal_records_step_up_only_when_pending(client, setup, rf):
 
 
 # ---- helpers -------------------------------------------------------------
+
+
+def _stamp_fresh(client):
+    """Mark the test client's session as having a fresh step-up re-auth."""
+    session = client.session
+    session[STEP_UP_AGE_KEY] = time.time()
+    session.save()
 
 
 def _request_with_session(client):

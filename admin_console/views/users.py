@@ -26,6 +26,7 @@ from django.views.decorators.http import require_http_methods
 from access.models import AdvisoryAccessGrant, PendingInvitation, PrincipalType
 from accounts.models import User
 from accounts.services import ban_user, unban_user
+from accounts.step_up import require_step_up_or_redirect
 from audit.models import Action
 from audit.retention import forget_user
 from audit.services import record_from_request
@@ -188,6 +189,11 @@ def user_ban(request, user_id: int):
         messages.error(request, "You cannot ban your own account.")
         return back
 
+    # Locking an account is a break-glass action; require a fresh OIDC re-auth.
+    redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
+    if redirect_resp is not None:
+        return redirect_resp
+
     reason = (request.POST.get("reason") or "").strip()
     if not reason:
         messages.error(request, "A reason is required to ban an account.")
@@ -216,6 +222,12 @@ def user_unban(request, user_id: int):
     """Lift a ban: restore sign-in and notifications for the account."""
     target = get_object_or_404(User, pk=user_id)
     back = redirect(reverse("admin_console:user_detail", args=[target.pk]))
+
+    # Gated alongside ban for symmetry — unlocking an account is also a
+    # break-glass account-state change.
+    redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
+    if redirect_resp is not None:
+        return redirect_resp
 
     previous_reason = unban_user(target, by=request.user)
     if previous_reason is None:
@@ -254,6 +266,12 @@ def user_forget(request, user_id: int):
     if target.pk == request.user.pk:
         messages.error(request, "You cannot forget your own account.")
         return back
+
+    # Irreversible GDPR erasure — require a fresh OIDC re-auth on top of the
+    # existing reason + email-retype double-confirmation below.
+    redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
+    if redirect_resp is not None:
+        return redirect_resp
 
     reason = (request.POST.get("reason") or "").strip()
     if not reason:

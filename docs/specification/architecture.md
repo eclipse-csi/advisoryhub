@@ -204,10 +204,12 @@ the logout request can include `id_token_hint`.
 
 `accounts.step_up` implements a session-scoped freshness check
 (`request.session["step_up_auth_at"]` within
-`STEP_UP_MAX_AGE_SECONDS`, default 300 s). The publish view and the
-GitHub App configuration view call
-`require_step_up_or_redirect(request, next_url=…)`; if the timestamp
-is missing or stale, the user is bounced through a
+`STEP_UP_MAX_AGE_SECONDS`, default 300 s). The gated views call
+`require_step_up_or_redirect(request, next_url=…)` — publish/withdraw,
+GitHub App configuration, org-wide GHSA operations, CVE-push retries, and
+the break-glass admin actions (forget user, ban/unban, maintenance toggle);
+the full list is in [`permissions.md` §8](permissions.md#8-step-up-authentication).
+If the timestamp is missing or stale, the user is bounced through a
 `prompt=login&max_age=0` OIDC re-authentication via
 `StepUpAuthRequestView` and `record_step_up_on_login` stamps the
 fresh timestamp on the way back. An ordinary sign-in does not

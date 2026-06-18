@@ -977,6 +977,19 @@ construct absolute URLs in notification bodies; SMTP transport:
 `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`,
 `EMAIL_HOST_PASSWORD` (secret), `EMAIL_USE_TLS`, `EMAIL_USE_SSL`.
 
+**Footer help links.** `ADVISORYHUB_REPO_URL` (default
+`https://github.com/mbarbero/advisoryhub`) is the base GitHub repo for
+AdvisoryHub itself; the footer's "Report an issue" (`/issues/new`) and "Report a
+vulnerability in AdvisoryHub" (`/security/advisories/new`, GitHub private
+vulnerability reporting) links are derived from it, so a repo move is a single
+env change. `ADVISORYHUB_DISCUSSIONS_URL` (default
+`https://github.com/orgs/eclipse-csi/discussions`) backs the "Ask a question"
+link. Blank disables the corresponding link. Resolved by
+`common.context_processors.support_links`; the footer also shows the running app
+version (`importlib.metadata.version("advisoryhub")` via
+`common.context_processors.app_version`) but only to global admins — display-only
+gating in `base.html`, [INV-AUTH-1](./invariant.md#inv-auth-1).
+
 **Publication Git repo.** `PUB_REPO_URL`, `PUB_REPO_BRANCH`
 (default `main`), `PUB_REPO_AUTH` (`ssh`|`token`),
 `PUB_REPO_SSH_KEY_PATH`, `PUB_REPO_TOKEN`,

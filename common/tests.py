@@ -409,3 +409,70 @@ def test_worker_metrics_exporter_disabled_by_default(monkeypatch):
 
     monkeypatch.setattr(prometheus_client, "start_http_server", boom)
     assert celery_metrics._start_exporter() is False
+
+
+# ---- Footer help links + admin-only version ------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(
+    ADVISORYHUB_REPO_URL="https://github.com/acme/advisoryhub",
+    ADVISORYHUB_DISCUSSIONS_URL="https://github.com/orgs/acme/discussions",
+)
+def test_footer_links_render_for_signed_in_user(client, setup):
+    """All three footer links resolve from the configured settings, with the
+    issues + private-vuln-report URLs derived from the repo base."""
+    client.force_login(setup["member"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert "https://github.com/acme/advisoryhub/issues/new" in body
+    assert "https://github.com/orgs/acme/discussions" in body
+    assert "https://github.com/acme/advisoryhub/security/advisories/new" in body
+    assert "Report a vulnerability in AdvisoryHub" in body
+
+
+@pytest.mark.django_db
+@override_settings(
+    ADVISORYHUB_REPO_URL="",
+    ADVISORYHUB_DISCUSSIONS_URL="https://github.com/orgs/acme/discussions",
+)
+def test_footer_repo_links_omitted_when_repo_blank(client, setup):
+    """A blank repo base disables the derived links rather than emitting a
+    malformed relative URL; the independent discussions link still renders."""
+    client.force_login(setup["member"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert "/issues/new" not in body
+    assert "/security/advisories/new" not in body
+    assert "https://github.com/orgs/acme/discussions" in body
+
+
+@pytest.mark.django_db
+def test_footer_version_visible_to_admin_only(client, make_user, make_project, settings):
+    """The app version is shown in the footer only to global admins (display-only
+    gating, INV-AUTH-1); regular users never see it."""
+    settings.OIDC_ADMIN_GROUP = "advisoryhub-security"
+    admin = make_user(email="admin@example.org", groups=["advisoryhub-security"])
+    member = make_user(email="plain@example.org")
+    make_project("p", team_members=[member])
+
+    client.force_login(member)
+    assert "site-footer__version" not in client.get(reverse("advisories:list")).content.decode()
+
+    client.force_login(admin)
+    assert "site-footer__version" in client.get(reverse("advisories:list")).content.decode()
+
+
+def test_app_version_resolves_to_real_version():
+    """The deployable image is a uv virtual project (no installed distribution),
+    so the version must still resolve from pyproject.toml — never 'unknown'."""
+    import tomllib
+    from pathlib import Path
+
+    from django.conf import settings
+
+    from common.context_processors import _app_version
+
+    pyproject = tomllib.loads(
+        (Path(settings.BASE_DIR) / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    assert _app_version() == pyproject["project"]["version"]
+    assert _app_version() != "unknown"

@@ -29,6 +29,10 @@ x-django-env: &django-env
   # ---- Email (console backend in dev) ----
   EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
   DEFAULT_FROM_EMAIL: AdvisoryHub <noreply@example.org>
+  # ---- Footer help links ----
+  # Issues + private-vuln-report links are derived from ADVISORYHUB_REPO_URL.
+  ADVISORYHUB_REPO_URL: https://github.com/mbarbero/advisoryhub
+  ADVISORYHUB_DISCUSSIONS_URL: https://github.com/orgs/eclipse-csi/discussions
   # ---- OIDC (defaults match dev/kanidm/setup.sh) ----
   # OIDC_RP_CLIENT_ID and OIDC_RP_CLIENT_SECRET are written by the
   # bootstrap script into dev/kanidm/.env.kanidm; that file is loaded

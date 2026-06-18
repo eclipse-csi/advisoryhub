@@ -25,6 +25,13 @@ env = environ.Env(
     # Absolute-URL base for links in outbound email (notifications.recipients),
     # e.g. https://advisoryhub.example.org. Empty keeps links site-relative.
     ADVISORYHUB_BASE_URL=(str, ""),
+    # Public help links rendered in the site footer. The repo is expected to
+    # move, so the "report an issue" + private-vulnerability-report URLs are
+    # DERIVED from one base repo URL (issues/new, security/advisories/new);
+    # only ADVISORYHUB_DISCUSSIONS_URL is independent (Eclipse CSI org
+    # discussions). Blank disables the corresponding footer link.
+    ADVISORYHUB_REPO_URL=(str, "https://github.com/mbarbero/advisoryhub"),
+    ADVISORYHUB_DISCUSSIONS_URL=(str, "https://github.com/orgs/eclipse-csi/discussions"),
     # Database
     DATABASE_URL=(str, "postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub"),
     # OIDC
@@ -299,6 +306,8 @@ TEMPLATES = [
                 "common.context_processors.user_email_visibility",
                 "common.context_processors.security_team_identity",
                 "common.context_processors.ghsa_feature",
+                "common.context_processors.support_links",
+                "common.context_processors.app_version",
                 "notifications.context_processors.unread_notifications",
             ],
             # `common` is a helper module, not an installed app, so its
@@ -445,6 +454,11 @@ EMAIL_USE_TLS = env("EMAIL_USE_TLS")
 EMAIL_USE_SSL = env("EMAIL_USE_SSL")
 # Base URL for absolute links in outbound email (see notifications.recipients).
 ADVISORYHUB_BASE_URL = env("ADVISORYHUB_BASE_URL")
+# Footer help links (see common.context_processors.support_links). The issues
+# and private-vuln-report links are derived from ADVISORYHUB_REPO_URL so a repo
+# move is a single env change; discussions point at the Eclipse CSI org.
+ADVISORYHUB_REPO_URL = env("ADVISORYHUB_REPO_URL")
+ADVISORYHUB_DISCUSSIONS_URL = env("ADVISORYHUB_DISCUSSIONS_URL")
 
 # ---------------------------------------------------------------------------
 # Publication Git repository

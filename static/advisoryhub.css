@@ -4130,4 +4130,28 @@ dialog.drawer--right {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+/* Site footer — help links (all users) + admin-only version. Aligned to the
+   page container width; wraps to a column on narrow viewports. */
+.site-footer {
+  max-width: var(--content-max-wide);
+  margin: 0 auto;
+  padding: 1rem 1.4rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+.site-footer__version {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
 } /* @layer components */

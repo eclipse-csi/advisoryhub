@@ -131,6 +131,17 @@
   {% if messages %}{{ messages|toast_payload|json_script:"toast-data" }}<noscript><ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul></noscript>{% endif %}
   {% block content %}{% endblock %}
 </main>
+{# Site footer: help links for AdvisoryHub *itself* (distinct from the top bar's "Report a vulnerability", which targets Eclipse projects via intake:report). URLs are configurable (common.context_processors.support_links); the version is shown only to admins. #}
+<footer class="site-footer">
+  {% if support_links.issues or support_links.discussions or support_links.security %}
+  <nav class="site-footer__links" aria-label="{% translate 'Help and support' %}">
+    {% if support_links.issues %}<a href="{{ support_links.issues }}" target="_blank" rel="noopener noreferrer">{% translate "Report an issue" %}</a>{% endif %}
+    {% if support_links.discussions %}<a href="{{ support_links.discussions }}" target="_blank" rel="noopener noreferrer">{% translate "Ask a question" %}</a>{% endif %}
+    {% if support_links.security %}<a href="{{ support_links.security }}" target="_blank" rel="noopener noreferrer">{% translate "Report a vulnerability in AdvisoryHub" %}</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% if user.is_global_admin %}<span class="site-footer__version">AdvisoryHub v{{ app_version }}</span>{% endif %}
+</footer>
 {# Unified feedback stack (success = transient, error/warning = persistent). Owned by advisoryhub-toast.js. #}
 <ul id="toast-region" class="messages toast-region" aria-live="polite" aria-relevant="additions" aria-atomic="false"></ul>
 {# Screen-reader-only confirmation of successful HTMX actions. Populated by advisoryhub-htmx.js. #}

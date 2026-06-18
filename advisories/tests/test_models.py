@@ -205,18 +205,6 @@ def test_database_trigger_blocks_raw_delete(make_project):
     assert "non-deletable" in str(exc.value).lower() or "delete forbidden" in str(exc.value).lower()
 
 
-def test_advisory_admin_forbids_delete():
-    from django.contrib.admin.sites import AdminSite
-    from django.test import RequestFactory
-
-    from advisories.admin import AdvisoryAdmin
-
-    site_admin = AdvisoryAdmin(Advisory, AdminSite())
-    request = RequestFactory().get("/admin/advisories/advisory/")
-    assert site_admin.has_delete_permission(request) is False
-    assert "delete_selected" not in site_admin.get_actions(request)
-
-
 @pytest.mark.django_db(transaction=True)
 def test_unsafe_dev_reset_bypass_actually_deletes(make_project):
     """The dev-only escape hatch must succeed at removing rows."""

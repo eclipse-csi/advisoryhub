@@ -1,8 +1,8 @@
 """Read-only Users directory for the admin console.
 
 Aggregates per-user the information an admin would otherwise have to assemble
-from `/django-admin/`, the access panel of each advisory, and the project
-pages: group membership, project security-team memberships (which confer
+from the access panel of each advisory and the project pages: group
+membership, project security-team memberships (which confer
 owner per INV-AUTH-3), direct and group-inherited advisory grants, pending
 invitations to the user's email, and notification preferences.
 

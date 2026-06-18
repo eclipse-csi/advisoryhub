@@ -46,8 +46,11 @@ authority.
   sessions ([INV-OIDC-1](./invariant.md#inv-oidc-1)). Claim values are filtered to SPN form so the
   `Group` table stays clean ([INV-OIDC-4](./invariant.md#inv-oidc-4)).
 - **Admin flags.** `is_staff` and `is_superuser` are set equal to
-  membership in `OIDC_ADMIN_GROUP` on every login; demotion in the IdP
-  removes Django admin access on the next login ([INV-OIDC-3](./invariant.md#inv-oidc-3)).
+  membership in `OIDC_ADMIN_GROUP` on every login, so demotion in the IdP
+  clears both flags on the next login ([INV-OIDC-3](./invariant.md#inv-oidc-3)).
+  These flags gate nothing in-app today (Django admin is not mounted; the
+  admin console keys off group membership) — the sync is defense-in-depth
+  hygiene that keeps the columns honest.
 - **Trust boundary.** Authorization predicates always read `user.groups`
   (the DB mirror); request bodies, headers, or form fields naming a group
   are ignored ([INV-OIDC-2](./invariant.md#inv-oidc-2)).

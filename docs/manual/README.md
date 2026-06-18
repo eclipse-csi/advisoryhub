@@ -195,7 +195,7 @@ perspective, but here is the shared vocabulary.
 | **Security team** | A project's group of owners, mirrored from the Eclipse roster / identity provider. |
 | **Owner / Collaborator / Viewer** | The three access roles (see §5). |
 | **Global administrator / Reviewer** | Member of the admin group; owner everywhere and the only reviewer. |
-| **Admin Console** | The administrator dashboard at `/admin/` (Inbox, Projects, Users, Groups, CVE Assignment, Publication, Audit logs, Access log, Maintenance). Distinct from Django admin at `/django-admin/`. |
+| **Admin Console** | The administrator dashboard at `/admin/` (Inbox, Projects, Users, Groups, CVE Assignment, Publication, Audit logs, Access log, Maintenance). The only admin surface — Django's built-in admin site is not enabled. |
 | **Inbox** | The Admin Console's unified work queue. (Not to be confused with your personal notifications inbox.) |
 | **CVE request** | A request, queued internally, for a CVE identifier to be reserved for an advisory. |
 | **Review** | The approval step: an owner submits a draft and an administrator approves it or requests changes. |

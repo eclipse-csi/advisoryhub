@@ -722,9 +722,9 @@ The GHSA feature is gated behind the `GHSA_FEATURE_ENABLED` flag.
 
 ### 4.11 Admin console
 
-The admin console at `/admin/` (Django admin proper lives at
-`/django-admin/`) is the global security team's workspace. Sidebar
-sections:
+The admin console at `/admin/` is the global security team's workspace
+(Django's built-in admin is not mounted — see [§4.11.1](#4111-no-django-admin)).
+Sidebar sections:
 
 - **Inbox** (`/admin/`) — the unified action feed: triage queue,
   pending reviews, awaiting CVE assignment, failed publications,
@@ -764,6 +764,19 @@ sections:
 Every admin-console view is wrapped with `@admin_required`, which is
 `can_review` (global admin only) — see
 [`permissions.md` §9](./permissions.md#9-enforcement-surfaces).
+
+#### 4.11.1 No Django admin
+
+Django's built-in admin (`django.contrib.admin`) is **not** installed and
+`/django-admin/` is not routed. It was removed as defense-in-depth: its raw
+model CRUD bypassed the service layer that enforces the lifecycle, versioning,
+owner-derivation, and secret-redaction invariants, and its writes landed in
+Django's separate `django_admin_log` table rather than the app's append-only
+audit log ([INV-AUDIT-1](./invariant.md#inv-audit-1)) — making admin mutations
+invisible to the audit trail. The admin console above is the only admin surface;
+`manage.py shell` / `dbshell` remain for genuine break-glass access. `is_staff`
+/ `is_superuser` are still synced to admin-group membership on login as hygiene
+([INV-OIDC-3](./invariant.md#inv-oidc-3)).
 
 ### 4.12 Internal JSON API
 

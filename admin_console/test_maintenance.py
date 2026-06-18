@@ -295,16 +295,6 @@ def test_authenticated_non_admin_write_blocked_when_on(client, actors):
 
 
 @pytest.mark.django_db
-def test_django_admin_not_exempt_from_pause(client, actors):
-    # /django-admin/ is governed by the same is_global_admin gate as everything
-    # else — a non-admin write there is paused (no stale-is_staff bypass).
-    _enable("paused")
-    client.force_login(actors["member"])
-    resp = client.post("/django-admin/")
-    assert resp.status_code == 503
-
-
-@pytest.mark.django_db
 def test_ghsa_webhook_exempt_when_on(client, actors):
     # Inbound GitHub webhook is machine traffic, not a user action — it must
     # still be received (the view does its own HMAC check) rather than 503'd.

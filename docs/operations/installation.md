@@ -107,9 +107,9 @@ instance:
    next login ([INV-OIDC-3](../specification/invariant.md#inv-oidc-3)).
 
 Projects, their security teams, and the **mature-publisher** flag are created and
-managed **in-app** afterward (Admin Console at `/admin/`, or `/django-admin/`) —
-not by any bootstrap script. Mature-publisher status lives on the project row, not
-in the identity provider.
+managed **in-app** afterward (Admin Console at `/admin/`) — not by any bootstrap
+script. Mature-publisher status lives on the project row, not in the identity
+provider.
 
 ### 2.5 Start the processes and verify
 

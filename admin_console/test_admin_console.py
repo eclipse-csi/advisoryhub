@@ -352,7 +352,7 @@ def test_inbox_filter_unknown_category_is_lenient(client, setup):
     assert any(i.kind == "cve" for i in response.context["page"].object_list)
 
 
-# ----- /dashboard/ legacy path & django-admin move ------------------------
+# ----- /dashboard/ legacy path & disabled Django admin --------------------
 
 
 @pytest.mark.django_db
@@ -363,9 +363,12 @@ def test_old_dashboard_path_404s(client, setup):
 
 
 @pytest.mark.django_db
-def test_django_admin_moved_to_django_admin(client, setup):
-    # Django admin lives at /django-admin/; /admin/ is the new console.
+def test_django_admin_disabled(client, setup):
+    # Django's built-in admin was removed for defense-in-depth (it bypassed the
+    # app's audited service layer); /admin/ is the only admin surface. Guard
+    # against an accidental re-mount: /django-admin/ must 404 even for an admin.
     client.force_login(setup["admin"])
+    assert client.get("/django-admin/").status_code == 404
     console = client.get("/admin/")
     assert console.status_code == 200
     assert "Admin Console" in console.content.decode() or "Inbox" in console.content.decode()

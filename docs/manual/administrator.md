@@ -38,9 +38,9 @@ What only administrators can do (everything else is shared with owners):
 
 ## 2. The Admin Console
 
-The Admin Console lives at **`/admin/`** (this is *not* the Django admin site at
-`/django-admin/` — see §12). Its landing page is the **Inbox**: a single,
-unified work queue that gathers everything waiting on an administrator:
+The Admin Console lives at **`/admin/`** and is the only admin surface — Django's
+built-in admin site is not enabled (see §12). Its landing page is the **Inbox**: a
+single, unified work queue that gathers everything waiting on an administrator:
 
 - triage reports needing a decision (and the subset flagged as misrouted),
 - advisories submitted for review,
@@ -232,13 +232,14 @@ step-up authentication (§13).
 
 ---
 
-## 12. Django admin
+## 12. No Django admin
 
-Your admin membership also gives you Django's built-in admin at
-**`/django-admin/`**. This is a low-level, direct view of the database models. It
-bypasses the friendly workflows and guard rails of the rest of the app, so use it
-sparingly — for inspection and genuine break-glass fixes, not routine work. The
-Admin Console (§2) is the right tool for day-to-day administration.
+AdvisoryHub does **not** enable Django's built-in admin site — there is no
+`/django-admin/`. It was removed deliberately: its low-level, direct model editing
+bypassed the guard rails and the audit log that the rest of the app enforces, so it
+was a way to change data without leaving an audit trail. The Admin Console (§2) is
+the only administrative surface; for genuine break-glass database access, an
+operator with shell access uses `manage.py shell` / `dbshell`.
 
 ---
 

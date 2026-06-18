@@ -767,8 +767,7 @@ authority.
   non-admins. Exempt prefixes: auth plumbing (`/oidc/`) and probes/assets so anyone
   can still sign in/out and an admin can lift the pause, plus the HMAC-authenticated
   GHSA webhook (`/ghsa/webhook/`) — machine traffic GitHub stops retrying, so it is
-  still received (and recorded) rather than dropped. `/django-admin/` is deliberately
-  *not* exempt, so a stale `is_staff` session cannot mutate data there while paused.
+  still received (and recorded) rather than dropped.
 - `admin_console/models.py` — `MaintenanceMode` singleton (`pk=1`). Enforcement reads
   the authoritative uncached `is_paused()` (coherent across workers); the banner reads
   the cached `current()` snapshot. `advisories.permissions.is_global_admin` is the
@@ -1291,13 +1290,18 @@ client-side group claims would let attackers forge their group set.
 `user.is_superuser` equal to admin-group membership. Removal from
 `OIDC_ADMIN_GROUP` clears both flags on the next login.
 
-**Rationale.** Django admin access must follow IdP demotion without manual
-intervention.
+**Rationale.** These Django flags must follow IdP demotion without manual
+intervention. They gate nothing in-app today — Django's built-in admin is not
+mounted and the admin console keys off group membership — so the sync is
+defense-in-depth hygiene: it keeps the columns honest (e.g. against any future
+re-introduction of an `is_staff`-gated surface) rather than leaving a stale
+super-user flag set after a demotion.
 
 **Enforced in.**
 - `accounts/auth.py` — `_apply_claims`.
 
-**Violation impact.** Demoted admins retain `/django-admin/` access.
+**Violation impact.** A demoted admin keeps `is_staff` / `is_superuser` set,
+re-arming any flag-gated surface that is later added.
 
 **Tests.** Accounts test suite.
 

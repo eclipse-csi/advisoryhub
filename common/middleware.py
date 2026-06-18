@@ -73,11 +73,7 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 # and even for unsafe methods. These are auth plumbing (so anyone can sign in
 # or out, and an admin can authenticate to lift the pause), operational
 # probes/assets, and external machine callbacks — never user application
-# actions. NB: /django-admin/ is deliberately NOT here — it is governed by the
-# same is_global_admin gate as everything else, so a session whose stale
-# is_staff/is_superuser flag outlived its admin-group membership (the columns
-# only re-sync at OIDC login, INV-OIDC-3) cannot mutate data through Django
-# admin while paused.
+# actions.
 _EXEMPT_PREFIXES = (
     "/oidc/",  # authenticate, callback, logout (POST), step-up
     "/healthz",

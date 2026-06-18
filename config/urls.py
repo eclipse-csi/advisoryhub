@@ -1,4 +1,3 @@
-from django.contrib import admin
 from django.urls import include, path, register_converter
 
 from accounts.auth import AdvisoryHubOIDCCallbackView
@@ -18,7 +17,6 @@ urlpatterns = [
     # the metrics endpoint is fine on a private port; do NOT expose it
     # on the public ingress.
     path("", include("django_prometheus.urls")),
-    path("django-admin/", admin.site.urls),
     # Step-up flow and the failed-login-auditing callback override MUST be
     # declared before the mozilla_django_oidc include so they win URL
     # resolution. The callback reuses the library's own URL name, so the path

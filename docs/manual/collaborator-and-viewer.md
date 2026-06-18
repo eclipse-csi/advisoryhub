@@ -69,9 +69,9 @@ timeline. As a viewer or collaborator you can:
 
 - **Read the full advisory** — summary, details, affected packages, references,
   severity, credits, and any assigned CVE.
-- **Browse the version history** — open the history view (`…/history/`) to see
-  every past version, and open a diff to compare two versions
-  (`…/versions/<n>/diff/`). Nothing is ever silently overwritten.
+- **Browse the version history** — open the version-history view (the **history**
+  link on the advisory page) to see every past version, and open its diff view to
+  compare two versions. Nothing is ever silently overwritten.
 - **Follow the Activity timeline** — the advisory page ends with a merged,
   chronological view of comments and recorded actions.
 
@@ -103,8 +103,8 @@ comment box.
 
 ## 5. Editing (collaborators only)
 
-If you are a **collaborator**, the advisory shows an **Edit** action
-(`…/edit/`). A few things to understand before you edit:
+If you are a **collaborator**, the advisory shows an **Edit** button in the
+**Lifecycle** card of the sidebar. A few things to understand before you edit:
 
 - **Every content change appends a new version** — the previous version is kept
   intact and remains in the history ([INV-VERSION-1](../specification/invariant.md#inv-version-1)). You cannot lose earlier

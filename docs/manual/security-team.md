@@ -59,18 +59,19 @@ stateDiagram-v2
 ## 2. Triaging incoming reports
 
 Public reports for your project arrive in the **triage** state. Find them via the
-**triage** tab on `/advisories/`. Open one and decide:
+**triage** tab on `/advisories/`. Open one; the **Lifecycle** card in the
+right-hand sidebar offers your options:
 
-- **Accept as draft** (`…/promote/`) — treat the report as a genuine vulnerability
-  worth working on. It becomes a normal draft you can edit, review, and publish.
-- **Dismiss** (`…/dismiss/`) — reject it (duplicate, not a vulnerability, out of
-  scope). You must give a reason. Dismissed reports are reversible later (§9).
-- **Flag for admin routing** (`…/flag/`) — if the report clearly belongs to a
-  *different* project, flag it with a note. It then moves to the administrators'
-  queue for re-homing ([INV-INTAKE-4](../specification/invariant.md#inv-intake-4)): while flagged, the report is locked to
-  administrators, who alone can promote it (choosing its real project) or
-  dismiss it. If you flagged it by mistake, clear your own flag
-  (`…/clear-routing-flag/`) to take the report back.
+- **Accept as draft** — treat the report as a genuine vulnerability worth working
+  on. It becomes a normal draft you can edit, review, and publish.
+- **Dismiss…** — reject it (duplicate, not a vulnerability, out of scope). You
+  must give a reason. Dismissed reports are reversible later (§9).
+- **Flag for admin routing…** — if the report clearly belongs to a *different*
+  project, this button opens a dialog to flag it with a note. It then moves to the
+  administrators' queue for re-homing ([INV-INTAKE-4](../specification/invariant.md#inv-intake-4)): while flagged, the report
+  is locked to administrators, who alone can promote it (choosing its real
+  project) or dismiss it. If you flagged it by mistake, a **Clear routing flag**
+  button appears in the report's routing banner to take it back.
 
 While an advisory is in triage, owners are the only people who can act on it; the
 reporter (and any viewer) can read it and post comments but nothing more.
@@ -116,12 +117,13 @@ creates the advisory as a **draft** and records the first version.
 
 ## 4. Editing and version history
 
-Open an advisory and choose **Edit** (`…/edit/`). Key behaviours:
+Open an advisory and choose **Edit** — the button is in the **Lifecycle** card of
+the right-hand sidebar. Key behaviours:
 
 - **Versions are append-only.** Every content change records a new version;
-  earlier versions are never overwritten ([INV-VERSION-1](../specification/invariant.md#inv-version-1)). Review the history at
-  `…/history/` and compare any two versions with the diff view
-  (`…/versions/<n>/diff/`).
+  earlier versions are never overwritten ([INV-VERSION-1](../specification/invariant.md#inv-version-1)). Open the
+  version-history view (the **history** link on the advisory page) and compare any
+  two versions with its diff view.
 - **Editing a published advisory flags it for re-publication.** The public copy
   doesn't change until you re-publish (§8); the advisory shows a **Re-publish**
   action once it has unpublished edits.
@@ -138,8 +140,8 @@ Open an advisory and choose **Edit** (`…/edit/`). Key behaviours:
 
 ## 5. Managing who can see and help
 
-Owners control per-advisory access from the **Access** panel
-(`…/access/`). You can:
+Owners control per-advisory access from the **Access** card on the advisory page.
+You can:
 
 - **Grant** a user or a group **viewer** or **collaborator** access (see the
   [Collaborator & Viewer Guide](./collaborator-and-viewer.md) for what each can
@@ -157,8 +159,9 @@ revocation is written to the audit log.
 
 ## 6. Requesting a CVE
 
-If the advisory needs a CVE identifier, choose **Request CVE**
-(`…/request-cve/`). This adds the advisory to the administrators' internal CVE
+If the advisory needs a CVE identifier, choose **Request a CVE Number** — the
+button sits next to the advisory's CVE field. This adds the advisory to the
+administrators' internal CVE
 queue; an administrator then **reserves** a CVE (which attaches it to your
 advisory) or **rejects** the request with a reason — see the
 [Administrator & Reviewer Guide](./administrator.md#4-managing-cves).
@@ -175,16 +178,17 @@ administrator can unassign it (that's a CNA-side action).
 Most advisories are reviewed before publishing. The review is a small machine
 that rides alongside the draft:
 
-1. **Submit for review** (`…/submit-review/`) — this snapshots ("pins") the
-   current version and notifies the reviewers. While submitted, the content is
-   locked (only administrators can edit it) and it cannot be published yet.
+1. **Submit for review** — the button is in the **Review** card of the sidebar.
+   This snapshots ("pins") the current version and notifies the reviewers. While
+   submitted, the content is locked (only administrators can edit it) and it
+   cannot be published yet.
 2. **An administrator decides** — they **approve** it or **request changes**.
    Administrators are the only reviewers, and they cannot review their own
    submissions ([INV-REVIEW-3](../specification/invariant.md#inv-review-3)).
-3. **If changes are requested** — reopen the review (`…/reopen-review/`), edit,
-   and submit again.
-4. **Withdraw** (`…/withdraw-review/`) — you can pull back a submission you made
-   if you decide it isn't ready.
+3. **If changes are requested** — use **Reopen for editing** in the **Review**
+   card, edit, and submit again.
+4. **Withdraw from review** — the **Review** card also lets you pull back a
+   submission you made if you decide it isn't ready.
 
 ```mermaid
 stateDiagram-v2
@@ -215,8 +219,8 @@ repository, which renders the public site.
   **re-authenticate** before it proceeds, even though you're already signed in
   ([permissions.md §8](../specification/permissions.md)).
 
-To publish: open the advisory and choose **Publish** (`/publication/<id>/publish/`),
-completing the re-auth prompt if asked.
+To publish: open the advisory and choose **Publish** in the sidebar's
+**Publication** card, completing the re-auth prompt if asked.
 
 ```mermaid
 sequenceDiagram
@@ -254,16 +258,18 @@ A few things to expect:
 
 ## 9. Dismissing and reopening
 
-- **Dismiss** (`…/dismiss/`) — close an advisory without publishing, with a
-  required reason. You can dismiss from triage or draft. An open CVE *request*
+- **Dismiss…** — the **Lifecycle** card's dismiss button closes an advisory
+  without publishing, with a required reason. You can dismiss from triage or
+  draft. An open CVE *request*
   is cancelled automatically when you dismiss (and restored if you reopen).
   **If a CVE is already assigned you cannot dismiss the advisory yourself** —
   pulling a reserved CVE is a CNA-side action, so ask an administrator: when
   *they* dismiss it, the CVE is automatically unassigned into their orphan-CVE
   queue. While dismissed, the content is read-only for every role (comments
   stay open).
-- **Reopen** (`…/reopen/`) — bring a dismissed advisory back. It returns to
-  whatever state it was in before (triage or draft), and the normal review and
+- **Reopen** — the **Lifecycle** card brings a dismissed advisory back (the button
+  reads **Reopen**, or **Reopen (re-publish)** when un-withdrawing a published one).
+  It returns to whatever state it was in before (triage or draft), and the normal review and
   publish gates apply again from there ([INV-LIFECYCLE-4](../specification/invariant.md#inv-lifecycle-4)). A dismissed advisory
   stays viewable to its grantees the whole time.
 

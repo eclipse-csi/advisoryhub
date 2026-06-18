@@ -563,6 +563,12 @@ class Command(BaseCommand):
         # appear on a normal first `seed_demo` — not only under --reset.
         self._seed_ghsa_demo(projects, admin)
 
+        # Pending invitations for the admin Invitations page. Idempotent and
+        # seeded *before* the advisory-exists guard so they appear on a normal
+        # first `seed_demo` (which attaches them to the GHSA/stats advisories
+        # already created above), not only under --reset.
+        self._seed_invitations_demo()
+
         if Advisory.objects.exists() and not reset:
             self.stdout.write("Advisories already exist; skipping advisory creation.")
             return
@@ -1285,6 +1291,70 @@ class Command(BaseCommand):
             elif created and adv_state == State.TRIAGE:
                 advisory.state = State.TRIAGE
                 advisory.save(update_fields=["state", "modified_at"])
+
+    # --- Pending invitations demo ----------------------------------------
+
+    def _seed_invitations_demo(self) -> None:
+        """Seed a handful of pending advisory invitations (incl. one expired).
+
+        Gives the admin Invitations page (`/admin/invitations/`) realistic
+        data: outstanding invitations to *external* email addresses, one of
+        them lapsed so the Expired badge and the re-send (expiry-refresh)
+        action are both demonstrable.
+
+        Idempotent: no-ops if any invitation already exists. Targets emails
+        with no demo ``User`` row, so ``invite_email`` creates a real
+        ``PendingInvitation`` (an existing user would be auto-granted
+        instead). Expiry is backdated with ``.update()`` — it isn't an
+        ``auto_now`` field, but this matches the backdating style used by the
+        other demo seeds.
+        """
+        from datetime import timedelta
+
+        from access.models import PendingInvitation
+
+        if PendingInvitation.objects.exists():
+            return
+
+        admin = User.objects.get(email="admin@example.org")
+
+        # Prefer the named GHSA/anchor advisories; fall back to any draft or
+        # published row (the synthetic stats-demo advisories) if those are the
+        # only ones present yet.
+        advisories = list(
+            Advisory.objects.filter(state__in=[State.DRAFT, State.PUBLISHED])
+            .exclude(summary__startswith="[stats-demo]")
+            .order_by("created_at")[:4]
+        )
+        if not advisories:
+            advisories = list(
+                Advisory.objects.filter(state__in=[State.DRAFT, State.PUBLISHED]).order_by(
+                    "created_at"
+                )[:4]
+            )
+        if not advisories:
+            return
+
+        # (email, permission) — external addresses with no demo User row.
+        invitees: list[tuple[str, str]] = [
+            ("ext.reviewer@partner.example", Permission.COLLABORATOR),
+            ("auditor@security-firm.example", Permission.VIEWER),
+            ("contractor@vendor.example", Permission.COLLABORATOR),
+            ("observer@downstream.example", Permission.VIEWER),
+            ("lapsed.invite@partner.example", Permission.VIEWER),
+        ]
+        for i, (email, permission) in enumerate(invitees):
+            access_services.invite_email(
+                advisories[i % len(advisories)], email, permission, by=admin
+            )
+
+        # Backdate one invitation past its expiry so the page shows an Expired
+        # row (and re-sending it from the UI exercises the expiry refresh).
+        PendingInvitation.objects.filter(email="lapsed.invite@partner.example").update(
+            expires_at=timezone.now() - timedelta(days=2)
+        )
+
+        self.stdout.write(f"  Seeded {len(invitees)} pending invitations (1 expired).")
 
     def _make_bulk_advisories(
         self,

@@ -12,6 +12,7 @@ from .cves import (
 from .ghsa import ghsa_dashboard
 from .groups import group_detail, group_list
 from .inbox import inbox
+from .invitations import invitation_list, invitation_resend, invitation_revoke
 from .maintenance import maintenance
 from .projects import project_create, project_edit, project_list, project_sync_roster
 from .publications import publications
@@ -33,6 +34,9 @@ __all__ = [
     "group_list",
     "index",
     "inbox",
+    "invitation_list",
+    "invitation_resend",
+    "invitation_revoke",
     "maintenance",
     "orphan_mark_rejected",
     "orphan_reassignment_resolve",

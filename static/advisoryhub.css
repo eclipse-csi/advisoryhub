@@ -1815,6 +1815,10 @@ p.state strong { color: var(--text); }
   .admin-console__sidebar nav { flex-direction: row; flex-wrap: wrap; }
 }
 
+/* Inline per-row action buttons in admin tables (e.g. the Invitations list). */
+.row-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.row-actions form.inline { display: inline; margin: 0; }
+
 /* Inbox unified feed */
 .inbox-counts {
   list-style: none;

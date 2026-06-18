@@ -15,6 +15,7 @@ from access.services import (
     grant_to_user,
     invite_email,
     redeem_invitations_for_user,
+    resend_invitation,
     revoke,
 )
 from advisories import permissions as perms
@@ -181,6 +182,57 @@ def test_invitation_records_redemption_audit(setup, make_user):
     assert AuditLogEntry.objects.filter(
         action=Action.INVITATION_REDEEMED, advisory=setup["advisory"]
     ).exists()
+
+
+# ---- resend_invitation ----------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_resend_invitation_refreshes_expiry_audits_and_emails(setup):
+    from django.core import mail
+
+    invite = PendingInvitation.objects.create(
+        advisory=setup["advisory"],
+        email="late@example.org",
+        permission=Permission.VIEWER,
+    )
+    # Force it stale so the refresh is observable.
+    stale = timezone.now() - timedelta(days=1)
+    invite.expires_at = stale
+    invite.save(update_fields=["expires_at"])
+    mail.outbox.clear()
+
+    resend_invitation(invite, by=setup["member"])
+
+    invite.refresh_from_db()
+    assert invite.expires_at > timezone.now()  # INV-ACCESS-3: link is redeemable again
+    assert AuditLogEntry.objects.filter(
+        action=Action.INVITATION_RESENT, advisory=setup["advisory"]
+    ).exists()
+    assert any("late@example.org" in m.to for m in mail.outbox)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_resend_invitation_noop_when_redeemed(setup, make_user):
+    from django.core import mail
+
+    redeemer = make_user(email="done@example.org")
+    invite = PendingInvitation.objects.create(
+        advisory=setup["advisory"],
+        email="done@example.org",
+        permission=Permission.VIEWER,
+        redeemed_at=timezone.now(),
+        redeemed_by=redeemer,
+    )
+    original_expiry = invite.expires_at
+    mail.outbox.clear()
+
+    resend_invitation(invite, by=setup["member"])
+
+    invite.refresh_from_db()
+    assert invite.expires_at == original_expiry
+    assert not AuditLogEntry.objects.filter(action=Action.INVITATION_RESENT).exists()
+    assert mail.outbox == []
 
 
 # ---- Batch save endpoint --------------------------------------------------

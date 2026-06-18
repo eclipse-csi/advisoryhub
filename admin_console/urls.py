@@ -43,5 +43,16 @@ urlpatterns = [
     path("users/<int:user_id>/forget/", views.user_forget, name="user_forget"),
     path("groups/", views.group_list, name="group_list"),
     path("groups/<int:group_id>/", views.group_detail, name="group_detail"),
+    path("invitations/", views.invitation_list, name="invitation_list"),
+    path(
+        "invitations/<int:invitation_id>/resend/",
+        views.invitation_resend,
+        name="invitation_resend",
+    ),
+    path(
+        "invitations/<int:invitation_id>/revoke/",
+        views.invitation_revoke,
+        name="invitation_revoke",
+    ),
     path("maintenance/", views.maintenance, name="maintenance"),
 ]

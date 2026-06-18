@@ -1690,14 +1690,17 @@ sender used; an exact-case match would deny legitimate invitations.
 ### INV-ACCESS-3 — Invitations expire   [Medium]
 
 **Statement.** `PendingInvitation` rows carry an expiry (default 14 days). Expired
-invitations cannot be redeemed.
+invitations cannot be redeemed. An admin re-send (`access.services.resend_invitation`,
+surfaced on the Admin Console Invitations page) resets `expires_at` to a fresh
+default window — the deliberate, audited way to make a lapsed link usable again.
 
 **Rationale.** Limits the window during which a leaked invitation token is
 useful.
 
 **Enforced in.**
 - `access/models.py` — `PendingInvitation` with `is_expired` predicate.
-- `access/services.py` — redemption checks `is_expired`.
+- `access/services.py` — redemption checks `is_expired`; `resend_invitation`
+  refreshes the window via the same `_default_invitation_expiry` default.
 
 **Violation impact.** Invitations remain redeemable forever after leak.
 
@@ -1731,18 +1734,18 @@ useful.
 ### INV-ACCESS-5 — Grant changes are audited   [High]
 
 **Statement.** Every grant create / update / revoke and every invitation
-create / redeem / revoke emits an audit entry.
+create / redeem / revoke / resend emits an audit entry.
 
 **Rationale.** Access changes are the most sensitive non-state-machine action;
 the audit trail must answer "who gave whom access to what, when?"
 
 **Enforced in.**
 - `access/services.py` — emits `ACCESS_GRANTED` / `ACCESS_REVOKED` /
-  `INVITATION_*` actions.
+  `INVITATION_*` actions (including `INVITATION_RESENT` on admin re-send).
 
 **Violation impact.** Silent access changes; broken forensic record.
 
-**Tests.** `access/tests.py`, `audit/tests.py`.
+**Tests.** `access/tests.py`, `audit/tests.py`, `admin_console/test_invitations.py`.
 
 **Related.** [INV-AUDIT-3](#inv-audit-3).
 

@@ -37,6 +37,7 @@ class Action(models.TextChoices):
     INVITATION_CREATED = "invitation.created"
     INVITATION_REDEEMED = "invitation.redeemed"
     INVITATION_REVOKED = "invitation.revoked"
+    INVITATION_RESENT = "invitation.resent"
     COMMENT_CREATED = "comment.created"
     COMMENT_EDITED = "comment.edited"
     COMMENT_REDACTED = "comment.redacted"

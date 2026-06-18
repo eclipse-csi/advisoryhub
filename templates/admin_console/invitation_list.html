@@ -1,0 +1,107 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n advisoryhub %}
+{% block title %}Admin Console — Invitations{% endblock %}
+{% block admin_section %}invitations{% endblock %}
+{% block admin_content %}
+  <header class="advisory-detail__header">
+    <h1>{% translate "Invitations" %}</h1>
+  </header>
+  <p class="muted">{% translate "Outstanding invitations across all advisories. Each becomes a real grant when the invitee first logs in with a matching email." %}</p>
+
+  <form method="get" class="audit-filter">
+    <div class="audit-filter__row">
+      <label class="audit-filter__field audit-filter__field--wide">
+        <span>{% translate "Search" %}</span>
+        <input type="text" name="q" value="{{ selected_q }}" maxlength="200"
+               placeholder="{% translate 'email' %}">
+      </label>
+
+      <label class="audit-filter__field">
+        <span>{% translate "Project" %}</span>
+        <select name="project" data-combobox>
+          <option value="">{% translate "Any project" %}</option>
+          {% for p in project_choices %}
+            <option value="{{ p.pk }}" {% if selected_project == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="audit-filter__field">
+        <span>{% translate "Status" %}</span>
+        <select name="status">
+          <option value="">{% translate "Any status" %}</option>
+          <option value="pending" {% if selected_status == "pending" %}selected{% endif %}>{% translate "Pending" %}</option>
+          <option value="expired" {% if selected_status == "expired" %}selected{% endif %}>{% translate "Expired" %}</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="audit-filter__actions-row">
+      <button type="submit">{% translate "Filter" %}</button>
+      {% if any_filter_active %}
+        <a href="{% url 'admin_console:invitation_list' %}">{% translate "Clear" %}</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{% translate "Email" %}</th>
+        <th>{% translate "Advisory / Project" %}</th>
+        <th>{% translate "Permission" %}</th>
+        <th>{% translate "Invited by" %}</th>
+        <th>{% translate "Created" %}</th>
+        <th>{% translate "Expires" %}</th>
+        <th>{% translate "Status" %}</th>
+        <th>{% translate "Actions" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in page.object_list %}
+        <tr>
+          <td>{{ inv.email }}</td>
+          <td>
+            <a href="{% url 'advisories:detail' inv.advisory.advisory_id %}">{{ inv.advisory.advisory_id }}</a>
+            <span class="muted">{{ inv.advisory.project.slug }}</span>
+          </td>
+          <td>{{ inv.permission }}</td>
+          <td>{% if inv.created_by %}{{ inv.created_by.email }}{% else %}—{% endif %}</td>
+          <td>{% timestamp inv.created_at %}</td>
+          <td>{% timestamp inv.expires_at %}</td>
+          <td>
+            {% if inv.expires_at <= now %}
+              <span class="badge state-dismissed">{% translate "Expired" %}</span>
+            {% else %}
+              <span class="badge state-published">{% translate "Pending" %}</span>
+            {% endif %}
+          </td>
+          <td class="row-actions">
+            <form method="post" action="{% url 'admin_console:invitation_resend' inv.pk %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="q" value="{{ selected_q }}">
+              <input type="hidden" name="project" value="{{ selected_project }}">
+              <input type="hidden" name="status" value="{{ selected_status }}">
+              <input type="hidden" name="page" value="{{ page.number }}">
+              <button type="submit">{% translate "Re-send" %}</button>
+            </form>
+            <form method="post" action="{% url 'admin_console:invitation_revoke' inv.pk %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="q" value="{{ selected_q }}">
+              <input type="hidden" name="project" value="{{ selected_project }}">
+              <input type="hidden" name="status" value="{{ selected_status }}">
+              <input type="hidden" name="page" value="{{ page.number }}">
+              <button type="submit" class="danger">{% translate "Cancel" %}</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% translate "No invitations match." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page.has_other_pages %}
+    {% include "admin_console/_paginator.html" with page=page filters_querystring=filters_querystring %}
+  {% endif %}
+{% endblock %}

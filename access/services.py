@@ -20,9 +20,16 @@ from accounts.models import User
 from advisories.models import Advisory
 from audit.models import Action
 from audit.services import record
+from common.enqueue import safe_enqueue
 from common.users import actor_or_none
 
-from .models import AdvisoryAccessGrant, PendingInvitation, Permission, PrincipalType
+from .models import (
+    AdvisoryAccessGrant,
+    PendingInvitation,
+    Permission,
+    PrincipalType,
+    _default_invitation_expiry,
+)
 
 
 def _validate_grantable_permission(permission: str) -> None:
@@ -219,6 +226,36 @@ def revoke_invitation(invitation: PendingInvitation, *, by: User | None) -> None
         previous_value={"email": invitation.email, "permission": invitation.permission},
     )
     invitation.delete()
+
+
+@transaction.atomic
+def resend_invitation(invitation: PendingInvitation, *, by: User | None) -> None:
+    """Re-send a pending invitation email and refresh its expiry window.
+
+    Resetting ``expires_at`` to a fresh window (the same default applied at
+    creation) makes the re-sent link redeemable again even if the original had
+    lapsed — see INV-ACCESS-3. The token is unchanged. Already-redeemed
+    invitations are a no-op (the grant is held; re-sending would only confuse).
+    """
+    if invitation.redeemed_at is not None:
+        return
+    invitation.expires_at = _default_invitation_expiry()
+    invitation.save(update_fields=["expires_at"])
+    record(
+        action=Action.INVITATION_RESENT,
+        actor=by,
+        advisory=invitation.advisory,
+        new_value={
+            "email": invitation.email,
+            "permission": invitation.permission,
+            "expires_at": invitation.expires_at.isoformat(),
+        },
+    )
+    # Dispatch after commit, mirroring access.views._queue_invite_email_for_latest.
+    # Deferred import keeps the access ↔ notifications dependency one-directional.
+    from notifications.tasks import send_invitation_email
+
+    transaction.on_commit(lambda: safe_enqueue(send_invitation_email, invitation.pk))
 
 
 def list_active_grants(advisory: Advisory) -> Iterable[AdvisoryAccessGrant]:

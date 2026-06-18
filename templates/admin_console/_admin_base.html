@@ -10,6 +10,7 @@
         <a href="{% url 'admin_console:project_list' %}" {% if section == "projects" %}aria-current="page" class="is-active"{% endif %}>{% translate "Projects" %}</a>
         <a href="{% url 'admin_console:user_list' %}"    {% if section == "users" %}aria-current="page" class="is-active"{% endif %}>{% translate "Users" %}</a>
         <a href="{% url 'admin_console:group_list' %}"   {% if section == "groups" %}aria-current="page" class="is-active"{% endif %}>{% translate "Groups" %}</a>
+        <a href="{% url 'admin_console:invitation_list' %}" {% if section == "invitations" %}aria-current="page" class="is-active"{% endif %}>{% translate "Invitations" %}</a>
         <a href="{% url 'admin_console:cves' %}"         {% if section == "cves" %}aria-current="page" class="is-active"{% endif %}>{% translate "CVE Assignment" %}</a>
         <a href="{% url 'admin_console:publications' %}" {% if section == "publications" %}aria-current="page" class="is-active"{% endif %}>{% translate "Publication" %}</a>
         {% if ghsa_feature_enabled %}<a href="{% url 'admin_console:ghsa' %}" {% if section == "ghsa" %}aria-current="page" class="is-active"{% endif %}>{% translate "GHSA" %}</a>{% endif %}

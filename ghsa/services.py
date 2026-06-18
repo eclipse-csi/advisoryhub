@@ -807,6 +807,32 @@ def push_reserved_cve_to_ghsa(task: GhsaCvePushTask) -> GhsaCvePushTask:
     return task
 
 
+def retry_all_failed_cve_pushes(*, by) -> int:
+    """Re-queue every ``GhsaCvePushTask`` currently in ``failed``.
+
+    The bulk counterpart of the per-task retry in ``ghsa.views.retry_cve_push``:
+    reset each row to ``queued`` and clear its (redacted) ``last_error``, then
+    fan the work back out via ``run_cve_push`` (broker-safe — a transient
+    outage leaves the rows queued for the next manual retry, mirroring
+    :func:`common.enqueue.safe_enqueue`). No bulk audit entry is emitted; each
+    push records its own ``GHSA_CVE_PUSH_*`` outcome when it runs, exactly as
+    the single-task path does. ``by`` is accepted for call-site symmetry with
+    the other operations and is unused — re-queued tasks keep their original
+    ``requested_by`` so the eventual outcome audit stays attributed correctly.
+    Returns the number of tasks re-queued.
+    """
+    from ghsa.tasks import run_cve_push  # lazy: tasks imports this module
+
+    failed = list(GhsaCvePushTask.objects.filter(status=GhsaCvePushTaskStatus.FAILED))
+    for task in failed:
+        task.status = GhsaCvePushTaskStatus.QUEUED
+        task.last_error = ""
+        task.save(update_fields=["status", "last_error"])
+    for task in failed:
+        safe_enqueue(run_cve_push, task.pk)
+    return len(failed)
+
+
 def reap_stale_cve_push_tasks(*, now: datetime | None = None) -> dict:
     """Fail ``GhsaCvePushTask`` rows orphaned in queued/running (INV-GHSA-2).
 

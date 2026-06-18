@@ -1459,6 +1459,11 @@ dd { margin: 0; color: var(--text); }
 .badge.status-running    { color: var(--brand-fg);  background: var(--brand-soft);  border-color: var(--brand-bd); }
 .badge.status-succeeded  { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
 .badge.status-failed     { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
+/* GHSA sync-run + webhook-delivery statuses (admin console GHSA section). */
+.badge.status-partial    { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
+.badge.status-received   { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+.badge.status-processed  { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
+.badge.status-skipped    { color: var(--text-muted); background: var(--surface-alt); border-color: var(--border); }
 
 /* "Changed since last visit" markers on advisory lists. */
 .badge.changed-since-visit { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-border); }

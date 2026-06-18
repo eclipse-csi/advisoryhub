@@ -27,9 +27,12 @@ from .client import GitHubApiError
 from .models import GhsaCvePushTask, GhsaCvePushTaskStatus, GitHubAppInstallation
 from .pmi import PmiApiError
 from .tasks import (
+    reconcile_ghsa_linked_advisories,
     run_cve_push,
     run_ghsa_sync_all,
     run_ghsa_sync_project,
+    run_pmi_repo_sync,
+    run_scheduled_ghsa_discovery,
     run_single_ghsa_sync,
 )
 
@@ -149,12 +152,12 @@ def sync_project_ghsas(request, project_id):
 def sync_all_ghsas(request):
     if not perms.can_sync_all_ghsas(request.user):
         raise PermissionDenied("Only global admins can sync all projects.")
-    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:index"))
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
     if redirect_resp:
         return redirect_resp
     if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
         messages.error(request, "GHSA integration is not enabled.")
-        return redirect("admin_console:index")
+        return redirect("admin_console:ghsa")
     try:
         run_ghsa_sync_all.delay(getattr(request.user, "pk", None))
         messages.success(request, "Org-wide GHSA sync queued.")
@@ -165,7 +168,123 @@ def sync_all_ghsas(request):
             f"Org-wide GHSA sync (inline) finished: created {run.advisories_created}, "
             f"updated {run.advisories_updated}, errors {run.errors_count}.",
         )
-    return redirect("admin_console:index")
+    return redirect("admin_console:ghsa")
+
+
+# ---------------------------------------------------------------------------
+# Org-wide PMI mirror refresh, on-demand reconcile / discovery, webhook
+# catch-up — admin only, step-up required. Each mirrors the broker-offline
+# inline fallback of ``sync_all_ghsas`` and reuses the existing beat tasks /
+# services, so nothing here introduces a new write back to GitHub
+# (INV-GHSA-3 — the integration stays inbound-only apart from the CVE push).
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="2/h")
+def sync_all_pmi_repos(request):
+    if not perms.can_sync_all_ghsas(request.user):
+        raise PermissionDenied("Only global admins can refresh all PMI repo mirrors.")
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
+    if redirect_resp:
+        return redirect_resp
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        messages.error(request, "GHSA integration is not enabled.")
+        return redirect("admin_console:ghsa")
+    try:
+        run_pmi_repo_sync.delay()
+        messages.success(request, "PMI repo mirror refresh queued for all projects.")
+    except Exception:
+        result = run_pmi_repo_sync()
+        messages.success(
+            request,
+            "PMI repo mirror refresh (inline) finished: "
+            f"refreshed {result.get('refreshed', 0)}, failed {result.get('failed', 0)}.",
+        )
+    return redirect("admin_console:ghsa")
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="4/h")
+def reconcile_now(request):
+    if not perms.can_sync_all_ghsas(request.user):
+        raise PermissionDenied("Only global admins can run reconciliation.")
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
+    if redirect_resp:
+        return redirect_resp
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        messages.error(request, "GHSA integration is not enabled.")
+        return redirect("admin_console:ghsa")
+    try:
+        reconcile_ghsa_linked_advisories.delay()
+        messages.success(request, "GHSA reconciliation queued.")
+    except Exception:
+        result = services.reconcile_ghsa_linked_advisories(by=request.user)
+        messages.success(
+            request,
+            "GHSA reconciliation (inline) finished: "
+            f"checked {result.get('checked', 0)}, errors {result.get('errors', 0)}.",
+        )
+    return redirect("admin_console:ghsa")
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="4/h")
+def discover_now(request):
+    if not perms.can_sync_all_ghsas(request.user):
+        raise PermissionDenied("Only global admins can run discovery.")
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
+    if redirect_resp:
+        return redirect_resp
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        messages.error(request, "GHSA integration is not enabled.")
+        return redirect("admin_console:ghsa")
+    try:
+        run_scheduled_ghsa_discovery.delay()
+        messages.success(request, "GHSA discovery queued.")
+    except Exception:
+        run = services.sync_ghsas_for_all_projects(by=request.user)
+        messages.success(
+            request,
+            f"GHSA discovery (inline) finished: created {run.advisories_created}, "
+            f"updated {run.advisories_updated}, errors {run.errors_count}.",
+        )
+    return redirect("admin_console:ghsa")
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="4/h")
+def catch_up_webhooks(request):
+    """Recover from missed/failed webhook deliveries by re-running the poll
+    backstops. Webhook payload bodies are deliberately not persisted (see
+    ``ghsa.models.WebhookDelivery``), so there is nothing to literally replay;
+    reconcile + discovery is the documented catch-up path.
+    """
+    if not perms.can_sync_all_ghsas(request.user):
+        raise PermissionDenied("Only global admins can run the webhook catch-up.")
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
+    if redirect_resp:
+        return redirect_resp
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        messages.error(request, "GHSA integration is not enabled.")
+        return redirect("admin_console:ghsa")
+    try:
+        reconcile_ghsa_linked_advisories.delay()
+        run_scheduled_ghsa_discovery.delay()
+        messages.success(request, "Webhook catch-up queued (reconcile + discovery).")
+    except Exception:
+        services.reconcile_ghsa_linked_advisories(by=request.user)
+        run = services.sync_ghsas_for_all_projects(by=request.user)
+        messages.success(
+            request,
+            "Webhook catch-up (inline) finished: discovery created "
+            f"{run.advisories_created}, updated {run.advisories_updated}.",
+        )
+    return redirect("admin_console:ghsa")
 
 
 # ---------------------------------------------------------------------------
@@ -214,13 +333,13 @@ def refresh_advisory_ghsa(request, advisory_id: str):
 def retry_cve_push(request, task_id: int):
     if not perms.can_retry_cve_push(request.user):
         raise PermissionDenied("Only admins can retry CVE push tasks.")
-    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:index"))
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
     if redirect_resp:
         return redirect_resp
     task = get_object_or_404(GhsaCvePushTask, pk=task_id)
     if task.status not in (GhsaCvePushTaskStatus.FAILED, GhsaCvePushTaskStatus.QUEUED):
         messages.error(request, "Only failed or queued push tasks can be retried.")
-        return redirect("admin_console:index")
+        return redirect("admin_console:ghsa")
     task.status = GhsaCvePushTaskStatus.QUEUED
     task.last_error = ""
     task.save(update_fields=["status", "last_error"])
@@ -230,7 +349,25 @@ def retry_cve_push(request, task_id: int):
     except Exception:
         services.push_reserved_cve_to_ghsa(task)
         messages.success(request, "CVE push retried inline (broker offline).")
-    return redirect("admin_console:index")
+    return redirect("admin_console:ghsa")
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="5/h")
+def retry_all_cve_pushes(request):
+    """Bulk counterpart of :func:`retry_cve_push` — re-queue every failed push."""
+    if not perms.can_retry_cve_push(request.user):
+        raise PermissionDenied("Only admins can retry CVE push tasks.")
+    redirect_resp = require_step_up_or_redirect(request, next_url=reverse("admin_console:ghsa"))
+    if redirect_resp:
+        return redirect_resp
+    count = services.retry_all_failed_cve_pushes(by=request.user)
+    if count:
+        messages.success(request, f"Re-queued {count} failed CVE push task(s).")
+    else:
+        messages.info(request, "No failed CVE push tasks to retry.")
+    return redirect("admin_console:ghsa")
 
 
 # GHSA-linked advisories are created automatically by:
@@ -252,7 +389,12 @@ __all__ = [
     "sync_project_repos",
     "sync_project_ghsas",
     "sync_all_ghsas",
+    "sync_all_pmi_repos",
+    "reconcile_now",
+    "discover_now",
+    "catch_up_webhooks",
     "refresh_advisory_ghsa",
     "retry_cve_push",
+    "retry_all_cve_pushes",
     "run_single_ghsa_sync",
 ]

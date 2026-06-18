@@ -199,10 +199,12 @@ asymmetries with the same-row entries.
 | Sync GHSA metadata for one advisory | ✗ | ✗ | ✓ | ✓ |
 | Sync GHSA across one project | — | — | ✓ | ✓ |
 | Sync GHSA across the org | — | — | ✗ | ✓ |
+| Refresh all PMI repo mirrors / reconcile / discovery / webhook catch-up on demand | — | — | ✗ | ✓ |
 | Configure the GitHub App | — | — | ✗ | ✓ |
-| Retry a failed CVE push | — | — | ✗ | ✓ |
+| Retry a failed CVE push (single or bulk) | — | — | ✗ | ✓ |
 | Browse the triage queue (Admin Console Inbox) | — | — | ✗ | ✓ |
 | View operational SLA stats (Admin Console Stats) | — | — | ✗ | ✓ |
+| View the GHSA operations dashboard (Admin Console GHSA) | — | — | ✗ | ✓ |
 | Submit a public triage report | ✓ (also anonymous) | ✓ | ✓ | ✓ |
 
 Footnotes:
@@ -403,10 +405,12 @@ The actions currently gated by step-up are:
   API equivalents answer `401 step_up_required` instead of redirecting
   (`api/views_publication.py`).
 - **Connect the GitHub App / rescan installations** — `ghsa/views.py`.
-- **Org-wide GHSA sync** — `ghsa/views.py` (`sync_all_ghsas`). The
-  project-scoped sync is *not* step-up gated.
-- **Retry a failed CVE push to GHSA** — `ghsa/views.py`
-  (`retry_cve_push`).
+- **Org-wide GHSA operations** — `ghsa/views.py`: `sync_all_ghsas`,
+  `sync_all_pmi_repos`, `reconcile_now`, `discover_now`, `catch_up_webhooks`
+  (the on-demand backstop triggers surfaced on the Admin Console GHSA
+  dashboard). The project-scoped sync is *not* step-up gated.
+- **Retry a failed CVE push to GHSA** — `ghsa/views.py` (`retry_cve_push`
+  single, `retry_all_cve_pushes` bulk).
 
 The whole mechanism is switched off when `STEP_UP_REQUIRED=False`
 (default in the `test` settings module so test clients can `force_login`

@@ -17,6 +17,10 @@ it on their own advisories (``INV-PRIVACY-4``).
 name plus the admin-group slug, so templates can render
 "Eclipse Foundation Security Team" wherever that group is named and detect its
 row in group listings. Display-only (``INV-AUTH-1``).
+
+``ghsa_feature`` exposes the ``GHSA_FEATURE_ENABLED`` flag so the Admin Console
+sidebar can hide the GHSA section while the integration is dormant. Display-only
+— every GHSA endpoint still re-checks the flag server-side.
 """
 
 from __future__ import annotations
@@ -38,6 +42,10 @@ def security_team_identity(request: HttpRequest) -> dict:
         "security_team_display_name": SECURITY_TEAM_DISPLAY_NAME,
         "admin_group_name": settings.OIDC_ADMIN_GROUP,
     }
+
+
+def ghsa_feature(request: HttpRequest) -> dict:
+    return {"ghsa_feature_enabled": getattr(settings, "GHSA_FEATURE_ENABLED", False)}
 
 
 def maintenance_mode(request: HttpRequest) -> dict:

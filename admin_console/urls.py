@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.inbox, name="index"),
     path("cves/", views.cves, name="cves"),
     path("publications/", views.publications, name="publications"),
+    path("ghsa/", views.ghsa_dashboard, name="ghsa"),
     path("audit/", views.audit, name="audit"),
     path("access-log/", views.access_log, name="access_log"),
     path("stats/", views.stats, name="stats"),

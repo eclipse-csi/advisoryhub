@@ -9,6 +9,7 @@ from .cves import (
     orphan_mark_rejected,
     orphan_reassignment_resolve,
 )
+from .ghsa import ghsa_dashboard
 from .groups import group_detail, group_list
 from .inbox import inbox
 from .maintenance import maintenance
@@ -27,6 +28,7 @@ __all__ = [
     "cve_reject_modal",
     "cve_transition",
     "cves",
+    "ghsa_dashboard",
     "group_detail",
     "group_list",
     "index",

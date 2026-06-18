@@ -68,7 +68,7 @@ responsibility in spec terms.
 | `notifications` | Global preference + per-advisory override models, recipient resolver (`filter_for_event`), Celery email tasks (advisory events, triage events, comments, invitations). |
 | `workflows` | `CveRequestTask`, `ReviewTask`, `OrphanCve`, and the services that drive their state machines. |
 | `publication` | `PublicationTask`, `PublicationArtifact`, `PublicationRepositoryConfig`, OSV + CSAF builders + vendored schemas, the Git service, the Celery worker. |
-| `admin_console` | The /admin/ sidebar shell and its section views (Inbox, CVEs, Publications, Audit, Access log, Stats, Projects, Users, Groups, Maintenance). Stats is the SLA-metrics page (`stats.py` computation + `views/stats.py`). |
+| `admin_console` | The /admin/ sidebar shell and its section views (Inbox, CVEs, Publications, GHSA, Audit, Access log, Stats, Projects, Users, Groups, Maintenance). Stats is the SLA-metrics page (`stats.py` computation + `views/stats.py`). The GHSA section (`views/ghsa.py`, feature-gated on `GHSA_FEATURE_ENABLED`) is the operations + observability dashboard described in §5.9. |
 | `api` | JSON API surface re-using the same `can_*` predicates as the web views. |
 | `ghsa` | GitHub App client + JWT handling, PMI mirror, GHSA discovery / per-advisory sync, EF-CVE push, webhook ingest. |
 | `intake` | The public report form (`/report/`), `HoneypotSubmission`, rate-limited project picker JSON. |
@@ -595,7 +595,42 @@ withdrawals/deletions GitHub doesn't webhook are still caught.
 
 The integration is fronted by the `GHSA_FEATURE_ENABLED` boolean
 flag. With the flag off, GHSA views and tasks short-circuit; the
-admin console hides the GHSA sections.
+admin console hides the GHSA section (the sidebar link is gated by the
+`common.context_processors.ghsa_feature` context processor, and every
+GHSA action endpoint re-checks the flag server-side).
+
+### 5.9 Admin console GHSA operations
+
+The Admin Console **GHSA** section (`/admin/ghsa/`, `admin_console/views/ghsa.py`,
+admin-only via `can_review`) is a read-only dashboard (`INV-AUTH-1` — it only
+displays) that surfaces the integration's bookkeeping tables and offers the
+maintenance actions that already live in `ghsa.views`. The actions POST to
+`ghsa:` endpoints which re-affirm authorization, step-up, rate limits, and the
+feature flag; the org-wide ones reuse the existing beat tasks / services and
+share their broker-offline inline fallback:
+
+- **Sync all GHSAs** (`ghsa:sync-all` → `run_ghsa_sync_all`), **Run discovery now**
+  (`ghsa:discover` → `run_scheduled_ghsa_discovery`), **Reconcile now**
+  (`ghsa:reconcile` → `reconcile_ghsa_linked_advisories`), **Refresh all PMI repo
+  mirrors** (`ghsa:sync-all-pmi` → `run_pmi_repo_sync`) — manual triggers for the
+  §6.2 backstops.
+- **Retry all failed CVE pushes** (`ghsa:retry-all-cve-pushes` →
+  `ghsa.services.retry_all_failed_cve_pushes`) — the bulk counterpart of the
+  per-row retry (`ghsa:retry-cve-push`): resets every `failed` `GhsaCvePushTask`
+  to `queued` and re-fans `run_cve_push`. No new audit action — each push records
+  its own `GHSA_CVE_PUSH_*` outcome, as the single retry already does.
+- **Catch up now** (`ghsa:catch-up-webhooks`) — webhook payload bodies are
+  deliberately not persisted (§5.5), so a failed `WebhookDelivery` cannot be
+  replayed directly; this re-runs reconcile + discovery, the documented poll
+  backstop for state GitHub failed to deliver.
+- **Rescan installations** (`ghsa:rescan-installations`) — surfaced from the
+  GitHub-App config page (`ghsa:connect`, linked from the section header).
+
+The observability tables show failed `GhsaCvePushTask` rows (with per-row + bulk
+retry), recent `GhsaSyncRun` history, recent `WebhookDelivery` history, and the
+registered `GitHubAppInstallation` rows. No new lifecycle write to GitHub is
+introduced — every operation is a pull/sync or the already-sanctioned CVE push
+([INV-GHSA-3](./invariant.md#inv-ghsa-3)).
 
 ---
 

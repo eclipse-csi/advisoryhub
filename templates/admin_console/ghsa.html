@@ -1,0 +1,168 @@
+{% extends "admin_console/_admin_base.html" %}
+{% load i18n advisoryhub %}
+{% block title %}Admin Console — GHSA{% endblock %}
+{% block admin_section %}ghsa{% endblock %}
+{% block admin_content %}
+  <h1>{% translate "GHSA operations" %}</h1>
+  <p class="muted">
+    {% blocktranslate %}Operate and monitor the GitHub Security Advisory integration. Every operation below pulls from GitHub or retries the EF→GHSA CVE push; AdvisoryHub never writes advisory lifecycle state back to GitHub.{% endblocktranslate %}
+    <a href="{% url 'ghsa:connect' %}">{% translate "Configure GitHub App →" %}</a>
+  </p>
+
+  {% if not feature_enabled %}
+    <div class="banner banner-warning" role="alert">
+      {% blocktranslate %}GHSA integration is disabled (set <code>GHSA_FEATURE_ENABLED=True</code>). Operations are unavailable; the tables below show historical rows only.{% endblocktranslate %}
+    </div>
+  {% endif %}
+
+  {% if feature_enabled %}
+    <section>
+      <h2>{% translate "Operations" %}</h2>
+      <div class="actions">
+        {% translate "Cancel" as cancel_label %}
+
+        {% url 'ghsa:sync-all' as sync_all_url %}
+        {% translate "Sync all GHSAs" as sync_all_label %}
+        {% blocktranslate asvar sync_all_body %}Discover and refresh every project's GHSAs from GitHub. Runs in the background; results appear in the sync-run history below.{% endblocktranslate %}
+        {% include "_confirm_action.html" with action=sync_all_url dialog_id="ghsa-sync-all" trigger_label=sync_all_label confirm_label=sync_all_label confirm_class="warning" title=sync_all_label body=sync_all_body cancel_label=cancel_label %}
+
+        {% url 'ghsa:discover' as discover_url %}
+        {% translate "Run discovery now" as discover_label %}
+        {% blocktranslate asvar discover_body %}List every mirrored repo and auto-create advisories for GHSAs not yet linked. The backstop for missed report/publish webhooks.{% endblocktranslate %}
+        {% include "_confirm_action.html" with action=discover_url dialog_id="ghsa-discover" trigger_label=discover_label confirm_label=discover_label confirm_class="warning" title=discover_label body=discover_body cancel_label=cancel_label %}
+
+        {% url 'ghsa:reconcile' as reconcile_url %}
+        {% translate "Reconcile now" as reconcile_label %}
+        {% blocktranslate asvar reconcile_body %}Re-sync every active GHSA-linked advisory and mirror GitHub state changes (auto-publish / auto-dismiss / auto-withdraw). The backstop for missed state-change webhooks.{% endblocktranslate %}
+        {% include "_confirm_action.html" with action=reconcile_url dialog_id="ghsa-reconcile" trigger_label=reconcile_label confirm_label=reconcile_label confirm_class="warning" title=reconcile_label body=reconcile_body cancel_label=cancel_label %}
+
+        {% url 'ghsa:sync-all-pmi' as pmi_url %}
+        {% translate "Refresh all PMI repo mirrors" as pmi_label %}
+        {% blocktranslate asvar pmi_body %}Refresh every project's repository list from the PMI. GHSA-linked advisories follow PMI repo assignments (INV-GHSA-1).{% endblocktranslate %}
+        {% include "_confirm_action.html" with action=pmi_url dialog_id="ghsa-pmi" trigger_label=pmi_label confirm_label=pmi_label confirm_class="warning" title=pmi_label body=pmi_body cancel_label=cancel_label %}
+      </div>
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>{% translate "Failed CVE pushes" %}</h2>
+    {% if feature_enabled and failed_cve_pushes %}
+      <div class="actions">
+        {% url 'ghsa:retry-all-cve-pushes' as retry_all_url %}
+        {% translate "Retry all failed CVE pushes" as retry_all_label %}
+        {% translate "Cancel" as cancel_label %}
+        {% blocktranslate asvar retry_all_body %}Re-queue every failed CVE push to GitHub. Each is retried independently; the internal EF CVE allocation is unaffected.{% endblocktranslate %}
+        {% include "_confirm_action.html" with action=retry_all_url dialog_id="ghsa-retry-all" trigger_label=retry_all_label confirm_label=retry_all_label confirm_class="warning" title=retry_all_label body=retry_all_body cancel_label=cancel_label %}
+      </div>
+    {% endif %}
+    <table>
+      <caption class="visually-hidden">{% translate "Failed CVE pushes" %}</caption>
+      <thead><tr><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "CVE" %}</th><th scope="col">{% translate "Attempts" %}</th><th scope="col">{% translate "Failed" %}</th><th scope="col">{% translate "Last error" %}</th><th></th></tr></thead>
+      <tbody>
+        {% for t in failed_cve_pushes %}
+          <tr id="ghsa-cve-task-{{ t.pk }}" data-href="{% url 'advisories:detail' t.advisory.advisory_id %}">
+            <td><a href="{% url 'advisories:detail' t.advisory.advisory_id %}">{{ t.advisory.advisory_id }}</a></td>
+            <td>{{ t.cve_id }}</td>
+            <td>{{ t.attempts }}</td>
+            <td>{% if t.finished_at %}{% timestamp t.finished_at %}{% else %}—{% endif %}</td>
+            <td><code>{{ t.last_error|default:"—"|truncatechars:120 }}</code></td>
+            <td>
+              {% if feature_enabled %}
+                <form method="post" action="{% url 'ghsa:retry-cve-push' t.pk %}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit">{% translate "Retry" %}</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">{% translate "No failed CVE pushes." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "Recent sync runs" %}</h2>
+    <table>
+      <caption class="visually-hidden">{% translate "Recent sync runs" %}</caption>
+      <thead><tr><th scope="col">{% translate "Scope" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Created" %}</th><th scope="col">{% translate "Updated" %}</th><th scope="col">{% translate "Errors" %}</th><th scope="col">{% translate "Last error" %}</th><th scope="col">{% translate "By" %}</th><th scope="col">{% translate "Started" %}</th></tr></thead>
+      <tbody>
+        {% for run in sync_runs %}
+          <tr>
+            <td>{{ run.get_scope_display }}{% if run.project %} · {{ run.project.slug }}{% endif %}</td>
+            <td><span class="badge status-{{ run.status }}">{{ run.get_status_display }}</span></td>
+            <td>{{ run.advisories_created }}</td>
+            <td>{{ run.advisories_updated }}</td>
+            <td>{{ run.errors_count }}</td>
+            <td>{% if run.last_error %}<code>{{ run.last_error|truncatechars:80 }}</code>{% else %}—{% endif %}</td>
+            <td>{{ run.requested_by.email|default:"system" }}</td>
+            <td>{% timestamp run.started_at %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" class="muted">{% translate "No sync runs recorded yet." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "Recent webhook deliveries" %}</h2>
+    {% if feature_enabled %}
+      <div class="actions">
+        {% url 'ghsa:catch-up-webhooks' as catch_up_url %}
+        {% translate "Catch up now" as catch_up_label %}
+        {% translate "Cancel" as cancel_label %}
+        {% blocktranslate asvar catch_up_body %}Webhook payloads are not stored, so a failed delivery cannot be replayed directly. This re-runs reconcile + discovery to pull any state GitHub failed to deliver.{% endblocktranslate %}
+        {% include "_confirm_action.html" with action=catch_up_url dialog_id="ghsa-catch-up" trigger_label=catch_up_label confirm_label=catch_up_label confirm_class="warning" title=catch_up_label body=catch_up_body cancel_label=cancel_label %}
+      </div>
+    {% endif %}
+    <table>
+      <caption class="visually-hidden">{% translate "Recent webhook deliveries" %}</caption>
+      <thead><tr><th scope="col">{% translate "Event" %}</th><th scope="col">{% translate "Action" %}</th><th scope="col">{% translate "Installation" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Last error" %}</th><th scope="col">{% translate "Received" %}</th></tr></thead>
+      <tbody>
+        {% for d in webhook_deliveries %}
+          <tr>
+            <td>{{ d.event }}</td>
+            <td>{{ d.action|default:"—" }}</td>
+            <td>{{ d.installation_id|default:"—" }}</td>
+            <td><span class="badge status-{{ d.status }}">{{ d.get_status_display }}</span></td>
+            <td>{% if d.last_error %}<code>{{ d.last_error|truncatechars:80 }}</code>{% else %}—{% endif %}</td>
+            <td>{% timestamp d.received_at %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">{% translate "No webhook deliveries recorded yet." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>{% translate "Registered installations" %}</h2>
+    {% if feature_enabled %}
+      <div class="actions">
+        <form method="post" action="{% url 'ghsa:rescan-installations' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit">{% translate "Rescan installations from GitHub" %}</button>
+        </form>
+      </div>
+    {% endif %}
+    <table>
+      <caption class="visually-hidden">{% translate "Registered installations" %}</caption>
+      <thead><tr><th scope="col">{% translate "Account" %}</th><th scope="col">{% translate "Installation id" %}</th><th scope="col">{% translate "Type" %}</th><th scope="col">{% translate "Status" %}</th><th scope="col">{% translate "Last seen" %}</th></tr></thead>
+      <tbody>
+        {% for inst in installations %}
+          <tr>
+            <td>{{ inst.account_login }}</td>
+            <td>{{ inst.installation_id }}</td>
+            <td>{{ inst.get_account_type_display }}</td>
+            <td>{% if inst.suspended_at %}<span class="badge status-failed">{% translate "suspended" %}</span>{% else %}<span class="badge status-succeeded">{% translate "active" %}</span>{% endif %}</td>
+            <td>{% if inst.last_seen_at %}{% timestamp inst.last_seen_at %}{% else %}{% translate "never" %}{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">{% translate "No installations registered." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

@@ -403,6 +403,7 @@ def advisory_detail(request, advisory_id: str):
             "withdrawal_in_progress": withdrawal_in_progress,
             "is_ghsa_linked": advisory.kind == Kind.GHSA_LINKED,
             "can_sync_ghsa": perms.can_sync_ghsa(request.user, advisory),
+            "can_move_to_ghsa": perms.can_move_to_ghsa(request.user, advisory),
             "is_triage": is_triage,
             "intake": intake,
             "can_triage": is_triage and perms.can_triage(request.user, advisory),
@@ -1091,6 +1092,81 @@ def advisory_flag_modal(request, advisory_id: str):
 
 
 @login_required
+@require_http_methods(["GET"])
+def advisory_move_to_ghsa_modal(request, advisory_id: str):
+    """HTMX picker for "Move to GHSA": the project's PVR-enabled repos.
+
+    Refreshes the cached private-vulnerability-reporting status live (one GitHub
+    call per active repo) so the choices reflect GitHub right now. Owner-only,
+    gated by ``can_move_to_ghsa``.
+    """
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_move_to_ghsa(request.user, advisory):
+        raise Http404("Move to GHSA is not available for this advisory.")
+    from ghsa import services as ghsa_services
+    from ghsa.client import GitHubApiError
+
+    try:
+        ghsa_services.refresh_pvr_status(advisory.project)
+    except GitHubApiError:
+        # GitHub unreachable — fall back to the cached flags so the picker still
+        # renders (possibly with the empty state).
+        pass
+    repos = list(
+        advisory.project.github_repositories.filter(
+            soft_removed_at__isnull=True, pvr_enabled=True
+        ).order_by("owner", "name")
+    )
+    return render(
+        request,
+        "advisories/_move_to_ghsa_modal.html",
+        {"advisory": advisory, "repos": repos},
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+@html_ratelimit(rate="10/h")
+def advisory_move_to_ghsa(request, advisory_id: str):
+    """Create the GHSA on GitHub from a native report and convert it in place.
+
+    A normal full-page POST (not HTMX) so step-up's OIDC redirect works; on
+    success or any handled failure we land back on the detail page with a flash.
+    """
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    if not perms.can_move_to_ghsa(request.user, advisory):
+        raise PermissionDenied("You cannot move this advisory to GHSA.")
+    # Authoring a GHSA on GitHub is an outbound write — require a fresh re-auth,
+    # like publish/withdraw. next_url is the detail page (a GET) so the post-
+    # step-up redirect never lands back on this POST-only endpoint.
+    detail_url = reverse("advisories:detail", args=[advisory.advisory_id])
+    redirect_resp = require_step_up_or_redirect(request, next_url=detail_url)
+    if redirect_resp is not None:
+        return redirect_resp
+    owner, _, name = (request.POST.get("repo") or "").strip().partition("/")
+    if not owner or not name:
+        messages.error(request, "Select a target repository.")
+        return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+    from ghsa import services as ghsa_services
+    from ghsa.client import GitHubApiError
+
+    try:
+        ghsa_services.move_advisory_to_ghsa(advisory, owner=owner, repo=name, by=request.user)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+    except GitHubApiError as exc:
+        messages.error(request, f"GitHub advisory creation failed: {exc}")
+        return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+    messages.success(
+        request,
+        "Moved to GitHub — a private security advisory was created and this "
+        "advisory now tracks it.",
+    )
+    return redirect("advisories:detail", advisory_id=advisory.advisory_id)
+
+
+@login_required
 @require_http_methods(["POST"])
 @html_ratelimit(rate="20/h")
 def advisory_clear_routing_flag(request, advisory_id: str):
@@ -1203,6 +1279,7 @@ def _detail_with_error(request, advisory: Advisory, message: str):
             "last_publication_task": None,
             "is_ghsa_linked": advisory.kind == Kind.GHSA_LINKED,
             "can_sync_ghsa": perms.can_sync_ghsa(request.user, advisory),
+            "can_move_to_ghsa": perms.can_move_to_ghsa(request.user, advisory),
             "is_triage": is_triage,
             "intake": intake,
             "can_triage": is_triage and perms.can_triage(request.user, advisory),

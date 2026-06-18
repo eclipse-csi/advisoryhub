@@ -472,7 +472,9 @@ is refreshed by `ghsa.tasks.run_pmi_repo_sync`, scheduled by Celery
 beat every `PMI_SYNC_INTERVAL_HOURS` hours (default 6). The PMI
 sync is the only way new repos appear; repos that disappear from
 PMI are soft-removed (kept for audit) rather than deleted. Each
-sync emits a `PMI_PROJECT_REPOS_SYNCED` audit row.
+sync emits a `PMI_PROJECT_REPOS_SYNCED` audit row. Each row also caches its
+GitHub private-vulnerability-reporting status (`pvr_enabled` / `pvr_checked_at`,
+refreshed by `refresh_pvr_status`), which gates the "Move to GHSA" action (§5.10).
 
 ### 5.3 GHSA discovery & per-advisory sync
 
@@ -632,6 +634,43 @@ The observability tables show failed `GhsaCvePushTask` rows (with per-row + bulk
 retry), recent `GhsaSyncRun` history, recent `WebhookDelivery` history, and the
 registered `GitHubAppInstallation` rows. No new lifecycle write to GitHub is
 introduced — every operation is a pull/sync or the already-sanctioned CVE push
+([INV-GHSA-3](./invariant.md#inv-ghsa-3)).
+
+### 5.10 Move to GHSA (outbound create)
+
+When a vulnerability is filed as a **native** AdvisoryHub report (`triage` or
+`draft`) that should have been a private vulnerability report on GitHub, an owner
+can **move it to GHSA** ([INV-GHSA-4](./invariant.md#inv-ghsa-4)). This is the one
+outbound *create* in the bridge (alongside the CVE push, the only other outbound
+write):
+
+- **Client.** `GitHubAppClient.create_repository_advisory` (`POST
+  /repos/{owner}/{repo}/security-advisories`, covered by
+  `repository_security_advisories: write`) and
+  `get_private_vulnerability_reporting` (`GET …/private-vulnerability-reporting`,
+  covered by `metadata: read`).
+- **PVR cache.** `ProjectGitHubRepository.pvr_enabled` / `pvr_checked_at` cache
+  each active repo's private-vulnerability-reporting status, refreshed by
+  `ghsa.services.refresh_pvr_status`. The cheap `can_move_to_ghsa` UI gate reads
+  the cache; the move picker (`advisory_move_to_ghsa_modal`) refreshes it live
+  before listing PVR-enabled repos.
+- **Service.** `ghsa.services.move_advisory_to_ghsa` (`@transaction.atomic`,
+  `select_for_update`) re-checks `can_move_to_ghsa`, validates the target repo is
+  an active repo of the advisory's **own** project (so the project never changes,
+  [INV-GHSA-1](./invariant.md#inv-ghsa-1)) with PVR enabled *right now*, builds the
+  create body from the report (`build_repository_advisory_payload` — `summary` +
+  `description` always, plus best-effort CWEs / CVSS vector / `vulnerabilities`
+  mapped from OSV `affected`, plus `cve_id` when one is assigned), calls the
+  client, then flips `kind` `native`→`ghsa_linked` in place, sets
+  `ghsa_id`/`ghsa_owner`/`ghsa_repo`, runs the initial `sync_single_ghsa` +
+  `react_to_ghsa_state` to mirror upstream content/state, appends one
+  `AdvisoryVersion`, clears any pending review/reassignment, and audits
+  `ADVISORY_MOVED_TO_GHSA`.
+- **View.** `advisories.views.advisory_move_to_ghsa` — a normal full-page POST
+  (so step-up's OIDC redirect works), rate-limited and step-up-gated; the modal is
+  HTMX-loaded for the live PVR picker.
+
+After the move the advisory is GHSA-linked and follows the inbound-only lifecycle
 ([INV-GHSA-3](./invariant.md#inv-ghsa-3)).
 
 ---

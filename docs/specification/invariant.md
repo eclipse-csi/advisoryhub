@@ -126,6 +126,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-GHSA-1](#inv-ghsa-1) | A GHSA-linked advisory's project follows PMI, never a manual edit. | GHSA | High |
 | [INV-GHSA-2](#inv-ghsa-2) | Stale queued/running CVE-push tasks are reaped to `failed`, correcting the advisory's CVE-push badge. | GHSA | Medium |
 | [INV-GHSA-3](#inv-ghsa-3) | GHSA-linked lifecycle is inbound-only: GitHub publishing auto-publishes; GitHub close/withdraw/delete auto-dismisses (draft/triage) or auto-withdraws (published); AdvisoryHub never writes lifecycle state back to GitHub. | GHSA | Medium |
+| [INV-GHSA-4](#inv-ghsa-4) | "Move to GHSA" is the one sanctioned outbound *create* + `kind` flip: a native triage/draft report is authored as a repository advisory on a PVR-enabled repo of its own project and converted in place to GHSA-linked. | GHSA | High |
 | [INV-SIM-1](#inv-sim-1) | Duplicate-check results and endpoints are owner-only, enforced server-side. | Similarity | Critical |
 | [INV-SIM-2](#inv-sim-2) | `SIMILARITY_CHECK_ENABLED=False` (default) means zero advisory-content egress to the LLM provider. | Similarity | Critical |
 | [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
@@ -2419,8 +2420,12 @@ advisory's GHSA panel indefinitely. No functional block.
 
 **Statement.** A GHSA-linked advisory's lifecycle is **inbound-only**: GitHub is
 the source of truth and AdvisoryHub *mirrors* it, never writing lifecycle state
-back to GitHub (the sole outbound write remains the EF-assigned CVE-id push —
-[INV-GHSA-2](#inv-ghsa-2)). The mirror covers the *pre-publication* lifecycle
+back to GitHub. There are exactly two outbound writes, and both *establish or
+annotate* the link rather than drive an existing GHSA's lifecycle: the
+EF-assigned CVE-id push ([INV-GHSA-2](#inv-ghsa-2)), and the one-time **Move to
+GHSA** create that authors the repository advisory when a native report is
+relocated ([INV-GHSA-4](#inv-ghsa-4)). After the move the advisory is GHSA-linked
+and everything below governs it. The mirror covers the *pre-publication* lifecycle
 too: a GHSA-linked advisory's initial `state` is derived from GitHub's
 `ghsa_state` at creation — `triage` when the GHSA is still in triage upstream (a
 private vulnerability report not yet accepted into a draft), else `draft`. A
@@ -2516,7 +2521,71 @@ AdvisoryHub mutates a maintainer's GitHub advisory it should not.
 `advisories/tests/test_permissions.py`.
 
 **Related.** [INV-GHSA-1](#inv-ghsa-1), [INV-GHSA-2](#inv-ghsa-2),
-[INV-LIFECYCLE-3](#inv-lifecycle-3).
+[INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-GHSA-4](#inv-ghsa-4).
+
+---
+
+<a id="inv-ghsa-4"></a>
+### INV-GHSA-4 — "Move to GHSA" is the one sanctioned outbound create + kind flip   [High]
+
+**Statement.** When a vulnerability was filed as a **native** AdvisoryHub report
+(`triage` or `draft`) that should have been a private vulnerability report on
+GitHub, an owner may **move it to GHSA**: AdvisoryHub authors a repository
+security advisory on a chosen GitHub repo from the report's content
+(`create_repository_advisory`, the single outbound *create* in the bridge —
+[INV-GHSA-3](#inv-ghsa-3)) and converts the advisory **in place** to GHSA-linked
+(`kind` `native` → `ghsa_linked`, `ghsa_id`/`ghsa_owner`/`ghsa_repo` set). This is
+the **only** sanctioned `kind` flip — every other surface treats `kind` as
+immutable (`Advisory.clean()`), and the move runs through a dedicated service that
+saves directly rather than through a form, so the immutability guard still blocks
+all human edits. After the move the row follows the normal inbound lifecycle
+([INV-GHSA-3](#inv-ghsa-3)): its content syncs from GitHub and is read-only, and
+publication is GitHub-driven.
+
+**Constraints.**
+- **Eligibility / authorization.** Owner-only (project security team or global
+  admin), gated on `GHSA_FEATURE_ENABLED`, native `kind`, state ∈ {`triage`,
+  `draft`}. An `assigned_cve_id` does **not** block the move — GHSA-linked
+  advisories support CVEs, and the assigned CVE is carried into the create payload
+  (`cve_id`) so the new GHSA records it and the follow-up sync raises no conflict.
+- **Target repo.** Must be an **active repo of the advisory's own project**, so
+  the GHSA-linked project stays PMI-consistent ([INV-GHSA-1](#inv-ghsa-1) — the
+  project does not change across the move), and must have **private vulnerability
+  reporting (PVR) enabled** right now (re-validated live against GitHub at move
+  time, not merely from the cached `ProjectGitHubRepository.pvr_enabled` flag used
+  to gate the UI). Step-up re-authentication is required.
+- **Atomicity.** The GitHub create happens before the local flip; the flip, audit
+  (`ADVISORY_MOVED_TO_GHSA`), version append, and state mirroring commit together.
+  A GitHub failure leaves the advisory untouched (still native). A rare partial —
+  GHSA created on GitHub but the local commit lost — self-heals via discovery
+  (idempotent `create_ghsa_linked_advisory` returns the row by `ghsa_id`).
+
+**Rationale.** Relocating a misfiled report should not force the owner to
+re-author it by hand on GitHub and dismiss the copy. Creating the GHSA *from* the
+report and converting the same row keeps the advisory's identity, grants,
+comments, and history intact, and is a one-way authoring action — it establishes
+the link, it does not drive an existing GHSA's lifecycle, so it is consistent with
+the inbound-only rule.
+
+**Enforced in.**
+- `ghsa/services.py` — `move_advisory_to_ghsa` (guards + outbound create + in-place
+  flip + sync/mirror + version + audit), `build_repository_advisory_payload`,
+  `refresh_pvr_status`.
+- `ghsa/client.py` — `create_repository_advisory`, `get_private_vulnerability_reporting`.
+- `advisories/permissions.py` — `can_move_to_ghsa` (cheap, cache-based UI gate).
+- `advisories/views.py` — `advisory_move_to_ghsa_modal` / `advisory_move_to_ghsa`
+  (step-up, rate limit, server-side re-check).
+- `advisories/models.py` — `kind` immutability in `clean()` (the move is the
+  documented exception, performed via service save, not a form).
+
+**Violation impact.** A misfiled report can't be relocated, or the conversion
+leaves a half-linked row (native content with GHSA ids, or a GHSA-linked row whose
+project no longer matches its source repo), corrupting the inbound mirror.
+
+**Tests.** `ghsa/tests/test_move_to_ghsa.py`, `advisories/tests/test_permissions.py`.
+
+**Related.** [INV-GHSA-1](#inv-ghsa-1), [INV-GHSA-3](#inv-ghsa-3),
+[INV-VERSION-1](#inv-version-1).
 
 ---
 

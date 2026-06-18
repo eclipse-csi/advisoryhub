@@ -1,0 +1,42 @@
+{% load i18n %}
+<dialog class="confirm-dialog" aria-labelledby="move-ghsa-title" data-light-dismiss>
+  {% if repos %}
+  <form method="post" action="{% url 'advisories:move_to_ghsa' advisory.advisory_id %}">
+    {% csrf_token %}
+    <h3 id="move-ghsa-title">{% translate "Move to GitHub Security Advisory" %}</h3>
+    <p>
+      {% blocktranslate trimmed %}
+        This creates a private draft security advisory on the selected GitHub
+        repository from this report's content, then converts this advisory to a
+        read-only GHSA-linked advisory whose content and lifecycle are driven by
+        GitHub from now on. This cannot be undone.
+      {% endblocktranslate %}
+    </p>
+    <label for="move-ghsa-repo">{% translate "Target repository" %}</label>
+    <select id="move-ghsa-repo" name="repo" required autofocus>
+      {% for repo in repos %}
+        <option value="{{ repo.owner }}/{{ repo.name }}">{{ repo.owner }}/{{ repo.name }}</option>
+      {% endfor %}
+    </select>
+    <p class="sidebar-card__action-hint">
+      {% translate "Only repositories with private vulnerability reporting enabled are listed." %}
+    </p>
+    <div class="dialog-actions">
+      <button type="button" data-dialog-close>{% translate "Cancel" %}</button>
+      <button type="submit" class="danger">{% translate "Move to GHSA" %}</button>
+    </div>
+  </form>
+  {% else %}
+    <h3 id="move-ghsa-title">{% translate "Move to GitHub Security Advisory" %}</h3>
+    <p>
+      {% blocktranslate trimmed %}
+        None of this project's GitHub repositories currently have private
+        vulnerability reporting enabled. Enable it on GitHub for the target
+        repository, then try again.
+      {% endblocktranslate %}
+    </p>
+    <div class="dialog-actions">
+      <button type="button" data-dialog-close>{% translate "Close" %}</button>
+    </div>
+  {% endif %}
+</dialog>

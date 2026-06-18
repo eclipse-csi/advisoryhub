@@ -334,6 +334,39 @@ class GitHubAppClient:
         self._raise_for(resp, path=path, method="PATCH")
         return resp.json()
 
+    def create_repository_advisory(
+        self, owner: str, repo: str, *, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Create a draft repository security advisory on ``owner/repo``.
+
+        This is the one outbound *create* in the GHSA bridge (the manual
+        "Move to GHSA" action): a native AdvisoryHub report that should have
+        been a private vulnerability report is relocated by authoring the GHSA
+        here, after which the advisory follows the normal inbound lifecycle.
+        Covered by the App's ``repository_security_advisories: write`` scope.
+        ``payload`` is the GitHub create body (``summary`` + ``description``
+        required). Returns the created GHSA payload (carries ``ghsa_id``).
+        """
+        path = f"/repos/{owner}/{repo}/security-advisories"
+        resp = self._request("POST", path, owner=owner, json_body=payload)
+        self._raise_for(resp, path=path, method="POST")
+        return resp.json()
+
+    def get_private_vulnerability_reporting(self, owner: str, repo: str) -> bool:
+        """Return whether private vulnerability reporting is enabled on a repo.
+
+        ``GET /repos/{owner}/{repo}/private-vulnerability-reporting`` returns
+        ``{"enabled": bool}``. Covered by the App's ``metadata: read`` scope.
+        A 404 (repo gone / endpoint unavailable) is treated as "not enabled"
+        rather than an error so the picker can simply omit the repo.
+        """
+        path = f"/repos/{owner}/{repo}/private-vulnerability-reporting"
+        resp = self._request("GET", path, owner=owner)
+        if resp.status_code == 404:
+            return False
+        self._raise_for(resp, path=path, method="GET")
+        return bool(resp.json().get("enabled"))
+
     # ---- App-scoped (no installation token) -----------------------------
 
     def list_installations(self) -> list[dict[str, Any]]:

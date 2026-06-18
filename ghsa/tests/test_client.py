@@ -150,6 +150,86 @@ def test_500_raises_after_retries(client):
         client.get_advisory("eclipse", "r", "GHSA-aaaa-aaaa-aaaa")
 
 
+@responses.activate
+def test_create_repository_advisory_posts_payload(client):
+    responses.add(
+        responses.POST,
+        "https://api.github.com/app/installations/67890/access_tokens",
+        json={"token": "ghs_test", "expires_at": "2099-01-01T00:00:00Z"},
+        status=201,
+    )
+    responses.add(
+        responses.POST,
+        "https://api.github.com/repos/eclipse/r/security-advisories",
+        json={"ghsa_id": "GHSA-new1-2345-6789", "state": "draft"},
+        status=201,
+    )
+    result = client.create_repository_advisory(
+        "eclipse", "r", payload={"summary": "x", "description": "y"}
+    )
+    assert result["ghsa_id"] == "GHSA-new1-2345-6789"
+    create_call = next(
+        c
+        for c in responses.calls
+        if c.request.method == "POST" and "security-advisories" in c.request.url
+    )
+    assert b'"summary": "x"' in create_call.request.body
+
+
+@responses.activate
+def test_create_repository_advisory_error_raises(client):
+    responses.add(
+        responses.POST,
+        "https://api.github.com/app/installations/67890/access_tokens",
+        json={"token": "ghs_test", "expires_at": "2099-01-01T00:00:00Z"},
+        status=201,
+    )
+    responses.add(
+        responses.POST,
+        "https://api.github.com/repos/eclipse/r/security-advisories",
+        json={"message": "Validation failed"},
+        status=422,
+    )
+    with pytest.raises(GitHubApiError):
+        client.create_repository_advisory(
+            "eclipse", "r", payload={"summary": "x", "description": "y"}
+        )
+
+
+@responses.activate
+def test_get_private_vulnerability_reporting(client):
+    responses.add(
+        responses.POST,
+        "https://api.github.com/app/installations/67890/access_tokens",
+        json={"token": "ghs_test", "expires_at": "2099-01-01T00:00:00Z"},
+        status=201,
+    )
+    responses.add(
+        responses.GET,
+        "https://api.github.com/repos/eclipse/r/private-vulnerability-reporting",
+        json={"enabled": True},
+        status=200,
+    )
+    assert client.get_private_vulnerability_reporting("eclipse", "r") is True
+
+
+@responses.activate
+def test_get_private_vulnerability_reporting_404_is_false(client):
+    responses.add(
+        responses.POST,
+        "https://api.github.com/app/installations/67890/access_tokens",
+        json={"token": "ghs_test", "expires_at": "2099-01-01T00:00:00Z"},
+        status=201,
+    )
+    responses.add(
+        responses.GET,
+        "https://api.github.com/repos/eclipse/gone/private-vulnerability-reporting",
+        json={"message": "Not Found"},
+        status=404,
+    )
+    assert client.get_private_vulnerability_reporting("eclipse", "gone") is False
+
+
 def test_jwt_mint_uses_rs256(client):
     token = client._mint_app_jwt()
     header = jwt.get_unverified_header(token)

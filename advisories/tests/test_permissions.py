@@ -622,3 +622,68 @@ def test_only_admin_can_review(world):
     assert not perms.can_review(world["member"])
     assert not perms.can_review(world["outsider"])
     assert not perms.can_review(AnonymousUser())
+
+
+# ---- can_move_to_ghsa (INV-GHSA-4) -----------------------------------------
+
+
+def _add_pvr_repo(project, *, pvr_enabled=True):
+    from projects.models import ProjectGitHubRepository
+
+    return ProjectGitHubRepository.objects.create(
+        project=project,
+        owner="eclipse",
+        name="example",
+        last_seen_in_pmi_at="2026-05-14T12:00:00Z",
+        pvr_enabled=pvr_enabled,
+    )
+
+
+def test_owner_can_move_to_ghsa_with_pvr_repo(world, settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    _add_pvr_repo(world["project_a"])
+    assert perms.can_move_to_ghsa(world["member"], world["advisory"])
+    assert perms.can_move_to_ghsa(world["admin"], world["advisory"])
+
+
+def test_outsider_cannot_move_to_ghsa(world, settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    _add_pvr_repo(world["project_a"])
+    assert not perms.can_move_to_ghsa(world["outsider"], world["advisory"])
+    assert not perms.can_move_to_ghsa(AnonymousUser(), world["advisory"])
+
+
+def test_move_to_ghsa_requires_a_pvr_enabled_repo(world, settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    _add_pvr_repo(world["project_a"], pvr_enabled=False)
+    assert not perms.can_move_to_ghsa(world["member"], world["advisory"])
+
+
+def test_move_to_ghsa_requires_the_feature_flag(world, settings):
+    settings.GHSA_FEATURE_ENABLED = False
+    _add_pvr_repo(world["project_a"])
+    assert not perms.can_move_to_ghsa(world["member"], world["advisory"])
+
+
+def test_ghsa_linked_advisory_cannot_be_moved(world, settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    _add_pvr_repo(world["project_a"])
+    world["advisory"].kind = Kind.GHSA_LINKED
+    world["advisory"].save(update_fields=["kind"])
+    assert not perms.can_move_to_ghsa(world["member"], world["advisory"])
+
+
+def test_published_advisory_cannot_be_moved(world, settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    _add_pvr_repo(world["project_a"])
+    world["advisory"].state = State.PUBLISHED
+    world["advisory"].save(update_fields=["state"])
+    assert not perms.can_move_to_ghsa(world["member"], world["advisory"])
+
+
+def test_triage_native_advisory_can_be_moved(world, settings):
+    settings.GHSA_FEATURE_ENABLED = True
+    _add_pvr_repo(world["project_a"])
+    world["advisory"].state = State.TRIAGE
+    world["advisory"].save(update_fields=["state"])
+    assert perms.can_move_to_ghsa(world["member"], world["advisory"])

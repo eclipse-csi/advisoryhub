@@ -694,6 +694,31 @@ def can_pick_reassignment_target(user, advisory: Advisory) -> bool:
 # ---- GHSA integration -------------------------------------------------------
 
 
+def can_move_to_ghsa(user, advisory: Advisory) -> bool:
+    """Whether ``user`` can move a native report to a GitHub Security Advisory.
+
+    For the case where a vulnerability was filed as a native AdvisoryHub report
+    (triage or draft) when it should have been a private vulnerability report on
+    GitHub. Owner-only, gated on the GHSA feature, and only when the advisory's
+    project has at least one active GitHub repo with private vulnerability
+    reporting (PVR) enabled (cached flag — refreshed live when the picker opens,
+    and re-validated server-side at move time). An assigned CVE does *not* block
+    the move: GHSA-linked advisories support CVEs (the CVE-push path exists for
+    exactly that), and the assigned CVE is carried onto the new GHSA.
+    """
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        return False
+    if advisory.kind != Kind.NATIVE:
+        return False
+    if advisory.state not in (State.TRIAGE, State.DRAFT):
+        return False
+    if resolved_permission(user, advisory) != "owner":
+        return False
+    return advisory.project.github_repositories.filter(
+        soft_removed_at__isnull=True, pvr_enabled=True
+    ).exists()
+
+
 def can_sync_ghsa(user, advisory: Advisory) -> bool:
     """Whether ``user`` can refresh metadata for a single GHSA-linked advisory."""
     perm = resolved_permission(user, advisory)

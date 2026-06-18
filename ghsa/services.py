@@ -20,6 +20,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from advisories import permissions as advisory_permissions
 from advisories import services as advisory_services
 from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, State
 from audit.models import Action
@@ -545,6 +546,269 @@ def create_ghsa_linked_advisory(
 
     request_check_safe(advisory, by=by)
     return advisory
+
+
+# ---------------------------------------------------------------------------
+# Move to GHSA — the one sanctioned *outbound create* + in-place kind flip.
+#
+# Used when a vulnerability was filed as a native AdvisoryHub report (public
+# intake → triage, or a native draft) when it should have been a private
+# vulnerability report on the project's GitHub repo. The owner picks a repo of
+# the advisory's own project that has private vulnerability reporting (PVR)
+# enabled; we author the GHSA there from the report content and convert this
+# row in place to GHSA-linked, after which the normal inbound lifecycle takes
+# over (INV-GHSA-3 carve-out, INV-GHSA-4).
+# ---------------------------------------------------------------------------
+
+
+# OSV ecosystem identifiers (Title-case) → GitHub's create-advisory ecosystem
+# enum (lowercase). Inverse of translator._ECOSYSTEM_MAP; anything unknown
+# falls back to "other" (the only enum value that allows a null package name).
+_OSV_TO_GHSA_ECOSYSTEM = {
+    "npm": "npm",
+    "pypi": "pip",
+    "maven": "maven",
+    "rubygems": "rubygems",
+    "go": "go",
+    "packagist": "composer",
+    "nuget": "nuget",
+    "crates.io": "rust",
+    "pub": "pub",
+    "hex": "erlang",
+    "swifturl": "swift",
+    "github actions": "actions",
+}
+
+
+def _ghsa_ecosystem(osv_ecosystem: str | None) -> str:
+    return _OSV_TO_GHSA_ECOSYSTEM.get((osv_ecosystem or "").strip().lower(), "other")
+
+
+def _ghsa_version_range(entry: dict) -> tuple[str, str]:
+    """Best-effort OSV ``affected`` entry → (vulnerable_version_range, patched).
+
+    Inverse of translator._parse_vulnerable_range. Reads the first usable OSV
+    range's events; if none are derivable, falls back to a single explicit
+    version (``= X``). Returns empty strings when nothing maps.
+    """
+    introduced = fixed = last_affected = None
+    for rng in entry.get("ranges") or []:
+        for event in rng.get("events") or []:
+            if "introduced" in event:
+                introduced = event["introduced"]
+            elif "fixed" in event:
+                fixed = event["fixed"]
+            elif "last_affected" in event:
+                last_affected = event["last_affected"]
+    parts: list[str] = []
+    if introduced and str(introduced) != "0":
+        parts.append(f">= {introduced}")
+    if fixed:
+        parts.append(f"< {fixed}")
+    elif last_affected:
+        parts.append(f"<= {last_affected}")
+    version_range = ", ".join(parts)
+    if not version_range:
+        versions = entry.get("versions") or []
+        if len(versions) == 1:
+            version_range = f"= {versions[0]}"
+    return version_range, (fixed or "")
+
+
+def _ghsa_vulnerabilities(advisory: Advisory) -> list[dict]:
+    """Map ``Advisory.affected`` (OSV) onto GitHub's ``vulnerabilities`` array."""
+    out: list[dict] = []
+    for entry in advisory.affected or []:
+        if not isinstance(entry, dict):
+            continue
+        pkg = entry.get("package") or {}
+        name = (pkg.get("name") or "").strip()
+        ecosystem = _ghsa_ecosystem(pkg.get("ecosystem"))
+        if not name and ecosystem == "other":
+            continue  # nothing meaningful to send
+        vuln: dict = {"package": {"ecosystem": ecosystem}}
+        if name:
+            vuln["package"]["name"] = name
+        version_range, patched = _ghsa_version_range(entry)
+        if version_range:
+            vuln["vulnerable_version_range"] = version_range
+        if patched:
+            vuln["patched_versions"] = patched
+        out.append(vuln)
+    return out
+
+
+def _ghsa_cvss_vector(advisory: Advisory) -> str:
+    for sev in advisory.severity or []:
+        if isinstance(sev, dict) and str(sev.get("type", "")).upper().startswith("CVSS"):
+            score = (sev.get("score") or "").strip()
+            if score:
+                return score
+    return ""
+
+
+def build_repository_advisory_payload(advisory: Advisory) -> dict:
+    """Build the GitHub ``POST /security-advisories`` body from an advisory.
+
+    ``summary`` and ``description`` are GitHub's only required fields and are
+    always sent (with safe fallbacks), so the create never fails for lack of
+    them. CWEs, a CVSS vector, mapped ``vulnerabilities``, and our assigned CVE
+    are added best-effort when present. Credits are omitted in v1 (GitHub needs
+    GitHub logins, which AdvisoryHub credits don't carry).
+    """
+    summary = (advisory.summary or "").strip() or f"Security advisory {advisory.advisory_id}"
+    description = (advisory.details or "").strip() or summary
+    payload: dict = {"summary": summary[:1024], "description": description}
+    cwe_ids = [c for c in (advisory.cwe_ids or []) if isinstance(c, str) and c.strip()]
+    if cwe_ids:
+        payload["cwe_ids"] = cwe_ids
+    vulnerabilities = _ghsa_vulnerabilities(advisory)
+    if vulnerabilities:
+        payload["vulnerabilities"] = vulnerabilities
+    vector = _ghsa_cvss_vector(advisory)
+    if vector:
+        payload["cvss_vector_string"] = vector
+    if advisory.assigned_cve_id:
+        # EF is the CNA — record our CVE on the GHSA at creation. The follow-up
+        # sync then sees a matching cve_id and raises no conflict.
+        payload["cve_id"] = advisory.assigned_cve_id
+    return payload
+
+
+def refresh_pvr_status(project: Project) -> dict:
+    """Refresh the cached PVR flag on each active repo of ``project``.
+
+    Best-effort: per-repo GitHub failures are logged and skipped (the cached
+    flag is left untouched) so one bad repo never aborts the sweep. No-op while
+    ``GHSA_FEATURE_ENABLED`` is off. Returns ``{checked, enabled, errors}``.
+    """
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        return {"skipped": "GHSA_FEATURE_ENABLED is False"}
+    client = get_client()
+    now = timezone.now()
+    checked = enabled = errors = 0
+    for repo in project.github_repositories.filter(soft_removed_at__isnull=True):
+        try:
+            is_enabled = client.get_private_vulnerability_reporting(repo.owner, repo.name)
+        except GitHubApiError as exc:
+            errors += 1
+            logger.warning(
+                "PVR check failed for %s/%s: %s",
+                repo.owner,
+                repo.name,
+                redact_secrets(str(exc)),
+            )
+            continue
+        repo.pvr_enabled = is_enabled
+        repo.pvr_checked_at = now
+        repo.save(update_fields=["pvr_enabled", "pvr_checked_at"])
+        checked += 1
+        if is_enabled:
+            enabled += 1
+    return {"checked": checked, "enabled": enabled, "errors": errors}
+
+
+@transaction.atomic
+def move_advisory_to_ghsa(advisory: Advisory, *, owner: str, repo: str, by) -> Advisory:
+    """Author a GHSA on GitHub from a native report and link this row to it.
+
+    The one sanctioned outbound *create* in the GHSA bridge and the one
+    sanctioned ``kind`` flip (native → ghsa_linked). The target repo must be an
+    active repo of the advisory's *own* project (so the GHSA-linked project
+    stays PMI-consistent, INV-GHSA-1) and must have private vulnerability
+    reporting enabled right now. An assigned CVE does not block the move — it is
+    carried into the create payload. After linking, the advisory follows the
+    inbound lifecycle (content synced from GitHub, publication GitHub-driven).
+
+    Raises:
+        PermissionDenied: the caller may not move this advisory.
+        ValueError: advisory not eligible, repo not in project, or PVR off.
+        GitHubApiError: the GitHub create call failed (advisory left untouched).
+    """
+    if not getattr(settings, "GHSA_FEATURE_ENABLED", False):
+        raise ValueError("GHSA integration is not enabled.")
+
+    locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+    if not advisory_permissions.can_move_to_ghsa(by, locked):
+        raise PermissionDenied("You may not move this advisory to GHSA.")
+    if locked.kind != Kind.NATIVE:
+        raise ValueError("Only native advisories can be moved to GHSA.")
+    if locked.state not in (State.TRIAGE, State.DRAFT):
+        raise ValueError(f"Advisory is not in triage or draft state (currently {locked.state}).")
+
+    repo_row = locked.project.github_repositories.filter(
+        owner=owner, name=repo, soft_removed_at__isnull=True
+    ).first()
+    if repo_row is None:
+        raise ValueError("The selected repository is not an active repository of this project.")
+
+    client = get_client()
+    if not client.get_private_vulnerability_reporting(owner, repo):
+        raise ValueError(
+            "Private vulnerability reporting is not enabled on the selected repository."
+        )
+
+    # --- the outbound create (only raise point after this is GitHub itself) ---
+    payload = build_repository_advisory_payload(locked)
+    created = client.create_repository_advisory(owner, repo, payload=payload)
+    new_ghsa_id = (created.get("ghsa_id") or "").strip()
+    if not new_ghsa_id:
+        raise GitHubApiError("GitHub repository-advisory create returned no ghsa_id")
+
+    previous_state = locked.state
+    locked.kind = Kind.GHSA_LINKED
+    locked.ghsa_id = new_ghsa_id
+    locked.ghsa_owner = owner
+    locked.ghsa_repo = repo
+    locked.save(update_fields=["kind", "ghsa_id", "ghsa_owner", "ghsa_repo", "modified_at"])
+
+    record(
+        action=Action.ADVISORY_MOVED_TO_GHSA,
+        actor=by,
+        advisory=locked,
+        previous_value={"kind": Kind.NATIVE.value, "state": previous_state},
+        new_value={"ghsa_id": new_ghsa_id, "owner": owner, "repo": repo},
+        metadata={"advisory_id": locked.advisory_id, "project_slug": locked.project.slug},
+    )
+
+    # Native-only workflow state has no meaning on a GHSA-linked row (review and
+    # reassignment are refused for GHSA-linked advisories) — clear any pending
+    # bits so nothing dangles in the admin inbox.
+    from workflows.services import cancel_pending_review
+
+    cancel_pending_review(locked, by=by, reason="Moved to GHSA.")
+    advisory_services.clear_reassignment_request_if_pending(locked, by=by, cause="moved_to_ghsa")
+
+    # Pull GitHub's representation back so content + state mirror upstream. A
+    # GitHub create failure here is non-fatal (the row is already linked); the
+    # dashboard surfaces the sync error and a refresh/reconcile retries.
+    try:
+        summary = sync_single_ghsa(locked, by=by)
+    except GitHubApiError as exc:
+        locked.ghsa_metadata = {"sync_error": redact_secrets(str(exc))}
+        locked.save(update_fields=["ghsa_metadata", "modified_at"])
+        summary = None
+    if summary is not None:
+        # Mirror GitHub's pre-publication state exactly as
+        # create_ghsa_linked_advisory does: a GHSA still in triage upstream
+        # lands as a read-only triage row. react_to_ghsa_state then forward-
+        # promotes triage → draft when the GHSA is a draft.
+        if locked.ghsa_state == GhsaState.TRIAGE and locked.state == State.DRAFT:
+            locked.state = State.TRIAGE
+            locked.save(update_fields=["state", "modified_at"])
+        react_to_ghsa_state(locked, summary, by=by)
+
+    # Capture the kind/ghsa flip as one new immutable version. ``if_changed``
+    # makes this a no-op when sync_single_ghsa already appended a version that
+    # picked up the same payload fields.
+    advisory_services.record_advisory_version(locked, editor=by, if_changed=True)
+
+    # Best-effort duplicate detection on the now-synced content (no-op while
+    # disabled, never fails the move).
+    from similarity.services import request_check_safe
+
+    request_check_safe(locked, by=by)
+    return locked
 
 
 @transaction.atomic

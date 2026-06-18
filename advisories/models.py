@@ -281,7 +281,11 @@ class Advisory(models.Model):
     # Security Advisory (GHSA): metadata is synced from GitHub (read-only
     # in AdvisoryHub), CVE id allocation is initiated here and pushed back
     # to GitHub, and publication is gated on the upstream GHSA itself
-    # being published. ``kind`` is set at creation and is immutable.
+    # being published. ``kind`` is set at creation and is immutable, with one
+    # sanctioned exception: ``ghsa.services.move_advisory_to_ghsa`` flips a
+    # native triage/draft report to ghsa_linked in place (INV-GHSA-4). That
+    # service saves directly (not via a form), so the ``clean`` guard below
+    # still blocks every *human* edit of ``kind``.
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.NATIVE)
     ghsa_id = models.CharField(max_length=32, blank=True, validators=[validate_ghsa_id])
     ghsa_owner = models.CharField(max_length=100, blank=True)

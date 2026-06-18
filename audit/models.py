@@ -75,6 +75,10 @@ class Action(models.TextChoices):
     NOTIFICATION_SENT = "notification.sent"
     GHSA_METADATA_FETCHED = "ghsa.metadata_fetched"
     GHSA_LINKED_ADVISORY_CREATED = "ghsa.linked_advisory_created"
+    # Manual "Move to GHSA": a native triage/draft report is authored as a
+    # repository security advisory on GitHub and converted in place to a
+    # GHSA-linked advisory (the one sanctioned outbound create + kind flip).
+    ADVISORY_MOVED_TO_GHSA = "advisory.moved_to_ghsa"
     GHSA_CVE_PUSH_REQUESTED = "ghsa.cve_push_requested"
     GHSA_CVE_PUSH_SUCCEEDED = "ghsa.cve_push_succeeded"
     GHSA_CVE_PUSH_FAILED = "ghsa.cve_push_failed"

@@ -9,7 +9,7 @@ flat actions panel.
 
 Context required: advisory, is_triage, is_unsorted,
 can_edit, can_triage, can_flag_routing, can_request_reassignment,
-can_dismiss, can_reopen, can_lock_comments.
+can_move_to_ghsa, can_dismiss, can_reopen, can_lock_comments.
 {% endcomment %}
 <section class="sidebar-card sidebar-card--lifecycle">
   <header class="sidebar-card__header">
@@ -68,6 +68,19 @@ can_dismiss, can_reopen, can_lock_comments.
          href="#">Request reassignment…</a>
       <p class="sidebar-card__action-hint">
         Ask to move this advisory to the right project if it belongs to a team you're not on. Your team can keep working on it in the meantime.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if can_move_to_ghsa %}
+    <div class="sidebar-card__row">
+      <a class="btn"
+         hx-get="{% url 'advisories:move_to_ghsa_modal' advisory.advisory_id %}"
+         hx-target="#modal" hx-swap="innerHTML"
+         role="button"
+         href="#">Move to GHSA…</a>
+      <p class="sidebar-card__action-hint">
+        This report should have been a private vulnerability report on GitHub. Create the advisory on one of the project's repositories and convert this report to track it (its content and lifecycle then follow GitHub).
       </p>
     </div>
   {% endif %}

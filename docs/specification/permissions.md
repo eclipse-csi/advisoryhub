@@ -199,6 +199,7 @@ asymmetries with the same-row entries.
 | Unassign a CVE | ✗ | ✗ | ✗ | ✓ |
 | Mark an orphan CVE rejected | — | — | — | ✓ |
 | Resolve an orphan CVE reassignment task | — | — | — | ✓ |
+| Move a native triage/draft report to GHSA ¹³ | ✗ | ✗ | ✓ | ✓ |
 | Sync GHSA metadata for one advisory | ✗ | ✗ | ✓ | ✓ |
 | Sync GHSA across one project | — | — | ✓ | ✓ |
 | Sync GHSA across the org | — | — | ✗ | ✓ |
@@ -302,6 +303,20 @@ Lock and unlock are recorded in the audit log and surfaced in the activity timel
 (`ADVISORY_COMMENTS_LOCKED` / `ADVISORY_COMMENTS_UNLOCKED`); an optional, secret-redacted reason is
 shown to everyone with access. Defined by `can_lock_comments` /
 `advisories.services.lock_advisory_comments` / `unlock_advisory_comments`.
+
+¹³ **Move to GHSA** ([INV-GHSA-4](./invariant.md#inv-ghsa-4)). For a vulnerability filed as a
+**native** report (`triage` or `draft`) that should have been a private vulnerability report on
+GitHub. Owner-only (project security team + global admins), gated on `GHSA_FEATURE_ENABLED`, and
+offered only when the advisory's project has at least one active GitHub repo with **private
+vulnerability reporting (PVR)** enabled (cached flag, refreshed live when the picker opens). The
+owner selects a target repo of the advisory's own project; AdvisoryHub authors a repository security
+advisory there from the report content and converts the row **in place** to GHSA-linked — the one
+sanctioned outbound *create* and `kind` flip. Requires step-up re-authentication. An assigned CVE
+does **not** block the move (it is carried onto the new GHSA). The target repo must be an active repo
+of the **same** project so the project never changes ([INV-GHSA-1](./invariant.md#inv-ghsa-1)) and
+must have PVR enabled (re-validated live at move time). After the move the advisory follows the
+inbound-only GHSA lifecycle ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). Defined by `can_move_to_ghsa`
+/ `ghsa.services.move_advisory_to_ghsa`.
 
 ---
 

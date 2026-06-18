@@ -98,6 +98,12 @@ class ProjectGitHubRepository(models.Model):
     last_seen_in_pmi_at = models.DateTimeField()
     soft_removed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Cached GitHub "private vulnerability reporting" (PVR) status, refreshed by
+    # ``ghsa.services.refresh_pvr_status``. ``None`` means never checked. Gates
+    # the owner-facing "Move to GHSA" action: only PVR-enabled repos are offered
+    # as targets (the live status is re-validated again at move time).
+    pvr_enabled = models.BooleanField(null=True, default=None)
+    pvr_checked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [

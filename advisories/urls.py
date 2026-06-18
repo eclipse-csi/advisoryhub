@@ -31,6 +31,16 @@ urlpatterns = [
     path("<advid:advisory_id>/flag/", views.advisory_flag, name="flag"),
     path("<advid:advisory_id>/flag/modal/", views.advisory_flag_modal, name="flag_modal"),
     path(
+        "<advid:advisory_id>/move-to-ghsa/modal/",
+        views.advisory_move_to_ghsa_modal,
+        name="move_to_ghsa_modal",
+    ),
+    path(
+        "<advid:advisory_id>/move-to-ghsa/",
+        views.advisory_move_to_ghsa,
+        name="move_to_ghsa",
+    ),
+    path(
         "<advid:advisory_id>/clear-routing-flag/",
         views.advisory_clear_routing_flag,
         name="clear_routing_flag",

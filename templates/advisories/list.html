@@ -8,7 +8,7 @@
   {% include "advisories/_state_tabs.html" %}
 
   {# Active search: typing debounces an hx-get that swaps only #advisory-results; #}
-  {# the tab counts + result count refresh out-of-band (see _list_fragment.html). #}
+  {# the tab counts refresh out-of-band (see _list_fragment.html). #}
   {# hx-push-url keeps searches bookmarkable; with JS/HTMX off the form still does #}
   {# a normal full-page GET (method/action below), so this is pure enhancement. #}
   <form method="get" action="{% url 'advisories:list' %}" class="advisory-filters" role="search"
@@ -33,8 +33,6 @@
     {# display:contents (advisoryhub.css) keeps the empty slot from adding a gap. #}
     <span id="advisory-filter-clear">{% include "advisories/_filter_clear.html" %}</span>
   </form>
-
-  <p class="muted" id="advisory-result-summary" role="status" aria-live="polite" aria-atomic="true">{% include "advisories/_list_count.html" %}</p>
 
   <div id="advisory-results">
     {% include "advisories/_list_table.html" %}

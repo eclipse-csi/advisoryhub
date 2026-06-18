@@ -1,7 +1,6 @@
 {# HTMX active-search response. The table replaces #advisory-results (innerHTML); #}
-{# the tab strip and the result-count live region are refreshed out-of-band so #}
-{# their counts track the search without being inside the swapped region. #}
+{# the tab strip is refreshed out-of-band so its counts track the search without #}
+{# being inside the swapped region. #}
 {% include "advisories/_list_table.html" %}
 {% include "advisories/_state_tabs.html" with tabs_oob=True %}
-<p hx-swap-oob="innerHTML:#advisory-result-summary">{% include "advisories/_list_count.html" %}</p>
 <span hx-swap-oob="innerHTML:#advisory-filter-clear">{% include "advisories/_filter_clear.html" %}</span>

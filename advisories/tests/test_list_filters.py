@@ -306,27 +306,14 @@ def test_htmx_fragment_updates_tab_counts_out_of_band(client, setup):
 
 
 @pytest.mark.django_db
-def test_htmx_fragment_updates_result_count_out_of_band(client, setup):
-    """The result-count live region is refreshed out-of-band (innerHTML) so its
-    text — and the polite announcement — reflect the search."""
-    client.force_login(setup["admin"])
-    r = client.get(reverse("advisories:list"), {"q": "smuggling"}, HTTP_HX_REQUEST="true")
-    body = r.content.decode()
-    assert 'hx-swap-oob="innerHTML:#advisory-result-summary"' in body
-    assert "1 advisory matches." in body
-
-
-@pytest.mark.django_db
-def test_full_page_has_search_form_and_live_region(client, setup):
+def test_full_page_has_search_form(client, setup):
     """The non-HTMX page wires the active-search form (debounced hx-get targeting
-    the results) and the persistent result-count live region."""
+    the results)."""
     client.force_login(setup["admin"])
     body = client.get(reverse("advisories:list")).content.decode()
     assert 'hx-get="' in body and 'hx-target="#advisory-results"' in body
     assert "delay:300ms" in body
     assert 'id="advisory-results"' in body
-    assert 'id="advisory-result-summary"' in body and 'aria-live="polite"' in body
-    assert "4 advisories match." in body
 
 
 @pytest.mark.django_db

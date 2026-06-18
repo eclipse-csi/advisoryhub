@@ -247,7 +247,6 @@ def advisory_list(request):
         "querystring": querystring,
         "clear_href": clear_href,
         "projects_for_filter": _projects_for_filter(user),
-        "total": total,
         "page": page,
         "page_size": page_size,
         "num_pages": max(1, (total + page_size - 1) // page_size),

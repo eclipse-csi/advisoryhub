@@ -1223,6 +1223,17 @@ range-partitioned on `created_at`, so retention is a `DROP PARTITION` (O(1), no
 per-row DELETE) rather than a sweep — handled by the daily
 `maintain_access_log_partitions` task (§6.2) and the matching command.
 
+**First-view compliance receipt** ([INV-AUDIT-6](./invariant.md#inv-audit-6)).
+`advisory.viewed` is ephemeral (every open, pruned at 90 days), but the *first*
+open of an advisory by a given user also emits a durable `advisory.first_seen`
+`AuditLogEntry` — an implicit "acknowledgment of receipt" proving the user was
+made aware, retained indefinitely on the ledger. `advisories.views.advisory_detail` reuses the
+`AdvisoryVisit.update_or_create` `created` flag as the once-per-(user, advisory)
+signal and writes the receipt via `audit.services.record` **without** IP/UA, so
+the never-pruned row carries no PII beyond the actor FK (erasure-clean — see
+`forget_user` below). `advisory.first_seen` stays out of `EPHEMERAL_ACTIONS` and
+out of the timeline tiers (admin-queryable, not per-event timeline noise).
+
 Management commands in `audit/management/commands/`:
 
 - `prune_audit` — deletes **ledger** rows older than a configurable

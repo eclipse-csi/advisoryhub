@@ -71,6 +71,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-AUDIT-3](#inv-audit-3) | Every governance action is recorded in the audit log. | Audit | High |
 | [INV-AUDIT-4](#inv-audit-4) | Web-originated audit entries include IP and User-Agent. | Audit | Medium |
 | [INV-AUDIT-5](#inv-audit-5) | Access-log events are retention-bounded (partitioned, droppable) and disjoint from the timeline. | Audit | Medium |
+| [INV-AUDIT-6](#inv-audit-6) | A user's first view of an advisory records a durable, never-pruned "receipt" on the ledger. | Audit | Medium |
 | [INV-VERSION-3](#inv-version-3) | OSV / CSAF are generated from an immutable `AdvisoryVersion`, never from live data. | Versions | Critical |
 | [INV-SECRET-1](#inv-secret-1) | Tokens never appear in `PublicationTask.last_error` or audit metadata. | Secrets | Critical |
 | [INV-SECRET-2](#inv-secret-2) | SSH keys and token-bearing URLs are never persisted or logged. | Secrets | Critical |
@@ -856,8 +857,10 @@ downstream surface that an operator might inspect or that might be forwarded.
 **Statement.** Every governance-relevant action emits exactly one `AuditLogEntry`:
 advisory state changes, access grant / revoke / invitation events, comment
 create / edit / redact, CVE-request transitions, review decisions, publication
-attempts (success and failure), OIDC group sync changes, intake transitions, and
-site-wide maintenance toggles.
+attempts (success and failure), OIDC group sync changes, intake transitions,
+site-wide maintenance toggles, and the first-view compliance receipt
+(`advisory.first_seen`, emitted once per user per advisory — see
+[INV-AUDIT-6](#inv-audit-6)).
 
 **Rationale.** Compliance and forensics rely on a complete record. Missing entries
 make incident investigation guesswork.
@@ -917,6 +920,12 @@ durable ledger. This table is:
    intersect `advisories.timeline` tiers A/B/C, or dropping a partition would
    erase events shown on advisory pages.
 
+**First-view receipt.** `advisory.viewed` is ephemeral (every open, pruned at
+90 days), but a user's *first* open additionally emits a durable
+`advisory.first_seen` receipt that must survive indefinitely — it therefore
+**must stay out of `EPHEMERAL_ACTIONS`** (and out of the timeline tiers). Full
+statement in [INV-AUDIT-6](#inv-audit-6).
+
 **Rationale.** View pings, integration chatter, sign-in activity, and
 per-recipient notification fan-out dominate audit volume but carry no long-term
 compliance value and never appear on a timeline. Isolating them lets the ledger
@@ -934,10 +943,61 @@ IPs and recipient emails captured here are PII, so retention pruning +
 the disjointness is violated, silent loss of timeline-visible history.
 
 **Tests.** `audit/tests.py`, `audit/test_partitions.py`,
-`advisories/tests/test_access_log_disjoint.py`, `audit/test_retention.py`.
+`advisories/tests/test_access_log_disjoint.py`, `audit/test_retention.py`,
+`advisories/tests/test_first_seen_receipt.py`.
 
 **Related.** [INV-AUDIT-1](#inv-audit-1), [INV-AUDIT-2](#inv-audit-2),
-[INV-AUDIT-4](#inv-audit-4).
+[INV-AUDIT-4](#inv-audit-4), [INV-AUDIT-6](#inv-audit-6).
+
+---
+
+<a id="inv-audit-6"></a>
+### INV-AUDIT-6 — First-view receipt is durable   [Medium]
+
+**Statement.** The first time a given user opens an advisory's detail page,
+exactly one durable `advisory.first_seen` `AuditLogEntry` is recorded — an
+implicit "acknowledgment of receipt" proving the user was made aware. It is
+emitted once per `(user, advisory)` and is **never auto-pruned**. The action
+**must not** appear in `audit.models.EPHEMERAL_ACTIONS` (it would then be
+partition-dropped, [INV-AUDIT-5](#inv-audit-5)) nor in any `advisories.timeline`
+tier (it is admin-queryable on the audit log, not per-event timeline noise). The
+every-open `advisory.viewed` access-log row is retained alongside it for
+short-term telemetry.
+
+**Mechanism & PII.** First-view detection reuses the
+`AdvisoryVisit.update_or_create` `created` flag in
+`advisories.views.advisory_detail` (`created is True` ⟺ first-ever open;
+`update_or_create`'s IntegrityError-retry makes that race-safe). The receipt is
+written via `audit.services.record` — **not** `record_from_request` — so it
+carries no IP/User-Agent: the never-pruned row holds no PII beyond the actor FK,
+which `forget_user` pseudonymises (the row survives, identity degrades to
+"user #N (forgotten) saw advisory X at time T"). Uniqueness rides on the
+`AdvisoryVisit` row; nothing clears it for an active user today, and a re-emitted
+receipt would be a harmless append-only duplicate (the compliance answer is
+unchanged).
+
+**Rationale.** Compliance needs durable evidence that a user became aware of an
+advisory, but every-view telemetry is high-volume PII intentionally pruned at
+90 days ([INV-AUDIT-5](#inv-audit-5)). Splitting the *first* view onto the
+durable ledger keeps the compliance record while the access log stays cheap and
+erasure-friendly.
+
+**Enforced in.**
+- `advisories/views.py` — `advisory_detail` emits the receipt on the first visit.
+- `audit/models.py` — `Action.ADVISORY_FIRST_SEEN`, deliberately kept out of
+  `EPHEMERAL_ACTIONS`.
+- `advisories/timeline.py` — absent from every tier, so it lands in
+  `EXCLUDED_ACTIONS`.
+
+**Violation impact.** If the action were made ephemeral, the compliance receipt
+would be silently pruned after the retention horizon; if recorded with IP/UA,
+the never-pruned ledger would accumulate un-erasable PII.
+
+**Tests.** `advisories/tests/test_first_seen_receipt.py`,
+`advisories/tests/test_access_log_disjoint.py`.
+
+**Related.** [INV-AUDIT-1](#inv-audit-1), [INV-AUDIT-3](#inv-audit-3),
+[INV-AUDIT-5](#inv-audit-5).
 
 ---
 

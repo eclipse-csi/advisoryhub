@@ -25,6 +25,7 @@ from django.views.decorators.http import require_http_methods
 
 from accounts.step_up import require_step_up_or_redirect
 from audit.models import Action
+from audit.services import record as audit_record
 from audit.services import record_from_request
 from common.constants import SECURITY_TEAM_DISPLAY_NAME
 from common.ratelimit import html_ratelimit
@@ -325,11 +326,31 @@ def advisory_detail(request, advisory_id: str):
     from notifications.services import mark_advisory_read
 
     mark_advisory_read(request.user, advisory)
-    AdvisoryVisit.objects.update_or_create(
+    _visit, first_seen = AdvisoryVisit.objects.update_or_create(
         user=request.user,
         advisory=advisory,
         defaults={"last_visited_at": timezone.now()},
     )
+
+    # Compliance "acknowledgment of receipt" (INV-AUDIT-6): on the user's
+    # first-ever open, emit a durable AuditLogEntry (ADVISORY_FIRST_SEEN)
+    # proving they were made aware. The ephemeral ADVISORY_VIEWED row above is
+    # pruned after 90 days; this one is not. ``created`` is True iff the
+    # (user, advisory) visit row
+    # was just inserted, and update_or_create's IntegrityError-retry makes that
+    # race-safe (concurrent first opens yield at most one). Recorded via
+    # ``record`` (not record_from_request) so the never-pruned receipt carries
+    # no IP/User-Agent — the minimum that proves awareness, and erasure-clean
+    # since forget_user does not scrub those columns. The per-view IP/UA still
+    # live (for 90 days) on the ephemeral access-log row. NOTE: uniqueness rides
+    # on the AdvisoryVisit row; nothing clears it for an active user today, and
+    # a re-emitted receipt would be a harmless append-only duplicate.
+    if first_seen:
+        audit_record(
+            action=Action.ADVISORY_FIRST_SEEN,
+            actor=request.user,
+            advisory=advisory,
+        )
 
     last_publication_task = None
     try:

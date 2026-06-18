@@ -18,7 +18,15 @@ from django.db import models
 
 class Action(models.TextChoices):
     ADVISORY_CREATED = "advisory.created"
+    # Every detail-page open. High-volume → routed to the ephemeral access log
+    # below (90-day retention). The *first* open by a given user additionally
+    # emits the durable ADVISORY_FIRST_SEEN receipt.
     ADVISORY_VIEWED = "advisory.viewed"
+    # Compliance "acknowledgment of receipt": the first time a user opens an
+    # advisory's detail page (implicit awareness). Exactly one per (user,
+    # advisory), low-volume and never auto-pruned, so it stays on the durable
+    # ledger — deliberately NOT in EPHEMERAL_ACTIONS below. See INV-AUDIT-6.
+    ADVISORY_FIRST_SEEN = "advisory.first_seen"
     ADVISORY_EDITED = "advisory.edited"
     ADVISORY_STATE_CHANGED = "advisory.state_changed"
     ADVISORY_PROJECT_CHANGED = "advisory.project_changed"

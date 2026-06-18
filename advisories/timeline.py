@@ -100,7 +100,9 @@ TIMELINE_ACTIONS_BY_TIER: dict[str, frozenset[str]] = {
 }
 
 # Excluded actions are documented in MEMORY/the plan; they are filtered out
-# by virtue of being absent from every tier above.
+# by virtue of being absent from every tier above. Notably ADVISORY_FIRST_SEEN
+# (the durable first-view compliance receipt) is intentionally excluded — it is
+# admin-queryable on the audit log, not per-event timeline noise. See INV-AUDIT-6.
 EXCLUDED_ACTIONS: frozenset[str] = frozenset(Action.values) - (
     _TIER_A_ACTIONS | _TIER_B_ACTIONS | _TIER_C_ACTIONS
 )

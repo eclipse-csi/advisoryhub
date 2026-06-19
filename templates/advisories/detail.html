@@ -2,7 +2,7 @@
 {% load comment_filters advisory_display user_display static advisoryhub %}
 {% block main_modifier %}container--wide{% endblock %}
 {% block title %}{{ advisory.advisory_id }} — AdvisoryHub{% endblock %}
-{% block extra_head %}<script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-mentions.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
+{% block extra_head %}<script src="{% static 'advisoryhub-access.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-mentions.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-rail.js' %}" defer nonce="{{ request.csp_nonce }}"></script><script src="{% static 'advisoryhub-clipboard.js' %}" defer nonce="{{ request.csp_nonce }}"></script>{% endblock %}
 {% block content %}
 <div class="advisory-detail advisory-detail--with-sidebar advisory-detail--with-rail">
 {% advisory_rail %}
@@ -174,87 +174,6 @@
     </div>
   {% endif %}
 
-  <dl>
-    <dt>Project</dt>
-    <dd>
-      {% if is_triage and is_unsorted %}<em>Unsorted</em>{% else %}{{ advisory.project.name }}{% endif %}
-    </dd>
-    {% if is_triage %}
-      <dt>Reporter</dt>
-      <dd>
-        {% if intake and intake.reporter_user %}
-          {% user_chip intake.reporter_user %} <span class="muted">(authenticated)</span>
-        {% elif intake and intake.reporter_display_name %}
-          {{ intake.reporter_display_name }}
-        {% else %}
-          <em>anonymous</em>
-        {% endif %}
-      </dd>
-    {% endif %}
-    {% if not is_triage %}
-    <dt>CVE</dt>
-    <dd class="advisory-cve">
-      {% if advisory.assigned_cve_id %}
-        <code class="cve-assigned">{{ advisory.assigned_cve_id }}</code>
-        {% if can_unassign_cve %}
-          <button type="button"
-                  class="cve-unassign-icon"
-                  aria-label="Remove CVE assignment"
-                  title="Remove CVE assignment"
-                  data-dialog-open="cve-unassign-dialog">{% include "advisories/_icons.html" with icon="trash" %}</button>
-          <dialog id="cve-unassign-dialog" class="confirm-dialog" aria-labelledby="cve-unassign-title">
-            <form method="post"
-                  action="{% url 'advisories:unassign_cve' advisory.advisory_id %}"
-                  class="cve-unassign-form">
-              {% csrf_token %}
-              <h3 id="cve-unassign-title">Remove CVE assignment</h3>
-              <p>
-                This will detach <code>{{ advisory.assigned_cve_id }}</code> from the advisory
-                and create an orphan record for the security team to mark rejected on cve.org.
-              </p>
-              <label for="cve-unassign-reason">Reason (required — posted as an internal comment)</label>
-              <textarea id="cve-unassign-reason" name="reason" rows="3" required></textarea>
-              <div class="dialog-actions">
-                <button type="button" data-dialog-close>Cancel</button>
-                <button type="submit" class="danger">Confirm removal</button>
-              </div>
-            </form>
-          </dialog>
-        {% endif %}
-      {% elif cve_request_state == 'pending' %}
-        <button type="button" class="cve-inline-action cve-request-pending" disabled>CVE Reservation Pending</button>
-      {% elif cve_request_state == 'banned' %}
-        <button type="button" class="cve-inline-action cve-request-disabled" disabled>CVE Requests Disabled</button>
-      {% elif cve_request_state == 'available' %}
-        <form method="post" action="{% url 'advisories:request_cve' advisory.advisory_id %}" class="inline">
-          {% csrf_token %}<button type="submit" class="cve-inline-action">Request a CVE Number</button>
-        </form>
-      {% else %}
-        —
-      {% endif %}
-    </dd>
-    {% endif %}
-    <dt>Aliases</dt>
-    <dd>
-      {% if advisory.aliases %}
-        <span class="chip-list">
-          {% for alias in advisory.aliases %}<code class="chip">{{ alias }}</code>{% endfor %}
-        </span>
-      {% else %}—{% endif %}
-    </dd>
-    <dt>CWE IDs</dt>
-    <dd>
-      {% if advisory.cwe_ids %}
-        <span class="chip-list">
-          {% for cwe in advisory.cwe_ids %}<code class="chip" title="{{ cwe|cwe_name }}">{{ cwe }}</code>{% endfor %}
-        </span>
-      {% else %}—{% endif %}
-    </dd>
-    <dt>Created</dt><dd>{% timestamp advisory.created_at %} by {% user_chip advisory.created_by %}</dd>
-    <dt>Modified</dt><dd>{% timestamp advisory.modified_at %}</dd>
-    {% if advisory.published_at %}<dt>Published</dt><dd>{% timestamp advisory.published_at %}</dd>{% endif %}
-  </dl>
-
   <section>
     <h2 class="section-heading">
       <span>Details</span>
@@ -339,44 +258,6 @@
     {% endif %}
   </section>
 
-  <section>
-    <h2>Severity</h2>
-    {% if advisory.severity %}
-      <ul class="adv-severity">
-        {% for s in advisory.severity %}
-          {% with level=s|severity_level %}
-            <li class="sev-row sev-{{ level }}">
-              <span class="badge sev-type">{{ s.type|default:"?" }}</span>
-              <span class="badge sev-level sev-level-{{ level }}">{{ level }}</span>
-              <code class="sev-score">{{ s.score|default:"" }}</code>
-              {% if s.score_ubuntu %}<code class="sev-score sev-score-extra" title="Ubuntu score">{{ s.score_ubuntu }}</code>{% endif %}
-            </li>
-          {% endwith %}
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="empty">No severity recorded.</p>
-    {% endif %}
-  </section>
-
-  <section>
-    <h2>Credits</h2>
-    {% if advisory.credits %}
-      <ul class="adv-credits">
-        {% for c in advisory.credits %}
-          <li class="credit-row">
-            <span class="credit-icon">{% include "advisories/_icons.html" with icon=c.type|credit_icon %}</span>
-            <span class="credit-name">{{ c.name }}</span>
-            {% if c.type %}<span class="badge credit-type credit-{{ c.type|credit_class }}">{{ c.type|humanize_type }}</span>{% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="empty">No credits recorded.</p>
-    {% endif %}
-  </section>
-
-
   {% if open_review_task %}
     <p class="actions">
       <button type="button" class="link-button"
@@ -390,6 +271,139 @@
 </div>{# /.advisory-detail__main #}
 
   <aside class="advisory-detail__sidebar">
+    <div class="sidebar-card sidebar-card--meta">
+      <div class="sidebar-card__header"><h2>Metadata</h2></div>
+      <dl>
+        <dt>Project</dt>
+        <dd>
+          {% if is_triage and is_unsorted %}<em>Unsorted</em>{% else %}{{ advisory.project.name }}{% endif %}
+        </dd>
+        {% if is_triage %}
+          <dt>Reporter</dt>
+          <dd>
+            {% if intake and intake.reporter_user %}
+              {% user_chip intake.reporter_user %} <span class="muted">(authenticated)</span>
+            {% elif intake and intake.reporter_display_name %}
+              {{ intake.reporter_display_name }}
+            {% else %}
+              <em>anonymous</em>
+            {% endif %}
+          </dd>
+        {% endif %}
+        {% if not is_triage %}
+        <dt>CVE</dt>
+        <dd class="advisory-cve">
+          {% if advisory.assigned_cve_id %}
+            <code class="cve-assigned">{{ advisory.assigned_cve_id }}</code>
+            {% if can_unassign_cve %}
+              <button type="button"
+                      class="cve-unassign-icon"
+                      aria-label="Remove CVE assignment"
+                      title="Remove CVE assignment"
+                      data-dialog-open="cve-unassign-dialog">{% include "advisories/_icons.html" with icon="trash" %}</button>
+              <dialog id="cve-unassign-dialog" class="confirm-dialog" aria-labelledby="cve-unassign-title">
+                <form method="post"
+                      action="{% url 'advisories:unassign_cve' advisory.advisory_id %}"
+                      class="cve-unassign-form">
+                  {% csrf_token %}
+                  <h3 id="cve-unassign-title">Remove CVE assignment</h3>
+                  <p>
+                    This will detach <code>{{ advisory.assigned_cve_id }}</code> from the advisory
+                    and create an orphan record for the security team to mark rejected on cve.org.
+                  </p>
+                  <label for="cve-unassign-reason">Reason (required — posted as an internal comment)</label>
+                  <textarea id="cve-unassign-reason" name="reason" rows="3" required></textarea>
+                  <div class="dialog-actions">
+                    <button type="button" data-dialog-close>Cancel</button>
+                    <button type="submit" class="danger">Confirm removal</button>
+                  </div>
+                </form>
+              </dialog>
+            {% endif %}
+          {% elif cve_request_state == 'pending' %}
+            <button type="button" class="cve-inline-action cve-request-pending" disabled>CVE Reservation Pending</button>
+          {% elif cve_request_state == 'banned' %}
+            <button type="button" class="cve-inline-action cve-request-disabled" disabled>CVE Requests Disabled</button>
+          {% elif cve_request_state == 'available' %}
+            <form method="post" action="{% url 'advisories:request_cve' advisory.advisory_id %}" class="inline">
+              {% csrf_token %}<button type="submit" class="cve-inline-action">Request a CVE Number</button>
+            </form>
+          {% else %}
+            —
+          {% endif %}
+        </dd>
+        {% endif %}
+        <dt>Aliases</dt>
+        <dd>
+          {% if advisory.aliases %}
+            <span class="chip-list">
+              {% for alias in advisory.aliases %}<code class="chip">{{ alias }}</code>{% endfor %}
+            </span>
+          {% else %}—{% endif %}
+        </dd>
+        <dt>CWE IDs</dt>
+        <dd>
+          {% if advisory.cwe_ids %}
+            <span class="chip-list">
+              {% for cwe in advisory.cwe_ids %}<code class="chip" title="{{ cwe|cwe_name }}">{{ cwe }}</code>{% endfor %}
+            </span>
+          {% else %}—{% endif %}
+        </dd>
+        {% if advisory.severity %}
+          <dt>Severity</dt>
+          <dd>
+            <ul class="sev-compact">
+              {% for s in advisory.severity %}
+                {% with c=s|cvss_display %}
+                  {% if c %}
+                    <li>
+                      {% if c.version %}
+                        <span class="sev-compact__ver">{{ c.version }}</span>
+                        <button type="button"
+                                class="sev-compact__score sev-level-{{ c.level }}"
+                                data-copy="{{ c.vector }}"
+                                title="{{ c.vector }}"
+                                aria-label="Copy CVSS vector {{ c.vector }}">{{ c.score|default:"—" }}</button>
+                      {% else %}
+                        <span class="sev-compact__score sev-compact__score--plain sev-level-{{ c.level }}">{{ c.score|default:"—" }}</span>
+                      {% endif %}
+                    </li>
+                  {% endif %}
+                {% endwith %}
+              {% endfor %}
+            </ul>
+          </dd>
+        {% endif %}
+        <dt>Created</dt>
+        <dd class="meta-actor">
+          {% user_chip advisory.created_by %}
+          <span class="meta-actor__when">{% timestamp advisory.created_at date_only=True %}</span>
+        </dd>
+        <dt>Modified</dt>
+        <dd class="meta-actor">
+          {% user_chip last_editor %}
+          <span class="meta-actor__when">{% timestamp advisory.modified_at relative=True %}</span>
+        </dd>
+        {% if advisory.published_at %}
+          <dt>Published</dt>
+          <dd class="meta-actor">
+            {% if publisher %}{% user_chip publisher %}{% endif %}
+            <span class="meta-actor__when">{% timestamp advisory.published_at date_only=True %}</span>
+          </dd>
+        {% endif %}
+        <dt>Credits</dt>
+        <dd>
+          {% if advisory.credits %}
+            <ul class="adv-credits-compact">
+              {% for c in advisory.credits %}
+                <li>{{ c.name }}{% if c.type %} <span class="credit-role">{{ c.type|humanize_type }}</span>{% endif %}</li>
+              {% endfor %}
+            </ul>
+          {% else %}—{% endif %}
+        </dd>
+      </dl>
+    </div>
+
     {% if can_grant %}
       <div hx-get="{% url 'access:panel' advisory.advisory_id %}" hx-trigger="load"></div>
     {% endif %}

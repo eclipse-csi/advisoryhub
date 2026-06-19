@@ -48,6 +48,13 @@
       parts.hour + ":" + parts.minute + " " + (parts.timeZoneName || "");
   }
 
+  // "2026-06-05" — just the calendar date, for low-noise metadata fields.
+  function renderDate(fmt, date) {
+    var parts = {};
+    fmt.formatToParts(date).forEach(function (p) { parts[p.type] = p.value; });
+    return parts.year + "-" + parts.month + "-" + parts.day;
+  }
+
   function localize(root) {
     var scope = root && root.querySelectorAll ? root : document;
     var nodes = scope.querySelectorAll("time[data-localize]");
@@ -61,6 +68,10 @@
       try {
         if (el.hasAttribute("data-relative")) {
           // Visible "N ago" stays; reveal the exact local moment on hover.
+          el.title = render(localFmt, date);
+        } else if (el.hasAttribute("data-date-only")) {
+          // Visible local date; reveal the full local datetime on hover.
+          el.textContent = renderDate(localFmt, date);
           el.title = render(localFmt, date);
         } else {
           el.textContent = render(localFmt, date);

@@ -18,7 +18,10 @@ register = template.Library()
 
 @register.simple_tag
 def timestamp(
-    value: datetime | None, relative: bool = False, css_class: str = ""
+    value: datetime | None,
+    relative: bool = False,
+    css_class: str = "",
+    date_only: bool = False,
 ) -> SafeString | str:
     """Render a datetime as a localizable ``<time>`` with a labelled-UTC baseline.
 
@@ -36,8 +39,17 @@ def timestamp(
     ``relative=True`` keeps the scannable "N ago" text (which carries no timezone
     ambiguity) visible — for the list and inbox age columns. The JS localizes only
     its tooltip to the exact local moment; the server seeds a UTC-only ``title`` as
-    the no-JS fallback. ``css_class`` is placed on the ``<time>`` for the few sites
-    that style it directly. A falsy ``value`` renders nothing.
+    the no-JS fallback.
+
+    ``date_only=True`` shows just the date (``2026-06-05``) and reveals the full
+    local datetime on hover — for low-noise metadata fields where the exact minute
+    is rarely needed. The JS rewrites the visible text to the viewer's *local* date
+    and the ``title`` to their full local datetime; the no-JS baseline is the UTC
+    date with the full UTC datetime in ``title``. ``relative`` and ``date_only``
+    are mutually exclusive; ``relative`` wins if both are passed.
+
+    ``css_class`` is placed on the ``<time>`` for the few sites that style it
+    directly. A falsy ``value`` renders nothing.
 
     Rendered (not an inclusion tag) so the partial's trailing newline can be
     stripped: these ``<time>`` elements sit mid-sentence ("edited {ts})") where a
@@ -47,7 +59,12 @@ def timestamp(
         return ""
     html = render_to_string(
         "common/_timestamp.html",
-        {"value": value, "relative": relative, "css_class": css_class},
+        {
+            "value": value,
+            "relative": relative,
+            "css_class": css_class,
+            "date_only": date_only,
+        },
     )
     return mark_safe(html.strip())
 

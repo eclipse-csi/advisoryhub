@@ -46,6 +46,29 @@ def test_relative_keeps_ago_text_and_labels_tooltip():
     assert 'title="2026-06-05 14:30 UTC"' in out
 
 
+def test_date_only_shows_date_and_labels_full_tooltip():
+    out = timestamp(DT, date_only=True)
+    assert out.startswith("<time ")
+    # Machine-readable instant — what advisoryhub-time.js parses to localize.
+    assert 'datetime="2026-06-05T14:30:00+00:00"' in out
+    # Visible baseline is the calendar date only; the JS rewrites it to the
+    # viewer's *local* date.
+    assert ">2026-06-05</time>" in out
+    # Marked for the JS to swap the text to the local date and the tooltip to the
+    # full local datetime; the server seeds a full-UTC title as the no-JS fallback.
+    assert "data-localize" in out
+    assert "data-date-only" in out
+    assert 'title="2026-06-05 14:30 UTC"' in out
+
+
+def test_relative_wins_over_date_only_when_both_passed():
+    # The two modes are mutually exclusive; relative takes precedence.
+    out = timestamp(DT, relative=True, date_only=True)
+    assert "data-relative" in out
+    assert "data-date-only" not in out
+    assert "ago</time>" in out
+
+
 def test_css_class_is_placed_on_the_time_element():
     out = timestamp(DT, relative=True, css_class="notif-row__age")
     assert 'class="notif-row__age"' in out
@@ -63,3 +86,4 @@ def test_output_has_no_surrounding_whitespace():
 def test_falsy_value_renders_nothing():
     assert timestamp(None) == ""
     assert timestamp(None, relative=True) == ""
+    assert timestamp(None, date_only=True) == ""

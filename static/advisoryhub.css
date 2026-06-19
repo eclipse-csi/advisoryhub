@@ -2764,6 +2764,85 @@ main.container section > p.empty {
 .sidebar-card code { word-break: break-all; }
 .sidebar-card .errors code { background: transparent; border: 0; padding: 0; color: inherit; }
 
+/* Advisory "Details" card: the metadata `dl` carries the wide main column's
+ * spacing by default — zero its margin and tighten the column gap so the
+ * label/value grid stays compact in the 320px rail. */
+.sidebar-card--meta dl {
+  margin: 0;
+  gap: 0.4rem 0.85rem;
+}
+/* Provenance rows (Created / Modified / Published): actor name on top, with the
+ * timestamp stacked beneath it smaller and muted (matching the credit role). */
+.meta-actor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+.meta-actor__when {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+/* Compact severity: "version  score" per entry, where the score is a
+ * click-to-copy chip (full CVSS vector on hover / clipboard on click). The
+ * level colour comes from the shared `.sev-level-*` classes. */
+.sev-compact {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.sev-compact li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sev-compact__ver {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+}
+.sev-compact__score {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+/* Only the CVSS chip is an interactive copy button; the Ubuntu label is plain. */
+button.sev-compact__score { cursor: pointer; }
+button.sev-compact__score:hover { filter: brightness(1.06); }
+button.sev-compact__score:focus-visible {
+  outline: 2px solid var(--focus, var(--accent-border));
+  outline-offset: 1px;
+}
+/* Transient "Copied" confirmation — compound selector outranks `.sev-level-*`. */
+.sev-compact__score.is-copied {
+  color: var(--ok-fg);
+  background: var(--ok-soft);
+  border-color: var(--ok-bd);
+}
+/* Minimal credits: plain stacked names with a small muted role — no pills,
+ * icons, or coloured badges, which overflow the narrow rail. */
+.adv-credits-compact {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: var(--text-sm);
+}
+/* Role always sits on its own line beneath the name, even for short names. */
+.adv-credits-compact .credit-role {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
 /* ---- advisory metadata: CVE row + unassign dialog ---- */
 
 .advisory-cve {
@@ -3091,53 +3170,8 @@ button.info:hover, .btn.info:hover {
 
 /* ---- severity ---- */
 
-.adv-severity {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.adv-severity .sev-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.4rem 0.7rem;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-left-width: 3px;
-  border-radius: var(--radius-sm);
-}
-.adv-severity .badge.sev-type {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--text-soft);
-}
-.adv-severity .badge.sev-level {
-  text-transform: uppercase;
-  font-size: var(--text-2xs);
-  letter-spacing: 0.06em;
-}
-.adv-severity code.sev-score {
-  word-break: break-all;
-  font-size: var(--text-xs);
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.adv-severity code.sev-score-extra {
-  flex: 0 0 auto;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.sev-row.sev-critical { border-left-color: var(--danger); }
-.sev-row.sev-high     { border-left-color: var(--warn); }
-.sev-row.sev-medium   { border-left-color: var(--info); }
-.sev-row.sev-low      { border-left-color: var(--ok); }
-.sev-row.sev-negligible,
-.sev-row.sev-none     { border-left-color: var(--border-strong); }
-
+/* The `.sev-level-*` colour classes below are shared by the compact severity
+ * chips in the advisory metadata card (see `.sev-compact`). */
 .sev-level-critical   { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
 .sev-level-high       { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
 .sev-level-medium     { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
@@ -3145,49 +3179,12 @@ button.info:hover, .btn.info:hover {
 .sev-level-negligible,
 .sev-level-none       { color: var(--text-muted); }
 
-/* ---- credits ---- */
-
-.adv-credits {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.adv-credits .credit-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.7rem;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-}
-.adv-credits .credit-icon {
-  display: inline-flex;
-  color: var(--text-muted);
-}
-.adv-credits .credit-name {
-  font-weight: 600;
-  color: var(--text);
-}
-.adv-credits .credit-type.credit-brand   { color: var(--brand-fg);  background: var(--brand-soft);  border-color: var(--brand-bd); }
-.adv-credits .credit-type.credit-info    { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
-.adv-credits .credit-type.credit-ok      { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
-.adv-credits .credit-type.credit-warn    { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
-.adv-credits .credit-type.credit-neutral { color: var(--text-muted); }
-
 /* Override the relaxed UL padding for our list-styled groups */
 main.container section ul.adv-references,
-main.container section ul.adv-severity,
-main.container section ul.adv-credits,
 main.container .adv-affected-card ul.ranges {
   padding-left: 0;
 }
 main.container section ul.adv-references li,
-main.container section ul.adv-severity li,
-main.container section ul.adv-credits li,
 main.container .adv-affected-card ul.ranges li {
   margin-bottom: 0;
 }

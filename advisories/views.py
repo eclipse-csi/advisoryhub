@@ -382,6 +382,8 @@ def advisory_detail(request, advisory_id: str):
         0,
     )
 
+    last_editor, publisher = _provenance_actors(advisory)
+
     # @-mention completion payload — only built for users who can comment (the
     # menu reveals the advisory's roster, which a commenter can already see).
     from comments.services import mention_candidates as _mention_candidates
@@ -421,6 +423,8 @@ def advisory_detail(request, advisory_id: str):
             if hasattr(advisory, "review_tasks")
             else None,
             "last_publication_task": last_publication_task,
+            "last_editor": last_editor,
+            "publisher": publisher,
             "withdrawal_in_progress": withdrawal_in_progress,
             "is_ghsa_linked": advisory.kind == Kind.GHSA_LINKED,
             "can_sync_ghsa": perms.can_sync_ghsa(request.user, advisory),
@@ -1268,15 +1272,47 @@ def advisory_reassign_triage(request, advisory_id: str):
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 
 
+def _provenance_actors(advisory: Advisory):
+    """Return ``(last_editor, publisher)`` for the Metadata card — display-only.
+
+    ``last_editor`` is the author of the most recent content version, falling
+    back to the creator so the name line is never bare; ``publisher`` is the
+    enqueuer of the latest succeeded export (``None`` until published).
+    ``select_related`` keeps each to one query and avoids an N+1 on the user FK.
+    """
+    from publication.models import PublicationTaskStatus
+
+    latest_version = (
+        AdvisoryVersion.objects.filter(advisory=advisory)
+        .select_related("editor")
+        .order_by("-version")
+        .first()
+    )
+    last_editor = (latest_version.editor if latest_version else None) or advisory.created_by
+    publisher = None
+    if advisory.published_at:
+        published_task = (
+            advisory.publication_tasks.filter(status=PublicationTaskStatus.SUCCEEDED)
+            .select_related("enqueued_by")
+            .order_by("-created_at")
+            .first()
+        )
+        publisher = published_task.enqueued_by if published_task else None
+    return last_editor, publisher
+
+
 def _detail_with_error(request, advisory: Advisory, message: str):
     """Re-render the advisory detail with an inline error banner."""
     is_triage = advisory.state == State.TRIAGE
     intake = getattr(advisory, "intake", None) if is_triage else None
+    last_editor, publisher = _provenance_actors(advisory)
     return render(
         request,
         "advisories/detail.html",
         {
             "advisory": advisory,
+            "last_editor": last_editor,
+            "publisher": publisher,
             "viewer_can_see_emails": perms.can_see_user_emails(request.user, advisory),
             "can_edit": perms.can_edit(request.user, advisory),
             "can_dismiss": perms.can_dismiss(request.user, advisory),

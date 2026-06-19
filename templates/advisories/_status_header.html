@@ -1,13 +1,14 @@
 {% comment %}
 Lifecycle status header for the advisory detail page.
 
-Renders a 3-node stepper (triage → draft → published) plus three orthogonal
-sub-machine rows (Review, CVE, Publication). When the advisory is dismissed
+Renders a 3-node stepper (triage → draft → published) plus two orthogonal
+sub-machine rows (Review, Publication). When the advisory is dismissed
 the stepper is dimmed and a separate badge shows which non-terminal state
-the advisory was dismissed from.
+the advisory was dismissed from. CVE state is shown (and actioned) in the
+metadata list on the detail page, not here.
 
 Context required:
-  advisory, last_publication_task, cve_request_state
+  advisory, last_publication_task
 {% endcomment %}
 <section class="advisory-status-header" aria-label="Advisory lifecycle status">
   <ol class="lifecycle-stepper{% if advisory.state == 'dismissed' %} lifecycle-stepper--dismissed{% endif %}" aria-label="Lifecycle">
@@ -43,26 +44,6 @@ Context required:
           <span class="badge review-{{ advisory.review_status }}">{{ advisory.get_review_status_display }}</span>
         {% endif %}
         {% if review_hint %}<span class="submachine-status__hint">{{ review_hint }}</span>{% endif %}
-      </dd>
-    </div>
-
-    <div class="submachine-status__row">
-      <dt class="submachine-status__label">CVE</dt>
-      <dd class="submachine-status__value">
-        {% if advisory.assigned_cve_id %}
-          <code class="cve-assigned">{{ advisory.assigned_cve_id }}</code>
-          <span class="submachine-status__hint">Assigned by Eclipse Foundation (CNA).</span>
-        {% elif cve_request_state == 'pending' %}
-          <span class="badge status-queued">Queued</span>
-          <span class="submachine-status__hint">Awaiting reservation at MITRE.</span>
-        {% elif cve_request_state == 'banned' %}
-          <span class="badge status-failed">Disabled</span>
-          <span class="submachine-status__hint">An admin disabled further CVE requests on this advisory.</span>
-        {% elif cve_request_state == 'available' %}
-          <span class="badge">Not requested</span>
-        {% else %}
-          <span class="badge">—</span>
-        {% endif %}
       </dd>
     </div>
 

@@ -1,8 +1,9 @@
 """Inbox — admin console home page.
 
 Shows a counts strip and a single unified chronological action list
-merging open CVE requests, pending reviews, failed publications,
-pending triage advisories, and orphan CVEs.
+merging open CVE requests, pending reviews, advisories needing a
+(re-)publish run (failed exports + edited-since-publish), pending
+triage advisories, and orphan CVEs.
 """
 
 from __future__ import annotations
@@ -54,10 +55,13 @@ class InboxItem:
 
 # Maps the `?category=<slug>` value to a predicate on InboxItem.
 # `triage_routing` is the routing-flagged subset of kind="triage".
+# `needs_publish` ("publish required") spans two kinds with the same outcome —
+# a publish run must happen again: failed exports (kind="pub_failed") and
+# advisories edited since their last successful publish (kind="republish").
 CATEGORY_PREDICATES: dict[str, Callable[[InboxItem], bool]] = {
     "cve": lambda i: i.kind == "cve",
     "review": lambda i: i.kind == "review",
-    "pub_failed": lambda i: i.kind == "pub_failed",
+    "needs_publish": lambda i: i.kind in ("pub_failed", "republish"),
     "triage": lambda i: i.kind == "triage",
     "triage_routing": lambda i: (
         i.kind == "triage" and i.badge_class == "inbox-badge--triage-routing"
@@ -65,6 +69,13 @@ CATEGORY_PREDICATES: dict[str, Callable[[InboxItem], bool]] = {
     "orphan": lambda i: i.kind == "orphan",
     "reassignment": lambda i: i.kind == "reassignment",
     "withdrawal": lambda i: i.kind == "withdrawal",
+}
+
+# A few `show_more` slugs span more than one InboxItem kind. `rendered_per_kind`
+# is keyed by kind, so the "remaining" math must sum across every kind a slug
+# covers. Slugs absent here map 1:1 to a kind of the same name.
+SLUG_KINDS: dict[str, tuple[str, ...]] = {
+    "needs_publish": ("pub_failed", "republish"),
 }
 
 
@@ -149,6 +160,42 @@ def _publication_items(see_more_url: str) -> list[InboxItem]:
             see_more_url=see_more_url,
         )
         for t in qs
+    ]
+
+
+def _republish_items(see_more_url: str, failed_advisory_ids: set[int]) -> list[InboxItem]:
+    # Published advisories edited since their last successful publish. Same
+    # outcome as a failed export — a publish run must happen again — so they
+    # share the "publish required" category.
+    #
+    # GHSA-linked rows auto-re-publish with no human action (INV-GHSA-3), so
+    # they are excluded here, mirroring _triage_items; a GHSA-linked advisory
+    # whose auto-republish *fails* still surfaces via _publication_items.
+    #
+    # Dedup: an advisory whose re-publish already failed carries both a FAILED
+    # PublicationTask and republish_required=True. The failed-task row wins (it
+    # has the redacted error + Retry button), so drop it from this source.
+    qs = (
+        Advisory.objects.filter(state=State.PUBLISHED, republish_required=True)
+        .exclude(kind=Kind.GHSA_LINKED)
+        .exclude(pk__in=failed_advisory_ids)
+        .select_related("project")
+        .order_by("-modified_at")[:PER_SOURCE_LIMIT]
+    )
+    return [
+        InboxItem(
+            kind="republish",
+            badge="Publish",
+            badge_class="inbox-badge--pub",
+            title=a.advisory_id,
+            subtitle=f"edited since publish · {a.project.slug}",
+            age_dt=a.modified_at,
+            # No retry row exists for these — the Re-publish button lives on the
+            # advisory detail sidebar, so deep-link straight to the advisory.
+            url=reverse("advisories:detail", args=[a.advisory_id]),
+            see_more_url=see_more_url,
+        )
+        for a in qs
     ]
 
 
@@ -265,11 +312,20 @@ def inbox(request):
     cves_url = reverse("admin_console:cves")
     publications_url = reverse("admin_console:publications")
 
+    # Advisories with a failed export are surfaced by _publication_items; keep
+    # them out of _republish_items so a failed re-publish appears exactly once.
+    failed_advisory_ids = set(
+        PublicationTask.objects.filter(status=PublicationTaskStatus.FAILED).values_list(
+            "advisory_id", flat=True
+        )
+    )
+
     all_items = list(
         chain(
             _cve_items(cves_url),
             _review_items(""),
             _publication_items(publications_url),
+            _republish_items(publications_url, failed_advisory_ids),
             _triage_items(""),
             _orphan_items(cves_url),
             _reassignment_items(cves_url),
@@ -289,7 +345,15 @@ def inbox(request):
     counts = {
         "cve_open": CveRequestTask.objects.filter(status=CveRequestStatus.QUEUED).count(),
         "review_open": ReviewTask.objects.filter(status=ReviewTaskStatus.OPEN).count(),
-        "pub_failed": PublicationTask.objects.filter(status=PublicationTaskStatus.FAILED).count(),
+        # "publish required" combines failed exports and republish-required
+        # advisories (deduped, GHSA-linked excluded — see _republish_items).
+        "needs_publish": (
+            PublicationTask.objects.filter(status=PublicationTaskStatus.FAILED).count()
+            + Advisory.objects.filter(state=State.PUBLISHED, republish_required=True)
+            .exclude(kind=Kind.GHSA_LINKED)
+            .exclude(pk__in=failed_advisory_ids)
+            .count()
+        ),
         "triage": Advisory.objects.filter(state=State.TRIAGE)
         .exclude(kind=Kind.GHSA_LINKED)
         .count(),
@@ -312,7 +376,7 @@ def inbox(request):
     all_show_more_entries = (
         # (slug, counts_key, label, url_name)
         ("cve", "cve_open", "CVE requests", "cves"),
-        ("pub_failed", "pub_failed", "Failed publications", "publications"),
+        ("needs_publish", "needs_publish", "Publish required", "publications"),
         ("orphan", "orphan", "Orphan CVEs", "cves"),
         ("reassignment", "reassignment", "CVE reassignments", "cves"),
     )
@@ -323,7 +387,11 @@ def inbox(request):
 
     show_more = []
     for slug, counts_key, label, url_name in candidate_entries:
-        rendered = len(page.object_list) if selected_category else rendered_per_kind.get(slug, 0)
+        if selected_category:
+            rendered = len(page.object_list)
+        else:
+            # A slug may span several kinds (e.g. needs_publish); sum across all.
+            rendered = sum(rendered_per_kind.get(k, 0) for k in SLUG_KINDS.get(slug, (slug,)))
         remaining = counts[counts_key] - rendered
         if remaining > 0:
             show_more.append(

@@ -10,7 +10,7 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone as dj_tz
 
-from advisories.models import Advisory, AdvisoryIntakeMetadata, State
+from advisories.models import Advisory, AdvisoryIntakeMetadata, Kind, State
 from audit.models import Action, AuditLogEntry
 from audit.retention import _audit_trigger_bypass
 from publication.models import PublicationTask, PublicationTaskStatus
@@ -134,6 +134,95 @@ def test_inbox_failed_publication_row_links_to_publication_queue(client, setup):
     response = client.get(reverse("admin_console:index"))
     item = next(i for i in response.context["page"].object_list if i.kind == "pub_failed")
     assert item.url == reverse("admin_console:publications") + f"#pub-task-{task.pk}"
+
+
+@pytest.mark.django_db
+def test_inbox_republish_required_row_links_to_advisory_detail(client, setup):
+    """A published advisory edited since its last publish surfaces in the
+    "publish required" category and links to the advisory detail page (where
+    the Re-publish button lives), not to the publication queue."""
+    adv = Advisory.objects.create(
+        project=setup["project"],
+        summary="edited",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index"))
+    item = next(i for i in response.context["page"].object_list if i.kind == "republish")
+    assert item.title == adv.advisory_id
+    assert item.url == reverse("advisories:detail", args=[adv.advisory_id])
+
+
+@pytest.mark.django_db
+def test_inbox_publish_required_category_filters_both(client, setup):
+    """?category=needs_publish surfaces both failed exports and
+    republish-required advisories, and the count sums both sources."""
+    PublicationTask.objects.create(
+        advisory=setup["advisory"],
+        version=setup["advisory"].versions.get(version=1),
+        enqueued_by=setup["admin"],
+        status=PublicationTaskStatus.FAILED,
+        last_error="boom",
+    )
+    republish = Advisory.objects.create(
+        project=setup["project"],
+        summary="edited",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index") + "?category=needs_publish")
+    kinds = {i.kind for i in response.context["page"].object_list}
+    titles = {i.title for i in response.context["page"].object_list}
+    assert kinds == {"pub_failed", "republish"}
+    assert {setup["advisory"].advisory_id, republish.advisory_id} <= titles
+    assert response.context["counts"]["needs_publish"] == 2
+
+
+@pytest.mark.django_db
+def test_inbox_failed_republish_appears_once(client, setup):
+    """A failed *re*-publish leaves both a FAILED task and republish_required
+    set on the advisory. It must surface exactly once — as the failed-task row,
+    which carries the actionable error + Retry."""
+    adv = Advisory.objects.create(
+        project=setup["project"],
+        summary="edited",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    PublicationTask.objects.create(
+        advisory=adv,
+        version=adv.versions.get(version=1),
+        enqueued_by=setup["admin"],
+        status=PublicationTaskStatus.FAILED,
+        last_error="boom",
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index"))
+    matching = [i for i in response.context["page"].object_list if i.title == adv.advisory_id]
+    assert len(matching) == 1
+    assert matching[0].kind == "pub_failed"
+    assert response.context["counts"]["needs_publish"] == 1
+
+
+@pytest.mark.django_db
+def test_inbox_republish_excludes_ghsa_linked(client, setup):
+    """GHSA-linked advisories auto-re-publish (INV-GHSA-3) — they carry no human
+    action and are kept out of the "publish required" category and count."""
+    Advisory.objects.create(
+        project=setup["project"],
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:index"))
+    assert not [i for i in response.context["page"].object_list if i.kind == "republish"]
+    assert response.context["counts"]["needs_publish"] == 0
 
 
 @pytest.mark.django_db
@@ -679,6 +768,57 @@ def test_publications_page_lists_failed(client, setup):
     body = client.get(reverse("admin_console:publications")).content.decode()
     assert "Failed publication exports" in body
     assert "boom" in body
+
+
+@pytest.mark.django_db
+def test_publications_page_lists_awaiting_republish(client, setup):
+    """Republish-required advisories appear under "Awaiting re-publication";
+    GHSA-linked rows are excluded (they auto-re-publish, INV-GHSA-3)."""
+    adv = Advisory.objects.create(
+        project=setup["project"],
+        summary="edited since publish",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    Advisory.objects.create(
+        project=setup["project"],
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-aaaa-bbbb-cccc",
+        ghsa_owner="eclipse",
+        ghsa_repo="widget",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:publications"))
+    body = response.content.decode()
+    assert "Awaiting re-publication" in body
+    assert adv.advisory_id in body
+    awaiting_ids = {a.advisory_id for a in response.context["awaiting_republish"]}
+    assert awaiting_ids == {adv.advisory_id}
+
+
+@pytest.mark.django_db
+def test_publications_page_failed_republish_only_in_failed_section(client, setup):
+    """A failed re-publish (FAILED task + republish_required) is deduped out of
+    "Awaiting re-publication" — it belongs to the failed-exports section."""
+    adv = Advisory.objects.create(
+        project=setup["project"],
+        summary="x",
+        state=State.PUBLISHED,
+        republish_required=True,
+    )
+    PublicationTask.objects.create(
+        advisory=adv,
+        version=adv.versions.get(version=1),
+        enqueued_by=setup["admin"],
+        status=PublicationTaskStatus.FAILED,
+        last_error="boom",
+    )
+    client.force_login(setup["admin"])
+    response = client.get(reverse("admin_console:publications"))
+    assert adv not in response.context["awaiting_republish"]
+    assert adv in [t.advisory for t in response.context["failed_publications"]]
 
 
 # ----- Access-log browser -----------------------------------------------

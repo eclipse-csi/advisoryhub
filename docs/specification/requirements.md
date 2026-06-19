@@ -755,7 +755,9 @@ The admin console at `/admin/` is the global security team's workspace
 Sidebar sections:
 
 - **Inbox** (`/admin/`) — the unified action feed: triage queue,
-  pending reviews, awaiting CVE assignment, failed publications,
+  pending reviews, awaiting CVE assignment, **publish required**
+  (the `needs_publish` category — failed exports *and* advisories
+  edited since their last successful publish, i.e. `republish_required`),
   recent audit activity. Chip-driven `?category=<slug>` filter.
   There is no dedicated Reviews section: open `ReviewTask`s surface
   here as an Inbox category, and the approve / request-changes
@@ -766,7 +768,13 @@ Sidebar sections:
 - **Publication** (`/admin/publications/`) — publication task
   history, including failed exports, with retry, the redacted
   `last_error`, and OSV / CSAF previews from the stored
-  `PublicationArtifact` content.
+  `PublicationArtifact` content. An **Awaiting re-publication**
+  section lists published advisories with `republish_required=True`
+  (linking to the advisory page, where Re-publish lives). Failed
+  exports and republish-required advisories are deduped — a failed
+  re-publish appears only under failed exports — and GHSA-linked
+  advisories are excluded from the republish listing (they
+  auto-re-publish, INV-GHSA-3).
 - **Projects** (`/admin/projects/`) — CRUD on `Project` rows
   (security team, mature-publisher flag, PMI sync status).
 - **Groups** (`/admin/groups/`) — read-only directory of the

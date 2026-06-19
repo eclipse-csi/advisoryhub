@@ -177,7 +177,10 @@ implementation notes:
 - Editing an `approved` draft by a non-admin resets `review_status`
   ([INV-REVIEW-4](./invariant.md#inv-review-4)).
 - Editing a `published` advisory sets `republish_required=True` and
-  is reachable from the dashboard as "Re-publish".
+  is reachable from the dashboard as "Re-publish". Such advisories
+  also surface in the Admin Console under the Inbox "publish required"
+  category and the Publication page's "Awaiting re-publication"
+  section (GHSA-linked rows excluded — they auto-re-publish, INV-GHSA-3).
 
 ### 3.6 OIDC group sync
 
@@ -1171,7 +1174,11 @@ exports custom business series defined in `common.metrics`:
   signal handlers in `common.celery_metrics`.
 - `advisoryhub_backlog{queue}` — operator queue depths, refreshed
   every 60s by the `audit.tasks.refresh_backlog_gauges` beat task
-  (queries mirror the Admin Console inbox strip).
+  (queries mirror the Admin Console inbox strip). The `pub_failed`
+  series stays per-source (failed `PublicationTask`s only) for
+  dashboard continuity; the inbox's "publish required" chip combines
+  it with republish-required advisories, so the chip count can exceed
+  the `pub_failed` gauge.
 
 These custom series are produced in the **worker** process, which
 serves no HTTP, so the worker runs its own exporter

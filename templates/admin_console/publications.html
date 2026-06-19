@@ -58,6 +58,25 @@
   </section>
 
   <section>
+    <h2>{% translate "Awaiting re-publication" %}</h2>
+    <table>
+      <caption class="visually-hidden">{% translate "Awaiting re-publication" %}</caption>
+      <thead><tr><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "Project" %}</th><th scope="col">{% translate "Edited" %}</th></tr></thead>
+      <tbody>
+        {% for a in awaiting_republish %}
+          <tr data-href="{% url 'advisories:detail' a.advisory_id %}">
+            <td><a href="{% url 'advisories:detail' a.advisory_id %}">{{ a.advisory_id }}</a></td>
+            <td>{{ a.project.slug }}</td>
+            <td>{% timestamp a.modified_at %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">{% translate "Nothing awaiting re-publication." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
     <h2>{% translate "Recently published" %}</h2>
     <table>
       <thead>

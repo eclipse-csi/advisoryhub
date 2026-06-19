@@ -446,6 +446,34 @@ to the resolved user. A mention does not elevate visibility: if the
 mentioned user lacks collaborator access on an internal comment, no
 mention email is sent.
 
+**Action notes surface as comments.** Many workflow actions collect a
+free-text reason/note in their modal. Rather than burying that text on
+a model field or in audit metadata, the originating service posts it to
+the Activity pane as an author-attributed comment via
+`comments.services.record_action_note`. The visibility follows a fixed
+per-action policy:
+
+- **Public** (viewer+): dismiss reason, withdraw-published reason,
+  lock-comments reason, review approve / request-changes notes, and the
+  CVE-request rejection reason.
+- **Internal** (collaborator+): request-withdrawal note,
+  cancel-withdrawal note, flag-for-admin-routing note,
+  clear-routing-flag note, request-reassignment note,
+  withdraw-reassignment note, unassign-CVE reason, and revoke-approval
+  reason.
+
+The post is silent (no notification — the action owns any of its own)
+and uses `add_comment(system=True)`, so it is never blocked by a comment
+lock the same action may be setting nor by the actor's per-advisory
+rank. It no-ops when an optional note is left blank, or for a
+system-policy action with no human author (the GHSA auto-dismiss /
+auto-withdraw, `by=None`). The companion audit event stays a terse
+marker — the note text lives only in the comment and is not duplicated
+in the event summary (the `dismissed this advisory` / `locked comments`
+timeline rows no longer inline the reason). Ban-user / forget-user notes
+are **not** advisory-scoped and are not posted; orphan-CVE registry
+notes (mark-rejected, resolve-reassignment) stay in the Admin Console.
+
 Edits append a `CommentVersion` row carrying the new body
 ([INV-COMMENT-3](./invariant.md#inv-comment-3)) and emit
 `COMMENT_EDITED` to the audit log. Redaction stamps `redacted_at` and

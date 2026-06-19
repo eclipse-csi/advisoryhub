@@ -301,8 +301,9 @@ and the comment-form template), so it lands on every write path ([INV-AUTH-1](./
 It is **not** versioned — `comments_locked` is workflow metadata, absent from `Advisory.to_payload`.
 Lock and unlock are recorded in the audit log and surfaced in the activity timeline
 (`ADVISORY_COMMENTS_LOCKED` / `ADVISORY_COMMENTS_UNLOCKED`); an optional, secret-redacted reason is
-shown to everyone with access. Defined by `can_lock_comments` /
-`advisories.services.lock_advisory_comments` / `unlock_advisory_comments`.
+posted as a **public** author-attributed comment (`record_action_note`, shown to everyone with
+access — note this uses `add_comment(system=True)` to bypass the very lock it is setting). Defined
+by `can_lock_comments` / `advisories.services.lock_advisory_comments` / `unlock_advisory_comments`.
 
 ¹³ **Move to GHSA** ([INV-GHSA-4](./invariant.md#inv-ghsa-4)). For a vulnerability filed as a
 **native** report (`triage` or `draft`) that should have been a private vulnerability report on

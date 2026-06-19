@@ -458,10 +458,10 @@ def _f_published(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
 
 
 @_register(Action.ADVISORY_DISMISSED)
-def _f_dismissed(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
-    reason = _as_dict(e.metadata).get("reason")
-    if reason:
-        return f"dismissed this advisory: {reason}"
+def _f_dismissed(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
+    # The dismissal reason is surfaced as the adjacent author-attributed
+    # comment (comments.services.record_action_note), so the event row stays
+    # a terse marker to avoid showing the text twice.
     return "dismissed this advisory"
 
 
@@ -488,10 +488,10 @@ def _f_reassignment_request_cleared(e: AuditLogEntry, _labels: PrincipalLabels) 
 
 
 @_register(Action.ADVISORY_COMMENTS_LOCKED)
-def _f_comments_locked(e: AuditLogEntry, _labels: PrincipalLabels) -> str:
-    reason = (_as_dict(e.metadata).get("reason") or "").strip()
-    if reason:
-        return f"locked comments: {reason}"
+def _f_comments_locked(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
+    # The lock reason is surfaced as the adjacent author-attributed comment
+    # (comments.services.record_action_note), so the event row stays a terse
+    # marker to avoid showing the text twice.
     return "locked comments"
 
 

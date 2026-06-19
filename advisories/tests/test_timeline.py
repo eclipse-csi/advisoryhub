@@ -197,14 +197,17 @@ def test_summary_for_state_change(setup):
 
 
 @pytest.mark.django_db
-def test_summary_for_comments_locked_with_reason(setup):
+def test_summary_for_comments_locked_omits_reason(setup):
+    # The lock reason is surfaced as the adjacent author-attributed comment
+    # (record_action_note), so the event row stays a terse marker even when a
+    # reason was given — no double display.
     e = record(
         action=Action.ADVISORY_COMMENTS_LOCKED,
         actor=setup["owner"],
         advisory=setup["advisory"],
         metadata={"reason": "cooling off a dispute"},
     )
-    assert tl.summary_for(e) == "locked comments: cooling off a dispute"
+    assert tl.summary_for(e) == "locked comments"
 
 
 @pytest.mark.django_db
@@ -722,14 +725,17 @@ def test_resolve_principal_labels_batches_queries(setup, make_user, django_asser
 
 
 @pytest.mark.django_db
-def test_summary_for_dismissed_includes_reason(setup):
+def test_summary_for_dismissed_omits_reason(setup):
+    # The dismissal reason is surfaced as the adjacent author-attributed comment
+    # (record_action_note), so the event row stays a terse marker — no double
+    # display.
     e = record(
         action=Action.ADVISORY_DISMISSED,
         actor=setup["owner"],
         advisory=setup["advisory"],
         metadata={"reason": "duplicate"},
     )
-    assert tl.summary_for(e) == "dismissed this advisory: duplicate"
+    assert tl.summary_for(e) == "dismissed this advisory"
 
 
 @pytest.mark.django_db

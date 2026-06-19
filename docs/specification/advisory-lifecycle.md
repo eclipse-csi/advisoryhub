@@ -328,6 +328,11 @@ stateDiagram-v2
 | `approved` | `none` | `workflows.services.revoke_approval` | Admin | `can_revoke_approval(by)`; `review_status=APPROVED` | `ADVISORY_REVIEW_APPROVAL_REVOKED` | Used when the admin wants to retract approval before publication |
 | `approved` | `none` | implicit, via `advisories.views.advisory_edit` | Non-admin owner / collaborator editing payload | Edit is by a non-admin and `review_status` was `approved` ([INV-REVIEW-4](./invariant.md#inv-review-4)) | `ADVISORY_REVIEW_APPROVAL_INVALIDATED` | Triggered by the edit itself; admins editing keep the approval (they could re-approve anyway) |
 
+The optional decision notes on `approve_review` / `request_changes` post a **public**
+author-attributed comment, and the optional `revoke_approval` reason posts an
+**internal** one (`comments.services.record_action_note`, requirements.md
+§AdvisoryComment); both no-op when left blank.
+
 ### 5.2 Interaction with publishing
 
 - `review_status=submitted` blocks `Publish` for **everyone**, including
@@ -572,6 +577,13 @@ mutate intake metadata without changing `state`:
 | `advisories.services.clear_admin_routing_flag` | Owner (project security team or admin) — the flagging team may retract its own handoff ([INV-AUTH-6](./invariant.md#inv-auth-6)) | Lifecycle `state=triage`; currently flagged; advisory **not** on the `unsorted` sentinel project (an `unsorted` advisory is unflagged only by reassigning it to a real project — [INV-INTAKE-4](./invariant.md#inv-intake-4)) | `ADVISORY_ROUTING_FLAG_CLEARED` | Sets `needs_admin_routing=False`; project owners regain triage capability; `advisory_routing_flag_cleared` notification queued |
 | `advisories.services.reassign_triage_project` | Admin, or an owner of the advisory who is also on the destination project's security team | Lifecycle `state=triage`; non-admins need triage rights on the advisory (owner; blocked while flagged for admin routing) **and** destination security-team membership | `ADVISORY_PROJECT_CHANGED` | Moves the advisory to a different project; useful when routing a misrouted report. For a flagged advisory it is surfaced as an admin-only "assign to project" picker on the routing banner (`advisories:reassign_triage`). Appends a version row (`project_slug` is payload-visible); clears the admin-routing flag **iff** the actor is an admin **and** the destination is a real project, and (re)sets the flag when the destination is the `unsorted` sentinel ([INV-INTAKE-4](./invariant.md#inv-intake-4)); `advisory_triage_reassigned` notification queued |
 
+The free-text note on `flag_for_admin_routing` / `clear_admin_routing_flag` (and
+the `dismiss_triage` reason) is also surfaced in the Activity pane as an
+author-attributed comment — **internal** for the routing notes, **public** for
+the dismiss reason — via `comments.services.record_action_note` (requirements.md
+§AdvisoryComment). The `dismissed this advisory` timeline event is a terse
+marker; the reason text lives only in the comment.
+
 Once promoted to `draft` (row 4 in §3.1), these triage-specific affordances
 no longer apply; the standard owner/collaborator/viewer matrix from
 `permissions.md` §5 takes over.
@@ -614,6 +626,10 @@ display). The *accept* path is represented there by the existing
 `ADVISORY_PROJECT_CHANGED` row; the `accepted`/`dismissed`/`published` clear rows are
 suppressed as duplicates of their companion events (see `advisories.timeline`).
 
+The request and withdraw notes are additionally posted as **internal**
+author-attributed comments (`comments.services.record_action_note`); the optional
+withdraw note no-ops when blank.
+
 ---
 
 ## 12. Withdrawal request (published advisories)
@@ -634,6 +650,11 @@ The direct withdrawal (`advisory_withdraw`) and the admin approval
 publish — they require a fresh **step-up** re-authentication
 ([`permissions.md` §8](./permissions.md#8-step-up-authentication)); merely requesting or
 cancelling a withdrawal does not.
+
+The request and cancel notes post **internal** author-attributed comments, while the
+withdrawal reason itself posts a **public** comment
+(`comments.services.record_action_note`, requirements.md §AdvisoryComment); the GHSA
+auto-withdraw (`by=None`) posts none.
 
 ---
 

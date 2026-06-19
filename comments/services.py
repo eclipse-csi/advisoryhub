@@ -292,14 +292,24 @@ def add_comment(
     author: User,
     body: str,
     internal: bool = False,
+    system: bool = False,
 ) -> AdvisoryComment:
+    """Create an author-attributed comment on ``advisory``.
+
+    ``system=True`` skips the ``can_comment`` / ``can_post_internal_comment``
+    gates: a system comment is a byproduct of an already-authorized action
+    (see :func:`record_action_note`), so it must not be blocked by a comment
+    lock the same action may be setting, nor by the actor's per-advisory rank.
+    The ``COMMENT_CREATED`` audit row is recorded either way.
+    """
     from django.core.exceptions import PermissionDenied
 
-    if not perms.can_comment(author, advisory):
-        raise PermissionDenied("You cannot comment on this advisory.")
     effective_internal = bool(internal)
-    if effective_internal and not perms.can_post_internal_comment(author, advisory):
-        raise PermissionDenied("You cannot post internal comments on this advisory.")
+    if not system:
+        if not perms.can_comment(author, advisory):
+            raise PermissionDenied("You cannot comment on this advisory.")
+        if effective_internal and not perms.can_post_internal_comment(author, advisory):
+            raise PermissionDenied("You cannot post internal comments on this advisory.")
     with transaction.atomic():
         comment = AdvisoryComment.objects.create(
             advisory=advisory,
@@ -319,6 +329,35 @@ def add_comment(
         },
     )
     return comment
+
+
+def record_action_note(
+    advisory: Advisory,
+    *,
+    author: User | None,
+    body: str,
+    internal: bool = False,
+) -> AdvisoryComment | None:
+    """Surface a workflow action's free-text note as a comment in the Activity pane.
+
+    Service-layer actions (dismiss, lock, review decisions, …) collect a
+    free-text reason/note in their modal; this posts it as an author-attributed
+    comment so it lands in the advisory timeline instead of being buried on a
+    model field. ``internal`` follows the per-action visibility policy
+    (operational notes internal, conversation-facing notes public).
+
+    No-ops on a blank body — optional modal fields left empty must not create
+    an empty comment — or when ``author is None`` (a system-policy action such
+    as the GHSA auto-dismiss/withdraw has no human author to attribute the note
+    to; its audit event already records the action). Posted with ``system=True``
+    so it is never blocked by a comment lock or the actor's rank. Stays silent
+    (no notification): unlike the interactive comment view, the action itself
+    owns any notification.
+    """
+    text = (body or "").strip()
+    if author is None or not text:
+        return None
+    return add_comment(advisory, author=author, body=text, internal=internal, system=True)
 
 
 def edit_comment(comment: AdvisoryComment, *, by: User, new_body: str) -> AdvisoryComment:

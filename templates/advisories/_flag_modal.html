@@ -6,6 +6,7 @@
     {% csrf_token %}
     <h3 id="flag-modal-title">{% translate "Flag for admin routing" %}</h3>
     <p>{% translate "Briefly describe where this advisory should go and why. An admin will review and reassign." %}</p>
+    <p class="muted">{% translate "Your note is posted as an internal comment, visible to collaborators and owners." %}</p>
     {% if error %}<p class="errors">{{ error }}</p>{% endif %}
     <label>{% translate "Routing note (required)" %}
       <textarea name="note" required rows="4" autofocus></textarea>

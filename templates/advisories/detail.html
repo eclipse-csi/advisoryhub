@@ -55,7 +55,7 @@
                     action="{% url 'advisories:clear_routing_flag' advisory.advisory_id %}"
                     class="inline">
                 {% csrf_token %}
-                <label for="clear-flag-note">Optional reason</label>
+                <label for="clear-flag-note">Optional reason (posted as an internal comment)</label>
                 <textarea id="clear-flag-note" name="note" rows="2"></textarea>
                 <button type="submit">Clear routing flag</button>
               </form>
@@ -207,7 +207,7 @@
                 This will detach <code>{{ advisory.assigned_cve_id }}</code> from the advisory
                 and create an orphan record for the security team to mark rejected on cve.org.
               </p>
-              <label for="cve-unassign-reason">Reason (required — visible to the security team)</label>
+              <label for="cve-unassign-reason">Reason (required — posted as an internal comment)</label>
               <textarea id="cve-unassign-reason" name="reason" rows="3" required></textarea>
               <div class="dialog-actions">
                 <button type="button" data-dialog-close>Cancel</button>

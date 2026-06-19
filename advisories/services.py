@@ -291,6 +291,11 @@ def dismiss_triage(advisory: Advisory, *, by, reason: str) -> Advisory:
             previous_value={"state": State.TRIAGE},
             new_value={"state": State.DISMISSED},
         )
+        # Surface the dismissal reason in the Activity pane as a public,
+        # author-attributed comment (the audit event is now a terse marker).
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=cleaned_reason, internal=False)
 
         # Symmetric with cancel_open_cve_request: tear down any pending
         # review state so a later reopen lands in a clean draft. Triage
@@ -355,6 +360,11 @@ def dismiss_advisory(advisory: Advisory, *, by, reason: str) -> Advisory:
             previous_value={"state": previous_state},
             new_value={"state": State.DISMISSED},
         )
+        # Surface the dismissal reason as a public, author-attributed comment.
+        # No-ops for the GHSA auto-dismiss (by=None) — no human author.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=cleaned_reason, internal=False)
         # Dismissal exits draft — clear any pending admin-reassignment request
         # (INV-AUTH-9: cleared on every exit from draft).
         clear_reassignment_request_if_pending(locked, by=by, cause="dismissed")
@@ -404,6 +414,11 @@ def withdraw_advisory(advisory: Advisory, *, by, reason: str):
         record_advisory_version(locked, editor=by, if_changed=True)
         # Approving a pending withdrawal request fulfils it.
         clear_withdrawal_request_if_pending(locked, by=by, cause="approved")
+        # Surface the withdrawal reason as a public, author-attributed comment.
+        # No-ops for the GHSA auto-withdraw (by=None) — no human author.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=cleaned, internal=False)
         return publish(locked, by=by, system=True)
 
 
@@ -441,6 +456,10 @@ def request_withdrawal(advisory: Advisory, *, by, note: str) -> Advisory:
             advisory=locked,
             metadata={"advisory_id": locked.advisory_id, "note": clean},
         )
+        # Surface the request note as an internal, author-attributed comment.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean, internal=True)
     return locked
 
 
@@ -489,6 +508,10 @@ def cancel_withdrawal_request(advisory: Advisory, *, by, note: str = "") -> Advi
         if not can_cancel_withdrawal_request(by, locked):
             raise PermissionDenied("You may not cancel this withdrawal request.")
         clear_withdrawal_request_if_pending(locked, by=by, cause="cancelled", note=clean)
+        # Surface the optional cancellation note as an internal comment.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean, internal=True)
     return locked
 
 
@@ -807,6 +830,10 @@ def flag_for_admin_routing(advisory: Advisory, *, by, note: str) -> Advisory:
                 "note": clean_note,
             },
         )
+        # Surface the routing note as an internal, author-attributed comment.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean_note, internal=True)
 
         transaction.on_commit(
             partial(_enqueue_triage_notification, locked.pk, "advisory_flagged_for_routing")
@@ -849,6 +876,10 @@ def clear_admin_routing_flag(advisory: Advisory, *, by, note: str = "") -> Advis
                 "note": clean_note,
             },
         )
+        # Surface the optional clear-flag note as an internal comment.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean_note, internal=True)
 
         transaction.on_commit(
             partial(_enqueue_triage_notification, locked.pk, "advisory_routing_flag_cleared")
@@ -900,6 +931,12 @@ def lock_advisory_comments(advisory: Advisory, *, by, reason: str = "") -> Advis
                 "reason": redact_secrets(clean_reason),
             },
         )
+        # Surface the optional lock reason as a public comment (shown to
+        # everyone with access — the same audience the lock affects).
+        # system=True so this post is not itself blocked by the lock just set.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean_reason, internal=False)
 
     return locked
 
@@ -995,6 +1032,10 @@ def request_admin_reassignment(
                 "suggested_project_slug": suggested_project.slug if suggested_project else "",
             },
         )
+        # Surface the reassignment note as an internal, author-attributed comment.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean_note, internal=True)
 
     return locked
 
@@ -1055,6 +1096,10 @@ def withdraw_admin_reassignment(advisory: Advisory, *, by, note: str = "") -> Ad
         if not can_withdraw_reassignment_request(by, locked):
             raise PermissionDenied("You may not withdraw this reassignment request.")
         clear_reassignment_request_if_pending(locked, by=by, cause="withdrawn", note=clean_note)
+        # Surface the optional withdraw note as an internal comment.
+        from comments.services import record_action_note
+
+        record_action_note(locked, author=by, body=clean_note, internal=True)
 
     return locked
 

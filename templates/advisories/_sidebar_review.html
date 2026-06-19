@@ -60,7 +60,7 @@ can_withdraw_review, can_review, can_revoke_approval, open_review_task.
       </p>
       <form method="post" action="{% url 'advisories:review_decide' advisory.advisory_id %}" class="advisory-review-decide">
         {% csrf_token %}
-        <label for="review-decision-notes">Notes (optional, shared with the author)</label>
+        <label for="review-decision-notes">Notes (optional, posted as a comment on the advisory)</label>
         <textarea id="review-decision-notes" name="notes" rows="3"></textarea>
         <div class="advisory-review-decide__buttons">
           <button type="submit" name="decision" value="approved" class="success">Approve</button>
@@ -77,7 +77,7 @@ can_withdraw_review, can_review, can_revoke_approval, open_review_task.
     <div class="sidebar-card__row">
       <form method="post" action="{% url 'advisories:revoke_approval' advisory.advisory_id %}" class="advisory-review-decide">
         {% csrf_token %}
-        <label for="revoke-approval-reason">Reason (optional, audit-only)</label>
+        <label for="revoke-approval-reason">Reason (optional, posted as an internal comment)</label>
         <textarea id="revoke-approval-reason" name="reason" rows="2"></textarea>
         <button type="submit" class="danger">Revoke approval</button>
       </form>

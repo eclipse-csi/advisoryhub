@@ -17,7 +17,7 @@ from advisories import services as advisory_services
 from advisories.models import Advisory, Kind, ReviewStatus, State
 from audit.models import Action
 from audit.services import record
-from comments.services import add_comment
+from comments.services import record_action_note
 from common.enqueue import safe_enqueue
 from common.users import actor_or_none
 
@@ -129,9 +129,9 @@ def transition_cve_request(
             transaction.on_commit(partial(_enqueue_cve_push, push_task.pk, run_cve_push))
 
     if new_status == CveRequestStatus.REJECTED:
-        # ``notes`` is validated non-empty for REJECTED above; ``or ""`` only
-        # satisfies the str-typed ``body`` parameter.
-        add_comment(advisory, author=by, body=notes or "")
+        # ``notes`` is validated non-empty for REJECTED above; surface it as a
+        # public, author-attributed comment on the advisory (unchanged behavior).
+        record_action_note(advisory, author=by, body=notes or "", internal=False)
         if ban_future_requests and not advisory.cve_requests_banned:
             advisory.cve_requests_banned = True
             advisory.save(update_fields=["cve_requests_banned", "modified_at"])
@@ -313,7 +313,10 @@ def unassign_cve(advisory: Advisory, *, by, reason: str) -> OrphanCve:
         raise ValueError("This advisory has no assigned CVE to remove.")
     if not (reason or "").strip():
         raise ValueError("A reason is required when unassigning a CVE.")
-    return orphan_cve(advisory, by=by, reason=reason)
+    orphan = orphan_cve(advisory, by=by, reason=reason)
+    # Surface the unassign reason as an internal, author-attributed comment.
+    record_action_note(advisory, author=by, body=reason, internal=True)
+    return orphan
 
 
 @transaction.atomic
@@ -598,6 +601,9 @@ def _decide_review(task: ReviewTask, *, by, decision: ReviewTaskStatus, notes: s
         previous_value={"status": ReviewTaskStatus.OPEN},
         new_value={"status": decision, "task_id": task.pk},
     )
+    # Surface the optional decision notes as a public, author-attributed
+    # comment (review feedback the author needs to see).
+    record_action_note(advisory, author=by, body=notes, internal=False)
     return task
 
 
@@ -653,6 +659,8 @@ def revoke_approval(advisory: Advisory, *, by, reason: str = "") -> Advisory:
         new_value={"review_status": ReviewStatus.NONE},
         metadata={"reason": reason} if reason else None,
     )
+    # Surface the optional revoke reason as an internal comment.
+    record_action_note(advisory, author=by, body=reason, internal=True)
     return advisory
 
 

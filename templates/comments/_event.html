@@ -5,6 +5,6 @@
   <header>
     <strong>{% user_chip event.actor fallback="system" %}</strong>
     <span class="timeline-event__summary">{% spaceless %}{% for c in event.summary_chunks %}{% if c.user %}{% user_chip c.user fallback=c.text %}{% elif c.group %}<span class="principal-group">{{ c.text }}</span>{% else %}{{ c.text }}{% endif %}{% endfor %}{% endspaceless %}</span>
-    {% timestamp event.created_at %}
+    {% timestamp event.created_at relative=True css_class="timeline-time" %}
   </header>
 </article>

@@ -577,6 +577,10 @@ def test_timeline_event_renders_chunks_with_chip_inside_summary(client, setup, m
     assert summary_open < summary_close
     assert 'class="user-chip"' in html[summary_open:summary_close]
     assert "Bob B" in html[summary_open:summary_close]
+    # The event timestamp renders as a smaller, muted relative "N ago" age
+    # (data-relative), not an absolute date-time.
+    assert "data-relative" in html
+    assert 'class="timeline-time"' in html
 
 
 @pytest.mark.django_db

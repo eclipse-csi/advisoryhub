@@ -1572,6 +1572,17 @@ p.state strong { color: var(--text); }
 }
 .comment header strong { color: var(--text); font-weight: 600; }
 .comment header time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Relative "N ago" timestamps on comments and audit events in the Activity pane:
+   one notch smaller and muted so they recede from the actor/summary text. Applied
+   via the {% timestamp %} tag's css_class, so events (unstyled .timeline-event) and
+   comments render identically; .comment header time above sets no font-size, so this
+   wins there without a specificity clash. The exact local time stays in the tooltip. */
+.timeline-time {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .comment .body { color: var(--text); }
 .comment .body p:last-child { margin-bottom: 0; }
 .comment .body a { word-break: break-word; }

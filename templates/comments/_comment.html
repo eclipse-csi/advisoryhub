@@ -2,9 +2,9 @@
 <article class="comment {% if comment.is_redacted %}redacted{% endif %} {% if comment.is_internal %}internal{% endif %}" id="comment-{{ comment.pk }}">
   <header>
     <strong>{% user_chip comment.author fallback="unknown" %}</strong>
-    {% timestamp comment.created_at %}
+    {% timestamp comment.created_at relative=True css_class="timeline-time" %}
     {% if comment.edited_at %}
-      <small>(edited {% timestamp comment.edited_at %})</small>
+      <small>(edited {% timestamp comment.edited_at relative=True css_class="timeline-time" %})</small>
       {% if not comment.is_redacted %}
         <button type="button" class="link-button history-drawer-trigger"
                 hx-get="{% url 'comments:history' comment.advisory.advisory_id comment.pk %}"

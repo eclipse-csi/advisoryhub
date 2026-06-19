@@ -8,9 +8,15 @@
 {% advisory_rail %}
 <div class="advisory-detail__main">
   <div class="advisory-detail__header">
-    <h1>{{ advisory.advisory_id }}</h1>
+    <div class="advisory-detail__heading">
+      {% if advisory.summary %}
+        <p class="advisory-detail__id">{{ advisory.advisory_id }}</p>
+        <h1>{{ advisory.summary }}</h1>
+      {% else %}
+        <h1>{{ advisory.advisory_id }}</h1>
+      {% endif %}
+    </div>
   </div>
-  {% if advisory.summary %}<p class="advisory-detail__summary">{{ advisory.summary }}</p>{% endif %}
 
   {% include "advisories/_status_header.html" %}
 
@@ -173,7 +179,6 @@
     <dd>
       {% if is_triage and is_unsorted %}<em>Unsorted</em>{% else %}{{ advisory.project.name }}{% endif %}
     </dd>
-    <dt>Summary</dt><dd>{{ advisory.summary|default:"—" }}</dd>
     {% if is_triage %}
       <dt>Reporter</dt>
       <dd>

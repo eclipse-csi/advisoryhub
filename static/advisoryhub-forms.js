@@ -1,12 +1,16 @@
 /* AdvisoryHub — small delegated form behaviours (CSP-clean, no inline handlers).
  *
- * Currently: conditional-enable. A control marked
- *   data-enabled-by="<radio-name>:<value>"
- * is enabled only while the named radio group has that value selected, and
- * disabled otherwise (so it is excluded from submission). Replaces the inline
- * `onclick="...disabled=..."` handlers on the orphan-CVE reassignment radios.
- *
- * Delegation handles HTMX-swapped fragments (e.g. the reassignment row).
+ * Five behaviours, all delegated on document so they survive HTMX-swapped
+ * fragments (e.g. the reassignment row, the comment form):
+ *  1. Conditional-enable: a control marked `data-enabled-by="<radio>:<value>"`
+ *     is enabled only while the named radio group has that value (replaces the
+ *     inline `onclick="...disabled=..."` handlers on the CVE reassignment radios).
+ *  2. Confirm-to-submit gate: a `[data-confirm-submit]` button stays disabled
+ *     until the form's `[data-confirm-token]` / `[data-confirm-required]` fields
+ *     are satisfied (gates consequential actions behind a retyped phrase).
+ *  3. aria-invalid bridge: mirror the CSS :user-invalid state to aria-invalid.
+ *  4. Ctrl/Cmd+Enter submits the focused form through its default submit button.
+ *  5. A subtle "⌘/Ctrl + Enter to submit" hint on textarea forms.
  */
 (function () {
   "use strict";
@@ -69,6 +73,7 @@
   document.body.addEventListener("htmx:afterSwap", function (event) {
     syncWithin(event.target);
     syncConfirmWithin(event.target);
+    injectHintsWithin(event.target);
   });
 
   // ---- aria-invalid bridge ---------------------------------------------
@@ -92,13 +97,126 @@
     if (e.target && e.target.form) syncConfirm(e.target.form);
   });
 
+  // ---- Ctrl/Cmd+Enter to submit ----------------------------------------
+  // A keyboard "submit/save" shortcut for every form, so textarea-bearing forms
+  // (advisory details, comments, modal reasons) can be submitted without leaving
+  // the keyboard — plain Enter inserts a newline there. Single-line inputs
+  // already submit on Enter; the shortcut is simply consistent for them.
+  //
+  // Faithful to native implicit submission AND the gates in this file: resolve
+  // the form's default submit button and submit *through* it with
+  // requestSubmit(), which fires a cancelable `submit` event — so htmx (hx-post
+  // forms), native constraint validation, `data-submit-once`, and the
+  // `data-confirm-submit` gate above all still run. A missing or disabled submit
+  // control means "no submission" (e.g. the confirm gate disables its button
+  // until the phrase is typed), exactly as native Enter behaves.
+  function defaultSubmitButton(form) {
+    if (!form || !form.querySelectorAll) return null;
+    var sel =
+      'button[type="submit"], button:not([type]), input[type="submit"], input[type="image"]';
+    var inside = form.querySelectorAll(sel);
+    for (var i = 0; i < inside.length; i++) {
+      if (!inside[i].disabled) return inside[i];
+    }
+    // Submit controls associated by the form= attribute (the dialog pattern in
+    // _confirm_action.html, where the button lives outside its <form>).
+    if (form.id) {
+      var ext = document.querySelectorAll(
+        'button[form][type="submit"], button[form]:not([type]), ' +
+          'input[form][type="submit"], input[form][type="image"]',
+      );
+      for (var j = 0; j < ext.length; j++) {
+        if (ext[j].getAttribute("form") === form.id && !ext[j].disabled) return ext[j];
+      }
+    }
+    return null;
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.defaultPrevented) return;
+    if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return;
+    // Don't fire mid-IME-composition or on auto-repeat from a held chord.
+    if (event.isComposing || event.repeat) return;
+    var t = event.target;
+    if (!t) return;
+    var form = t.form instanceof HTMLFormElement ? t.form : t.closest ? t.closest("form") : null;
+    if (!form) return;
+    var btn = defaultSubmitButton(form);
+    if (!btn) return; // no usable submit control (incl. a disabled confirm gate)
+    event.preventDefault();
+    // Win over the combobox keydown handlers (mentions/cwe/select) that also act
+    // on Enter while their menu is open: this global listener registers before
+    // those, so stopping immediate propagation suppresses their commit and the
+    // form submits — the predictable, GitHub-style behaviour.
+    event.stopImmediatePropagation();
+    if (typeof form.requestSubmit === "function") form.requestSubmit(btn);
+    else btn.click(); // ancient engines: click still fires submit + validation
+  });
+
+  // ---- "⌘/Ctrl + Enter to submit" hint ---------------------------------
+  // A subtle, platform-aware hint injected next to the submit button on forms
+  // that contain a <textarea> (where the shortcut is genuinely useful). JS-only,
+  // so it shows exactly when the shortcut is available; skipped on confirm-gated
+  // forms (their button is disabled until a phrase is typed, so the hint would
+  // mislead). Re-run after htmx swaps re-render forms (comment form, dialogs).
+  function comboKeys() {
+    var p =
+      (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+    return /mac|iphone|ipad|ipod/i.test(p) ? ["⌘", "Enter"] : ["Ctrl", "Enter"];
+  }
+  function submitLabel() {
+    var el = document.getElementById("kbd-hint-i18n");
+    if (el) {
+      try {
+        var v = JSON.parse(el.textContent);
+        if (typeof v === "string" && v) return v;
+      } catch (_e) {
+        /* fall through to the English default */
+      }
+    }
+    return "to submit";
+  }
+  function buildHint() {
+    var span = document.createElement("span");
+    span.className = "kbd-hint";
+    var keys = comboKeys();
+    for (var i = 0; i < keys.length; i++) {
+      var k = document.createElement("kbd");
+      k.textContent = keys[i];
+      span.appendChild(k);
+    }
+    var label = document.createElement("span");
+    label.className = "kbd-hint__label";
+    label.textContent = submitLabel();
+    span.appendChild(label);
+    return span;
+  }
+  function injectHint(form) {
+    if (!form || !form.querySelector) return;
+    if (!form.querySelector("textarea")) return;
+    if (form.querySelector("[data-confirm-submit]")) return; // gated → no hint
+    var btn = defaultSubmitButton(form);
+    if (!btn) return;
+    var prev = btn.previousElementSibling;
+    if (prev && prev.classList && prev.classList.contains("kbd-hint")) return; // already added
+    btn.insertAdjacentElement("beforebegin", buildHint());
+  }
+  function injectHintsWithin(root) {
+    if (!root) root = document;
+    if (root.matches && root.matches("form")) injectHint(root);
+    var forms = root.querySelectorAll ? root.querySelectorAll("form") : [];
+    for (var i = 0; i < forms.length; i++) injectHint(forms[i]);
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       syncWithin(document);
       syncConfirmWithin(document);
+      injectHintsWithin(document);
     });
   } else {
     syncWithin(document);
     syncConfirmWithin(document);
+    injectHintsWithin(document);
   }
 })();

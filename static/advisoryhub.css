@@ -732,6 +732,27 @@ button[hx-delete]:hover {
 }
 .form-actions__dirty[hidden] { display: none; }
 
+/* Keyboard-shortcut hint ("⌘/Ctrl Enter to submit"), injected by
+   advisoryhub-forms.js next to the submit button on textarea forms. JS-only, so
+   it appears exactly when the shortcut is available. Muted and small so it sits
+   quietly beside the primary action; the keys reuse the global <kbd> mono face. */
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+.kbd-hint kbd {
+  font-size: 0.85em;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--text-soft);
+}
+
 /* ------------------------------------------------------------ tables */
 
 table {

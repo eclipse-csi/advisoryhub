@@ -146,6 +146,8 @@
 <ul id="toast-region" class="messages toast-region" aria-live="polite" aria-relevant="additions" aria-atomic="false"></ul>
 {# Screen-reader-only confirmation of successful HTMX actions. Populated by advisoryhub-htmx.js. #}
 <div id="htmx-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+{# Translatable wording for the Ctrl/Cmd+Enter submit hint on textarea forms; the keys themselves are rendered client-side (platform-aware) by advisoryhub-forms.js. #}
+{% translate "to submit" as kbd_hint_label %}{{ kbd_hint_label|json_script:"kbd-hint-i18n" }}
 {# Speculative prefetch — progressive enhancement (Chromium honours it; other engines ignore it). Prefetches same-origin GET pages on ~hover / pointer-down (moderate eagerness), excluding OIDC auth flows, the JSON API, file downloads, and any [data-no-prefetch] / [rel=nofollow] link. Sign-out is a POST <form>, so it is never matched. Nonced for CSP; if a violation shows up, add 'inline-speculation-rules' to script-src. #}
 <script type="speculationrules" nonce="{{ request.csp_nonce }}">
 {

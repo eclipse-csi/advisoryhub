@@ -994,7 +994,7 @@ def advisory_approve_withdrawal(request, advisory_id: str):
 def advisory_access_review_dismiss(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     if not perms.can_grant_access(request.user, advisory):
-        raise PermissionDenied("You cannot dismiss the access-review banner.")
+        raise PermissionDenied("You cannot acknowledge the access review.")
     if advisory.access_review_required_at is not None:
         previous = advisory.access_review_required_at
         advisory.access_review_required_at = None

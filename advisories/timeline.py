@@ -749,7 +749,7 @@ def _f_routing_cleared(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
 
 @_register(Action.ADVISORY_ACCESS_REVIEW_DISMISSED)
 def _f_access_review_dismissed(_e: AuditLogEntry, _labels: PrincipalLabels) -> str:
-    return "dismissed the access review"
+    return "acknowledged the access review"
 
 
 @_register(Action.GHSA_LINKED_ADVISORY_CREATED)

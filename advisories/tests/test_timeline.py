@@ -179,6 +179,81 @@ def test_events_for_advisory_returns_none_for_outsider(setup, make_user):
     assert events == []
 
 
+@pytest.mark.django_db
+def test_events_for_advisory_drops_narrated_state_change(setup):
+    """A ``narrated``-tagged state change is the structured twin of its
+    descriptive companion (dismiss / promote / withdrawal) and must not surface;
+    untagged state changes (reopen, the review_status flip) are the sole
+    narration of their event and stay.
+    """
+    advisory, owner = setup["advisory"], setup["owner"]
+    # Companion descriptive row + its ledger-only structured twin.
+    record(
+        action=Action.ADVISORY_DISMISSED,
+        actor=owner,
+        advisory=advisory,
+        metadata={"from_state": "draft"},
+    )
+    record(
+        action=Action.ADVISORY_STATE_CHANGED,
+        actor=owner,
+        advisory=advisory,
+        previous_value={"state": "draft"},
+        new_value={"state": "dismissed"},
+        metadata={"narrated": True},
+    )
+    # Sole-narration state changes (no companion): a plain state flip and the
+    # review_status flip emitted by reopen_review.
+    record(
+        action=Action.ADVISORY_STATE_CHANGED,
+        actor=owner,
+        advisory=advisory,
+        previous_value={"state": "dismissed"},
+        new_value={"state": "draft"},
+    )
+    record(
+        action=Action.ADVISORY_STATE_CHANGED,
+        actor=owner,
+        advisory=advisory,
+        previous_value={"review_status": "changes_requested"},
+        new_value={"review_status": "none"},
+        metadata={"reopened": True},
+    )
+
+    events = list(tl.events_for_advisory(advisory, viewer=owner))
+    actions = [e.action for e in events]
+    # The descriptive companion shows; exactly two (untagged) state changes show.
+    assert Action.ADVISORY_DISMISSED in actions
+    assert actions.count(Action.ADVISORY_STATE_CHANGED) == 2
+
+
+@pytest.mark.django_db
+def test_review_task_status_changed_is_ledger_only(setup):
+    """``REVIEW_TASK_STATUS_CHANGED`` is recorded on the ledger but never shown
+    on the timeline — the descriptive ``ADVISORY_REVIEW_*`` rows narrate it.
+    """
+    assert Action.REVIEW_TASK_STATUS_CHANGED in tl.EXCLUDED_ACTIONS
+    assert Action.REVIEW_TASK_STATUS_CHANGED not in tl.TIMELINE_ACTIONS_BY_TIER["admin_owner"]
+
+    advisory, owner = setup["advisory"], setup["owner"]
+    record(
+        action=Action.ADVISORY_REVIEW_APPROVED,
+        actor=owner,
+        advisory=advisory,
+        new_value={"review_status": "approved"},
+    )
+    record(
+        action=Action.REVIEW_TASK_STATUS_CHANGED,
+        actor=owner,
+        advisory=advisory,
+        previous_value={"status": "open"},
+        new_value={"status": "approved"},
+    )
+    actions = [e.action for e in tl.events_for_advisory(advisory, viewer=owner)]
+    assert Action.ADVISORY_REVIEW_APPROVED in actions
+    assert Action.REVIEW_TASK_STATUS_CHANGED not in actions
+
+
 # ---------------------------------------------------------------------------
 # Summary formatters
 # ---------------------------------------------------------------------------

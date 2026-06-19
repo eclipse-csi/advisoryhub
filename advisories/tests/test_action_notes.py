@@ -14,7 +14,9 @@ import pytest
 from access.models import Permission as AccessPermission
 from access.services import grant_to_user
 from advisories import services
+from advisories import timeline as tl
 from advisories.models import Advisory, State
+from audit.models import Action
 from comments.models import AdvisoryComment
 from comments.services import comments_for_advisory, record_action_note
 from workflows import services as wf
@@ -35,6 +37,10 @@ def setup(make_user, make_project, settings):
 
 def _comments(advisory):
     return AdvisoryComment.objects.filter(advisory=advisory).order_by("created_at")
+
+
+def _timeline_actions(advisory, viewer):
+    return [e.action for e in tl.events_for_advisory(advisory, viewer=viewer)]
 
 
 # ---------------------------------------------------------------------------
@@ -283,3 +289,49 @@ def test_viewer_sees_public_action_note_but_not_internal(setup, make_user):
         c.body for c in comments_for_advisory(setup["advisory"], viewer=setup["owner"])
     }
     assert {"public feedback", "internal note"} <= owner_visible
+
+
+# ---------------------------------------------------------------------------
+# Timeline — the descriptive row narrates; the structured twin stays hidden
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_dismiss_advisory_timeline_shows_single_state_row(setup):
+    services.dismiss_advisory(setup["advisory"], by=setup["owner"], reason="false positive")
+    actions = _timeline_actions(setup["advisory"], setup["owner"])
+    assert Action.ADVISORY_DISMISSED in actions
+    # The structured ADVISORY_STATE_CHANGED twin is ledger-only — not on the timeline.
+    assert Action.ADVISORY_STATE_CHANGED not in actions
+
+
+@pytest.mark.django_db
+def test_dismiss_triage_timeline_shows_single_state_row(setup):
+    adv = Advisory.objects.create(
+        project=setup["project"], summary="t", state=State.TRIAGE, created_by=setup["owner"]
+    )
+    services.dismiss_triage(adv, by=setup["owner"], reason="spam report")
+    actions = _timeline_actions(adv, setup["owner"])
+    assert Action.ADVISORY_DISMISSED in actions
+    assert Action.ADVISORY_STATE_CHANGED not in actions
+
+
+@pytest.mark.django_db
+def test_promote_triage_timeline_shows_single_state_row(setup):
+    adv = Advisory.objects.create(
+        project=setup["project"], summary="t", state=State.TRIAGE, created_by=setup["owner"]
+    )
+    services.promote_triage_to_draft(adv, by=setup["owner"])
+    actions = _timeline_actions(adv, setup["owner"])
+    assert Action.ADVISORY_TRIAGE_PROMOTED in actions
+    assert Action.ADVISORY_STATE_CHANGED not in actions
+
+
+@pytest.mark.django_db
+def test_review_decision_timeline_shows_single_row(setup):
+    task = wf.submit_for_review(setup["advisory"], by=setup["owner"])
+    wf.approve_review(task, by=setup["admin"], notes="LGTM")
+    actions = _timeline_actions(setup["advisory"], setup["owner"])
+    assert Action.ADVISORY_REVIEW_APPROVED in actions
+    # The structured REVIEW_TASK_STATUS_CHANGED twin is ledger-only.
+    assert Action.REVIEW_TASK_STATUS_CHANGED not in actions

@@ -135,6 +135,20 @@ satisfy any "owner" requirement.
 | 9 | `dismissed` | `dismissed_from_state` (`draft` or `triage`) | `advisories.services.reopen_advisory` | Owner (project security team or admin) | `can_reopen(user, advisory)`: state is dismissed | `ADVISORY_REOPENED`, `ADVISORY_STATE_CHANGED` (and, depending on orphan/CVE state: `CVE_REASSIGNED_FROM_ORPHAN` *or* `ORPHAN_REASSIGNMENT_REQUESTED`; `CVE_REQUESTED` if a cancelled queued request is re-created) | `state` flips to `dismissed_from_state`; `dismissed_reason` / `dismissed_from_state` kept as historical metadata; auto-cancelled `CveRequestTask` re-created in `queued` if no other open task and target is `draft`; latest `OrphanCve` reattached directly (orphan → `REASSIGNED`) when `ORPHANED`, else an `OrphanCveReassignmentTask` is queued for admin (see §3.1.4) when `MARKED_REJECTED`; `advisory_reopened` notification queued |
 | 9a | `dismissed` (`dismissed_from_state=published`) | `published` | `advisories.services.reopen_advisory` → `run_publication` (un-withdraw) | Admin or **mature-publisher** owner (`can_reopen` requires publish authority for a withdrawal) | `can_reopen`: state is dismissed and was withdrawn from `published` | `ADVISORY_REOPENED` (metadata `unwithdraw=True`), then `ADVISORY_PUBLISHED` + `PUBLICATION_*` on the re-export | `withdrawn_reason` cleared + version appended; the orphaned CVE is reattached (orphan → `REASSIGNED`, or an admin task when `MARKED_REJECTED`); the advisory re-publishes **without** the withdrawn marker — the reattached CVE's record is re-exported `PUBLISHED` again (when an admin task is queued instead, the record stays `REJECTED` until resolved) — and returns to `published` **only after** the push (`publish(allow_from_dismissed=True)`) |
 
+> **Ledger vs. activity timeline.** The *Audit action(s)* column lists what is
+> written to the append-only ledger ([INV-AUDIT-1](./invariant.md#inv-audit-1)).
+> The per-advisory **activity timeline** (`advisories.timeline`) renders a curated
+> subset: the structured `ADVISORY_STATE_CHANGED` row is suppressed whenever a
+> descriptive companion narrates the same transition (rows 4, 5, 6, 6a, 8a — paired
+> with `ADVISORY_TRIAGE_PROMOTED` / `ADVISORY_DISMISSED`; the write carries
+> `metadata.narrated=true`), so the event appears **once**. The state-change rows
+> that are the *sole* narration of their event stay on the timeline: the GHSA
+> accepted-to-draft flip (row 4a), reopen (row 9), and the `review_status` flip
+> emitted by `reopen_review` (§5.1). `REVIEW_TASK_STATUS_CHANGED` is likewise
+> ledger-only — every write is paired with a descriptive `ADVISORY_REVIEW_*` row
+> (§5.1) — so it never reaches the timeline. This is the same companion-suppression
+> rule already applied to `ADVISORY_REASSIGNMENT_REQUEST_CLEARED` (§11).
+
 #### 3.1.1 Notes on row 1 — triage creation
 
 `submit_triage_report` is the only constructor for `state=triage`
@@ -332,6 +346,12 @@ The optional decision notes on `approve_review` / `request_changes` post a **pub
 author-attributed comment, and the optional `revoke_approval` reason posts an
 **internal** one (`comments.services.record_action_note`, requirements.md
 §AdvisoryComment); both no-op when left blank.
+
+The `REVIEW_TASK_STATUS_CHANGED` row paired with each decision is **ledger-only** —
+the descriptive `ADVISORY_REVIEW_*` row narrates the same change, so the activity
+timeline shows it once (see §3.1, *Ledger vs. activity timeline*). The
+`reopen_review` row reuses `ADVISORY_STATE_CHANGED` for the `review_status` field and
+has no descriptive companion, so it **does** surface on the timeline.
 
 ### 5.2 Interaction with publishing
 

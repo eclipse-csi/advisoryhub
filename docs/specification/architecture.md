@@ -1234,6 +1234,17 @@ the never-pruned row carries no PII beyond the actor FK (erasure-clean — see
 `forget_user` below). `advisory.first_seen` stays out of `EPHEMERAL_ACTIONS` and
 out of the timeline tiers (admin-queryable, not per-event timeline noise).
 
+**Companion suppression on the timeline.** Two structured ledger actions are
+likewise durable but kept off the activity timeline because a descriptive
+companion already narrates the same change: `advisory.review_status_changed`
+(`REVIEW_TASK_STATUS_CHANGED`) is always paired with an `ADVISORY_REVIEW_*` row,
+and `advisory.state_changed` is paired with `ADVISORY_DISMISSED` /
+`ADVISORY_TRIAGE_PROMOTED` (the redundant write is tagged `metadata.narrated=true`
+and dropped at the DB layer in `advisories.timeline.events_for_advisory`). State
+changes that are the sole narration of their event — reopen, the GHSA
+accepted-to-draft flip, and the `reopen_review` `review_status` flip — are left
+untagged and stay. See advisory-lifecycle.md §3.1.
+
 Management commands in `audit/management/commands/`:
 
 - `prune_audit` — deletes **ledger** rows older than a configurable

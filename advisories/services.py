@@ -239,6 +239,10 @@ def promote_triage_to_draft(advisory: Advisory, *, by, project=None) -> Advisory
             advisory=locked,
             previous_value={"state": State.TRIAGE},
             new_value={"state": State.DRAFT},
+            # The ADVISORY_TRIAGE_PROMOTED row above narrates this transition on
+            # the timeline; this structured twin is ledger-only (see
+            # advisories.timeline.events_for_advisory).
+            metadata={"narrated": True},
         )
 
         transaction.on_commit(
@@ -290,6 +294,10 @@ def dismiss_triage(advisory: Advisory, *, by, reason: str) -> Advisory:
             advisory=locked,
             previous_value={"state": State.TRIAGE},
             new_value={"state": State.DISMISSED},
+            # The ADVISORY_DISMISSED row above narrates this transition on the
+            # timeline; this structured twin is ledger-only (see
+            # advisories.timeline.events_for_advisory).
+            metadata={"narrated": True},
         )
         # Surface the dismissal reason in the Activity pane as a public,
         # author-attributed comment (the audit event is now a terse marker).
@@ -359,6 +367,10 @@ def dismiss_advisory(advisory: Advisory, *, by, reason: str) -> Advisory:
             advisory=locked,
             previous_value={"state": previous_state},
             new_value={"state": State.DISMISSED},
+            # The ADVISORY_DISMISSED row above narrates this transition on the
+            # timeline; this structured twin is ledger-only (see
+            # advisories.timeline.events_for_advisory).
+            metadata={"narrated": True},
         )
         # Surface the dismissal reason as a public, author-attributed comment.
         # No-ops for the GHSA auto-dismiss (by=None) — no human author.

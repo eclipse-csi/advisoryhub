@@ -75,7 +75,6 @@ _TIER_B_ACTIONS: frozenset[str] = frozenset(
         Action.PUBLICATION_EXPORT_FAILED,
         Action.PUBLICATION_GIT_PUSH,
         Action.PUBLICATION_GIT_PUSH_FAILED,
-        Action.REVIEW_TASK_STATUS_CHANGED,
     }
 )
 
@@ -103,6 +102,10 @@ TIMELINE_ACTIONS_BY_TIER: dict[str, frozenset[str]] = {
 # by virtue of being absent from every tier above. Notably ADVISORY_FIRST_SEEN
 # (the durable first-view compliance receipt) is intentionally excluded — it is
 # admin-queryable on the audit log, not per-event timeline noise. See INV-AUDIT-6.
+# REVIEW_TASK_STATUS_CHANGED is likewise ledger-only: every one of its writes is
+# paired with a descriptive ADVISORY_REVIEW_* row (approved / changes-requested /
+# withdrawn) that already narrates the same transition, so surfacing both would
+# double up the timeline. The structured status row stays on the ledger.
 EXCLUDED_ACTIONS: frozenset[str] = frozenset(Action.values) - (
     _TIER_A_ACTIONS | _TIER_B_ACTIONS | _TIER_C_ACTIONS
 )
@@ -129,6 +132,7 @@ def events_for_advisory(advisory: Advisory, *, viewer) -> Iterable[AuditLogEntry
     if not allowed:
         return AuditLogEntry.objects.none()
     cleared = Action.ADVISORY_REASSIGNMENT_REQUEST_CLEARED
+    state_changed = Action.ADVISORY_STATE_CHANGED
     return (
         AuditLogEntry.objects.filter(advisory=advisory, action__in=allowed)
         # The request-cleared row is only meaningful here when the requester
@@ -136,6 +140,15 @@ def events_for_advisory(advisory: Advisory, *, viewer) -> Iterable[AuditLogEntry
         # their companion rows (project change / dismiss / publish), so drop
         # those duplicates at the DB layer.
         .exclude(Q(action=cleared) & ~Q(metadata__cause="withdrawn"))
+        # A state-change row tagged ``narrated`` is the structured twin of a
+        # descriptive companion written in the same transaction (dismiss /
+        # triage-promote / withdrawal), so it would double up the timeline —
+        # drop it. Untagged state-change rows (reopen, the review_status flip
+        # from reopen_review, the GHSA accepted-to-draft transition) are the
+        # sole narration of their event and stay. ``metadata__contains`` (JSONB
+        # ``@>``) is deliberate: a bare ``metadata__narrated=True`` key-transform
+        # also matches rows whose metadata lacks the key.
+        .exclude(Q(action=state_changed) & Q(metadata__contains={"narrated": True}))
         .select_related("actor")
         .prefetch_related("actor__groups")
         .order_by("created_at")

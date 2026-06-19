@@ -223,6 +223,10 @@ def run_publication(self, task_id: int) -> str:
                     advisory=advisory,
                     previous_value={"state": previous_state},
                     new_value={"state": State.DISMISSED, "withdrawn": True},
+                    # The ADVISORY_DISMISSED row above narrates this withdrawal on
+                    # the timeline; this structured twin is ledger-only (see
+                    # advisories.timeline.events_for_advisory).
+                    metadata={"narrated": True},
                 )
                 # A withdrawn advisory's CVE becomes an orphan (admin marks it
                 # rejected at cve.org). State is already DISMISSED, so the

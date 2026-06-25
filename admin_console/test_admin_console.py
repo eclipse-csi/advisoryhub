@@ -861,3 +861,53 @@ def test_access_log_q_filters_metadata(client, setup):
     )
     assert Action.GHSA_METADATA_FETCHED in table
     assert Action.ADVISORY_VIEWED not in table
+
+
+# ----- CVE-request ban / allow (INV-CVE-3) -------------------------------
+
+
+@pytest.mark.django_db
+def test_cves_page_lists_banned_advisory(client, setup):
+    setup["advisory"].cve_requests_banned = True
+    setup["advisory"].save(update_fields=["cve_requests_banned"])
+    client.force_login(setup["admin"])
+    body = client.get(reverse("admin_console:cves")).content.decode()
+    assert f"cve-banned-{setup['advisory'].pk}" in body
+    assert "Allow CVE requests" in body
+
+
+@pytest.mark.django_db
+def test_cve_allow_clears_ban_and_drops_from_list(client, setup):
+    setup["advisory"].cve_requests_banned = True
+    setup["advisory"].save(update_fields=["cve_requests_banned"])
+    client.force_login(setup["admin"])
+    url = reverse("admin_console:cve_allow", args=[setup["advisory"].advisory_id])
+
+    resp = client.post(url)
+    assert resp.status_code == 200
+    setup["advisory"].refresh_from_db()
+    assert setup["advisory"].cve_requests_banned is False
+    assert AuditLogEntry.objects.filter(action=Action.CVE_REQUEST_UNBANNED).exists()
+
+    # The advisory no longer appears in the banned section on reload.
+    body = client.get(reverse("admin_console:cves")).content.decode()
+    assert f"cve-banned-{setup['advisory'].pk}" not in body
+    assert "No advisories have CVE requests banned." in body
+
+
+@pytest.mark.django_db
+def test_cve_allow_requires_admin(client, setup):
+    setup["advisory"].cve_requests_banned = True
+    setup["advisory"].save(update_fields=["cve_requests_banned"])
+    client.force_login(setup["member"])
+    url = reverse("admin_console:cve_allow", args=[setup["advisory"].advisory_id])
+    assert client.post(url).status_code == 403
+    setup["advisory"].refresh_from_db()
+    assert setup["advisory"].cve_requests_banned is True
+
+
+@pytest.mark.django_db
+def test_cve_allow_rejects_get(client, setup):
+    client.force_login(setup["admin"])
+    url = reverse("admin_console:cve_allow", args=[setup["advisory"].advisory_id])
+    assert client.get(url).status_code == 405

@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
+from advisories.models import Advisory
 from workflows import services as wf
 from workflows.models import (
     CveRequestStatus,
@@ -45,6 +46,11 @@ def cves(request):
         .prefetch_related("requested_by__groups")
         .order_by("-created_at")
     )
+    banned_advisories = list(
+        Advisory.objects.filter(cve_requests_banned=True)
+        .select_related("project")
+        .order_by("advisory_id")
+    )
     return render(
         request,
         "admin_console/cves.html",
@@ -53,6 +59,7 @@ def cves(request):
             "orphan_open": orphan_open,
             "orphan_resolved": orphan_resolved,
             "reassignment_open": reassignment_open,
+            "banned_advisories": banned_advisories,
             "cve_status_choices": CveRequestStatus.choices,
             "admin_section": "cves",
         },
@@ -93,6 +100,24 @@ def cve_transition(request, task_id: int):
         )
     task.refresh_from_db()
     return render(request, "admin_console/_cve_row.html", {"task": task})
+
+
+@admin_required
+@require_http_methods(["POST"])
+def cve_allow(request, advisory_id: str):
+    """Lift a CVE-request ban so the advisory's owner can request a CVE again."""
+    advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    try:
+        wf.unban_cve_requests(advisory, by=request.user)
+    except (ValueError, PermissionDenied) as exc:
+        return render(
+            request,
+            "admin_console/_cve_banned_row.html",
+            {"advisory": advisory, "error": str(exc)},
+            status=400,
+        )
+    advisory.refresh_from_db()
+    return render(request, "admin_console/_cve_banned_row.html", {"advisory": advisory})
 
 
 @admin_required

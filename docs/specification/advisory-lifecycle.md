@@ -399,8 +399,18 @@ After `reserved` / `rejected` / `cancelled`, the task is terminal — a new
 request opens a fresh `CveRequestTask` row only if the constraint in row 1
 still permits it (`assigned_cve_id` empty, no ban, no open task).
 
+`Advisory.cve_requests_banned` is an advisory-level flag, **not** a CVE-task
+state: it is set as an optional side-effect of a rejection (row above) and is
+orthogonal to the task sub-machine. It is reversible — an admin clears it via
+`workflows.services.unban_cve_requests` (see §6.2).
+
 ### 6.2 Related cleanup paths
 
+- `workflows.services.unban_cve_requests` (admin-only) clears
+  `Advisory.cve_requests_banned`, re-allowing the owner to request a CVE. Surfaced
+  as the "CVE requests banned" section on the CVE Assignment page (`/admin/cves`,
+  `admin_console:cve_allow`). Emits `CVE_REQUEST_UNBANNED`; a no-op (no audit row)
+  when the advisory was not banned. See [INV-CVE-3](./invariant.md#inv-cve-3).
 - `workflows.services.unassign_cve` (admin-only) clears
   `Advisory.assigned_cve_id` and creates an `OrphanCve` row that admins are
   expected to mark rejected at cve.org. Emits `CVE_UNASSIGNED`.

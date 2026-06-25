@@ -2016,11 +2016,12 @@ remain in control.
 **Enforced in.**
 - `advisories/models.py` — `cve_requests_banned` field.
 - `advisories/permissions.py` — `can_request_cve` honours the ban.
-- Admin-console flow — ban / unban surface for admins only.
+- `workflows/services.py` — the ban is set by `transition_cve_request(..., ban_future_requests=True)` (only on a rejection) and cleared by `unban_cve_requests`; both gate on `perms.can_review` (admin-only).
+- Admin-console flow — the `admin_console:cve_allow` endpoint (POST), surfaced as the "CVE requests banned" section on the CVE Assignment page (`/admin/cves`), is `@admin_required`.
 
 **Violation impact.** Users escape rejection by spamming requests.
 
-**Tests.** `advisories/tests/test_permissions.py`, `workflows/tests.py`.
+**Tests.** `advisories/tests/test_permissions.py`, `workflows/tests.py` (`test_unban_*`), `admin_console/test_admin_console.py` (`test_cve_allow_*`, `test_cves_page_lists_banned_advisory`).
 
 **Related.** [INV-CVE-1](#inv-cve-1).
 

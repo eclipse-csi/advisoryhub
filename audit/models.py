@@ -52,6 +52,7 @@ class Action(models.TextChoices):
     CVE_REQUESTED = "cve.requested"
     CVE_TASK_STATUS_CHANGED = "cve.task_status_changed"
     CVE_REQUEST_BANNED = "cve.request_banned"
+    CVE_REQUEST_UNBANNED = "cve.request_unbanned"
     CVE_REQUEST_CANCELLED = "cve.request_cancelled"
     CVE_UNASSIGNED = "cve.unassigned"
     CVE_MARKED_REJECTED_AT_CVE_ORG = "cve.marked_rejected_at_cve_org"

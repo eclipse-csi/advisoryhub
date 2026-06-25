@@ -1,0 +1,18 @@
+{% load i18n %}
+<tr id="cve-banned-{{ advisory.pk }}" data-href="{% url 'advisories:detail' advisory.advisory_id %}">
+  <td><a href="{% url 'advisories:detail' advisory.advisory_id %}">{{ advisory.advisory_id }}</a></td>
+  <td>{{ advisory.project.name }}</td>
+  <td>
+    {% if advisory.cve_requests_banned %}
+      <form class="inline"
+            hx-post="{% url 'admin_console:cve_allow' advisory.advisory_id %}"
+            hx-target="#cve-banned-{{ advisory.pk }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit">{% translate "Allow CVE requests" %}</button>
+      </form>
+      {% if error %}<div class="errors">{{ error }}</div>{% endif %}
+    {% else %}
+      <span>{% translate "CVE requests re-allowed" %}</span>
+    {% endif %}
+  </td>
+</tr>

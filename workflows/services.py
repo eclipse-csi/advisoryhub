@@ -155,6 +155,31 @@ def transition_cve_request(
     return task
 
 
+@transaction.atomic
+def unban_cve_requests(advisory: Advisory, *, by) -> bool:
+    """Lift the CVE-request ban on an advisory (INV-CVE-3).
+
+    The ban is set as a side-effect of a rejected CVE request
+    (``transition_cve_request(..., ban_future_requests=True)``); this is the
+    only path that clears it. Admin-only, mirroring the gate that set it.
+    Returns ``False`` (no-op, no audit row) when the advisory was not banned.
+    """
+    if not perms.can_review(by):
+        raise PermissionDenied("Only the global admin/security group can lift a CVE-request ban.")
+    if not advisory.cve_requests_banned:
+        return False
+    advisory.cve_requests_banned = False
+    advisory.save(update_fields=["cve_requests_banned", "modified_at"])
+    record(
+        action=Action.CVE_REQUEST_UNBANNED,
+        actor=by,
+        advisory=advisory,
+        previous_value={"cve_requests_banned": True},
+        new_value={"cve_requests_banned": False},
+    )
+    return True
+
+
 _CVE_TRANSITIONS: dict[str, set[str]] = {
     CveRequestStatus.QUEUED: {
         CveRequestStatus.RESERVED,

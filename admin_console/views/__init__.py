@@ -3,6 +3,7 @@
 from .access_log import access_log
 from .audit import audit
 from .cves import (
+    cve_allow,
     cve_reject_modal,
     cve_transition,
     cves,
@@ -26,6 +27,7 @@ index = inbox
 __all__ = [
     "access_log",
     "audit",
+    "cve_allow",
     "cve_reject_modal",
     "cve_transition",
     "cves",

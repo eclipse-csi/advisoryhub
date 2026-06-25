@@ -18,6 +18,7 @@ urlpatterns = [
         views.cve_reject_modal,
         name="cve_reject_modal",
     ),
+    path("cve/allow/<str:advisory_id>/", views.cve_allow, name="cve_allow"),
     path(
         "orphans/<int:orphan_id>/mark-rejected/",
         views.orphan_mark_rejected,

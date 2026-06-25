@@ -197,6 +197,7 @@ asymmetries with the same-row entries.
 | Request withdrawal of a published advisory | ✗ | ✗ | ✓ ¹¹ | ✗ ¹¹ |
 | Approve / cancel a withdrawal request | ✗ | ✗ | ✗ / ✓ ¹¹ | ✓ |
 | Unassign a CVE | ✗ | ✗ | ✗ | ✓ |
+| Lift a CVE-request ban | — | — | — | ✓ ³ |
 | Mark an orphan CVE rejected | — | — | — | ✓ |
 | Resolve an orphan CVE reassignment task | — | — | — | ✓ |
 | Move a native triage/draft report to GHSA ¹³ | ✗ | ✗ | ✓ | ✓ |
@@ -228,7 +229,9 @@ take). Admins may dismiss even with an assigned CVE.
 `CveRequestTask`, an `assigned_cve_id`, or `cve_requests_banned=True`
 ([INV-CVE-1](./invariant.md#inv-cve-1)). Available while the lifecycle state is `draft` or
 `published`; blocked in `triage` (promote first) and `dismissed`
-(reopen first — dismissal auto-cancels open requests, §6).
+(reopen first — dismissal auto-cancels open requests, §6). The ban is set and
+**lifted only by admins** (`workflows.services.unban_cve_requests`, surfaced on
+`/admin/cves`); see [INV-CVE-3](./invariant.md#inv-cve-3).
 
 ⁴ Admins are the reviewers and cannot submit or withdraw submissions —
 this avoids self-review ([INV-REVIEW-3](./invariant.md#inv-review-3)).

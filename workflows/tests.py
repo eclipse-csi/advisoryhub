@@ -302,6 +302,42 @@ def test_reject_with_ban_sets_flag_and_audit(setup):
 
 
 @pytest.mark.django_db
+def test_unban_cve_requests_clears_flag_and_audit(setup):
+    task = wf.request_cve(setup["advisory"], by=setup["member"])
+    wf.transition_cve_request(
+        task,
+        by=setup["admin"],
+        new_status=CveRequestStatus.REJECTED,
+        notes="abuse — repeated frivolous requests",
+        ban_future_requests=True,
+    )
+    assert wf.unban_cve_requests(setup["advisory"], by=setup["admin"]) is True
+    setup["advisory"].refresh_from_db()
+    assert setup["advisory"].cve_requests_banned is False
+    assert AuditLogEntry.objects.filter(action=Action.CVE_REQUEST_UNBANNED).exists()
+    # The owner can request a CVE again once the ban is lifted.
+    second = wf.request_cve(setup["advisory"], by=setup["member"])
+    assert second.status == CveRequestStatus.QUEUED
+
+
+@pytest.mark.django_db
+def test_unban_when_not_banned_is_noop(setup):
+    assert setup["advisory"].cve_requests_banned is False
+    assert wf.unban_cve_requests(setup["advisory"], by=setup["admin"]) is False
+    assert not AuditLogEntry.objects.filter(action=Action.CVE_REQUEST_UNBANNED).exists()
+
+
+@pytest.mark.django_db
+def test_unban_requires_review_permission(setup):
+    setup["advisory"].cve_requests_banned = True
+    setup["advisory"].save(update_fields=["cve_requests_banned"])
+    with pytest.raises(PermissionDenied):
+        wf.unban_cve_requests(setup["advisory"], by=setup["member"])
+    setup["advisory"].refresh_from_db()
+    assert setup["advisory"].cve_requests_banned is True
+
+
+@pytest.mark.django_db
 def test_ban_flag_rejected_outside_rejection_transition(setup):
     task = wf.request_cve(setup["advisory"], by=setup["member"])
     with pytest.raises(ValueError):

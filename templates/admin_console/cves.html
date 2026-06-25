@@ -50,6 +50,21 @@
     </table>
   </section>
 
+  <section>
+    <h2>{% translate "CVE requests banned" %}</h2>
+    <table>
+      <caption class="visually-hidden">{% translate "Advisories with CVE requests banned" %}</caption>
+      <thead><tr><th scope="col">{% translate "Advisory" %}</th><th scope="col">{% translate "Project" %}</th><th></th></tr></thead>
+      <tbody>
+        {% for advisory in banned_advisories %}
+          {% include "admin_console/_cve_banned_row.html" with advisory=advisory %}
+        {% empty %}
+          <tr><td colspan="3">{% translate "No advisories have CVE requests banned." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
   {% if orphan_resolved %}
     <section>
       <h2>{% translate "Recently resolved orphans" %}</h2>

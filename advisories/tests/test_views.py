@@ -270,6 +270,45 @@ def test_detail_hides_other_user_email_from_non_owner(client, member_a, project_
 
 
 @pytest.mark.django_db
+def test_detail_renders_affected_events_not_question_marks(client, member_a, project_a):
+    """Regression: events are stored OSV-style ({"introduced": "1.0.0"}); the
+    detail page must render the kind and version, not the old ``?`` fallback."""
+    advisory = Advisory.objects.create(
+        project=project_a,
+        state=State.DRAFT,
+        summary="x",
+        affected=[
+            {
+                "package": {"name": "lib", "ecosystem": "npm"},
+                "ranges": [
+                    {
+                        "type": "ECOSYSTEM",
+                        "events": [{"introduced": "1.0.0"}, {"fixed": "1.2.0"}],
+                    }
+                ],
+            },
+            {"package": {"name": "other", "ecosystem": "PyPI"}, "versions": ["2.0.0"]},
+        ],
+    )
+    client.force_login(member_a)
+    body = client.get(reverse("advisories:detail", args=[advisory.advisory_id])).content.decode()
+
+    # The kind + version render (the bug rendered "?" for the kind, "" for value).
+    assert '<span class="event-kind">introduced</span>' in body
+    assert "1.0.0" in body
+    assert '<span class="event-kind">fixed</span>' in body
+    assert "1.2.0" in body
+    assert '<span class="event-kind">?</span>' not in body
+
+    # Condensed markup: range type is a small label, not a pill badge; the
+    # versions-only entry keeps its chip behind a small inline label.
+    assert '<span class="range-type">ECOSYSTEM</span>' in body
+    assert "badge range-type" not in body
+    assert '<span class="range-type">versions</span>' in body
+    assert "2.0.0" in body
+
+
+@pytest.mark.django_db
 def test_detail_records_audit_view(client, member_a, project_a):
     advisory = Advisory.objects.create(project=project_a)
     client.force_login(member_a)

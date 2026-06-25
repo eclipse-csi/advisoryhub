@@ -3027,13 +3027,13 @@ button.info:hover, .btn.info:hover {
 .adv-affected {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.5rem;
 }
 .adv-affected-card {
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.8rem 1rem;
+  padding: 0.65rem 0.85rem;
 }
 .adv-affected-card > header {
   display: flex;
@@ -3067,20 +3067,29 @@ button.info:hover, .btn.info:hover {
 .adv-affected-card ul.ranges {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0.4rem 0 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 .adv-affected-card .range-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
-.adv-affected-card .range-row .badge.range-type {
+.adv-affected-card .versions-row {
+  margin: 0.4rem 0 0;
+}
+/* The range type / "versions" prefix is low-signal next to the version
+   events, so it's a tiny muted micro-label rather than a pill badge. */
+.adv-affected-card .range-type {
+  flex: none;
   font-family: var(--font-mono);
-  color: var(--text-soft);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
 }
 .adv-affected-card .events {
   display: inline-flex;

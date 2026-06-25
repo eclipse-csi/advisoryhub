@@ -201,6 +201,24 @@ def event_kind_class(kind: Any) -> str:
     return _EVENT_CLASS.get(str(kind or "").lower(), "neutral")
 
 
+@register.filter(name="event_pairs")
+def event_pairs(events: Any) -> list[dict[str, str]]:
+    """Flatten OSV single-key event dicts into ``{"kind", "value"}`` pairs.
+
+    Events are stored in the OSV shape — one key per dict, e.g.
+    ``{"introduced": "1.0.0"}`` (see ``advisories.form_assembly``). The detail
+    template needs the kind and version split apart to render each event chip,
+    so unpack ``items()`` here, mirroring
+    ``form_assembly._affected_events_initial``. Non-dict entries are skipped.
+    """
+    out: list[dict[str, str]] = []
+    for ev in events or []:
+        if isinstance(ev, dict):
+            for kind, value in ev.items():
+                out.append({"kind": kind, "value": value})
+    return out
+
+
 # ---------------------------------------------------------------------------
 # CWE
 # ---------------------------------------------------------------------------

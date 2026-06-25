@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from advisories.form_assembly import assemble_json
+from advisories.form_assembly import assemble_json, validate_affected_rows
 from advisories.forms import (
     AdvisoryForm,
     AffectedForm,
@@ -375,6 +375,122 @@ def test_assemble_affected_purl_omitted_when_blank():
     assert out["affected"] == [
         {"package": {"name": "lib", "ecosystem": "npm"}, "versions": ["1.0.0"]}
     ]
+
+
+def _base_payload(**affected_extra: str) -> dict[str, str]:
+    """An empty bundle plus one affected row, filled in by the caller."""
+    payload = {
+        **_mgmt("aliases", 0),
+        **_mgmt("cwe_ids", 0),
+        **_mgmt("references", 0),
+        **_mgmt("severity", 0),
+        **_mgmt("credits", 0),
+        **_mgmt("affected", 1),
+        "affected-0-package_name": "lib",
+        "affected-0-package_ecosystem": "npm",
+    }
+    payload.update(affected_extra)
+    return payload
+
+
+def _build_for_validation(post: dict) -> tuple[dict, list]:
+    """Bind + validate all formsets (populating cleaned_data) without asserting,
+    so the affected-row cross-check can run as it does inside ``validate_all``."""
+    formsets = {
+        "aliases": AliasFormSet(post, prefix="aliases"),
+        "cwe_ids": CweIdFormSet(post, prefix="cwe_ids"),
+        "references": ReferenceFormSet(post, prefix="references"),
+        "severity": SeverityFormSet(post, prefix="severity"),
+        "credits": CreditFormSet(post, prefix="credits"),
+        "affected": AffectedFormSet(post, prefix="affected"),
+    }
+    for fs in formsets.values():
+        fs.is_valid()
+    event_formsets = []
+    for i in range(formsets["affected"].total_form_count()):
+        efs = EventFormSet(post, prefix=f"affected-{i}-events")
+        efs.is_valid()
+        event_formsets.append(efs)
+    return formsets, event_formsets
+
+
+def test_validate_affected_rejects_events_without_range_type():
+    # The reported bug: a package with version events but the blank "—" range
+    # type used to be silently dropped on save. It must now error instead.
+    payload = _base_payload(
+        **{"affected-0-range_type": "", "affected-0-versions": ""},
+        **_mgmt("affected-0-events", 1),
+    )
+    payload["affected-0-events-0-kind"] = "introduced"
+    payload["affected-0-events-0-value"] = "1.0.0"
+    formsets, event_formsets = _build_for_validation(payload)
+    assert validate_affected_rows(formsets, event_formsets) is False
+    assert "range_type" in formsets["affected"].forms[0].errors
+    # Demonstrate the silent loss the guard prevents: assembly drops the row.
+    assert assemble_json(formsets, event_formsets)["affected"] == []
+
+
+def test_validate_affected_rejects_range_type_without_events():
+    payload = _base_payload(
+        **{"affected-0-range_type": "ECOSYSTEM", "affected-0-versions": ""},
+        **_mgmt("affected-0-events", 0),
+    )
+    formsets, event_formsets = _build_for_validation(payload)
+    assert validate_affected_rows(formsets, event_formsets) is False
+    assert "range_type" in formsets["affected"].forms[0].errors
+
+
+def test_validate_affected_rejects_empty_declaration():
+    payload = _base_payload(
+        **{"affected-0-range_type": "", "affected-0-versions": ""},
+        **_mgmt("affected-0-events", 0),
+    )
+    formsets, event_formsets = _build_for_validation(payload)
+    assert validate_affected_rows(formsets, event_formsets) is False
+    assert "versions" in formsets["affected"].forms[0].errors
+
+
+def test_validate_affected_allows_versions_only():
+    # range_type "—" + explicit versions is a legitimate entry — keep it valid.
+    payload = _base_payload(
+        **{"affected-0-range_type": "", "affected-0-versions": "1.0.0"},
+        **_mgmt("affected-0-events", 0),
+    )
+    formsets, event_formsets = _build_for_validation(payload)
+    assert validate_affected_rows(formsets, event_formsets) is True
+    assert not formsets["affected"].forms[0].errors
+
+
+def test_validate_affected_allows_full_range():
+    payload = _base_payload(
+        **{"affected-0-range_type": "ECOSYSTEM", "affected-0-versions": ""},
+        **_mgmt("affected-0-events", 1),
+    )
+    payload["affected-0-events-0-kind"] = "introduced"
+    payload["affected-0-events-0-value"] = "1.0.0"
+    formsets, event_formsets = _build_for_validation(payload)
+    assert validate_affected_rows(formsets, event_formsets) is True
+    assert not formsets["affected"].forms[0].errors
+
+
+def test_validate_affected_ignores_empty_and_deleted_rows():
+    # An empty trailing row (no package name) and a deleted row must not trip
+    # the cross-check — only real, kept rows are scrutinised.
+    payload = {
+        **_mgmt("aliases", 0),
+        **_mgmt("cwe_ids", 0),
+        **_mgmt("references", 0),
+        **_mgmt("severity", 0),
+        **_mgmt("credits", 0),
+        **_mgmt("affected", 1, initial=1),
+        "affected-0-package_name": "",
+        "affected-0-package_ecosystem": "",
+        "affected-0-range_type": "",
+        "affected-0-versions": "",
+        **_mgmt("affected-0-events", 0),
+    }
+    formsets, event_formsets = _build_for_validation(payload)
+    assert validate_affected_rows(formsets, event_formsets) is True
 
 
 def test_assemble_versions_only_affected():

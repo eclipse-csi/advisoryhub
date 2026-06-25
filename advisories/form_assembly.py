@@ -253,15 +253,72 @@ def assemble_json(formsets: dict[str, Any], event_formsets: list) -> dict[str, l
 # ---------------------------------------------------------------------------
 
 
+def validate_affected_rows(formsets: dict[str, Any], event_formsets: list) -> bool:
+    """Reject affected rows that would assemble into nothing.
+
+    ``assemble_json`` only keeps a package once it has a typed range *with*
+    events, or explicit versions; a row that satisfies neither is silently
+    dropped (and so never reaches ``validate_affected``). That silent loss is
+    surprising — e.g. setting the range type back to the blank "—" while the
+    row still has version events would delete the whole package on save. Catch
+    those rows here and surface a targeted error next to the offending field,
+    mirroring the cross-row checks in :class:`advisories.forms.BaseEventFormSet`.
+
+    The outer affected forms and their inner event formsets are aligned by
+    index (the same pairing ``assemble_json`` relies on). Returns ``True`` when
+    every package row is well-formed.
+    """
+    ok = True
+    affected = formsets["affected"]
+    for i, outer in enumerate(affected.forms):
+        if not hasattr(outer, "cleaned_data"):
+            continue
+        cd = outer.cleaned_data
+        # Empty/deleted rows and rows still failing their own field validation
+        # are left alone — assemble_json skips them and they carry their own
+        # errors already.
+        if not cd or cd.get("DELETE") or not cd.get("package_name") or outer.errors:
+            continue
+        has_range_type = bool(cd.get("range_type"))
+        has_events = bool(_row_data(event_formsets[i])) if i < len(event_formsets) else False
+        has_versions = bool((cd.get("versions") or "").strip())
+
+        if (has_range_type and has_events) or has_versions:
+            continue  # assembles into a valid entry
+
+        ok = False
+        if has_events and not has_range_type:
+            outer.add_error(
+                "range_type",
+                "Choose a range type for these version events, or remove the events.",
+            )
+        elif has_range_type and not has_events:
+            outer.add_error(
+                "range_type",
+                "Add at least one event (e.g. 'Introduced') for this range, "
+                "or list explicit versions instead.",
+            )
+        else:
+            outer.add_error(
+                "versions",
+                "Describe the affected versions: add a range type with events, "
+                "or list explicit versions.",
+            )
+    return ok
+
+
 def validate_all(form, formsets, event_formsets) -> bool:
     """Run ``is_valid()`` on the form and every formset, returning the AND.
 
     Every call is made before the short-circuit so each form/formset
-    populates its own ``cleaned_data`` and renders its own errors.
+    populates its own ``cleaned_data`` and renders its own errors. The
+    affected-row cross-check runs last, since it reads the ``cleaned_data``
+    those ``is_valid()`` calls populate.
     """
     results = [form.is_valid()]
     results.extend(fs.is_valid() for fs in formsets.values())
     results.extend(efs.is_valid() for efs in event_formsets)
+    results.append(validate_affected_rows(formsets, event_formsets))
     return all(results)
 
 

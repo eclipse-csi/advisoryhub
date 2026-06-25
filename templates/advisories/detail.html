@@ -208,16 +208,15 @@
             {% if entry.package.purl %}<p class="purl"><code>{{ entry.package.purl }}</code></p>{% endif %}
 
             {% if entry.ranges %}
-              <div class="adv-section-label">Ranges</div>
               <ul class="ranges">
                 {% for r in entry.ranges %}
                   <li class="range-row">
-                    <span class="badge range-type">{{ r.type|default:"?" }}</span>
+                    <span class="range-type">{{ r.type }}</span>
                     <span class="events">
-                      {% for ev in r.events %}
+                      {% for ev in r.events|event_pairs %}
                         <span class="event event-{{ ev.kind|event_kind_class }}">
-                          <span class="event-kind">{{ ev.kind|default:"?" }}</span>
-                          <code class="event-value">{{ ev.value|default:"" }}</code>
+                          <span class="event-kind">{{ ev.kind }}</span>
+                          <code class="event-value">{{ ev.value }}</code>
                         </span>
                         {% if not forloop.last %}{% include "advisories/_icons.html" with icon="arrow-right" %}{% endif %}
                       {% endfor %}
@@ -228,9 +227,11 @@
             {% endif %}
 
             {% if entry.versions %}
-              <div class="adv-section-label">Versions</div>
-              <p class="chip-list">
-                {% for v in entry.versions %}<code class="chip">{{ v }}</code>{% endfor %}
+              <p class="range-row versions-row">
+                <span class="range-type">versions</span>
+                <span class="chip-list">
+                  {% for v in entry.versions %}<code class="chip">{{ v }}</code>{% endfor %}
+                </span>
               </p>
             {% endif %}
           </article>

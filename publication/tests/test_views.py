@@ -66,7 +66,10 @@ def test_publish_endpoint_creates_task_for_admin(client, setup, monkeypatch):
 
     monkeypatch.setattr(pub_tasks, "publish_files", _stub)
     client.force_login(setup["admin"])
-    response = client.post(reverse("publication:publish", args=[setup["advisory"].advisory_id]))
+    response = client.post(
+        reverse("publication:publish", args=[setup["advisory"].advisory_id]),
+        data={"confirm_advisory_id": setup["advisory"].advisory_id},
+    )
     assert response.status_code == 302
     assert PublicationTask.objects.filter(advisory=setup["advisory"]).exists()
     tags = [(m.level_tag, str(m)) for m in get_messages(response.wsgi_request)]
@@ -82,11 +85,41 @@ def test_publish_in_progress_warns(client, setup):
         advisory=setup["advisory"], version=version, status=PublicationTaskStatus.QUEUED
     )
     client.force_login(setup["admin"])
-    response = client.post(reverse("publication:publish", args=[setup["advisory"].advisory_id]))
+    response = client.post(
+        reverse("publication:publish", args=[setup["advisory"].advisory_id]),
+        data={"confirm_advisory_id": setup["advisory"].advisory_id},
+    )
     assert response.status_code == 302
     levels = [m.level_tag for m in get_messages(response.wsgi_request)]
     assert "warning" in levels
     assert "success" not in levels
+
+
+@pytest.mark.django_db
+def test_publish_rejected_when_confirmation_id_mismatches(client, setup):
+    # Authorized + fresh step-up (disabled in tests) but the pasted ID is wrong:
+    # the server-side re-check of the client confirm gate blocks it — no task,
+    # an error message. (Mirrors admin_console/test_forget.py's typo case.)
+    client.force_login(setup["admin"])
+    response = client.post(
+        reverse("publication:publish", args=[setup["advisory"].advisory_id]),
+        data={"confirm_advisory_id": "ECL-9999-9999-9999"},
+    )
+    assert response.status_code == 302
+    assert not PublicationTask.objects.filter(advisory=setup["advisory"]).exists()
+    tags = [(m.level_tag, str(m)) for m in get_messages(response.wsgi_request)]
+    assert any(level == "error" and "did not match" in msg for level, msg in tags)
+
+
+@pytest.mark.django_db
+def test_publish_rejected_when_confirmation_id_missing(client, setup):
+    # No confirmation field at all (no-JS or crafted POST) → fail closed.
+    client.force_login(setup["admin"])
+    response = client.post(reverse("publication:publish", args=[setup["advisory"].advisory_id]))
+    assert response.status_code == 302
+    assert not PublicationTask.objects.filter(advisory=setup["advisory"]).exists()
+    tags = [(m.level_tag, str(m)) for m in get_messages(response.wsgi_request)]
+    assert any(level == "error" for level, _ in tags)
 
 
 # ---- Retry endpoint ------------------------------------------------------

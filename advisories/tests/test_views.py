@@ -142,6 +142,22 @@ def test_ghsa_linked_detail_shows_publish_button_to_admin(client, admin_user, gh
 
 
 @pytest.mark.django_db
+def test_publish_dialog_gates_on_typed_advisory_id(client, admin_user, project_a):
+    """The Publish dialog carries the type-the-ID confirmation gate: the advisory
+    ID is offered as a click-to-copy chip (data-copy) and the confirm input/submit
+    are wired to it (data-confirm-token / data-confirm-submit), so a misclick can't
+    publish the wrong advisory."""
+    advisory = Advisory.objects.create(project=project_a, state=State.DRAFT, summary="x")
+    client.force_login(admin_user)
+    resp = client.get(reverse("advisories:detail", args=[advisory.advisory_id]))
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert f'data-copy="{advisory.advisory_id}"' in body
+    assert f'data-confirm-token="{advisory.advisory_id}"' in body
+    assert "data-confirm-submit" in body
+
+
+@pytest.mark.django_db
 def test_ghsa_linked_detail_hides_reassignment_button(client, member_a, ghsa_advisory):
     """The reassignment affordance is gated by ``can_request_reassignment``,
     which refuses GHSA-linked advisories (INV-GHSA-1)."""

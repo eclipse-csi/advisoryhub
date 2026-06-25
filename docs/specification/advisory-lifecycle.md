@@ -452,7 +452,7 @@ never block publishing forever ([INV-PUB-7](./invariant.md#inv-pub-7)).
 
 | From | To | Trigger | Actor | Preconditions | Audit action(s) | Side effects |
 |---|---|---|---|---|---|---|
-| — | `queued` | `publication.services.publish` | Owner (publish-eligible per §5.2); for **GHSA-linked**, admins only (break-glass — `can_publish` is false for owners, `permissions.md` §5 footnote ¹⁰) | `can_publish(by)`; lifecycle `state` ≠ `dismissed`; no other queued/running task ([INV-CONCURRENCY-1](./invariant.md#inv-concurrency-1)); GHSA-linked advisories refresh metadata from GitHub first | `PUBLICATION_EXPORT_STARTED` | New `PublicationTask` row pins the latest `AdvisoryVersion`; Celery `run_publication` enqueued via `transaction.on_commit` ([INV-PUB-5](./invariant.md#inv-pub-5)) |
+| — | `queued` | `publication.services.publish` | Owner (publish-eligible per §5.2); for **GHSA-linked**, admins only (break-glass — `can_publish` is false for owners, `permissions.md` §5 footnote ¹⁰) | `can_publish(by)`; for the interactive owner path the `publication.views.publish` view first requires the operator to re-enter the advisory's `ECL-…` ID (client-gated, server re-checked) before this is reached; lifecycle `state` ≠ `dismissed`; no other queued/running task ([INV-CONCURRENCY-1](./invariant.md#inv-concurrency-1)); GHSA-linked advisories refresh metadata from GitHub first | `PUBLICATION_EXPORT_STARTED` | New `PublicationTask` row pins the latest `AdvisoryVersion`; Celery `run_publication` enqueued via `transaction.on_commit` ([INV-PUB-5](./invariant.md#inv-pub-5)) |
 | — | `queued` | `ghsa.tasks.run_ghsa_auto_publish` → `publish(system=True)` | System (GitHub published the linked GHSA) | GHSA-linked; AdvisoryHub `state` is `draft` *or* `triage` (a GHSA published straight from triage upstream); linked GHSA `published`; `GHSA_AUTO_PUBLISH_ENABLED` ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). Skips the human `can_publish` gate but keeps the dismissed / in-flight / refresh-for-publish guards | `PUBLICATION_EXPORT_STARTED` | As the row above; enqueued by `ghsa.services.react_to_ghsa_state` after an observing sync. Best-effort: a gating refusal is logged and skipped |
 | — | `queued` | `ghsa.tasks.run_ghsa_auto_publish` → `publish(system=True)` | System (synced GHSA content changed) | GHSA-linked; AdvisoryHub `state` is `published` with `republish_required=True`; linked GHSA still `published` upstream; `GHSA_AUTO_PUBLISH_ENABLED` ([INV-GHSA-3](./invariant.md#inv-ghsa-3)). Same guard set as the row above — keyed on the GHSA still being published, so it never collides with auto-withdraw | `PUBLICATION_EXPORT_STARTED` | As the rows above; the auto-re-publish path (transition table row 8b) for upstream content edits to an already-published advisory |
 | `queued` | `running` | `publication.services.mark_running` (called from `run_publication`) | Celery worker | Task picked up | — | `attempts` incremented |
@@ -501,7 +501,7 @@ sequenceDiagram
     participant Git as Publication Git repo
 
     Owner->>View: POST /publication/:id/publish
-    View->>View: can_publish(user, advisory)<br/>+ step-up auth (§8 permissions.md)
+    View->>View: can_publish(user, advisory)<br/>+ step-up auth (§8 permissions.md)<br/>+ typed-ID confirmation
     View->>Svc: publish(advisory, by=user)
     Svc->>DB: SELECT … FOR UPDATE (advisory)
     Svc->>DB: pin latest AdvisoryVersion;<br/>create PublicationTask(status=queued)

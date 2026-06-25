@@ -12,7 +12,10 @@
  *
  * Markup contract:
  *   <button type="button" data-copy="TEXT" aria-label="Copy …">visible</button>
- * The element's text is swapped to "Copied" for REVERT_MS, then restored.
+ * The element's text is swapped to "Copied" for REVERT_MS, then restored. When
+ * the target carries icons or other markup, wrap the swappable text in a
+ * `[data-copy-label]` child — only that child's text is swapped, so the icons
+ * survive; without one, the element's own text is swapped (the plain case).
  */
 (function () {
   "use strict";
@@ -26,19 +29,23 @@
   }
 
   function flash(el) {
+    // Swap a dedicated label child when present so copy targets can carry icons
+    // (e.g. the clipboard/check affordance) without textContent replacement
+    // wiping them; otherwise swap the element's own text (the plain case).
+    var label = el.querySelector("[data-copy-label]") || el;
     if (el._copyTimer) {
       clearTimeout(el._copyTimer);
     } else {
       // First flash since the last revert — stash the real label to restore.
-      el.dataset.copyOriginal = el.textContent;
+      label.dataset.copyOriginal = label.textContent;
     }
     el.classList.add("is-copied");
-    el.textContent = "Copied";
+    label.textContent = "Copied";
     el._copyTimer = setTimeout(function () {
       el.classList.remove("is-copied");
-      if (el.dataset.copyOriginal != null) {
-        el.textContent = el.dataset.copyOriginal;
-        delete el.dataset.copyOriginal;
+      if (label.dataset.copyOriginal != null) {
+        label.textContent = label.dataset.copyOriginal;
+        delete label.dataset.copyOriginal;
       }
       el._copyTimer = null;
     }, REVERT_MS);

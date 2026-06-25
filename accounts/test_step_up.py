@@ -90,7 +90,10 @@ def test_publish_proceeds_when_step_up_fresh(client, setup, monkeypatch):
     session[STEP_UP_AGE_KEY] = time.time()
     session.save()
 
-    response = client.post(reverse("publication:publish", args=[setup["advisory"].advisory_id]))
+    response = client.post(
+        reverse("publication:publish", args=[setup["advisory"].advisory_id]),
+        data={"confirm_advisory_id": setup["advisory"].advisory_id},
+    )
     assert response.status_code == 302
     assert (
         reverse("advisories:detail", args=[setup["advisory"].advisory_id]) in response["Location"]

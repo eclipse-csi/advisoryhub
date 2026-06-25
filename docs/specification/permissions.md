@@ -429,7 +429,11 @@ are:
 
 - **Publish / retry a publication** — `publication/views.py`; the JSON
   API equivalents answer `401 step_up_required` instead of redirecting
-  (`api/views_publication.py`).
+  (`api/views_publication.py`). The interactive `publish` view additionally
+  requires the operator to re-enter the advisory's `ECL-…` ID — gated
+  client-side (`advisoryhub-forms.js`) and re-checked server-side before
+  `services.publish` — so a misclick can't publish the wrong advisory to the
+  public repo; `retry` (admin recovery on an already-confirmed task) does not.
 - **Withdraw / approve a withdrawal of a published advisory** —
   `advisories/views.py` (`advisory_withdraw`, `advisory_approve_withdrawal`).
   Withdrawal re-exports OSV/CSAF and pushes to the same public Git repo as

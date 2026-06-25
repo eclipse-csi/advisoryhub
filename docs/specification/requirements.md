@@ -954,8 +954,10 @@ gate ([INV-PERM-1](./invariant.md#inv-perm-1),
    approves. `review_status` becomes `approved`,
    `ADVISORY_REVIEW_APPROVED` is audited.
 5. The team member clicks "Publish". The publish view checks
-   `can_publish` (owner, approved review, not dismissed) and asks
-   for a step-up re-authentication if stale. A `PublicationTask` is
+   `can_publish` (owner, approved review, not dismissed), asks
+   for a step-up re-authentication if stale, and requires the operator
+   to re-enter the advisory's `ECL-…` ID (client-gated, server re-checked)
+   to confirm they're publishing the right advisory. A `PublicationTask` is
    created pinning v2 (still latest); a Celery task is enqueued via
    `transaction.on_commit`.
 6. The worker builds OSV and CSAF from v2's payload, validates each
@@ -974,9 +976,9 @@ gate ([INV-PERM-1](./invariant.md#inv-perm-1),
 
 Same as §6.2 but skipping steps 3–4: the project carries
 `is_mature_publisher=True`, so the team member publishes the draft
-directly. The "Publish" action remains gated by step-up and by
-"no publish while a review is submitted", but no admin-side approval
-is required.
+directly. The "Publish" action remains gated by step-up, by the
+typed-ID confirmation, and by "no publish while a review is submitted",
+but no admin-side approval is required.
 
 ### 6.4 Re-publish after an edit
 

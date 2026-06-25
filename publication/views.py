@@ -25,11 +25,22 @@ from .models import PublicationArtifact, PublicationTask, PublicationTaskStatus
 @html_ratelimit(rate="10/h")
 def publish(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    # Authorize before any step-up prompt so an unauthorized user never gets
+    # bounced through re-auth (mirrors the retry view); services.publish
+    # re-checks at the boundary.
+    if not perms.can_publish(request.user, advisory):
+        raise PermissionDenied("You cannot publish this advisory.")
     # Publishing pushes to a public Git repo; require a fresh OIDC
     # re-auth regardless of how long the session has been alive.
     redirect_resp = require_step_up_or_redirect(request, next_url=request.path)
     if redirect_resp is not None:
         return redirect_resp
+    # Guard against publishing the wrong advisory: the operator must paste the
+    # advisory ID. Gated client-side (advisoryhub-forms.js), re-checked here.
+    confirm = (request.POST.get("confirm_advisory_id") or "").strip().lower()
+    if confirm != advisory.advisory_id.lower():
+        messages.error(request, "The advisory ID you entered did not match. Nothing was published.")
+        return redirect("advisories:detail", advisory_id=advisory.advisory_id)
     try:
         services.publish(advisory, by=request.user)
     except services.PublicationInProgress as exc:

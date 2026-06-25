@@ -1,0 +1,49 @@
+{% comment %}
+Publish / Re-publish confirmation dialog — CSP-clean, no inline JS.
+
+Publishing pushes OSV/CSAF (and the CVE record) to the public repo, so the
+operator must confirm the *identity* of what they're publishing by entering the
+advisory's ECL-… ID before the action is allowed. To keep it from being
+cumbersome, the ID is shown as a click-to-copy chip (data-copy, handled by
+static/advisoryhub-clipboard.js) right above the field — copy, then paste.
+
+The submit button is gated client-side: it ships `disabled` and is enabled only
+once the typed/pasted value matches `data-confirm-token` (the
+`data-confirm-submit` gate in static/advisoryhub-forms.js). The value is
+re-checked server-side in publication.views.publish — the gate is convenience,
+not the security boundary. Modelled on the hand-written forget-user dialog
+(admin_console/user_detail.html) and the self-contained branch of
+_confirm_action.html (which can't carry input fields).
+
+Params:
+  dialog_id      required — unique per page; also seeds the heading id.
+  action         required — POST target (the publish URL).
+  advisory_id    required — the ECL-… ID to copy and confirm against.
+  trigger_label  required — text on the opening button.
+  confirm_label  required — text on the confirming submit button.
+  title          required — dialog heading.
+  body           required — one-line explanation of the consequence.
+  trigger_class  optional — semantic variant for the trigger button.
+  confirm_class  optional — semantic variant for the confirm button.
+{% endcomment %}
+<button type="button" class="{{ trigger_class }}" data-dialog-open="{{ dialog_id }}">{{ trigger_label }}…</button>
+<dialog id="{{ dialog_id }}" class="confirm-dialog" aria-labelledby="{{ dialog_id }}-title" aria-describedby="{{ dialog_id }}-desc">
+  <form method="post" action="{{ action }}">
+    {% csrf_token %}
+    <h3 id="{{ dialog_id }}-title">{{ title }}</h3>
+    <p id="{{ dialog_id }}-desc">{{ body }}</p>
+    <p class="publish-confirm__prompt">To confirm you're publishing the right advisory, copy its ID and paste it below.</p>
+    <button type="button" class="copy-id" data-copy="{{ advisory_id }}" aria-label="Copy advisory ID {{ advisory_id }}">
+      <span class="copy-id__text" data-copy-label>{{ advisory_id }}</span>
+      <span class="copy-id__icon copy-id__icon--copy" aria-hidden="true">{% include "advisories/_icons.html" with icon="clipboard" %}</span>
+      <span class="copy-id__icon copy-id__icon--done" aria-hidden="true">{% include "advisories/_icons.html" with icon="check" %}</span>
+    </button>
+    <label>Advisory ID
+      <input type="text" name="confirm_advisory_id" autocomplete="off" autocapitalize="none" spellcheck="false" data-confirm-token="{{ advisory_id }}">
+    </label>
+    <div class="dialog-actions">
+      <button type="button" data-dialog-close>Cancel</button>
+      <button type="submit" class="{{ confirm_class }}" data-confirm-submit disabled>{{ confirm_label }}</button>
+    </div>
+  </form>
+</dialog>

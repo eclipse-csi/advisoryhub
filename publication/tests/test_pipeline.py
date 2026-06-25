@@ -194,6 +194,7 @@ def test_publish_view_surfaces_in_flight_message(client, setup):
     client.force_login(setup["admin"])
     response = client.post(
         reverse("publication:publish", args=[setup["advisory"].advisory_id]),
+        data={"confirm_advisory_id": setup["advisory"].advisory_id},
         follow=True,
     )
     assert response.status_code == 200

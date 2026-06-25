@@ -2913,6 +2913,35 @@ button.sev-compact__score:focus-visible {
   gap: 0.6rem;
 }
 
+/* ---- publish confirmation: copy-the-ID chip ----
+   A click-to-copy chip showing the advisory's ECL-… ID above the confirm
+   field. advisoryhub-clipboard.js toggles `.is-copied` and swaps the
+   `[data-copy-label]` text on copy; the clipboard icon morphs to a check. */
+.publish-confirm__prompt { margin: 0 0 0.5rem; font-size: var(--text-sm); color: var(--text-muted); }
+.copy-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.copy-id:hover { border-color: var(--border-strong); }
+.copy-id:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.copy-id.is-copied { color: var(--ok-fg); background: var(--ok-soft); border-color: var(--ok-bd); }
+.copy-id__icon { display: inline-flex; }
+.copy-id__icon .adv-icon { width: 0.95rem; height: 0.95rem; vertical-align: 0; }
+.copy-id__icon--done { display: none; }
+.copy-id.is-copied .copy-id__icon--copy { display: none; }
+.copy-id.is-copied .copy-id__icon--done { display: inline-flex; }
+
 /* ---- button color variants (semantic intent) ----
    Tagged on <button> or .btn anchors; the brand-blue default still applies
    to anything without an explicit variant class. Hover darkening is computed

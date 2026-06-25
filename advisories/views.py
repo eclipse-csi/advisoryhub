@@ -15,7 +15,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.forms import ModelChoiceField
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -48,6 +48,7 @@ from .forms import (
 )
 from .models import Advisory, AdvisoryVersion, AdvisoryVisit, Kind, ReviewStatus, State
 from .permissions import UNSORTED_PROJECT_SLUG
+from .severity import SEVERITY_LEVEL_CHOICES, SEVERITY_RANK
 from .visit_markers import annotate_visit_markers, set_visit_markers
 
 # ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ _SORT_COLUMNS = {
     "id": {"order": "advisory_id", "default_desc": False},
     "project": {"order": "project__name", "default_desc": False},
     "state": {"order": "__state_rank__", "default_desc": False},
-    "review": {"order": "review_status", "default_desc": False},
+    "severity": {"order": "__severity__", "default_desc": True},
     "modified": {"order": "modified_at", "default_desc": True},
 }
 _DEFAULT_SORT = "-modified"  # preserves the historical order_by("-modified_at")
@@ -70,6 +71,10 @@ _DEFAULT_SORT = "-modified"  # preserves the historical order_by("-modified_at")
 # published < dismissed) so "ascending State" reads as workflow progression and
 # a future 5th state slots in automatically.
 _STATE_RANK = {value: i for i, (value, _label) in enumerate(State.choices)}
+# Accepted ?severity values (the denormalised severity_level domain, "none"
+# included as the "Unscored" filter). Mirrors how ?state is checked against
+# State.choices.
+_SEVERITY_FILTER_VALUES = {value for value, _label in SEVERITY_LEVEL_CHOICES}
 
 
 def _parse_sort(raw: str) -> tuple[str, bool]:
@@ -86,16 +91,33 @@ def _parse_sort(raw: str) -> tuple[str, bool]:
     return key, desc
 
 
-def _sort_order_by(key: str, desc: bool) -> tuple[list[str], dict]:
+def _sort_order_by(key: str, desc: bool) -> tuple[list, dict]:
     """``order_by`` terms + annotations for a validated ``(key, desc)``.
 
     Appends ``pk`` as a unique, stable final tiebreaker so the low-cardinality
-    state/review sorts paginate deterministically across LIMIT/OFFSET windows.
-    The state sort orders by a lifecycle-rank ``Case`` rather than the raw stored
-    string; that annotation is only added on the state sort.
+    state/severity sorts paginate deterministically across LIMIT/OFFSET windows.
+    The state and severity sorts order by a rank ``Case`` rather than the raw
+    stored value; those annotations are only added on their respective sorts.
     """
     field = cast(str, _SORT_COLUMNS[key]["order"])
     annotations: dict = {}
+    if field == "__severity__":
+        # Rank the five stored levels (none < low < … < critical), then break
+        # ties by the numeric base score (nulls — Ubuntu / unscored — sort last
+        # either direction), then pk. ``default`` covers any not-yet-mapped
+        # value, matching the state sort's belt-and-braces default.
+        annotations["severity_rank"] = Case(
+            *[
+                When(severity_level=value, then=Value(rank))
+                for value, rank in SEVERITY_RANK.items()
+            ],
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+        rank, score = F("severity_rank"), F("severity_score")
+        if desc:
+            return [rank.desc(), score.desc(nulls_last=True), "pk"], annotations
+        return [rank.asc(), score.asc(nulls_last=True), "pk"], annotations
     if field == "__state_rank__":
         annotations["state_rank"] = Case(
             *[When(state=value, then=Value(rank)) for value, rank in _STATE_RANK.items()],
@@ -115,6 +137,9 @@ def advisory_list(request):
     Supported query params (all optional):
       ``q``                full-text on summary/details/advisory_id/aliases
       ``project``          project UUID
+      ``severity``         single value; one of critical|high|medium|low|none.
+                           Surfaced as the severity dropdown — absent/invalid
+                           means no severity filter.
       ``state``            single value; one of triage|draft|published|dismissed.
                            Surfaced as the state tab strip — absent/invalid means
                            the "All" tab (no state filter).
@@ -213,7 +238,7 @@ def advisory_list(request):
     # back to the All tab (state) or reorder the list (sort) — those are separate
     # axes from the search/project filter the Clear link belongs to.
     clear_params = request.GET.copy()
-    for key in ("q", "project", "page"):
+    for key in ("q", "project", "severity", "page"):
         clear_params.pop(key, None)
     clear_encoded = clear_params.urlencode()
     clear_href = f"?{clear_encoded}" if clear_encoded else request.path
@@ -248,6 +273,7 @@ def advisory_list(request):
         "querystring": querystring,
         "clear_href": clear_href,
         "projects_for_filter": _projects_for_filter(user),
+        "severity_choices": SEVERITY_LEVEL_CHOICES,
         "page": page,
         "page_size": page_size,
         "num_pages": max(1, (total + page_size - 1) // page_size),
@@ -293,6 +319,14 @@ def _apply_advisory_filters(qs, request):
         if project_uuid is not None:
             applied["project"] = project
             qs = qs.filter(project_id=project_uuid)
+    # Severity matches the denormalised level exactly (one of critical/high/
+    # medium/low/none); unknown values are ignored, mirroring ?state. Applied
+    # here (alongside q/project) so the per-state tab counts and the Clear link
+    # both track the severity filter.
+    severity = (request.GET.get("severity") or "").strip()
+    if severity in _SEVERITY_FILTER_VALUES:
+        applied["severity"] = severity
+        qs = qs.filter(severity_level=severity)
     return qs, applied
 
 

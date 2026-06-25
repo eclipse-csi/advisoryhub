@@ -603,3 +603,132 @@ def test_sort_pagination_is_deterministic(client, setup, make_project):
         seen.extend(_ids_in_order(r))
     assert len(seen) == len(set(seen)) == 5  # no row duplicated or skipped
     assert set(seen) == expected
+
+
+# --------------------------------------------------------------------------- #
+# Severity filter + sort
+# --------------------------------------------------------------------------- #
+
+# Scores pinned by advisories/tests/test_cvss_display.py.
+_CVSS_CRIT = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"  # 9.8 critical
+_CVSS_HIGH = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"  # 7.5 high
+
+
+@pytest.fixture
+def sev(setup):
+    """One advisory per stored severity level, all in project_a (drafts).
+
+    CVSS vectors cover the scored levels; Ubuntu words give unambiguous
+    medium/low without hand-computing CVSS. The five fixture rows from ``setup``
+    all have empty severity (level ``none``), so a ``?severity=<level>`` query
+    that isn't ``none`` returns only the matching row here.
+    """
+    p = setup["project_a"]
+    mk = lambda summary, severity=None: Advisory.objects.create(  # noqa: E731
+        project=p, summary=summary, severity=severity or []
+    )
+    return {
+        "crit": mk("sev-crit", [{"type": "CVSS_V3", "score": _CVSS_CRIT}]),
+        "high": mk("sev-high", [{"type": "CVSS_V3", "score": _CVSS_HIGH}]),
+        "med": mk("sev-med", [{"type": "Ubuntu", "score": "medium"}]),
+        "low": mk("sev-low", [{"type": "Ubuntu", "score": "low"}]),
+        "unscored": mk("sev-unscored"),
+    }
+
+
+@pytest.mark.django_db
+def test_list_renders_severity_column_and_dropdown(client, setup, sev):
+    """The list shows a sortable Severity column (replacing Review) and a
+    severity filter dropdown; a scored row badges its numeric base score."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    assert re.search(r"<a [^>]*>\s*Severity\s*</a>", body)  # sortable header
+    assert ">Review<" not in body  # the old column is gone
+    assert '<select name="severity"' in body
+    assert ">All severities<" in body
+    assert 'class="badge sev-level-critical"' in body  # the crit row's badge
+    assert ">9.8<" in body  # its numeric base score
+
+
+@pytest.mark.django_db
+def test_filter_by_severity_exact_level(client, setup, sev):
+    client.force_login(setup["admin"])
+    ids = _ids_in_response(client.get(reverse("advisories:list"), {"severity": "critical"}))
+    assert sev["crit"].advisory_id in ids
+    assert sev["high"].advisory_id not in ids
+    assert sev["unscored"].advisory_id not in ids
+
+
+@pytest.mark.django_db
+def test_filter_by_severity_unscored(client, setup, sev):
+    client.force_login(setup["admin"])
+    ids = _ids_in_response(client.get(reverse("advisories:list"), {"severity": "none"}))
+    assert sev["unscored"].advisory_id in ids
+    assert sev["crit"].advisory_id not in ids
+    assert sev["med"].advisory_id not in ids
+
+
+@pytest.mark.django_db
+def test_invalid_severity_silently_ignored(client, setup, sev):
+    """An unknown severity value isn't applied — every row stays visible."""
+    client.force_login(setup["admin"])
+    r = client.get(reverse("advisories:list"), {"severity": "spicy"})
+    assert r.status_code == 200
+    ids = _ids_in_response(r)
+    assert sev["crit"].advisory_id in ids
+    assert sev["unscored"].advisory_id in ids
+
+
+@pytest.mark.django_db
+def test_severity_filter_narrows_state_tab_counts(client, setup, sev):
+    """The severity filter is applied before the per-tab counts, so the tabs
+    track it (only the one critical draft matches)."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list"), {"severity": "critical"}).content.decode()
+    assert 'All<span class="state-tabs__count">1</span>' in body
+    assert 'Draft<span class="state-tabs__count">1</span>' in body
+    assert 'Published<span class="state-tabs__count">0</span>' in body
+
+
+@pytest.mark.django_db
+def test_severity_filter_clear_drops_it_keeps_state(client, setup, sev):
+    """Severity is a search/project-class filter: it surfaces Clear, and Clear
+    drops it while keeping the active state tab."""
+    client.force_login(setup["admin"])
+    body = client.get(
+        reverse("advisories:list"), {"state": "draft", "severity": "critical"}
+    ).content.decode()
+    href = _clear_href(body)
+    assert href and "state=draft" in href
+    assert "severity=" not in href
+
+
+@pytest.mark.django_db
+def test_severity_header_natural_default_is_desc(client, setup):
+    """The Severity column sorts worst-first on first click (default_desc)."""
+    client.force_login(setup["admin"])
+    body = client.get(reverse("advisories:list")).content.decode()
+    m = re.search(r'<a href="([^"]*)" class="sort[^"]*">\s*Severity', body)
+    assert m and "sort=-severity" in m.group(1)
+    assert "sort=severity&" not in m.group(1) and not m.group(1).endswith("sort=severity")
+
+
+@pytest.mark.django_db
+def test_sort_by_severity_worst_first(client, setup, sev):
+    """?sort=-severity ranks critical > high > medium > low > unscored."""
+    client.force_login(setup["admin"])
+    order = _ids_in_order(client.get(reverse("advisories:list"), {"sort": "-severity"}))
+    ranked = [sev[k].advisory_id for k in ("crit", "high", "med", "low")]
+    positions = [order.index(i) for i in ranked]
+    assert positions == sorted(positions)
+    # The unscored row trails all scored ones.
+    assert order.index(sev["unscored"].advisory_id) > positions[-1]
+
+
+@pytest.mark.django_db
+def test_sort_by_severity_ascending_reverses(client, setup, sev):
+    """?sort=severity (ascending) puts the least-severe scored row ahead of the
+    most-severe one."""
+    client.force_login(setup["admin"])
+    order = _ids_in_order(client.get(reverse("advisories:list"), {"sort": "severity"}))
+    assert order.index(sev["low"].advisory_id) < order.index(sev["crit"].advisory_id)

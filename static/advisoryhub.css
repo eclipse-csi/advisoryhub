@@ -1476,6 +1476,13 @@ dd { margin: 0; color: var(--text); }
 .badge.republish                 { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-border); }
 .badge.needs-republish::after    { content: "⟳"; margin-inline-start: 0.2rem; font-weight: 700; }
 
+/* Severity badges on the advisory list (level palette mirrors the shared
+   .sev-level-* classes used by the detail page's compact severity chip). */
+.badge.sev-level-critical { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-bd); }
+.badge.sev-level-high     { color: var(--warn-fg);   background: var(--warn-soft);   border-color: var(--warn-bd); }
+.badge.sev-level-medium   { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
+.badge.sev-level-low      { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }
+
 .badge.status-queued    { color: var(--info-fg);   background: var(--info-soft);   border-color: var(--info-bd); }
 .badge.status-running    { color: var(--brand-fg);  background: var(--brand-soft);  border-color: var(--brand-bd); }
 .badge.status-succeeded  { color: var(--ok-fg);     background: var(--ok-soft);     border-color: var(--ok-bd); }

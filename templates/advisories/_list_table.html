@@ -11,8 +11,8 @@
     <th scope="col" aria-sort="{{ sort_state.state.aria }}">
       <a href="{{ sort_hrefs.state }}" class="sort{% if sort_state.state.active %} is-active{% endif %}{% if sort_state.state.desc %} sort--desc{% endif %}">{% translate "State" %}</a>
     </th>
-    <th scope="col" aria-sort="{{ sort_state.review.aria }}">
-      <a href="{{ sort_hrefs.review }}" class="sort{% if sort_state.review.active %} is-active{% endif %}{% if sort_state.review.desc %} sort--desc{% endif %}">{% translate "Review" %}</a>
+    <th scope="col" aria-sort="{{ sort_state.severity.aria }}">
+      <a href="{{ sort_hrefs.severity }}" class="sort{% if sort_state.severity.active %} is-active{% endif %}{% if sort_state.severity.desc %} sort--desc{% endif %}">{% translate "Severity" %}</a>
     </th>
     <th scope="col">{% translate "Summary" %}</th>
     <th scope="col" class="advisories__age" aria-sort="{{ sort_state.modified.aria }}">
@@ -31,8 +31,8 @@
       <td data-label="{% translate 'State' %}">
         <span class="badge state-{{ a.state }}{% if a.republish_required %} needs-republish{% endif %}"{% if a.republish_required %} title="{% translate 'Edited since publication — re-publish required' %}"{% endif %}>{{ a.get_state_display }}</span>
       </td>
-      <td data-label="{% translate 'Review' %}">
-        {% if a.review_status != 'none' %}<span class="badge review-{{ a.review_status }}">{{ a.get_review_status_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
+      <td data-label="{% translate 'Severity' %}">
+        {% if a.severity_score is not None %}<span class="badge sev-level-{{ a.severity_level }}" title="{{ a.get_severity_level_display }}">{{ a.severity_score|floatformat:1 }}</span>{% elif a.severity_level != 'none' %}<span class="badge sev-level-{{ a.severity_level }}">{{ a.get_severity_level_display }}</span>{% else %}<span class="muted">—</span>{% endif %}
       </td>
       <td data-label="{% translate 'Summary' %}">{{ a.summary|default:"—" }}</td>
       <td data-label="{% translate 'Modified' %}" class="advisories__age">{% timestamp a.modified_at relative=True %}</td>

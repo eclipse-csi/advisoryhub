@@ -115,6 +115,8 @@ def submit_triage_report(
         advisory.full_clean(
             exclude={
                 "advisory_id",  # generated in save()
+                "severity_level",  # derived from severity in save()
+                "severity_score",  # derived from severity in save()
                 "created_by",  # nullable for anonymous submissions
                 "submitted_for_review_by",
                 "submitted_for_review_at",

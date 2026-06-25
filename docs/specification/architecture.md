@@ -62,7 +62,7 @@ responsibility in spec terms.
 | `accounts` | Custom `User` (email-as-username), the OIDC backend, group sync, step-up authentication, the global `NotificationPreference` model. |
 | `projects` | `Project`, `ProjectGitHubRepository`, the unsorted sentinel migration, and the PMI id validator. |
 | `audit` | Append-only `AuditLogEntry`, the Postgres trigger migration, `redact_secrets`, the retention commands. |
-| `advisories` | `Advisory`, `AdvisoryVersion`, `AdvisoryIntakeMetadata`, validators, identifiers, permissions, services (triage flow + the version-append helper), edit views, triage views. |
+| `advisories` | `Advisory`, `AdvisoryVersion`, `AdvisoryIntakeMetadata`, validators, identifiers, permissions, services (triage flow + the version-append helper), edit views, triage views, the state-/severity-faceted HTMX list view, and the shared `severity` parsing helper (denormalised level/score). |
 | `access` | `AdvisoryAccessGrant`, `PendingInvitation`, grant / revoke / invite / redeem services, HTMX views. |
 | `comments` | `AdvisoryComment`, `CommentVersion`, markdown rendering + sanitisation, mention extraction, list view. |
 | `notifications` | Global preference + per-advisory override models, recipient resolver (`filter_for_event`), Celery email tasks (advisory events, triage events, comments, invitations). |

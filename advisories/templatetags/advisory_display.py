@@ -11,11 +11,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from cvss import CVSS2, CVSS3, CVSS4
 from django import template
 from django.utils.timesince import timesince as django_timesince
 
 from advisories.cwes import name_for as cwe_name_for
+from advisories.severity import UBUNTU_LEVELS, analyze_entry
 
 register = template.Library()
 
@@ -23,8 +23,6 @@ register = template.Library()
 # ---------------------------------------------------------------------------
 # Severity
 # ---------------------------------------------------------------------------
-
-_UBUNTU_LEVELS = {"critical", "high", "medium", "low", "negligible"}
 
 # CVSS scores may arrive as a plain numeric ("9.8"), a bare vector
 # ("CVSS:3.1/AV:N/..."), or a vector with the numeric score appended.
@@ -65,79 +63,31 @@ def severity_level(entry: Any) -> str:
     stype = entry.get("type") or ""
     score = entry.get("score") or ""
     if stype == "Ubuntu":
-        return score if score in _UBUNTU_LEVELS else "none"
+        return score if score in UBUNTU_LEVELS else "none"
     return _cvss_level(score)
-
-
-def _level_from_score(value: float) -> str:
-    """Bucket a numeric CVSS base score into the qualitative level (matches the
-    ``sev-level-*`` colour classes)."""
-    if value >= 9.0:
-        return "critical"
-    if value >= 7.0:
-        return "high"
-    if value >= 4.0:
-        return "medium"
-    if value > 0.0:
-        return "low"
-    return "none"
-
-
-_CVSS_VERSION_LABEL = {"CVSS_V2": "CVSS 2.0", "CVSS_V3": "CVSS 3.1", "CVSS_V4": "CVSS 4.0"}
 
 
 @register.filter(name="cvss_display")
 def cvss_display(entry: Any) -> dict[str, str] | None:
     """Compact one-line CVSS view: ``{version, score, level, vector}`` (or None).
 
-    Derives the numeric base score and qualitative level from the stored vector
-    via the ``cvss`` library — the same engine the publication CVE builder uses
-    (``publication.cve``) — so the detail page needs no client-side CVSS maths.
-    Returns ``None`` for a non-dict / empty entry. An unparseable vector (or an
-    ``Ubuntu`` entry, which carries a level word rather than a vector) still
-    surfaces with an empty ``score`` so the severity is never silently dropped.
+    Thin presentation wrapper over :func:`advisories.severity.analyze_entry`,
+    which derives the numeric base score and qualitative level from the stored
+    vector via the ``cvss`` library — the same engine the publication CVE builder
+    uses (``publication.cve``) — so the detail page needs no client-side CVSS
+    maths. Returns ``None`` for a non-dict / empty entry. An unparseable vector
+    (or an ``Ubuntu`` entry, which carries a level word rather than a vector)
+    still surfaces with an empty ``score`` so the severity is never silently
+    dropped.
     """
-    if not isinstance(entry, dict):
+    info = analyze_entry(entry)
+    if info is None:
         return None
-    stype = entry.get("type") or ""
-    vector = (entry.get("score") or "").strip()
-    if not vector:
-        return None
-    if stype == "Ubuntu":
-        # Ubuntu carries a bare severity word ("high", …), not a CVSS vector —
-        # show it verbatim with no version descriptor.
-        word = vector.lower()
-        return {
-            "version": "",
-            "score": vector,
-            "level": word if word in _UBUNTU_LEVELS else "none",
-            "vector": vector,
-        }
-    try:
-        if stype == "CVSS_V2":
-            value = float(CVSS2(vector).base_score)
-            version = "CVSS 2.0"
-        elif stype == "CVSS_V3":
-            c3 = CVSS3(vector)
-            value = float(c3.base_score)
-            version = "CVSS 3.0" if c3.as_json().get("version") == "3.0" else "CVSS 3.1"
-        elif stype == "CVSS_V4":
-            value = float(CVSS4(vector).base_score)
-            version = "CVSS 4.0"
-        else:
-            return {"version": stype, "score": "", "level": "none", "vector": vector}
-    except Exception:
-        return {
-            "version": _CVSS_VERSION_LABEL.get(stype, stype or "?"),
-            "score": "",
-            "level": "none",
-            "vector": vector,
-        }
     return {
-        "version": version,
-        "score": f"{value:.1f}",
-        "level": _level_from_score(value),
-        "vector": vector,
+        "version": info["version"],
+        "score": info["score"],
+        "level": info["level"],
+        "vector": info["vector"],
     }
 
 

@@ -21,6 +21,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection, models
 
 from .identifiers import generate_advisory_id, is_valid_advisory_id
+from .severity import SEVERITY_LEVEL_CHOICES, effective_severity
 from .validators import (
     validate_advisory_id,
     validate_affected,
@@ -179,6 +180,18 @@ class Advisory(models.Model):
     severity = models.JSONField(default=list, blank=True, validators=[validate_severity])
     cwe_ids = models.JSONField(default=list, blank=True, validators=[validate_cwe_ids])
     credits = models.JSONField(default=list, blank=True, validators=[validate_credits])
+
+    # Denormalised severity, derived from ``severity`` at save time via
+    # ``advisories.severity.effective_severity`` — the worst entry's qualitative
+    # level and numeric base score. Kept as queryable columns so the advisory
+    # list can filter, sort, and badge by severity without parsing every row's
+    # CVSS vector (SQL can't). Derived signal, *not* content — deliberately
+    # absent from ``to_payload`` so they are never versioned (INV-VERSION-1/-2);
+    # recomputed in ``save`` on every write that touches ``severity``.
+    severity_level = models.CharField(
+        max_length=12, choices=SEVERITY_LEVEL_CHOICES, default="none", db_index=True
+    )
+    severity_score = models.FloatField(null=True, blank=True)
 
     # Lifecycle timestamps and reasons
     published_at = models.DateTimeField(null=True, blank=True)
@@ -394,6 +407,19 @@ class Advisory(models.Model):
     def save(self, *args, **kwargs):
         if not self.advisory_id:
             self.advisory_id = self._generate_unique_id()
+        # Keep the denormalised severity columns in step with ``severity``.
+        # Recompute on every full save (create/edit/GHSA sync all save the whole
+        # row) and on any partial save that names ``severity`` in update_fields;
+        # skip targeted partial saves (state flips, ghsa_* updates) so we neither
+        # do needless work nor force-load a deferred ``severity`` field.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "severity" in update_fields:
+            self.severity_level, self.severity_score = effective_severity(self.severity)
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {
+                    "severity_level",
+                    "severity_score",
+                }
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

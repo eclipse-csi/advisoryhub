@@ -13,7 +13,7 @@
   {# a normal full-page GET (method/action below), so this is pure enhancement. #}
   <form method="get" action="{% url 'advisories:list' %}" class="advisory-filters" role="search"
         hx-get="{% url 'advisories:list' %}"
-        hx-trigger="submit, input changed delay:300ms from:input[name='q'], search from:input[name='q'], change from:select[name='project']"
+        hx-trigger="submit, input changed delay:300ms from:input[name='q'], search from:input[name='q'], change from:select[name='project'], change from:select[name='severity']"
         hx-target="#advisory-results"
         hx-swap="innerHTML"
         hx-push-url="true"
@@ -26,6 +26,12 @@
       <option value="">{% translate "All projects" %}</option>
       {% for p in projects_for_filter %}
         <option value="{{ p.id }}" data-combobox-detail="{{ p.slug }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="severity" aria-label="{% translate 'Severity' %}">
+      <option value="">{% translate "All severities" %}</option>
+      {% for value, label in severity_choices %}
+        <option value="{{ value }}" {% if filters.severity == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
     <button type="submit">{% translate "Filter" %}</button>

@@ -311,6 +311,7 @@ Advisory content fields are modeled after the OSV schema:
 | `assigned_cve_id` | string | EF-assigned CVE id (write-once via the CVE workflow). Validated as `CVE-YYYY-NNNN…`. Effectively immutable after first assignment ([INV-CVE-2](./invariant.md#inv-cve-2)). |
 | `republish_required` | bool | Set when a published advisory is edited; cleared on next successful publish. |
 | `access_review_required_at` | datetime | Set when the project is reassigned; surfaces an access-review banner until dismissed. |
+| `severity_level` / `severity_score` | derived | Denormalised from `severity` at save time — the worst entry's qualitative level (`critical/high/medium/low/none`; Ubuntu `negligible` folds into `low`) and its numeric CVSS base score (`null` for Ubuntu/unscored). Indexed so the advisory list can filter, sort, and badge by severity without parsing CVSS vectors per row. Recomputed whenever `severity` is written; **excluded from the version payload**, so they are never versioned ([INV-VERSION-1](./invariant.md#inv-version-1)). |
 
 GHSA-linked advisories additionally carry `ghsa_id` (unique-when-set
 [INV-ID-2](./invariant.md#inv-id-2)), `ghsa_owner`, `ghsa_repo`,

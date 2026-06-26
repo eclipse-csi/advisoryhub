@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "description": "Scoped to the hand-vendored asset .VERSION files ONLY (custom.regex); Dependabot still owns Python/uv, GitHub Actions and Docker (.github/dependabot.yml), so the two never touch the same files. Each .VERSION carries a `# renovate:` annotation; on a bump the postUpgradeTask re-downloads + rehashes (and re-applies the OSV ECL- patch) via the allow-listed dev/update_vendored_assets.py.",
+  "enabledManagers": ["custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)[^/]*\\.VERSION$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*?v?(?<currentValue>\\d+(?:\\.\\d+)+)"
+      ]
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": ["python3 dev/update_vendored_assets.py"],
+    "fileFilters": ["static/**", "publication/schemas/**", "docs/assets/css/**", "**/*.VERSION"],
+    "executionMode": "branch"
+  },
+  "packageRules": [
+    {
+      "description": "Vendored JSON schemas are payload-validated by the publication test suite + the OSV ecosystem drift guard, so a breaking change fails CI — safe to auto-merge on green.",
+      "matchDepNames": ["ossf/osv-schema", "CVEProject/cve-schema"],
+      "groupName": "vendored JSON schemas",
+      "automerge": true
+    },
+    {
+      "description": "Frontend assets (htmx, ALTCHA widget, Inter, neoteroi CSS) have no behavioral tests — PR for manual smoke, never auto-merge.",
+      "matchDepNames": ["htmx.org", "altcha", "rsms/inter", "Neoteroi/mkdocs-plugins"],
+      "automerge": false
+    }
+  ]
+}

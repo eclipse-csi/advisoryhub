@@ -1,0 +1,70 @@
+name: Renovate (vendored assets)
+
+# Self-hosted Renovate — a scheduled GitHub Actions cron (no standalone server),
+# scoped via .github/renovate.json to the hand-vendored asset .VERSION files ONLY
+# (Dependabot still owns Python/uv, Actions and Docker). Renovate bumps the pinned
+# version, then runs dev/update_vendored_assets.py as a tightly allow-listed
+# postUpgradeTask to re-download + rehash (and re-apply the OSV ECL- patch). The
+# `.VERSION` discovery + re-vendor needs postUpgradeTasks, which the hosted Mend app
+# forbids — hence self-hosted here.
+#
+# Auth is a dedicated GitHub App token (NOT the default GITHUB_TOKEN) so the PRs it
+# opens TRIGGER CI (GITHUB_TOKEN-authored PRs don't). Set repo variable
+# RENOVATE_APP_ID + secret RENOVATE_APP_PRIVATE_KEY for an installed App with
+# contents:write + pull-requests:write. GITHUB_TOKEN itself stays read-only.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "Dry run: detect updates + run postUpgradeTasks but open no PRs"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    name: Renovate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ vars.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+          # Scope the minted token to exactly what Renovate needs (not the App's
+          # blanket installation perms): push branches, open PRs, maintain the
+          # dependency-dashboard issue.
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: renovatebot/github-action@6d859fc95779be83a0335ca704879b47e5d79641 # v46.1.16
+        env:
+          # Renovate authenticates with the App token (not GITHUB_TOKEN) so its PRs
+          # trigger CI. Scope the run to this repo; config lives in .github/renovate.json.
+          RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: "false"
+          # Allow ONLY the re-vendor script as a postUpgradeTask (tight regex allowlist).
+          RENOVATE_ALLOWED_COMMANDS: '["^python3 dev/update_vendored_assets\\.py$"]'
+          # workflow_dispatch with dryRun=true → "full" (detect + run tasks, no PRs);
+          # empty otherwise (a normal run).
+          RENOVATE_DRY_RUN: ${{ inputs.dryRun && 'full' || '' }}
+          LOG_LEVEL: debug

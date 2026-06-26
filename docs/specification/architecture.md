@@ -306,7 +306,12 @@ either succeeds or marks the task `failed` and returns):
    repo mirrors the cve.org rejection rather than re-asserting `PUBLISHED`
    ([INV-WITHDRAW](./invariant.md#inv-withdraw)).
    Validation is schema-based against the JSON Schemas vendored in
-   `publication/schemas/` ([INV-PUB-6](./invariant.md#inv-pub-6)).
+   `publication/schemas/` ([INV-PUB-6](./invariant.md#inv-pub-6)). Those schemas are
+   pinned to upstream tags in `publication/schemas/SCHEMAS.VERSION` (OSV carries a
+   local `ECL-` prefix patch), checksum-verified by `dev/check_vendored_assets.sh`,
+   and version-tracked by the scoped self-hosted Renovate workflow (re-vendored by
+   `dev/update_vendored_assets.py`; a schema bump auto-merges on green CI because
+   `publication/tests` + the OSV ecosystem drift guard would catch a breaking change).
 5. Persist `PublicationArtifact` rows for each kind (`osv`, `csaf`,
    and `cve` when present) via `update_or_create` keyed on
    `(task, kind)`, carrying the serialised path and the validated

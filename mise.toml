@@ -83,8 +83,13 @@ description = "pip-audit on installed deps (mirrors CI security job)"
 run = "uv run --with pip-audit pip-audit"
 
 [tasks.verify-vendor]
-description = "Verify vendored assets (htmx) match their pinned hashes"
+description = "Verify vendored assets (htmx, fonts, altcha, JSON schemas) match their pinned hashes"
 run = "bash dev/check_vendored_assets.sh"
+
+[tasks.update-vendor]
+description = "Re-vendor upstream assets to the version pinned in their .VERSION (Renovate postUpgradeTask)"
+# Pure-stdlib script (urllib+hashlib) — system python3 so it never re-syncs the uv env.
+run = "python3 dev/update_vendored_assets.py"
 
 [tasks.check-templates]
 description = "Fail on multi-line {# #} Django comments (they render as literal text)"

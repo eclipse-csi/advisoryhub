@@ -23,16 +23,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Verbatim upstream identifiers (OSV copies them straight through). The 48 base
-# ecosystems from the schema's ``ecosystemName`` enum, plus ``GIT`` which the
-# ``ecosystemWithSuffix`` pattern additionally allows. Order matches the schema
-# so the drift-guard test is a trivial ordered equality.
+# Verbatim upstream identifiers (OSV copies them straight through). The 46 base
+# ecosystems from the (tag-pinned) schema's ``ecosystemName`` enum, plus ``GIT``
+# which the ``ecosystemWithSuffix`` pattern additionally allows. Order matches the
+# schema so the drift-guard test is a trivial ordered equality — keep this list in
+# lock-step with publication/schemas/osv.upstream.json (pinned in SCHEMAS.VERSION).
 OSV_ECOSYSTEMS: tuple[str, ...] = (
     "AlmaLinux",
     "Alpaquita",
     "Alpine",
     "Android",
-    "Azure Linux",
     "BellSoft Hardened Containers",
     "Bioconductor",
     "Bitnami",
@@ -72,7 +72,6 @@ OSV_ECOSYSTEMS: tuple[str, ...] = (
     "RubyGems",
     "SUSE",
     "SwiftURL",
-    "TuxCare",
     "Ubuntu",
     "VSCode",
     "Wolfi",
@@ -81,7 +80,7 @@ OSV_ECOSYSTEMS: tuple[str, ...] = (
 
 # Mirror the schema's ``ecosystemWithSuffix``: a base name, optionally followed
 # by ``:<suffix>`` (e.g. ``Debian:11``). Built from OSV_ECOSYSTEMS via re.escape
-# so names with regex metacharacters ("crates.io") and spaces ("Azure Linux")
+# so names with regex metacharacters ("crates.io") and spaces ("Red Hat")
 # match literally and the tuple above stays the single source of truth.
 _ECOSYSTEM_RE = re.compile(
     r"(?:" + "|".join(re.escape(name) for name in OSV_ECOSYSTEMS) + r")(?::.+)?"

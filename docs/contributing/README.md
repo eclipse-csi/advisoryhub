@@ -142,6 +142,29 @@ prek run --all-files --hook-stage pre-push    #   + type, Django & dependency-au
 prek run --all-files --hook-stage manual      # advisory `ty` type-check
 ```
 
+### Vendored assets & their updates
+
+Upstream-verbatim files committed into the repo — htmx (`static/htmx.min.js`), the
+Inter fonts, the ALTCHA widget (`static/altcha/`), the neoteroi docs CSS, and the
+OSV/CSAF/CVE/CVSS JSON schemas (`publication/schemas/`) — are each pinned in a
+`*.VERSION` (or `SCHEMAS.VERSION`) file recording the upstream version + SHA-256.
+`mise run verify-vendor` (a commit-stage hook + CI) fails if a committed file drifts
+from its pinned hash.
+
+Updates are automated by a **scoped, self-hosted Renovate** workflow
+(`.github/workflows/renovate.yml`) that tracks only those `.VERSION` files —
+Dependabot still owns Python/Actions/Docker, so the two never collide. On a new
+upstream release Renovate bumps the version and runs `dev/update_vendored_assets.py`
+(`mise run update-vendor`) to re-download, rehash, and re-apply the OSV `ECL-` patch,
+then opens a PR.
+
+**Auto-merge policy:** the JSON schemas are payload-validated by the publication test
+suite (plus the OSV ecosystem drift guard), so a breaking change fails CI — their PRs
+**auto-merge on green**. The frontend assets (htmx / ALTCHA / Inter / neoteroi) have
+no behavioral tests, so their PRs are **review-only — do a quick manual smoke** (the
+ALTCHA widget on `/report/`, an HTMX action, the OAD-rendered API docs page) before
+merging. Re-vendor by hand any time with `mise run update-vendor`.
+
 ## 7. Commits & pull requests
 
 - Every commit message follows the

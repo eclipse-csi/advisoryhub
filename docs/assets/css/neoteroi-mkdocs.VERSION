@@ -1,9 +1,8 @@
+# renovate: datasource=github-tags depName=Neoteroi/mkdocs-plugins extractVersion=^v(?<version>.+)$
 neoteroi-mkdocs v1.2.0 (css release asset, styles the OAD-rendered API page)
 sha256:f243781dc4c7910ba23e61def0a1b32cbabe59cefb8f4f727789b1066849949c
 upstream: https://github.com/Neoteroi/mkdocs-plugins/releases/download/v1.2.0/css-v1.2.0.css
 
-Keep in lockstep with the neoteroi-mkdocs version pinned in pyproject.toml's
-docs extra. To upgrade:
-  curl -sSf -L https://github.com/Neoteroi/mkdocs-plugins/releases/download/v<NEW_VERSION>/css-v<NEW_VERSION>.css \
-    -o docs/assets/css/neoteroi-mkdocs.css
-  shasum -a 256 docs/assets/css/neoteroi-mkdocs.css  # update this file
+Standalone vendored CSS (not a Python dependency). Updated by
+`mise run update-vendor` (Renovate automates discovery). Manual fallback: curl the
+release asset above and re-run shasum.

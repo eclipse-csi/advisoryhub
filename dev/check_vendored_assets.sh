@@ -61,6 +61,15 @@ check static/altcha/altcha.css \
 check static/altcha/sha.worker.js \
   "$(hash_for static/altcha/altcha.VERSION sha.worker.js)"
 
+# Vendored OSV/CSAF/CVE/CVSS JSON schemas — tag-pinned (OSV carries the local
+# ECL- prefix patch). SCHEMAS.VERSION lists `<hash>  <relpath>` lines like
+# Inter.VERSION; materialized/re-applied by dev/update_vendored_assets.py.
+for _schema in osv.upstream.json csaf.upstream.json cve.upstream.json \
+               cvss/cvss-v2.0.json cvss/cvss-v3.0.json cvss/cvss-v3.1.json cvss/cvss-v4.0.json; do
+  check "publication/schemas/$_schema" \
+    "$(hash_for publication/schemas/SCHEMAS.VERSION "$_schema")"
+done
+
 # Docs-site CSS for the OAD-rendered API reference; same `sha256:<hash>` line
 # format as htmx.VERSION. Styles essentials-openapi's HTML output (rendered by
 # dev/mkdocs_oad_hook.py); re-vendor from upstream if that engine is bumped.

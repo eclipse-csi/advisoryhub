@@ -165,7 +165,7 @@ def test_validate_affected_rejects_missing_ecosystem():
 def test_is_valid_ecosystem_edge_cases():
     assert is_valid_ecosystem("crates.io")  # the dot is literal, not "any char"
     assert not is_valid_ecosystem("cratesXio")
-    assert is_valid_ecosystem("Azure Linux")  # space in the name
+    assert is_valid_ecosystem("Red Hat")  # space in the name
     assert is_valid_ecosystem("GIT")  # accepted alongside the enum names
     assert is_valid_ecosystem("Debian:11")  # base:suffix
     assert not is_valid_ecosystem(":11")  # suffix-only is rejected

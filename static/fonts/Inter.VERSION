@@ -1,4 +1,5 @@
-Inter 4.1 — variable font (weight axis 100–900), self-hosted.
+# renovate: datasource=github-tags depName=rsms/inter extractVersion=^v(?<version>.+)$
+Inter 4.1 — variable font (weight axis 100-900), self-hosted.
 License: SIL Open Font License 1.1 — https://github.com/rsms/inter/blob/master/LICENSE.txt
 
 upstream: https://rsms.me/inter/font-files/InterVariable.woff2?v=4.1
@@ -7,9 +8,4 @@ upstream: https://rsms.me/inter/font-files/InterVariable-Italic.woff2?v=4.1
 693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3  InterVariable.woff2
 e564f652916db6c139570fefb9524a77c4d48f30c92928de9db19b6b5c7a262a  InterVariable-Italic.woff2
 
-To upgrade:
-  curl -sSf -L "https://rsms.me/inter/font-files/InterVariable.woff2?v=<VER>" \
-    -o static/fonts/InterVariable.woff2
-  curl -sSf -L "https://rsms.me/inter/font-files/InterVariable-Italic.woff2?v=<VER>" \
-    -o static/fonts/InterVariable-Italic.woff2
-  sha256sum static/fonts/*.woff2   # update the hashes above
+Updated by `mise run update-vendor` (Renovate automates discovery).

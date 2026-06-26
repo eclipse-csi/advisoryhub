@@ -1,0 +1,18 @@
+# Vendored JSON schemas, pinned to upstream tags. Verified by dev/check_vendored_assets.sh
+# and materialized by dev/update_vendored_assets.py (which re-applies the OSV ECL- patch).
+# CSAF is the fixed OASIS CSAF 2.0 document (no tag). See SCHEMAS.md for details.
+#
+# renovate: datasource=github-tags depName=ossf/osv-schema extractVersion=^v(?<version>.+)$
+osv-schema v1.7.5
+# renovate: datasource=github-tags depName=CVEProject/cve-schema extractVersion=^v(?<version>.+)$
+cve-schema v5.2.0
+csaf 2.0
+
+# sha256 <relpath> (verified by dev/check_vendored_assets.sh)
+df8ac73f20ae01a67b3bb3051f381be356860fe535dd98fb386d8ef9f221520f  osv.upstream.json
+29c114b35b0a30831f1674f2ab8b3ed9b2890cfeaa63b924ac6ed9d70ef44262  csaf.upstream.json
+33f7517424facfc712c7b808be1b6503fc74b2e6b85979bbaacb9b623ddfde67  cve.upstream.json
+600c45ca59f693f7e1055185ef93f97cf018fdf1b5f24a6b3ff97dd8ce1a2208  cvss/cvss-v2.0.json
+bc45e04cca7e5542e4b19fcda8c74091760380197f6b0c9a6209e069896c13f1  cvss/cvss-v3.0.json
+9b0a73323ad9821390af2a446572bee9169f861db073b64cc820b0b49ea2fd29  cvss/cvss-v3.1.json
+10b98771ae0d1bb9a8d679682ad5ce35828dfd575aaf16d7bda4584b3afb2a1f  cvss/cvss-v4.0.json

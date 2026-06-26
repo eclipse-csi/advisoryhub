@@ -55,6 +55,16 @@ is ever lost there, re-publishing regenerates and re-pushes the current advisori
 CI additionally runs the test suite against PostgreSQL, `ruff`, `mypy`, an advisory
 `ty` pass, and the vendored-asset/template guards — see `.github/workflows/`.
 
+**Vendored assets** (htmx, Inter, ALTCHA, the docs CSS, and the OSV/CSAF/CVE JSON
+schemas) are version-tracked by a scoped, self-hosted **Renovate** workflow
+(`.github/workflows/renovate.yml`), separate from Dependabot. It needs a GitHub App
+installed on the repo: set repo **variable** `RENOVATE_APP_ID` and **secret**
+`RENOVATE_APP_PRIVATE_KEY` (App permissions: contents, pull-requests, issues — all
+write). Schema PRs auto-merge on green CI; frontend-asset PRs are review-only (manual
+smoke). Trigger an on-demand or `dryRun` pass from the Actions tab; re-vendor locally
+with `mise run update-vendor`. See
+[contributing §6](../contributing/README.md#6-code-quality).
+
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
 [`docs/contributing/releasing.md`](../contributing/releasing.md).

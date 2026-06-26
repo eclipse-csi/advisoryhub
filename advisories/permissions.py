@@ -87,27 +87,14 @@ def models_user_or_group_filter(user_pk: int, group_ids: list[int]):
 def visible_advisories(user):
     """Advisories ``user`` may see in list views (admins see all).
 
-    Single source of truth for list-view visibility, shared by the HTML list
-    (``advisories.views.advisory_list``) and the JSON list
-    (``api.views_advisories``). Matches advisories reachable via project
-    security-team membership or an explicit grant (direct or via a group).
-    The grant arm is a subquery — not a materialized id list — so it stays a
-    single SQL statement regardless of how many grants the user holds.
+    Thin wrapper over :meth:`advisories.models.AdvisoryQuerySet.visible_to`,
+    kept as the stable import path for existing callers (the HTML list
+    ``advisories.views.advisory_list`` and the JSON list
+    ``api.views_advisories``). New code may call ``Advisory.objects.visible_to``
+    directly. The grant arm is a subquery — not a materialized id list — so it
+    stays a single SQL statement regardless of how many grants the user holds.
     """
-    from django.db.models import Q
-
-    from access.models import AdvisoryAccessGrant
-
-    if is_global_admin(user):
-        return Advisory.objects.all()
-
-    group_ids = list(user.groups.values_list("pk", flat=True))
-    grant_subquery = AdvisoryAccessGrant.objects.filter(
-        models_user_or_group_filter(user.pk, group_ids)
-    ).values("advisory_id")
-    return Advisory.objects.filter(
-        Q(project__security_team__in=user.groups.all()) | Q(pk__in=grant_subquery)
-    ).distinct()
+    return Advisory.objects.visible_to(user)
 
 
 def resolved_permission(user, advisory: Advisory) -> Permission | None:

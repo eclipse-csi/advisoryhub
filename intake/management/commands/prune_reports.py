@@ -28,6 +28,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from advisories.models import AdvisoryIntakeMetadata, State
+from common.rls import rls_system
 from intake.models import HoneypotSubmission
 
 
@@ -50,6 +51,12 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
+        # Run as a trusted system principal so the command is not RLS-filtered
+        # under the production non-superuser app role (INV-CONF-2).
+        with rls_system():
+            return self._handle(*args, **opts)
+
+    def _handle(self, *args, **opts):
         now = timezone.now()
         if opts["advisory_id"]:
             sidecars = AdvisoryIntakeMetadata.objects.filter(

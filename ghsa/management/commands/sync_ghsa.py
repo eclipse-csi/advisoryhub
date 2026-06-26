@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
 from advisories.models import Advisory, Kind
+from common.rls import rls_system
 from ghsa import services
 from projects.models import Project
 
@@ -34,6 +35,12 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
+        # Run as a trusted system principal so the command is not RLS-filtered
+        # under the production non-superuser app role (INV-CONF-2).
+        with rls_system():
+            return self._handle(*args, **opts)
+
+    def _handle(self, *args, **opts):
         actor = self._resolve_actor(opts.get("actor"))
         if opts["all"] and opts["project"]:
             raise CommandError("--all and --project are mutually exclusive.")

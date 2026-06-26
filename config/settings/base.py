@@ -263,6 +263,10 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Sets the per-request RLS principal (advisoryhub.user_id / .is_admin) the
+    # advisory row-level-security policy reads; needs request.user, so it sits
+    # just after AuthenticationMiddleware. See common.rls / INV-CONF-2.
+    "common.middleware.RowLevelSecurityMiddleware",
     "mozilla_django_oidc.middleware.SessionRefresh",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

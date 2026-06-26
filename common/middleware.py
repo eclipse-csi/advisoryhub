@@ -18,6 +18,7 @@ from django.shortcuts import render
 from django_htmx.http import trigger_client_event
 
 from common.logging import reset_request_id, set_request_id
+from common.rls import rls_principal
 
 
 class RequestIDMiddleware:
@@ -190,3 +191,23 @@ class HtmxMessagesMiddleware:
         if 300 <= response.status_code < 400:
             return True
         return any(header in response for header in self._FULL_RELOAD_HEADERS)
+
+
+class RowLevelSecurityMiddleware:
+    """Set the per-request row-level-security principal (``INV-CONF-2``).
+
+    Runs after ``AuthenticationMiddleware`` (needs ``request.user``). Sets the
+    ``advisoryhub.user_id`` / ``advisoryhub.is_admin`` session GUCs that the
+    advisory RLS policy reads, then resets them — fail-closed — once the response
+    is produced. A superuser DB role (the dev/CI bootstrap role) ignores RLS, so
+    this has no enforcement effect there; under the production non-superuser role
+    it is what scopes every query to the authenticated principal. See
+    :mod:`common.rls`.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        with rls_principal(getattr(request, "user", None)):
+            return self.get_response(request)

@@ -19,6 +19,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from advisories.models import Advisory
+from common.rls import rls_system
 from similarity import llm, services
 from similarity.models import AdvisoryFingerprint
 
@@ -44,7 +45,13 @@ class Command(BaseCommand):
             help="Report what would be generated without calling the LLM.",
         )
 
-    def handle(self, *args, limit: int, project: str, dry_run: bool, **opts):
+    def handle(self, *args, **opts):
+        # Run as a trusted system principal so the command is not RLS-filtered
+        # under the production non-superuser app role (INV-CONF-2).
+        with rls_system():
+            return self._handle(*args, **opts)
+
+    def _handle(self, *args, limit: int, project: str, dry_run: bool, **opts):
         if not settings.SIMILARITY_CHECK_ENABLED:
             raise CommandError(
                 "SIMILARITY_CHECK_ENABLED is off; refusing to send advisory "

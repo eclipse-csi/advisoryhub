@@ -134,6 +134,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-SIM-4](#inv-sim-4) | Fingerprint/judge inputs come from the pinned `SimilarityCheck.version` payload, never live data. | Similarity | High |
 | [INV-SIM-5](#inv-sim-5) | Stale queued/running similarity checks are reaped to `failed`; the reaper performs no LLM egress. | Similarity | High |
 | [INV-CONF-1](#inv-conf-1) | Advisory content is not encrypted at the application layer; content confidentiality at rest is a deployment-layer control and the queried fields stay plaintext. | Confidentiality | High |
+| [INV-CONF-2](#inv-conf-2) | Advisory visibility is enforced below the app by Postgres row-level security as a fail-closed backstop; schema-/DB-per-project tenancy is rejected, and the RLS policy is drift-tested against `visible_to`. | Confidentiality | High |
 
 ---
 
@@ -2869,6 +2870,69 @@ queries on which it rests.)_
 **Related.** [INV-PRIVACY-1](#inv-privacy-1), [INV-AUTH-7](#inv-auth-7),
 [INV-AUDIT-1](#inv-audit-1), [INV-SECRET-1](#inv-secret-1),
 [INV-SIM-4](#inv-sim-4), [INV-IMPL-5](#inv-impl-5).
+
+---
+
+## 22. Data isolation and authorization defense-in-depth
+
+<a id="inv-conf-2"></a>
+### INV-CONF-2 — Advisory visibility is enforced below the app by row-level security; tenancy is not used   [High]
+
+**Statement.** Cross-project / cross-grant advisory visibility is enforced at
+two layers. The application chokepoint is `Advisory.objects.visible_to(user)`
+(wrapped by `advisories.permissions.visible_advisories`); below it, Postgres
+**row-level security** on `advisories_advisory` — and predicate-free deferring
+policies on its `advisory_id` child tables — re-enforces the *same* rule on every
+query, so a view that forgets to filter (or an object fetched directly by id)
+still returns only rows the principal may see. The policy is keyed on a
+per-request principal carried in session GUCs (`advisoryhub.user_id`,
+`advisoryhub.is_admin`); an **unset principal matches no rows** (fail-closed).
+Schema-/DB-per-project tenancy is **deliberately not used**.
+
+**Rationale.** The access boundary is `per-advisory ∪ per-project` — an
+`AdvisoryAccessGrant` can name a user/group on a single advisory regardless of
+project, and an authenticated triage reporter is auto-granted viewer on their own
+report — so a project schema/DB would model only half the boundary, force
+cross-schema access for every grant, and shard the global append-only audit
+timeline ([INV-AUDIT-1](#inv-audit-1)), the partitioned access log
+([INV-AUDIT-5](#inv-audit-5)), trigram search and the similarity prefilter. It
+would also merely move the bug: per-schema isolation needs per-schema DB roles,
+and *which role a connection may use* is again decided by app code. RLS instead
+inverts the default from **opt-in / fail-open** (every query must remember to
+filter) to **fail-closed** (every query is filtered unless the principal is
+explicitly admin), while trusting only a trivially-correct principal (the
+authenticated user id + an admin flag) that lives apart from the permission
+resolution it backstops. RLS defends the *forgot-to-filter / IDOR* class —
+**not** a wrong access predicate: if the logic itself is wrong, both layers are
+wrong, which is why the policy is **drift-tested** to return the same id set as
+`visible_to`. Discussion in
+[architecture.md §3.10](./architecture.md#310-project-data-isolation-and-the-authorization-bug-threat).
+
+**Enforced in.**
+- `advisories/models.py` — `AdvisoryQuerySet.visible_to`; `advisories/permissions.py`
+  — `visible_advisories` (the application chokepoint).
+- `advisories/migrations/*_advisory_rls.py` — `ENABLE` / `FORCE ROW LEVEL SECURITY`
+  and the `advisory_visibility` policy mirroring `visible_to`, plus deferring
+  policies on the `advisory_id` child tables.
+- `common/middleware.py` — `RowLevelSecurityMiddleware` sets the principal GUCs
+  for a request; the `rls_principal` / `rls_system` context managers in `common`
+  set them for Celery tasks and management commands.
+- Operator role model (single role + `FORCE`, or app-as-non-owner-role) in
+  [running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist).
+
+**Violation impact.** Dropping `FORCE ROW LEVEL SECURITY`, mis-setting
+`advisoryhub.is_admin`, or a policy that drifts from `visible_to` either re-opens
+cross-project / cross-grant content leakage (under-denies) or breaks legitimate
+access (over-denies). Reintroducing schema-/DB-per-tenant would fracture the
+global audit timeline and search.
+
+**Tests.** `tests/test_authorization_matrix.py` (endpoint × role enumeration +
+capability cases); `advisories/tests/test_rls.py` (backstop proof — a forgotten
+filter still returns only visible rows — and the `visible_to` ↔ RLS drift guard).
+
+**Related.** [INV-CONF-1](#inv-conf-1), [INV-AUTH-1](#inv-auth-1),
+[INV-AUTH-7](#inv-auth-7), [INV-PRIVACY-1](#inv-privacy-1),
+[INV-AUDIT-1](#inv-audit-1).
 
 ---
 

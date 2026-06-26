@@ -291,6 +291,63 @@ backups and volumes, and enable database-level audit (pgaudit /
 compensating control. The operator checklist is in
 [running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist).
 
+### 3.10 Project data isolation and the authorization-bug threat
+
+§3.9 addresses a *stolen credential* reaching the database. A different threat is
+an **application authorization bug** — a new list view that forgets to call the
+visibility chokepoint, or a detail/edit handler that fetches by id without a
+permission check — leaking advisory content across the access boundary. That
+boundary is `per-advisory ∪ per-project`: a user sees an advisory if they are on
+its project's security team **or** hold an explicit `AdvisoryAccessGrant` (direct
+or via a group), and an authenticated triage reporter is auto-granted viewer on
+their own report.
+
+**Schema- or database-per-project tenancy is deliberately not used.** It is a
+poor fit for this boundary and this data model:
+
+- The boundary is per-advisory as well as per-project, so a project schema would
+  model only half of it — every cross-project grant would need cross-schema
+  access.
+- It would only move the bug: per-schema isolation needs per-schema DB roles, and
+  *which roles a connection may assume* is decided by application code — the same
+  trust domain as the bug. (A shared role with `search_path` switching isolates
+  nothing.)
+- It would fracture global infrastructure: the append-only audit timeline
+  ([INV-AUDIT-1](./invariant.md#inv-audit-1)), the month-partitioned access log
+  ([INV-AUDIT-5](./invariant.md#inv-audit-5)), `pg_trgm` search and the
+  similarity prefilter all query across advisories.
+
+The answer is **layered enforcement in the single schema**
+([INV-CONF-2](./invariant.md#inv-conf-2)):
+
+1. **One chokepoint.** `Advisory.objects.visible_to(user)` (wrapped by
+   `advisories.permissions.visible_advisories`) is the single source of list
+   visibility, shared by the HTML and JSON list endpoints.
+2. **A CI guard.** `tests/test_authorization_matrix.py` enumerates every
+   advisory-scoped route × role and asserts non-members are denied — a new
+   endpoint that skips the check fails the suite by construction.
+3. **A fail-closed backstop.** Postgres **row-level security** on
+   `advisories_advisory` (with predicate-free deferring policies on its child
+   tables) re-enforces `visible_to` on *every* query. This inverts the default
+   from opt-in / **fail-open** (a query leaks unless it remembers to filter) to
+   **fail-closed** (a query is filtered unless the principal is explicitly admin).
+
+RLS keys on a per-request principal in session GUCs — `advisoryhub.user_id` and
+`advisoryhub.is_admin` — set per request by `RowLevelSecurityMiddleware` (and
+reset, fail-closed, when the response is done) and per Celery task / management
+command by the `rls_principal` / `rls_system` context managers (`common/rls.py`).
+A superuser or `BYPASSRLS` role is never subject to RLS, so the dev/CI bootstrap
+role (a superuser) leaves it dormant — **enforcement is a production posture**
+under the non-superuser app role (§7), validated in tests via `SET ROLE`. The
+principal is trivially correct and lives apart from the permission logic it
+protects, so a bug in that logic cannot widen what the database returns; an unset
+principal matches no rows. The policy mirrors `visible_to` and is
+**drift-tested** against it — RLS backstops the forgot-to-filter / IDOR class,
+not a wrong predicate. The operator role model (single role +
+`FORCE ROW LEVEL SECURITY`, or running the app under a separate non-owner login
+role) is in
+[running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist).
+
 ---
 
 ## 4. Publication pipeline

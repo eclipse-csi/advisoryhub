@@ -105,6 +105,38 @@ class AdvisoryQuerySet(models.QuerySet):
             "use advisories.models._unsafe_dev_reset_bypass() in seed scripts only."
         )
 
+    def visible_to(self, user):
+        """Restrict to advisories ``user`` may see (admins: unrestricted).
+
+        The blessed accessor for list-view visibility, shared by the HTML list
+        (``advisories.views.advisory_list``), the JSON list
+        (``api.views_advisories``), and — via the thin wrapper
+        ``advisories.permissions.visible_advisories`` — every other caller.
+        Matches advisories reachable via project security-team membership or an
+        explicit grant (direct or via a group). The grant arm is a subquery — not
+        a materialized id list — so it stays a single SQL statement regardless of
+        how many grants the user holds. Composable: chains after any other filter
+        (``Advisory.objects.filter(...).visible_to(user)``).
+
+        This is the application-layer half of the visibility chokepoint; the
+        Postgres row-level-security policy in the ``*_advisory_rls`` migration
+        mirrors it as a fail-closed backstop ([INV-CONF-2]).
+        """
+        from django.db.models import Q
+
+        from access.models import AdvisoryAccessGrant
+        from advisories.permissions import is_global_admin, models_user_or_group_filter
+
+        if is_global_admin(user):
+            return self
+        group_ids = list(user.groups.values_list("pk", flat=True))
+        grant_subquery = AdvisoryAccessGrant.objects.filter(
+            models_user_or_group_filter(user.pk, group_ids)
+        ).values("advisory_id")
+        return self.filter(
+            Q(project__security_team__in=user.groups.all()) | Q(pk__in=grant_subquery)
+        ).distinct()
+
 
 # Assignment form (rather than subclassing) keeps django-stubs happy: it can't
 # resolve ``Manager.from_queryset(...)`` as a dynamic base class, but it does

@@ -197,6 +197,16 @@ protects stolen media. Harden the database access path
       able to lower `session_replication_role` (which would let a direct session
       bypass the append-only triggers,
       [INV-AUDIT-1](../specification/invariant.md#inv-audit-1)).
+- [ ] **Row-level security is the in-database backstop.** Advisory visibility is
+      re-enforced below the application by Postgres RLS as a fail-closed layer
+      ([INV-CONF-2](../specification/invariant.md#inv-conf-2),
+      [architecture.md §3.10](../specification/architecture.md#310-project-data-isolation-and-the-authorization-bug-threat)).
+      The shipped default keeps the app connecting as the table owner with
+      `FORCE ROW LEVEL SECURITY` and an in-policy admin/system bypass keyed on the
+      `advisoryhub.is_admin` session GUC. For stronger isolation, run migrations as
+      the owner and point the app's `DATABASE_URL` at a **separate non-owner login
+      role** (neither owner nor `BYPASSRLS`): RLS then applies without `FORCE` and
+      there is no in-policy bypass to misconfigure.
 - [ ] **Encrypt and access-control backups.** Backups are the most common real
       leak vector — encrypt them with a key held outside the database and
       restrict who can fetch them

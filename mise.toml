@@ -205,3 +205,53 @@ run = "docker compose exec web python manage.py migrate"
 [tasks.seed]
 description = "Seed demo data + a local publish repo inside the web container"
 run = "docker compose exec web python manage.py seed_demo --with-publish-repo /tmp/advisoryhub-pub.git"
+
+[tasks.sbx]
+usage = '''
+arg "<name>" help="Sandbox name" default="claude-advisoryhub"
+'''
+description = "Start a new sandbox (remove the one with the same name if necessary)"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Start a fresh new sandbox '{{usage.name}}' (removing anyone with same name before)"
+
+if sbx ls | grep -q -- "${usage_name}"; then
+  sbx rm "${usage_name}"
+fi
+
+#--clone \
+sbx create claude \
+  --name "${usage_name}" \
+  --kit .sbx-kit \
+  .
+
+sbx exec ${usage_name} bash <<EOF
+claude plugin marketplace add GoogleChrome/modern-web-guidance
+claude plugin install modern-web-guidance@googlechrome
+
+cat >/home/agent/.claude/settings.json <<EOC
+{
+  "permissions": {
+    "defaultMode": "plan"
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
+  "skipDangerousModePermissionPrompt": true,
+  "themeId": 1,
+  "defaultMode": "plan",
+  "bypassPermissionsModeAccepted": true,
+  "model": "claude-opus-4-8"
+}
+EOC
+
+git config --global commit.gpgsign true
+git config --global gpg.format ssh
+git config --global gpg.ssh.allowedSignersFile /home/agent/.gitallowedsigners
+EOF
+
+[[ -f "${HOME}/.gitallowedsigners" ]] && sbx cp "${HOME}/.gitallowedsigners" ${usage_name}:/home/agent/
+
+sbx run claude --name "${usage_name}" .
+'''

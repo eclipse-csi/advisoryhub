@@ -1,0 +1,33 @@
+schemaVersion: "1"
+kind: mixin
+name: advisoryhub-dev
+displayName: Dev environment bootstrap Kit for advisoryhub
+description: Create minimal dev environment for agents to work
+
+commands:
+  install:
+    # install add-apt-repository
+    - command: curl https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
+
+  initFiles:
+    - path: /home/agent/.local/bin/mise-startup.sh
+      mode: "0755"
+      content: |
+        #!/bin/sh
+        set -eu
+
+        cd "${WORKDIR}"
+
+        claude plugin marketplace add GoogleChrome/modern-web-guidance || true
+        claude plugin install modern-web-guidance@googlechrome
+
+        # mise trust
+        # mise run setup
+
+  startup:
+    - command: ["/home/agent/.local/bin/mise-startup.sh"]
+    - command: ["mise", "trust"]
+    - command: ["mise", "run", "setup"]
+    - command: ["git", "config", "--global", "commit.gpgsign", "true"]
+    - command: ["git", "config", "--global", "gpg.format", "ssh"]
+    - command: ["git", "config", "--global", "gpg.ssh.allowedSignersFile", "/home/agent/.gitallowedsigners"]

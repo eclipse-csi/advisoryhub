@@ -173,8 +173,7 @@ to reach the configured LLM provider ([INV-SIM-2](../specification/invariant.md#
 
 | Variable | Default | Notes |
 |---|---|---|
-| `HCAPTCHA_SITE_KEY` † | *(empty)* | hCaptcha on the public form; captcha is bypassed unless **both** keys are set. |
-| `HCAPTCHA_SECRET_KEY` † | *(empty)* | **Secret.** |
+| `ALTCHA_HMAC_KEY` † | *(empty)* | **Secret.** Enables the self-hosted ALTCHA proof-of-work captcha on the public form for anonymous reporters; empty leaves the form captcha-free (honeypot + rate limits still apply). Widget assets are vendored and served same-origin — no CDN or CSP change. Replay protection uses the `default` cache (set `CACHE_URL` so it holds across processes). |
 | `RATELIMIT_INTAKE_ANON` † | `5/h` | Per-IP limit for anonymous report submission. |
 | `RATELIMIT_INTAKE_USER` † | `20/h` | Per-user limit for authenticated submission. |
 | `INTAKE_REPORT_RETENTION_DAYS` † | `365` | Horizon after which intake PII is scrubbed (see `prune_reports`). |

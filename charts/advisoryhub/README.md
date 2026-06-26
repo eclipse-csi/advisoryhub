@@ -36,7 +36,7 @@ container. Keys are plain env-var names from
 | `GITHUB_APP_WEBHOOK_SECRET` | only with `ghsa.enabled` |
 | `ECLIPSE_API_CLIENT_ID`, `ECLIPSE_API_CLIENT_SECRET` | only with `rosterSync.enabled` |
 | `SIMILARITY_LLM_API_KEY` | only with `similarity.enabled` (blank is fine for keyless local servers) |
-| `SENTRY_DSN`, `HCAPTCHA_SITE_KEY`, `HCAPTCHA_SECRET_KEY`, `PMI_API_TOKEN` | optional |
+| `SENTRY_DSN`, `ALTCHA_HMAC_KEY`, `PMI_API_TOKEN` | optional |
 
 \* `OIDC_RP_CLIENT_ID` may instead live in values (`oidc.clientId`) — it is
 config, not secret; pick one place.

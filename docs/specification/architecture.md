@@ -1080,8 +1080,8 @@ Admin Console button), `PMI_ROSTER_SYNC_INTERVAL_HOURS` (default 24),
 `ECLIPSE_API_SCOPE` (optional). The token and client secret are cached and
 never logged; errors run through `redact_secrets` (INV-SECRET-*).
 
-**Intake.** `HCAPTCHA_SITE_KEY`, `HCAPTCHA_SECRET_KEY` (both must
-be set for hCaptcha to engage — otherwise silently bypassed),
+**Intake.** `ALTCHA_HMAC_KEY` (set to enable the self-hosted ALTCHA
+proof-of-work captcha for anonymous reporters; empty = no captcha),
 `RATELIMIT_INTAKE_ANON` (default `5/h`),
 `RATELIMIT_INTAKE_USER` (default `20/h`),
 `INTAKE_REPORT_RETENTION_DAYS` (default 365),

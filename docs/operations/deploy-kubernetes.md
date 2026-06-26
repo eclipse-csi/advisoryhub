@@ -52,7 +52,7 @@ kubectl -n advisoryhub create secret generic advisoryhub-env \
   --from-literal=EMAIL_HOST_USER='…' \
   --from-literal=EMAIL_HOST_PASSWORD='…'
   # optional extras: PUB_REPO_TOKEN, GITHUB_APP_WEBHOOK_SECRET,
-  # ECLIPSE_API_CLIENT_ID/_SECRET, SENTRY_DSN, HCAPTCHA_SITE_KEY/_SECRET_KEY,
+  # ECLIPSE_API_CLIENT_ID/_SECRET, SENTRY_DSN, ALTCHA_HMAC_KEY,
   # PMI_API_TOKEN, SIMILARITY_LLM_API_KEY
 
 # 2. Key-files secret — mounted as files at /etc/advisoryhub/keys.

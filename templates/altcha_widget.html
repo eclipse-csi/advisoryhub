@@ -1,0 +1,11 @@
+{# Overrides django_altcha's widget template: drops its two un-nonced <script> tags so the strict CSP holds. templates/intake/report.html loads altcha.external.min.js + altcha.css with the request nonce, and static/advisoryhub-altcha.js registers the same-origin PoW worker. This renders only the hidden input + the <altcha-widget> element. #}
+{% include "django/forms/widgets/input.html" %}
+<altcha-widget name="{{ widget.name }}"
+    {% for key, value in widget.altcha_options.items %}
+        {% if value is not None %}
+            {% if value is True %} {{ key }}
+            {% else %} {{ key }}="{{ value }}"
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+></altcha-widget>

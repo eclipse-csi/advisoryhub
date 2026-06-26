@@ -2,6 +2,7 @@
 # Verify vendored, upstream-verbatim assets still match their pinned hashes:
 #   - static/htmx.min.js                   vs static/htmx.VERSION
 #   - static/fonts/Inter*.woff2            vs static/fonts/Inter.VERSION
+#   - static/altcha/*                      vs static/altcha/altcha.VERSION
 #   - docs/assets/css/neoteroi-mkdocs.css  vs docs/assets/css/neoteroi-mkdocs.VERSION
 #
 # These ship on every page (including the public intake form), so an automated
@@ -49,6 +50,16 @@ check static/fonts/InterVariable.woff2 \
   "$(hash_for static/fonts/Inter.VERSION InterVariable.woff2)"
 check static/fonts/InterVariable-Italic.woff2 \
   "$(hash_for static/fonts/Inter.VERSION InterVariable-Italic.woff2)"
+
+# altcha.VERSION lists `<hash>  <filename>` lines (same format as Inter.VERSION).
+# Vendored self-hosted ALTCHA widget (external/strict-CSP build) — ships on the
+# public intake form when ALTCHA_HMAC_KEY is set.
+check static/altcha/altcha.external.min.js \
+  "$(hash_for static/altcha/altcha.VERSION altcha.external.min.js)"
+check static/altcha/altcha.css \
+  "$(hash_for static/altcha/altcha.VERSION altcha.css)"
+check static/altcha/sha.worker.js \
+  "$(hash_for static/altcha/altcha.VERSION sha.worker.js)"
 
 # Docs-site CSS for the OAD-rendered API reference; same `sha256:<hash>` line
 # format as htmx.VERSION. Styles essentials-openapi's HTML output (rendered by

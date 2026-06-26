@@ -11,8 +11,8 @@ The form is intentionally minimal:
   means "I don't know which project" and routes the resulting advisory
   to the ``unsorted`` sentinel project for admin triage.
 * Anti-abuse: honeypot field for anonymous users (silently dropped via a
-  separate ``HoneypotSubmission`` table by the view); optional hCaptcha
-  when site/secret keys are configured.
+  separate ``HoneypotSubmission`` table by the view); optional ALTCHA
+  (self-hosted proof-of-work) when ``ALTCHA_HMAC_KEY`` is configured.
 
 The honeypot rule is **never raise** when triggered — the view still
 returns the success page so bots learn nothing.
@@ -24,6 +24,7 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
+from django_altcha import AltchaField
 
 from projects.models import PMI_ID_VALIDATOR, Project
 
@@ -69,18 +70,15 @@ class VulnerabilityReportForm(forms.Form):
             # Authenticated users get neither anti-abuse field.
             self.fields.pop("website", None)
         else:
-            self._add_hcaptcha_if_configured()
+            self._add_altcha_if_configured()
 
-    def _add_hcaptcha_if_configured(self) -> None:
-        site_key = getattr(settings, "HCAPTCHA_SITE_KEY", "")
-        secret_key = getattr(settings, "HCAPTCHA_SECRET_KEY", "")
-        if not (site_key and secret_key):
+    def _add_altcha_if_configured(self) -> None:
+        """Add the ALTCHA proof-of-work field for anonymous reporters when an
+        HMAC key is configured. With no key the form stays captcha-free (the
+        natural dev/test mode); the honeypot remains the always-on gate."""
+        if not getattr(settings, "ALTCHA_HMAC_KEY", ""):
             return
-        try:
-            from hcaptcha.fields import hCaptchaField
-        except ImportError:  # pragma: no cover — captcha unconfigured fallback
-            return
-        self.fields["hcaptcha"] = hCaptchaField()
+        self.fields["altcha"] = AltchaField()
 
     # ------------------------------------------------------------------
     # Field cleaners

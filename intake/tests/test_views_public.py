@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 from advisories.models import Advisory, AdvisoryIntakeMetadata, State
@@ -339,3 +340,106 @@ def test_advanced_range_with_fixed_and_last_affected_re_renders(db, client, unso
     assert not Advisory.objects.exists()
     body = resp.content.decode()
     assert "mutually exclusive" in body
+
+
+# ---------------------------------------------------------------------------
+# ALTCHA proof-of-work captcha (optional — engaged only when ALTCHA_HMAC_KEY
+# is set; the honeypot above stays the always-on gate). Self-hosted, so a valid
+# solution can be minted server-side and the whole flow runs without a browser.
+# ---------------------------------------------------------------------------
+
+ALTCHA_TEST_KEY = "altcha-unit-test-key"
+
+
+def _altcha_solution(hmac_key: str = ALTCHA_TEST_KEY) -> str:
+    """Mint a valid ALTCHA solution payload server-side (no browser needed).
+
+    A small ``max_number`` keeps ``solve_challenge`` near-instant; the server
+    verifier recomputes the hash from (salt, number) so the bound never affects
+    validity. Each call uses a fresh random salt, so payloads don't collide
+    across tests in the shared replay-protection cache.
+    """
+    import altcha
+
+    challenge = altcha.create_challenge(altcha.ChallengeOptions(hmac_key=hmac_key, max_number=500))
+    solution = altcha.solve_challenge(challenge)
+    assert solution is not None
+    payload = altcha.Payload(
+        algorithm=challenge.algorithm,
+        challenge=challenge.challenge,
+        number=solution.number,
+        salt=challenge.salt,
+        signature=challenge.signature,
+    )
+    return payload.to_base64()
+
+
+def test_altcha_field_absent_by_default(db):
+    """With no ALTCHA_HMAC_KEY (the dev/test default) neither anonymous nor
+    authenticated forms carry a captcha field."""
+    from intake.forms import VulnerabilityReportForm
+
+    assert "altcha" not in VulnerabilityReportForm(authenticated=False).fields
+    assert "altcha" not in VulnerabilityReportForm(authenticated=True).fields
+
+
+@override_settings(ALTCHA_HMAC_KEY=ALTCHA_TEST_KEY)
+def test_altcha_widget_rendered_when_configured(db, client, unsorted_project):
+    """When configured, the anonymous form renders the self-hosted widget and
+    pulls the vendored, same-origin assets — no third-party/CDN reference."""
+    body = client.get(reverse("intake:report")).content.decode()
+    assert "<altcha-widget" in body
+    assert "altcha/altcha.external.min.js" in body
+    assert "altcha/altcha.css" in body
+    assert "advisoryhub-altcha.js" in body
+    assert "data-altcha-worker" in body
+    assert "hcaptcha" not in body.lower()
+
+
+@override_settings(ALTCHA_HMAC_KEY=ALTCHA_TEST_KEY)
+def test_altcha_missing_solution_rejected(db, client, unsorted_project):
+    """No solved captcha → form invalid: no advisory, no honeypot row."""
+    resp = _post(client)  # no altcha payload
+    assert resp.status_code == 400
+    assert not Advisory.objects.exists()
+    assert not HoneypotSubmission.objects.exists()
+
+
+@override_settings(ALTCHA_HMAC_KEY=ALTCHA_TEST_KEY)
+def test_altcha_invalid_solution_rejected(db, client, unsorted_project):
+    resp = _post(client, altcha="not-a-valid-payload")
+    assert resp.status_code == 400
+    assert not Advisory.objects.exists()
+
+
+@override_settings(ALTCHA_HMAC_KEY=ALTCHA_TEST_KEY)
+def test_altcha_valid_solution_accepted(db, client, unsorted_project):
+    resp = _post(client, altcha=_altcha_solution())
+    assert resp.status_code == 302, resp.content[:500]
+    assert reverse("intake:thank_you") in resp.url
+    assert Advisory.objects.filter(state=State.TRIAGE).count() == 1
+
+
+@override_settings(ALTCHA_HMAC_KEY=ALTCHA_TEST_KEY)
+def test_altcha_solution_is_single_use(db, client, unsorted_project):
+    """Replay protection: a solved challenge can't be submitted twice."""
+    payload = _altcha_solution()
+    first = _post(client, altcha=payload)
+    assert first.status_code == 302
+    second = _post(client, altcha=payload)
+    assert second.status_code == 400
+    assert Advisory.objects.filter(state=State.TRIAGE).count() == 1
+
+
+@override_settings(ALTCHA_HMAC_KEY=ALTCHA_TEST_KEY)
+def test_altcha_does_not_break_honeypot(db, client, unsorted_project):
+    """Honeypot still wins (INV-INTAKE-1): a solved captcha + a tripped honeypot
+    records a HoneypotSubmission and never an Advisory."""
+    resp = _post(
+        client,
+        altcha=_altcha_solution(),
+        website="https://buy-cheap-pills.example",
+    )
+    assert resp.status_code == 302
+    assert not Advisory.objects.exists()
+    assert HoneypotSubmission.objects.count() == 1

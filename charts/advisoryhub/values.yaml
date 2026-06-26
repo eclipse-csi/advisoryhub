@@ -152,7 +152,7 @@ intake:
   retentionDays: 365
   ratelimitAnon: 5/h
   ratelimitUser: 20/h
-  # hCaptcha keys belong in the env Secret (HCAPTCHA_SITE_KEY/_SECRET_KEY).
+  # ALTCHA_HMAC_KEY (captcha challenge signing) belongs in the env Secret.
 
 audit:
   accessLogRetentionDays: 90
@@ -181,7 +181,7 @@ secrets:
   # CELERY_BROKER_URL, CELERY_RESULT_BACKEND, CACHE_URL, OIDC_RP_CLIENT_ID,
   # OIDC_RP_CLIENT_SECRET, PUB_REPO_TOKEN, GITHUB_APP_WEBHOOK_SECRET,
   # ECLIPSE_API_CLIENT_ID, ECLIPSE_API_CLIENT_SECRET, SENTRY_DSN,
-  # HCAPTCHA_SITE_KEY, HCAPTCHA_SECRET_KEY, EMAIL_HOST_USER,
+  # ALTCHA_HMAC_KEY, EMAIL_HOST_USER,
   # EMAIL_HOST_PASSWORD, PMI_API_TOKEN, SIMILARITY_LLM_API_KEY.
   existingSecret: ""
   # Dev/eval convenience: render `values` below into a chart-managed Secret.

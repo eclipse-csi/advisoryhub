@@ -1,0 +1,28 @@
+ALTCHA self-hosted widget — "external" (strict-CSP) build, version 3.1.0.
+License: MIT — https://github.com/altcha-org/altcha/blob/main/LICENSE
+
+The external build ships no inline <style> and no bundled Web Workers, so it
+loads under the app's strict CSP with NO directive changes:
+  - altcha.external.min.js  — nonce'd same-origin ES module (script-src nonce + strict-dynamic)
+  - altcha.css              — same-origin stylesheet (style-src 'self')
+  - sha.worker.js           — SHA proof-of-work worker, registered in
+                              static/advisoryhub-altcha.js as new Worker(<same-origin>)
+                              → governed by default-src 'self' (no worker-src/blob: needed)
+
+Only the SHA family is vendored: altcha-lib-py (the django-altcha server side)
+emits SHA-256 challenges only (its AlgoType is SHA-1/256/512; default SHA-256).
+
+upstream: https://cdn.jsdelivr.net/npm/altcha@3.1.0/dist/external/altcha.min.js
+upstream: https://cdn.jsdelivr.net/npm/altcha@3.1.0/dist/external/altcha.css
+upstream: https://cdn.jsdelivr.net/npm/altcha@3.1.0/dist/workers/sha.js
+
+7985e2a9523d12460e6cd3e659558710ad3b274bfff4ff1f937d337a6473ecf1  altcha.external.min.js
+dd5970dab6b13eab6b1a64a517ef5f796fddafef17f31e2df391f011b8a444dc  altcha.css
+4b83309980bf087653f3239377bfabe44292f699ab94b3cb863b654a78ee5a54  sha.worker.js
+
+To upgrade (keep the version aligned with the django-altcha server library):
+  v=<NEW_VERSION>
+  curl -sSf -L "https://cdn.jsdelivr.net/npm/altcha@$v/dist/external/altcha.min.js" -o static/altcha/altcha.external.min.js
+  curl -sSf -L "https://cdn.jsdelivr.net/npm/altcha@$v/dist/external/altcha.css"    -o static/altcha/altcha.css
+  curl -sSf -L "https://cdn.jsdelivr.net/npm/altcha@$v/dist/workers/sha.js"         -o static/altcha/sha.worker.js
+  shasum -a 256 static/altcha/altcha.external.min.js static/altcha/altcha.css static/altcha/sha.worker.js  # update the hashes above

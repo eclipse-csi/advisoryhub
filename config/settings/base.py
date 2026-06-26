@@ -148,11 +148,10 @@ env = environ.Env(
     ECLIPSE_API_CLIENT_ID=(str, ""),  # SECRET — OAuth2 client id
     ECLIPSE_API_CLIENT_SECRET=(str, ""),  # SECRET — OAuth2 client secret
     ECLIPSE_API_SCOPE=(str, ""),  # optional OAuth2 scope(s)
-    # Public vulnerability report intake. hCaptcha keys default to empty;
-    # the form silently bypasses captcha verification when either is unset
-    # (natural dev/test mode).
-    HCAPTCHA_SITE_KEY=(str, ""),
-    HCAPTCHA_SECRET_KEY=(str, ""),
+    # Public vulnerability report intake. ALTCHA (self-hosted, proof-of-work)
+    # gates anonymous submissions when ALTCHA_HMAC_KEY is set; the form omits the
+    # widget entirely when it is empty (natural dev/test mode).
+    ALTCHA_HMAC_KEY=(str, ""),  # SECRET — HMAC-signs the PoW challenges
     RATELIMIT_INTAKE_ANON=(str, "5/h"),
     RATELIMIT_INTAKE_USER=(str, "20/h"),
     INTAKE_REPORT_RETENTION_DAYS=(int, 365),
@@ -227,6 +226,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "mozilla_django_oidc",
     "django_prometheus",
+    "django_altcha",
     # Project apps
     "accounts",
     "projects",
@@ -513,9 +513,17 @@ ECLIPSE_API_CLIENT_ID = env("ECLIPSE_API_CLIENT_ID")
 ECLIPSE_API_CLIENT_SECRET = env("ECLIPSE_API_CLIENT_SECRET")
 ECLIPSE_API_SCOPE = env("ECLIPSE_API_SCOPE")
 
-# Public vulnerability report intake
-HCAPTCHA_SITE_KEY = env("HCAPTCHA_SITE_KEY")
-HCAPTCHA_SECRET_KEY = env("HCAPTCHA_SECRET_KEY")
+# Public vulnerability report intake — ALTCHA (self-hosted proof-of-work, via
+# django-altcha). When ALTCHA_HMAC_KEY is set the intake form adds an AltchaField
+# for anonymous reporters; empty leaves the form captcha-free (dev/test default).
+# The widget JS, stylesheet and PoW worker are vendored under static/altcha/ and
+# loaded same-origin (external build → no inline <style>, no blob: worker), so the
+# strict CSP needs no ALTCHA-specific directives. templates/altcha_widget.html
+# overrides django-altcha's template to render only the element; the assets load
+# with the request nonce from templates/intake/report.html. Replay protection uses
+# the "default" cache (set CACHE_URL to a shared Valkey/Redis so it holds across
+# processes in prod).
+ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
 RATELIMIT_INTAKE_ANON = env("RATELIMIT_INTAKE_ANON")
 RATELIMIT_INTAKE_USER = env("RATELIMIT_INTAKE_USER")
 INTAKE_REPORT_RETENTION_DAYS = env("INTAKE_REPORT_RETENTION_DAYS")
@@ -656,6 +664,9 @@ X_FRAME_OPTIONS = "DENY"
 # All scripts, styles and fonts are same-origin; inline event handlers and the
 # per-form CSRF hx-headers were removed (see static/advisoryhub-dialogs.js and
 # static/advisoryhub-htmx.js) so the policy needs no 'unsafe-inline'/'unsafe-hashes'.
+# The self-hosted ALTCHA intake widget keeps this true: its external build loads
+# JS/CSS same-origin and runs its PoW worker via new Worker(<same-origin>), all
+# covered by 'self' — so no ALTCHA-specific directive (worker-src/blob:) is needed.
 #
 # Enforced by default (CSP_REPORT_ONLY=False). The policy was shipped Report-Only
 # first; the report stream came back clean — the only violation was htmx's injected

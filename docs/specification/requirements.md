@@ -397,8 +397,9 @@ Anti-abuse:
   persists a `HoneypotSubmission` row and renders the same thank-you
   page as a real submission
   ([INV-INTAKE-1](./invariant.md#inv-intake-1)).
-- Optional hCaptcha when both `HCAPTCHA_SITE_KEY` and
-  `HCAPTCHA_SECRET_KEY` are configured.
+- Optional self-hosted ALTCHA proof-of-work captcha for anonymous
+  reporters when `ALTCHA_HMAC_KEY` is configured (widget assets vendored
+  and served same-origin — no third-party calls).
 - Rate limits keyed per-IP for anonymous submitters and per-user for
   authenticated ones, with `RATELIMIT_INTAKE_ANON` /
   `RATELIMIT_INTAKE_USER` configurable.
@@ -920,7 +921,7 @@ gate ([INV-PERM-1](./invariant.md#inv-perm-1),
    know", which maps to the `unsorted` sentinel) and fill summary +
    details in markdown.
 3. They submit. The honeypot field is empty (real user); the form
-   passes the per-IP rate limit; hCaptcha, if configured, validates.
+   passes the per-IP rate limit; ALTCHA, if configured, validates.
 4. `submit_triage_report` creates an `Advisory(state=triage)` + an
    `AdvisoryIntakeMetadata` row carrying the submitting IP and
    User-Agent. Because the project is `unsorted`,
@@ -1106,7 +1107,7 @@ but no admin-side approval is required.
   is emitted alongside. `CSP_REPORT_ONLY=True` falls back to
   Report-Only while diagnosing a violation.
 - Secrets — Git tokens, SSH key paths, GitHub App private keys,
-  hCaptcha keys, OIDC client secrets — are never persisted into
+  the ALTCHA HMAC key, OIDC client secrets — are never persisted into
   audit metadata, task error strings, notification bodies, or
   artifact rows
   ([INV-SECRET-1](./invariant.md#inv-secret-1),

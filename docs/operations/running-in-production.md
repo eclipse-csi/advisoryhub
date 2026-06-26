@@ -167,6 +167,51 @@ Most hardening is on by default in `prod.py` / `base.py`; verify and complete:
 
 ---
 
+## 7. Database hardening checklist
+
+AdvisoryHub does **not** encrypt advisory content at the application layer
+([INV-CONF-1](../specification/invariant.md#inv-conf-1)) — search and duplicate
+detection need plaintext, queryable columns. Confidentiality of the (often
+embargoed) content at rest is therefore a **deployment responsibility**. The
+headline threat is an attacker who steals the database credentials and connects
+directly; note that disk / volume / TDE encryption does **not** address that
+case (the database decrypts for any client holding a valid password) — it only
+protects stolen media. Harden the database access path
+([architecture.md §3.9](../specification/architecture.md#39-data-confidentiality-and-the-database-compromise-threat)):
+
+- [ ] **Network reachability is the primary control.** Put Postgres on a private
+      network reachable only from the web/worker/beat pods (no public IP); stolen
+      credentials are inert if port 5432 is unreachable. The chart's
+      `NetworkPolicy` is opt-in (`networkPolicy.enabled`) and ingress-only —
+      egress, including to the database, stays open — so pin egress to the DB
+      endpoint at the platform layer (security group / private subnet / firewall).
+- [ ] **Prefer short-lived / IAM credentials over a static password.** Where the
+      platform offers it (cloud IAM database auth, or a secrets manager issuing
+      dynamic expiring credentials), use it so there is no long-lived
+      `DATABASE_URL` password to exfiltrate.
+- [ ] **Require TLS.** Append `?sslmode=verify-full` (with a pinned server CA) to
+      `DATABASE_URL` so the app refuses an unencrypted or MITM'd connection
+      ([configuration.md §3](./configuration.md#3-database--cache)).
+- [ ] **Run under a least-privilege role.** The app role should not be a
+      superuser, should not be able to `COPY … TO PROGRAM`, and should not be
+      able to lower `session_replication_role` (which would let a direct session
+      bypass the append-only triggers,
+      [INV-AUDIT-1](../specification/invariant.md#inv-audit-1)).
+- [ ] **Encrypt and access-control backups.** Backups are the most common real
+      leak vector — encrypt them with a key held outside the database and
+      restrict who can fetch them
+      ([maintenance.md §1](./maintenance.md#1-backups--data-integrity)).
+- [ ] **Enable encryption-at-rest** (volume encryption or managed-DB TDE). This
+      covers stolen disks/snapshots, **not** stolen credentials — keep it, but
+      don't mistake it for protection against a direct connection.
+- [ ] **Enable database-level audit and anomaly detection** (`pgaudit` /
+      `log_connections`, shipped to your SIEM; alert on connections from
+      unexpected source IPs or roles). Direct DB access bypasses the application
+      audit log ([INV-AUDIT-1](../specification/invariant.md#inv-audit-1))
+      entirely, so this is the compensating detection control.
+
+---
+
 ## Related pages
 
 - [configuration.md](./configuration.md) — the variables referenced here.

@@ -246,6 +246,51 @@ The codebase uses three Django concurrency primitives:
   caller transaction never leaves a queued task
   ([INV-PUB-5](./invariant.md#inv-pub-5)).
 
+### 3.9 Data confidentiality and the database-compromise threat
+
+Embargoed, pre-disclosure advisory content is the system's most sensitive
+data. The headline threat is **an attacker who obtains the database
+credentials and connects directly** (adjacent: a stolen backup/snapshot, a
+malicious DBA, or a compromised app process). AdvisoryHub's answer is
+**defense-in-depth on the database access path, not application-layer
+encryption of content** ([INV-CONF-1](./invariant.md#inv-conf-1)).
+
+Two distinct threats are routinely conflated under "encrypt the database":
+
+- **Stolen media** (disk, snapshot, logical backup) — mitigated by
+  encryption-at-rest (volume encryption or managed-DB TDE) and encrypted
+  backups. Transparent to the app; no feature cost.
+- **Stolen credentials → direct connection** (the headline threat) —
+  encryption-at-rest does **nothing**: a client holding a valid password is a
+  legitimate client, and the database decrypts for it.
+
+Application-layer column encryption is **deliberately not used**. It would
+defeat credential theft only if the key lived in a different trust domain than
+the credential (a KMS/HSM); in this deployment the DB password and any
+encryption key are injected into the same pod from the same secret store
+(`config/settings/base.py`, `charts/advisoryhub/templates/secret-env.yaml`),
+so both leak by the same path, and a compromised app process holds the key
+regardless. It would also break load-bearing functionality: advisory search
+(`summary`/`details`/`aliases` `__icontains` in `advisories/views.py` and
+`api/views_advisories.py`) and the duplicate-detection prefilter
+(`TrigramSimilarity` over `summary`/`details` plus JSONB `__contains` on
+`aliases`/`affected` in `similarity/prefilter.py`,
+[INV-SIM-4](./invariant.md#inv-sim-4)) both require plaintext, SQL-queryable
+columns. The full plaintext archive lives in the append-only
+`AdvisoryVersion.payload` ([INV-IMPL-5](./invariant.md#inv-impl-5)), so
+encrypting content would also mean encrypting an immutable, `PROTECT`-FK'd log
+where **key loss is unrecoverable data loss**.
+
+Confidentiality of content at rest is therefore a **deployment-layer
+responsibility**: restrict network reachability so only the app can reach
+Postgres, prefer short-lived/IAM credentials over a static password, require
+TLS (`sslmode=verify-full`), run the app under a least-privilege role, encrypt
+backups and volumes, and enable database-level audit (pgaudit /
+`log_connections`) — direct DB access bypasses the application audit log
+([INV-AUDIT-1](./invariant.md#inv-audit-1)) entirely, so detection is the
+compensating control. The operator checklist is in
+[running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist).
+
 ---
 
 ## 4. Publication pipeline

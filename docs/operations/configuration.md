@@ -54,6 +54,13 @@ What `prod.py` changes is detailed in
 | `DATABASE_URL` | `postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub` | **Secret. Required.** Must be PostgreSQL — append-only triggers and JSONB are Postgres-specific. |
 | `CACHE_URL` | *(empty → in-process LocMem)* | **Required in prod.** Point at the shared Valkey, e.g. `redis://valkey:6379/2`. Backs rate-limiting and the maintenance-mode flag; LocMem is per-process and won't coordinate across replicas. |
 
+> **Require TLS to Postgres.** Append `?sslmode=verify-full` (with a pinned
+> server CA via `sslrootcert`) to `DATABASE_URL` so the app rejects an
+> unencrypted or MITM'd database connection. Advisory content is not encrypted
+> at the application layer ([INV-CONF-1](../specification/invariant.md#inv-conf-1));
+> confidentiality of content at rest is a deployment-layer control — see the
+> [database hardening checklist](./running-in-production.md#7-database-hardening-checklist).
+
 ## 4. OIDC (authentication)
 
 See [integrations.md §1](./integrations.md#1-oidc-identity-provider) for the

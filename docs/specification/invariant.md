@@ -133,6 +133,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-SIM-3](#inv-sim-3) | LLM provider errors are redacted before persistence; the API key never reaches logs or audit. | Similarity | Critical |
 | [INV-SIM-4](#inv-sim-4) | Fingerprint/judge inputs come from the pinned `SimilarityCheck.version` payload, never live data. | Similarity | High |
 | [INV-SIM-5](#inv-sim-5) | Stale queued/running similarity checks are reaped to `failed`; the reaper performs no LLM egress. | Similarity | High |
+| [INV-CONF-1](#inv-conf-1) | Advisory content is not encrypted at the application layer; content confidentiality at rest is a deployment-layer control and the queried fields stay plaintext. | Confidentiality | High |
 
 ---
 
@@ -2283,7 +2284,7 @@ search auto-complete leakage).
 **Tests.** `advisories/tests/test_list_filters.py`, `advisories/tests/test_views.py`,
 `api/tests/test_advisories.py`.
 
-**Related.** [INV-AUTH-7](#inv-auth-7).
+**Related.** [INV-AUTH-7](#inv-auth-7), [INV-CONF-1](#inv-conf-1).
 
 ---
 
@@ -2816,6 +2817,58 @@ advisory, with no recovery short of manual SQL.
 **Related.** [INV-PUB-7](#inv-pub-7) and [INV-GHSA-2](#inv-ghsa-2) (the
 publication and GHSA mirrors of this rule), [INV-SIM-2](#inv-sim-2),
 [INV-SIM-3](#inv-sim-3).
+
+---
+
+## 21. Data confidentiality at rest
+
+<a id="inv-conf-1"></a>
+### INV-CONF-1 — Content confidentiality at rest is a deployment control, not app-layer encryption   [High]
+
+**Statement.** Advisory content is **not** encrypted at the application layer.
+The fields the app queries — `summary`, `details`, `aliases`, `affected` — are
+stored as plaintext, SQL-queryable columns/JSONB, and the full payload is kept
+in clear in the append-only `AdvisoryVersion.payload`. Confidentiality of that
+content at rest (against a stolen-credential or stolen-media attacker) is
+provided by deployment-layer controls on the database access path — documented
+in [running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist)
+— not by column encryption.
+
+**Rationale.** App-layer encryption would defeat credential theft only with a
+key held in a separate trust domain (KMS/HSM); in practice the DB password and
+any key share one secret store and pod, and a compromised app process holds the
+key anyway — so it adds little against the headline threat while breaking
+features that need plaintext: advisory search and the duplicate-detection
+prefilter ([INV-SIM-4](#inv-sim-4)) both run SQL `LIKE`/trigram/JSONB queries
+over these columns. Encrypting the append-only payload
+([INV-IMPL-5](#inv-impl-5)) would also make key loss equal permanent loss of
+immutable history. The architectural discussion is in
+[architecture.md §3.9](./architecture.md#39-data-confidentiality-and-the-database-compromise-threat).
+
+**Enforced in.**
+- `advisories/views.py`, `api/views_advisories.py` — search over plaintext
+  `summary`/`details`/`aliases`.
+- `similarity/prefilter.py` — `TrigramSimilarity` + JSONB `__contains` prefilter
+  that depends on plaintext content.
+- Deployment controls (network isolation, TLS, least-privilege role, encrypted
+  backups, DB-level audit) live in
+  [running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist).
+
+**Violation impact.** Encrypting these columns silently breaks advisory search
+and duplicate detection; encrypting `AdvisoryVersion.payload` risks
+unrecoverable loss of immutable history. Conversely, treating disk/TDE
+encryption as protection against stolen *credentials* gives a false sense of
+confidentiality — that threat needs the access-path controls, not
+encryption-at-rest.
+
+**Tests.** `advisories/tests/test_list_filters.py` (plaintext search) and the
+`similarity/` prefilter suite. _(No dedicated negative test — this is a
+posture/design invariant; the search and similarity suites assert the plaintext
+queries on which it rests.)_
+
+**Related.** [INV-PRIVACY-1](#inv-privacy-1), [INV-AUTH-7](#inv-auth-7),
+[INV-AUDIT-1](#inv-audit-1), [INV-SECRET-1](#inv-secret-1),
+[INV-SIM-4](#inv-sim-4), [INV-IMPL-5](#inv-impl-5).
 
 ---
 

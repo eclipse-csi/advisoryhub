@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.auth.models import Group
+from django.core.exceptions import SuspiciousOperation
 from django.http import HttpRequest
 from django.shortcuts import resolve_url
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
@@ -25,16 +26,25 @@ log = logging.getLogger(__name__)
 
 
 def _email_is_verified(claims: dict[str, Any]) -> bool:
-    """Whether the OIDC ``email`` claim may be trusted for account linking.
+    """Whether the OIDC ``email`` claim may be trusted to establish identity.
 
-    Defaults to ``True`` when the OP omits ``email_verified`` (e.g. Kanidm,
-    our single trusted IdP), so account-linking-by-email keeps working. Only
-    an *explicit* falsey value blocks the link — closing the takeover vector
-    where, in a multi-IdP or unverified-email setup, an attacker could
-    register a victim's email and inherit their existing account. The stable
-    ``sub`` match is unaffected; this only gates the email *fallback*.
+    Gates *both* the email-linking fallback (:meth:`filter_users_by_claims`)
+    and account creation (:meth:`create_user`) — an unverified email must never
+    link to an existing account, create a new one, or redeem invitations
+    addressed to it (INV-OIDC-6). The stable ``sub`` match is unaffected; this
+    only gates the email path.
+
+    When the OP **omits** ``email_verified`` the result follows
+    ``OIDC_REQUIRE_EMAIL_VERIFIED``: it defaults to ``False`` so an absent claim
+    stays trusted (e.g. Kanidm, our single trusted IdP, never emits it). Set the
+    setting ``True`` for an OP that allows unverified-email signup or federates an
+    upstream that forwards ``email`` without re-verification, to reject the absent
+    case too. An *explicit* falsey value (``false``, ``"false"``, ``null``) always
+    blocks, regardless of the setting.
     """
-    verified = claims.get("email_verified", True)
+    if "email_verified" not in claims:
+        return not settings.OIDC_REQUIRE_EMAIL_VERIFIED
+    verified = claims.get("email_verified")
     if isinstance(verified, str):
         return verified.strip().lower() in ("true", "1", "yes")
     return bool(verified)
@@ -56,6 +66,16 @@ class AdvisoryHubOIDCBackend(OIDCAuthenticationBackend):
 
     def create_user(self, claims: dict[str, Any]) -> User:
         email = claims.get("email")
+        # Symmetric with the email fallback in filter_users_by_claims: an
+        # unverified email is never trusted to establish identity (INV-OIDC-6).
+        # Refusing here — rather than creating the row — prevents squatting the
+        # unique address and redeeming PendingInvitations addressed to it via
+        # _post_login_hooks. SuspiciousOperation is caught by the library's
+        # authenticate() and routed to our audited login_failure override.
+        if email and not _email_is_verified(claims):
+            raise SuspiciousOperation(
+                "OIDC email claim is not verified; refusing account creation."
+            )
         user = User.objects.create_user(email=email)
         self._apply_claims(user, claims)
         self._post_login_hooks(user, claims)
@@ -89,7 +109,8 @@ class AdvisoryHubOIDCBackend(OIDCAuthenticationBackend):
         user.display_name = claims.get("name") or user.display_name
         user.first_name = claims.get("given_name", "") or user.first_name
         user.last_name = claims.get("family_name", "") or user.last_name
-        if not user.email and claims.get("email"):
+        # Only an OP-verified email is ever written onto a user (INV-OIDC-6).
+        if not user.email and claims.get("email") and _email_is_verified(claims):
             user.email = claims["email"]
         # First login of a pre-provisioned shadow user (security-team roster
         # sync): clear the flag so it is no longer treated as notification-only.

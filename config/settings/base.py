@@ -413,6 +413,13 @@ STEP_UP_MAX_AGE_SECONDS = env.int("STEP_UP_MAX_AGE_SECONDS", default=300)
 # from OIDC group membership — it's an editorial decision per project.
 OIDC_GROUP_CLAIM = env("OIDC_GROUP_CLAIM")
 OIDC_ADMIN_GROUP = env("OIDC_ADMIN_GROUP")
+# Trust the OIDC `email` claim to create/link an account (and redeem
+# invitations addressed to it) only when the OP marks it verified — INV-OIDC-6.
+# An *explicit* falsey `email_verified` always blocks; this knob governs the
+# *absent* case. Kanidm (our single trusted OP) omits the claim, so the default
+# keeps account linking working. Set True for an OP that allows unverified-email
+# signup, or that federates an upstream forwarding `email` without re-verification.
+OIDC_REQUIRE_EMAIL_VERIFIED = env.bool("OIDC_REQUIRE_EMAIL_VERIFIED", default=False)
 
 # ---------------------------------------------------------------------------
 # Celery / Valkey

@@ -199,7 +199,9 @@ OIDC config knobs: `OIDC_RP_CLIENT_ID/_SECRET`,
 `OIDC_OP_*_ENDPOINT`, `OIDC_OP_LOGOUT_ENDPOINT`,
 `OIDC_RP_SIGN_ALGO` (default `RS256`), `OIDC_USE_PKCE` (default
 True, with `S256` challenge method), `OIDC_VERIFY_SSL` (True in
-prod), `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`. RP-initiated logout
+prod), `OIDC_GROUP_CLAIM`, `OIDC_ADMIN_GROUP`,
+`OIDC_REQUIRE_EMAIL_VERIFIED` (default False — reject an *absent*
+`email_verified` claim too; INV-OIDC-6). RP-initiated logout
 uses `accounts.auth.provider_logout`; `OIDC_STORE_ID_TOKEN=True` so
 the logout request can include `id_token_hint`.
 
@@ -1098,7 +1100,8 @@ entries).
 `OIDC_OP_LOGOUT_ENDPOINT`, `OIDC_RP_SIGN_ALGO` (default `RS256`),
 `OIDC_VERIFY_SSL` (default True), `OIDC_USE_PKCE` (default True),
 `OIDC_GROUP_CLAIM` (default `groups`), `OIDC_ADMIN_GROUP` (default
-`advisoryhub-security`).
+`advisoryhub-security`), `OIDC_REQUIRE_EMAIL_VERIFIED` (default
+False; INV-OIDC-6).
 
 **Step-up.** `STEP_UP_REQUIRED` (default True),
 `STEP_UP_MAX_AGE_SECONDS` (default 300).

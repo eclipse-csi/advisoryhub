@@ -85,6 +85,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-OIDC-3](#inv-oidc-3) | `is_staff` / `is_superuser` track admin-group membership on each login. | Identity | High |
 | [INV-OIDC-4](#inv-oidc-4) | OIDC group claim values are filtered to SPN form before mirroring. | Identity | Medium |
 | [INV-OIDC-5](#inv-oidc-5) | Provisioned (shadow) roster users hold no authorization; roster sync never writes `user.groups`. | Identity | High |
+| [INV-OIDC-6](#inv-oidc-6) | An unverified OIDC email is never trusted to create/link an account or redeem invitations. | Identity | High |
 | [INV-ROSTER-1](#inv-roster-1) | Shadow roster members get the team's default notifications for their project only, never internal comments; reach is not access. | Notifications | Medium |
 | [INV-PUB-1](#inv-pub-1) | Each publication clone uses a fresh `TemporaryDirectory`. | Publication | Critical |
 | [INV-PUB-2](#inv-pub-2) | SSH and token authentication are mutually exclusive. | Publication | Medium |
@@ -1433,6 +1434,50 @@ access; or the login full-replace silently wipes roster-driven membership.
 
 ---
 
+<a id="inv-oidc-6"></a>
+### INV-OIDC-6 — Unverified OIDC email is never trusted to establish identity   [High]
+
+**Statement.** The OIDC `email` claim is trusted to identify a user — to link to
+an existing account (the email *fallback* in
+`AdvisoryHubOIDCBackend.filter_users_by_claims`), to create a new one
+(`create_user`), to be written onto a `User` (`_apply_claims`), and thereby to
+redeem `PendingInvitation`s addressed to that address — **only when**
+`_email_is_verified(claims)` holds. The stable `sub` match is authoritative and
+unaffected. When the OP marks the email unverified, the email fallback returns no
+user and account creation is **refused** (`SuspiciousOperation`, caught by the
+library's `authenticate` and routed to the audited `login_failure`): no `User`
+row is created, the unique address is not squatted, and no invitation is
+redeemed. An *explicit* falsey `email_verified` (`false`, `"false"`, `null`)
+always blocks. The **absent** case follows `OIDC_REQUIRE_EMAIL_VERIFIED`
+(default `False` → trusted, because our single configured OP, Kanidm, omits the
+claim); set it `True` for an OP that allows unverified-email signup or federates
+an upstream that forwards `email` without re-verification.
+
+**Rationale.** AdvisoryHub is admin-provisioned and invitation-based; an
+unverified email is an attacker-controllable identity assertion. Trusting it on
+the create path let an attacker holding an OP token for a victim's email redeem
+any outstanding invitation to that address — gaining viewer/collaborator access
+to an embargoed advisory — and permanently squat the unique email
+([INV-ACCESS-2](#inv-access-2)). The fallback gate alone (the earlier "S2" fix)
+covered only account *linking*; this invariant makes the rule uniform across
+linking, creation, and the email-write.
+
+**Enforced in.**
+- `accounts/auth.py` — `_email_is_verified` (the gate; honors
+  `OIDC_REQUIRE_EMAIL_VERIFIED`), `filter_users_by_claims` (link fallback),
+  `create_user` (refuses on unverified), `_apply_claims` (email-write guard).
+
+**Violation impact.** An attacker who can obtain an OP token carrying a victim's
+unverified email claims any pending invitation to that address and permanently
+squats the unique `User.email`.
+
+**Tests.** `accounts/test_email_linking.py`.
+
+**Related.** [INV-OIDC-1](#inv-oidc-1), [INV-ACCESS-2](#inv-access-2),
+[INV-AUTH-1](#inv-auth-1).
+
+---
+
 <a id="inv-roster-1"></a>
 ### INV-ROSTER-1 — Roster notification reach is default-set, per-project, never internal   [Medium]
 
@@ -1745,7 +1790,7 @@ sender used; an exact-case match would deny legitimate invitations.
 
 **Tests.** `access/tests.py`.
 
-**Related.** [INV-ACCESS-3](#inv-access-3).
+**Related.** [INV-ACCESS-3](#inv-access-3), [INV-OIDC-6](#inv-oidc-6).
 
 ---
 

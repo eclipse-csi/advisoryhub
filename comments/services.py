@@ -18,6 +18,7 @@ from django.db import transaction
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 from markdown_it import MarkdownIt
+from markdown_it.rules_inline import StateInline
 
 from accounts.models import User
 from accounts.utils import mask_email
@@ -32,7 +33,46 @@ from .models import AdvisoryComment, CommentVersion
 # Markdown
 # ---------------------------------------------------------------------------
 
-_MD = MarkdownIt("commonmark", {"breaks": True, "linkify": True}).enable("table")
+# A mention is "@" followed by an email-local-style token. Defined here (above
+# the MarkdownIt instance) because the inline mention rule below reuses it;
+# ``extract_mentions`` / ``resolve_*`` reuse it too. Handles resolve against the
+# User table by exact email (``@alice@example.org``) or local-part (``@alice``).
+_MENTION_RE = re.compile(r"(?<![\w.])@([A-Za-z0-9_.\-+]+(?:@[A-Za-z0-9_.\-]+)?)")
+
+
+def _mention_inline_rule(state: StateInline, silent: bool) -> bool:
+    r"""markdown-it inline rule: chip ``@handle`` as ``<span class="mention">``.
+
+    Runs *during* markdown parsing on inline text only — never on attribute
+    values or raw markup — and emits the chip as proper tokens that the final
+    ``nh3.clean`` then vets. This replaces a post-sanitisation regex highlighter
+    that mis-tokenised attribute values containing a literal ``>`` and let
+    attacker markup break out of ``<a title="…">`` (advisoryhub--001, CWE-79).
+    Code spans, fenced blocks and escaped ``\@`` are skipped for free because the
+    rule is registered after ``backticks`` / ``escape``.
+    """
+    if state.src[state.pos] != "@":
+        return False
+    # ``match`` honours the lookbehind, rejecting an "@" preceded by a word char
+    # (so e-mail addresses like ``a@b.com`` in prose are never chipped).
+    m = _MENTION_RE.match(state.src, state.pos)
+    if not m or m.end() > state.posMax:
+        return False
+    if not silent:
+        token = state.push("mention_open", "span", 1)
+        token.attrSet("class", "mention")
+        token = state.push("text", "", 0)
+        token.content = m.group(0)  # "@handle"; the text renderer HTML-escapes it
+        state.push("mention_close", "span", -1)
+    state.pos = m.end()
+    return True
+
+
+# ``html=False`` keeps raw inline HTML out (the "no inline HTML" spec contract);
+# markdown syntax is unaffected. Mentions are chipped by the inline rule above,
+# before sanitisation — never by post-processing already-sanitised HTML.
+_MD = MarkdownIt("commonmark", {"breaks": True, "linkify": True, "html": False}).enable("table")
+_MD.inline.ruler.before("emphasis", "mention", _mention_inline_rule)
 
 _ALLOWED_TAGS = {
     "p",
@@ -60,82 +100,47 @@ _ALLOWED_TAGS = {
     "tr",
     "th",
     "td",
+    "span",  # mention chips emitted by _mention_inline_rule (class restricted below)
 }
 # nh3 manages the ``rel`` attribute itself via ``link_rel`` below (forcing
 # ``nofollow noopener`` on every link), so ``rel`` is deliberately absent here —
 # listing it as an allowed attribute would conflict with nh3's link_rel handling.
-_ALLOWED_ATTRS = {"a": {"href", "title"}}
+# ``span`` is allowed only to carry the mention-chip class; ``_attr_filter``
+# pins that value to exactly ``mention`` (see render_markdown).
+_ALLOWED_ATTRS = {"a": {"href", "title"}, "span": {"class"}}
 _ALLOWED_SCHEMES = {"http", "https", "mailto"}
+
+
+def _attr_filter(tag: str, attr: str, value: str) -> str | None:
+    """Pin ``<span>`` to exactly ``class="mention"`` and drop any other span
+    attribute; pass every other tag's attributes through unchanged. Defence in
+    depth around the mention chip — the only ``<span>`` the renderer emits."""
+    if tag == "span":
+        return value if (attr == "class" and value == "mention") else None
+    return value
 
 
 def render_markdown(body: str) -> str:
     """Render markdown to a sanitized HTML fragment safe for inclusion in templates."""
     raw_html = _MD.render(body or "")
-    # nh3 strips disallowed tags (keeping their text), drops disallowed-scheme
-    # hrefs (the javascript: backstop), and forces rel="nofollow noopener" on
-    # every link natively.
-    cleaned = nh3.clean(
+    # nh3 runs LAST and is the sole authority on the output: it strips disallowed
+    # tags (keeping their text), drops disallowed-scheme hrefs (the javascript:
+    # backstop), forces rel="nofollow noopener" on every link, and (via
+    # _attr_filter) pins mention-chip spans to class="mention". Nothing
+    # post-processes its output, so the result is always sanitizer-vetted.
+    return nh3.clean(
         raw_html,
         tags=_ALLOWED_TAGS,
         attributes=_ALLOWED_ATTRS,
         url_schemes=_ALLOWED_SCHEMES,
         link_rel="nofollow noopener",
+        attribute_filter=_attr_filter,
     )
-    cleaned = _highlight_mentions(cleaned)
-    return cleaned
-
-
-# Matches the opening of a <code>/<pre> run and its close, so the mention
-# highlighter can leave verbatim code untouched.
-_CODE_OPEN_RE = re.compile(r"<(?:code|pre)\b", re.IGNORECASE)
-_CODE_CLOSE_RE = re.compile(r"</(?:code|pre)\s*>", re.IGNORECASE)
-
-
-def _highlight_mentions(html: str) -> str:
-    """Wrap syntactic ``@handle`` tokens in ``<span class="mention">``.
-
-    Runs *after* sanitisation on the already-cleaned, HTML-escaped fragment,
-    so the only ``<span>`` present is the fixed-class one we emit here — we
-    never have to widen the sanitizer allowlist (strictly safer than letting the
-    body author write spans). Highlighting is **syntactic**: it does not hit
-    the DB to check whether a handle resolves, because the timeline renders
-    many comments and a per-comment lookup would be N queries. Tokens inside
-    ``<code>``/``<pre>`` runs and inside tag markup are left alone. The handle
-    character class contains no HTML-special characters, so inserting it raw is
-    safe. (A full-email mention that ``linkify`` already turned into a mailto
-    link won't chip — an accepted cosmetic edge; the completion menu inserts
-    the local-part form, which chips cleanly.)
-    """
-    if "@" not in html:
-        return html
-    parts = re.split(r"(<[^>]+>)", html)
-    depth = 0
-    out: list[str] = []
-    for part in parts:
-        if not part:
-            continue
-        if part.startswith("<"):
-            if _CODE_OPEN_RE.match(part):
-                depth += 1
-            elif _CODE_CLOSE_RE.match(part):
-                depth = max(0, depth - 1)
-            out.append(part)
-        elif depth == 0:
-            out.append(
-                _MENTION_RE.sub(lambda m: f'<span class="mention">@{m.group(1)}</span>', part)
-            )
-        else:
-            out.append(part)
-    return "".join(out)
 
 
 # ---------------------------------------------------------------------------
 # Mentions
 # ---------------------------------------------------------------------------
-
-# A mention is "@" followed by an email-local-style token. We resolve them
-# against the User table by exact email or by display_name.
-_MENTION_RE = re.compile(r"(?<![\w.])@([A-Za-z0-9_.\-+]+(?:@[A-Za-z0-9_.\-]+)?)")
 
 
 def extract_mentions(body: str) -> list[str]:

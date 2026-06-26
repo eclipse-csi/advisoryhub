@@ -428,9 +428,11 @@ Comments are authored by the requesting user. The form accepts
 markdown; the body is stored as raw markdown and re-rendered on every
 read through a strict nh3 allowlist (`p`, `br`, `strong`, `em`,
 `u`, `code`, `pre`, `blockquote`, `hr`, `ul`, `ol`, `li`, `h1`–`h6`,
-`a`, tables). Anchor tags are augmented with `rel="nofollow noopener"`.
-Rendered HTML is never persisted, so tightening the allowlist applies
-retroactively.
+`a`, tables, plus `span` carrying only `class="mention"` for the
+`@mention` chips the markdown parser emits before sanitisation). Raw
+inline HTML is not rendered — it is escaped to text. Anchor tags are
+augmented with `rel="nofollow noopener"`. Rendered HTML is never
+persisted, so tightening the allowlist applies retroactively.
 
 `is_internal` is a per-comment boolean fixed at creation
 ([INV-COMMENT-1](./invariant.md#inv-comment-1)). Internal comments

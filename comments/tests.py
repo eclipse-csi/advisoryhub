@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from html.parser import HTMLParser
+
+import nh3
 import pytest
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
@@ -33,8 +36,11 @@ def test_markdown_strips_dangerous_html():
 
 
 def test_markdown_strips_inline_event_handlers():
+    # html:False escapes raw inline HTML wholesale, so an on*= handler can never
+    # become a live attribute (it survives only as inert escaped text).
     out = services.render_markdown('<a href="x" onclick="bad()">link</a>')
-    assert "onclick" not in out.lower()
+    assert "<a " not in out  # no live anchor element
+    assert "&lt;a" in out  # the raw tag was escaped to text
 
 
 def test_markdown_basic_inline_renders():
@@ -52,15 +58,15 @@ def test_markdown_links_get_rel_attribute():
 def test_markdown_strips_javascript_urls():
     """A javascript: URL must never produce an executable anchor.
 
-    markdown-it-py refuses to emit ``<a>`` for a ``javascript:`` href in
-    the first place; nh3 is a defense-in-depth backstop. Either way:
-    no anchor element with a ``javascript:`` href reaches the rendered
-    HTML.
+    markdown-it-py refuses to emit ``<a>`` for a ``javascript:`` href in the
+    first place, and raw inline HTML is escaped wholesale (html:False), so
+    neither path yields a live anchor with a ``javascript:`` href.
     """
     out = services.render_markdown("[bad](javascript:alert(1))")
     assert "<a " not in out
     out2 = services.render_markdown('<a href="javascript:alert(1)">x</a>')
-    assert 'href="javascript:' not in out2.lower()
+    assert "<a " not in out2  # raw HTML escaped — no live anchor reaches the page
+    assert "&lt;a" in out2
 
 
 # ---- Mention extraction ---------------------------------------------------
@@ -209,6 +215,104 @@ def test_render_markdown_does_not_chip_inside_code():
 def test_render_markdown_mention_chip_is_xss_safe():
     out = services.render_markdown("@<script>alert(1)</script>")
     assert "<script" not in out.lower()
+
+
+# ---- Mention-chip injection regression (advisoryhub--001) -----------------
+#
+# The original highlighter post-processed nh3 output with a naive
+# ``re.split(r"(<[^>]+>)")``: because HTML5 does not escape ``>`` inside a
+# quoted attribute value, a ``title="…>…"`` value was mis-tokenised as body
+# text and the injected ``<span class="mention">`` broke out of the attribute,
+# releasing attacker markup (CWE-79). Mentions are now chipped by a markdown-it
+# inline rule *before* nh3, so the sanitizer is the sole authority on the output.
+# These tests lock in the invariant: no attacker markup ever escapes into a live
+# element, independent of the specific payload.
+
+
+class _LiveDOM(HTMLParser):
+    """Collect element names and ``on*`` attributes that exist as real *tags*.
+
+    Markup that is merely inert text inside an attribute value (e.g. ``<img>``
+    text inside ``title="…"``) is never reported — only genuine start tags are,
+    which is exactly what an attribute break-out would produce.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tags: set[str] = set()
+        self.event_attrs: set[str] = set()
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.add(tag)
+        self.event_attrs |= {k for k, _ in attrs if k.startswith("on")}
+
+    handle_startendtag = handle_starttag
+
+
+def _live(html: str) -> _LiveDOM:
+    parser = _LiveDOM()
+    parser.feed(html)
+    return parser
+
+
+# Elements that must never appear as live tags in rendered markdown output.
+_FORBIDDEN_TAGS = {"script", "img", "meta", "iframe", "object", "embed", "form", "base", "style"}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        # raw-HTML title vector (the report's reproduction)
+        '<a href="https://x.com" title="P>@a <img src=x onerror=alert(1)>">click</a>',
+        '<a href="https://x.com" title="X>@a <meta http-equiv=refresh content=0;url=https://evil>">c</a>',
+        # markdown link-title vector — no raw HTML needed; markdown-it leaves the
+        # raw ``>`` in the title attribute just the same.
+        '[c](https://x.com "q>@a <img src=x onerror=alert(1)>")',
+        '[c](https://x.com "q>@a <meta http-equiv=refresh content=0;url=https://evil>")',
+        # mutation: mention adjacent to the break, then a raw element
+        '<a href="https://x.com" title=">@admin"><img src=x onerror=alert(1)></a>',
+    ],
+)
+def test_render_markdown_mention_never_breaks_out_of_attributes(payload):
+    dom = _live(services.render_markdown(payload))
+    assert not (dom.tags & _FORBIDDEN_TAGS), dom.tags  # no live dangerous element escaped
+    assert not dom.event_attrs, dom.event_attrs  # no on*= handler escaped
+    assert dom.tags <= services._ALLOWED_TAGS | {"p"}  # only allowlisted elements present
+
+
+def test_render_markdown_escapes_raw_inline_html():
+    # html:False — raw inline HTML is escaped to text (spec "no inline HTML"),
+    # so it can never carry an attribute value into the sanitizer.
+    out = services.render_markdown("<b>x</b> <img src=y>")
+    assert "<b>" not in out
+    assert "<img" not in out
+    assert "&lt;" in out
+
+
+def test_render_markdown_does_not_chip_mention_inside_link_title():
+    # The "@a" lives in the link *title* attribute, not in inline body text, so
+    # the chipper must not touch it — proving no span is injected into the
+    # attribute (the break-out mechanism).
+    out = services.render_markdown('[c](https://x.com "@a")')
+    assert '<span class="mention">' not in out
+
+
+def test_render_markdown_output_is_idempotent_under_resanitization():
+    # Guards against anyone reintroducing post-nh3 mutation: render output must
+    # already be sanitizer-clean, so re-cleaning with the production allowlist is
+    # a no-op. A break-out would create a live element the second pass strips.
+    out = services.render_markdown(
+        '<a href="https://x.com" title="P>@a <img src=x onerror=alert(1)>">click</a>'
+    )
+    resanitized = nh3.clean(
+        out,
+        tags=services._ALLOWED_TAGS,
+        attributes=services._ALLOWED_ATTRS,
+        url_schemes=services._ALLOWED_SCHEMES,
+        link_rel="nofollow noopener",
+        attribute_filter=services._attr_filter,
+    )
+    assert resanitized == out
 
 
 # ---- Comment writes -------------------------------------------------------

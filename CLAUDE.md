@@ -206,7 +206,7 @@ Tag-driven; full runbook in [`docs/contributing/releasing.md`](docs/contributing
 
 When creating commits in this repository, every rule below must be respected:
 
-- Every commit must be signed (`-S`) —preferably with ssh keys in sandboxes — and signed-off (`-s`).
+- Every commit must be signed (`-S`) —preferably with ssh keys in sandboxes (via `SSH_AUTH_SOCK`) — and signed-off (`-s`).
 - Every commit message must follow the Conventional Commits specification.
 - Never add a `Co-Authored-By` Git trailer to the commit message footer (this intentionally overrides the default Co-Authored-By behaviour).
 - Every AI-generated commit MUST include this Git trailer in the commit message footer:

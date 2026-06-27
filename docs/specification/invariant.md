@@ -95,6 +95,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-PUB-5](#inv-pub-5) | The Celery task is enqueued via `transaction.on_commit`. | Publication | High |
 | [INV-PUB-6](#inv-pub-6) | OSV and CSAF documents are validated against vendored schemas before push. | Publication | High |
 | [INV-PUB-7](#inv-pub-7) | Stale queued/running publication tasks are reaped to `failed` without touching advisory state. | Publication | High |
+| [INV-PUB-8](#inv-pub-8) | Publication writes never follow a symlink out of the clone tree. | Publication | Medium |
 | [INV-PERM-1](#inv-perm-1) | Mature-publisher projects may publish without a top-level review. | Permissions | High |
 | [INV-PERM-2](#inv-perm-2) | Mature-publisher status lives on `Project`, not on a group or env var. | Permissions | High |
 | [INV-PERM-3](#inv-perm-3) | No one can publish while `review_status=submitted`. | Permissions | High |
@@ -1718,6 +1719,45 @@ no recovery short of manual SQL.
 [INV-LIFECYCLE-3](#inv-lifecycle-3), [INV-PUB-4](#inv-pub-4),
 [INV-SECRET-1](#inv-secret-1), [INV-SIM-5](#inv-sim-5) and
 [INV-GHSA-2](#inv-ghsa-2) (the similarity and GHSA mirrors of this rule).
+
+---
+
+<a id="inv-pub-8"></a>
+### INV-PUB-8 — Publication writes stay inside the clone tree   [Medium]
+
+**Statement.** A publication run never follows a symlink out of its clone. The
+clone is taken with `core.symlinks=false` so a symlink committed at the
+publication repo's HEAD is materialised as a plain file (never a real link), and
+`_write_files` additionally refuses any write whose `resolve()`-d target is not
+relative to the clone root (raising `GitPublicationError`).
+
+**Rationale.** The checked-out tree is whatever the publication repo's HEAD
+contains, and its committer set is governed by the Git host's permissions — a
+plausibly lower-trust principal than the Celery worker (which holds the DB
+credentials, OIDC client secret, and deploy key). `Path.write_text` follows
+symlinks by default, so without these guards a committer could plant a symlink at
+a deterministic write path (e.g. `osv/<year>/<advisory-id>.json`) and redirect
+the next publish's write outside the clone (CWE-59) — corrupting `/tmp` files
+under the chart's `readOnlyRootFilesystem`, or application code on a non-hardened
+deployment. The two layers are independent: the clone flag is the root-cause
+fix, the containment assertion also covers a `..` path or any future caller.
+In-tree symlinks are not an escape and are left alone — a committer who can push
+already controls the whole tree.
+
+**Enforced in.**
+- `publication/git_service.py` — `publish_files` (`-c core.symlinks=false` on
+  clone), `_write_files` (resolved-target containment check).
+
+**Violation impact.** Out-of-tree file overwrite by a publication-repo committer:
+DoS of subsequent publications (corrupting the entrypoint's nss_wrapper files) or
+arbitrary file overwrite / code execution on a writable rootfs.
+
+**Tests.** `publication/tests/test_git_service.py`
+(`test_publish_does_not_follow_symlink_out_of_tree`,
+`test_write_files_refuses_symlink_escape`).
+
+**Related.** [INV-PUB-1](#inv-pub-1), [INV-PUB-3](#inv-pub-3),
+[INV-SECRET-2](#inv-secret-2).
 
 ---
 

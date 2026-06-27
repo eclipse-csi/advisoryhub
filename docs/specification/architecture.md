@@ -453,11 +453,15 @@ pool. For each call:
    `https://x-access-token:$PUB_REPO_TOKEN@…`. The rewritten URL is
    only used as a `git clone` argument; it is never persisted,
    logged, or audited.
-4. `git clone --depth 1 --single-branch --branch <branch>` — shallow
-   clone ([INV-PUB-3](./invariant.md#inv-pub-3)).
+4. `git -c core.symlinks=false clone --depth 1 --single-branch --branch <branch>` —
+   shallow clone ([INV-PUB-3](./invariant.md#inv-pub-3)); `core.symlinks=false`
+   makes git materialise any symlink committed at the repo HEAD as a plain file,
+   so the write step below can never follow one out of tree
+   ([INV-PUB-8](./invariant.md#inv-pub-8)).
 5. `_write_files(workdir, files)` writes each `WrittenFile` and
-   returns whether anything changed. Idempotent on content: if both
-   the OSV and the CSAF are byte-identical to what is already on
+   returns whether anything changed. It refuses any write whose resolved target
+   escapes the clone root ([INV-PUB-8](./invariant.md#inv-pub-8)). Idempotent on
+   content: if both the OSV and the CSAF are byte-identical to what is already on
    the branch, no commit is created and the function returns
    `PublishResult(commit_sha=HEAD, …)`.
 6. Otherwise `git add`, then

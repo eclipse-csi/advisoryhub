@@ -17,6 +17,7 @@ from publication.git_service import (
     GitPublicationError,
     WrittenFile,
     _git_env,
+    _write_files,
     _write_ssh_wrapper,
     publish_files,
 )
@@ -178,6 +179,71 @@ def test_publish_redacts_token_in_error_message(tmp_path):
         assert "ghp_supersecrettoken" not in str(exc)
     else:
         pytest.fail("expected GitPublicationError")
+
+
+def test_publish_does_not_follow_symlink_out_of_tree(config, bare_repo, tmp_path):
+    """CWE-59 regression (F003, INV-PUB-8): a symlink planted at a publication
+    write path must not redirect the write outside the clone tree.
+
+    A publication-repo committer is plausibly lower-trust than the worker. Here
+    that committer pushes a symlink at the deterministic OSV write path pointing
+    at a file *outside* any clone. The next publish writes that same path; the
+    out-of-tree file must stay untouched (the symlink was neutralised by the
+    ``core.symlinks=false`` clone, so git checked it out as a plain file).
+    Without the fix the clone preserves the symlink and the write follows it,
+    overwriting the sentinel.
+    """
+    outside = tmp_path / "outside.txt"
+    outside.write_text("SENTINEL\n")
+
+    # Push a symlink into the publication repo HEAD at the OSV write path.
+    work = tmp_path / "plant"
+    _clone(str(bare_repo), str(work))
+    link = work / "osv" / "ECL-cccc-ffff-gggg.json"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside)
+    subprocess.run(["git", "-C", str(work), "config", "user.email", "evil@example.org"], check=True)
+    subprocess.run(["git", "-C", str(work), "config", "user.name", "Evil"], check=True)
+    subprocess.run(["git", "-C", str(work), "config", "commit.gpgsign", "false"], check=True)
+    subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", str(work), "commit", "-m", "plant symlink"], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "-C", str(work), "push", "origin", "main"], check=True, capture_output=True
+    )
+
+    publish_files(
+        config=config,
+        files=[
+            WrittenFile(
+                path="osv/ECL-cccc-ffff-gggg.json", content='{"id": "ECL-cccc-ffff-gggg"}\n'
+            )
+        ],
+        commit_message="Publish advisory ECL-cccc-ffff-gggg",
+    )
+
+    # The out-of-tree target is untouched: the write stayed inside the clone.
+    assert outside.read_text() == "SENTINEL\n"
+
+
+def test_write_files_refuses_symlink_escape(tmp_path):
+    """CWE-59 regression (F003, INV-PUB-8): the containment check in
+    ``_write_files`` refuses a write whose target resolves outside the clone
+    root, independently of the ``core.symlinks=false`` clone flag.
+    """
+    outside = tmp_path / "outside.txt"
+    outside.write_text("SENTINEL\n")
+    root = tmp_path / "repo"
+    (root / "osv").mkdir(parents=True)
+    (root / "osv" / "ECL-cccc-ffff-gggg.json").symlink_to(outside)
+
+    with pytest.raises(GitPublicationError):
+        _write_files(
+            root,
+            [WrittenFile(path="osv/ECL-cccc-ffff-gggg.json", content="pwned")],
+        )
+    assert outside.read_text() == "SENTINEL\n"
 
 
 def test_git_env_extends_process_environment(config, monkeypatch):

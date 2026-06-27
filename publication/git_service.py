@@ -88,6 +88,14 @@ def publish_files(
         # _run_git never quotes the argument list in error messages.
         _run_git(
             [
+                # Never materialise a symlink from the (lower-trust) repo HEAD:
+                # the checked-out tree is whatever the publication repo contains,
+                # and `_write_files` writes through default open() which would
+                # follow a planted symlink out of the clone tree (CWE-59). With
+                # core.symlinks=false git writes any committed symlink as a plain
+                # text file instead, so it can never be followed (INV-PUB-8).
+                "-c",
+                "core.symlinks=false",
                 "clone",
                 "--depth",
                 "1",
@@ -268,10 +276,24 @@ def _embed_token(config: RepoConfig) -> str:
 
 
 def _write_files(root: Path, files: list[WrittenFile]) -> bool:
-    """Write each file to disk; return True if any file changed."""
+    """Write each file to disk; return True if any file changed.
+
+    Defence-in-depth against CWE-59 (INV-PUB-8): the checked-out tree is
+    whatever the publication repo's HEAD contains — plausibly a lower-trust
+    principal than this worker. The clone runs with ``core.symlinks=false`` so
+    the repo cannot materialise a symlink, and here we also refuse any write
+    whose resolved path escapes the clone ``root`` — so a symlink (or a ``..``
+    component) can never redirect a write out of tree. In-tree symlinks are not
+    an escape and are left alone: a committer who can push already controls the
+    whole tree, so that is not a privilege boundary. ``root`` is resolved too so
+    the comparison holds where ``$TMPDIR`` is itself symlinked (e.g. macOS).
+    """
+    root_resolved = root.resolve(strict=True)
     changed = False
     for f in files:
         target = root / f.path
+        if not target.resolve(strict=False).is_relative_to(root_resolved):
+            raise GitPublicationError(f"refusing to write outside the publication tree: {f.path}")
         target.parent.mkdir(parents=True, exist_ok=True)
         existing = target.read_text() if target.exists() else None
         if existing == f.content:

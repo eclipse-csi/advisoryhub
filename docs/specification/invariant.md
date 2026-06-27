@@ -1991,22 +1991,40 @@ would defeat the purpose.
 
 **Statement.** `publication.services.publish` takes a row lock with
 `Advisory.objects.select_for_update` and raises `PublicationInProgress` if a
-queued or running `PublicationTask` already exists for the advisory.
+queued or running `PublicationTask` already exists for the advisory. Under that
+same lock it re-evaluates the authorization gates — `can_publish(by, locked)`
+(skipped only for `system=True`) and the dismissed-state guard — and pins the
+version from the freshly-read `locked` row, never from the caller-supplied
+in-memory `advisory`. So a content edit that voids an APPROVED review
+(`review_status` → `NONE`) or a concurrent dismiss committed *after* the view
+fetched the advisory cannot slip an unreviewed (or dismissed) version into a
+publication run.
 
 **Rationale.** Serialises publication attempts so two pushes do not race for the
-same path in the publication repo. The guard cannot deadlock an advisory
-permanently: stale queued/running rows are bounded by the reaper
-([INV-PUB-7](#inv-pub-7)).
+same path in the publication repo, *and* closes the check-then-act gap (CWE-367)
+between the view's read and the lock: `advisory_edit` commits in autocommit (no
+`ATOMIC_REQUESTS`), so without the under-lock re-check an owner on a non-mature
+project could reuse a prior admin approval to publish unreviewed content
+([INV-AUTH-1](#inv-auth-1), [INV-PERM-3](#inv-perm-3)) — the edit-race twin of
+the "surviving APPROVED" loophole [INV-LIFECYCLE-4](#inv-lifecycle-4) closes on
+reopen. The guard cannot deadlock an advisory permanently: stale queued/running
+rows are bounded by the reaper ([INV-PUB-7](#inv-pub-7)).
 
 **Enforced in.**
-- `publication/services.py` — `publish`.
+- `publication/services.py` — `publish` (lock-then-re-check, mirroring the
+  locked-row re-check convention in `advisories/services.py`).
 
-**Violation impact.** Lost or out-of-order commits in the publication repo.
+**Violation impact.** Lost or out-of-order commits in the publication repo;
+unreviewed or dismissed advisory content reaching the public OSV/CSAF feed.
 
-**Tests.** `publication/tests/test_pipeline.py`.
+**Tests.** `publication/tests/test_pipeline.py`
+(`test_publish_rechecks_review_status_under_lock`,
+`test_publish_rechecks_dismissed_state_under_lock`,
+`test_publish_allowed_for_non_mature_member_when_approved`).
 
-**Related.** [INV-PUB-1](#inv-pub-1), [INV-PUB-4](#inv-pub-4),
-[INV-PUB-7](#inv-pub-7).
+**Related.** [INV-AUTH-1](#inv-auth-1), [INV-PERM-3](#inv-perm-3),
+[INV-LIFECYCLE-4](#inv-lifecycle-4), [INV-PUB-1](#inv-pub-1),
+[INV-PUB-4](#inv-pub-4), [INV-PUB-7](#inv-pub-7).
 
 ---
 

@@ -69,17 +69,29 @@ def publish(
     ``withdrawn_reason`` and re-exports without the withdrawn marker so the run
     ends in ``published``. The normal dismissed block stays for every other caller.
     """
-    if not system and not perms.can_publish(by, advisory):
-        raise PermissionDenied("You cannot publish this advisory.")
-    if advisory.state == State.DISMISSED and not allow_from_dismissed:
-        raise PermissionDenied("Dismissed advisories cannot be published.")
-
-    # Serialize concurrent publishers for this advisory: take a row lock
-    # so two simultaneous publish() calls execute one-after-the-other,
-    # then refuse the second one if the first is still in flight.
+    # Take the row lock *before* the authorization decision and re-read every
+    # gate from the locked row — never from the caller-supplied ``advisory``,
+    # which the view fetched before this transaction opened. A concurrent
+    # ``advisory_edit`` can void an APPROVED review (``review_status`` → NONE,
+    # advisories/views.py) or a concurrent dismiss can move the row in the gap
+    # between that fetch and this lock; ``advisory_edit`` runs in autocommit
+    # (no ATOMIC_REQUESTS), so it commits inside the window. Checking
+    # ``can_publish``/``state`` against the stale in-memory copy would let an
+    # owner on a non-mature project reuse a prior approval to slip an
+    # unreviewed version into a publication run — a TOCTOU (CWE-367) defeating
+    # the admin review gate. Re-checking under the lock closes it (INV-AUTH-1,
+    # INV-PERM-3; mirrors the locked-row re-check convention in
+    # advisories.services — promote_triage_to_draft, dismiss_advisory, …). The
+    # lock also serializes concurrent publishers (INV-CONCURRENCY-1): two
+    # simultaneous publish() calls run one-after-the-other, and the second is
+    # refused below if the first is still in flight.
     locked = Advisory.objects.select_for_update().filter(pk=advisory.pk).first()
     if locked is None:
         raise PermissionDenied("Advisory no longer exists.")
+    if not system and not perms.can_publish(by, locked):
+        raise PermissionDenied("You cannot publish this advisory.")
+    if locked.state == State.DISMISSED and not allow_from_dismissed:
+        raise PermissionDenied("Dismissed advisories cannot be published.")
     in_flight = PublicationTask.objects.filter(
         advisory=advisory,
         status__in=[PublicationTaskStatus.QUEUED, PublicationTaskStatus.RUNNING],
@@ -109,7 +121,7 @@ def publish(
         refresh_for_publish(advisory, by=by)
         advisory.refresh_from_db()
 
-    version = advisory_services.latest_version(advisory)
+    version = advisory_services.latest_version(locked)
     if version is None:
         # Belt-and-braces: every advisory has v1 from the creation hook /
         # the data migration. A missing version implies a code path bypassed

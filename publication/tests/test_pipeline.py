@@ -17,7 +17,7 @@ import subprocess
 
 import pytest
 
-from advisories.models import Advisory, State
+from advisories.models import Advisory, ReviewStatus, State
 from audit.models import Action, AuditLogEntry
 from publication import services as pub_services
 from publication import tasks as pub_tasks
@@ -172,6 +172,65 @@ def test_system_publish_still_blocks_dismissed(setup):
     a.save()
     with pytest.raises(PermissionDenied):
         pub_services.publish(a, by=None, system=True)
+
+
+@pytest.mark.django_db
+def test_publish_rechecks_review_status_under_lock(setup):
+    """TOCTOU regression (F002): a non-mature owner cannot reuse a stale
+    APPROVED review to publish unreviewed content.
+
+    Models the race deterministically. The caller holds an ``advisory`` it
+    fetched while ``review_status=APPROVED`` (exactly what the view's
+    ``get_object_or_404`` returns), but a concurrent ``advisory_edit`` has
+    since committed ``review_status=NONE`` — a non-admin edit voids approval.
+    ``publish`` must re-read the row under its ``select_for_update`` lock and
+    refuse, rather than trust the stale in-memory copy (INV-AUTH-1, INV-PERM-3).
+    """
+    from django.core.exceptions import PermissionDenied
+
+    advisory = setup["advisory"]  # non-mature project; member is on its team
+    advisory.review_status = ReviewStatus.APPROVED
+    advisory.save(update_fields=["review_status"])
+
+    # Simulate the concurrent edit committing: .update() writes the DB row
+    # WITHOUT refreshing the in-memory instance, so ``advisory`` keeps reading
+    # APPROVED just like the stale object the publish view is holding.
+    Advisory.objects.filter(pk=advisory.pk).update(review_status=ReviewStatus.NONE)
+    assert advisory.review_status == ReviewStatus.APPROVED  # stale in memory
+
+    with pytest.raises(PermissionDenied):
+        pub_services.publish(advisory, by=setup["member"])
+    assert not PublicationTask.objects.filter(advisory=advisory).exists()
+
+
+@pytest.mark.django_db
+def test_publish_rechecks_dismissed_state_under_lock(setup):
+    """TOCTOU regression (F002): a dismiss committed after the caller fetched
+    the advisory is honoured under the lock, even though the in-memory copy
+    still looks publishable."""
+    from django.core.exceptions import PermissionDenied
+
+    advisory = setup["advisory"]
+    # Concurrent dismiss commits to the DB; the in-memory object stays
+    # non-dismissed (no refresh_from_db), like the view's stale copy.
+    Advisory.objects.filter(pk=advisory.pk).update(state=State.DISMISSED, dismissed_reason="dup")
+    assert advisory.state != State.DISMISSED  # stale in memory
+
+    with pytest.raises(PermissionDenied):
+        pub_services.publish(advisory, by=setup["admin"])
+    assert not PublicationTask.objects.filter(advisory=advisory).exists()
+
+
+@pytest.mark.django_db
+def test_publish_allowed_for_non_mature_member_when_approved(setup):
+    """Positive control: the under-lock re-check must not over-block. A
+    non-mature project owner publishing a genuinely APPROVED advisory (DB and
+    memory agree) still succeeds."""
+    advisory = setup["advisory"]  # project.is_mature_publisher is False
+    advisory.review_status = ReviewStatus.APPROVED
+    advisory.save(update_fields=["review_status"])
+    task = pub_services.publish(advisory, by=setup["member"])
+    assert task.status in (PublicationTaskStatus.QUEUED, PublicationTaskStatus.SUCCEEDED)
 
 
 # ---- Concurrency --------------------------------------------------------

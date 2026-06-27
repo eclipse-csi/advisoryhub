@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 
+import jwt
 import pytest
 from django.contrib.auth.signals import user_logged_in
 from django.test import override_settings
@@ -12,6 +13,20 @@ from accounts.step_up import (
     STEP_UP_FLAG_KEY,
     is_step_up_fresh,
 )
+
+
+def _id_token(auth_time: float | None) -> str:
+    """A self-signed ID token carrying ``auth_time`` (omitted when ``None``).
+
+    The signal receiver decodes ``oidc_id_token`` with ``verify_signature=False``
+    (the OIDC backend already verified it at the callback), so any signing key
+    works here. Used to model what the OP returns: a fresh ``auth_time`` after a
+    ``prompt=login`` re-auth vs. an old one carried over from an SSO session.
+    """
+    claims: dict = {"sub": "alice"}
+    if auth_time is not None:
+        claims["auth_time"] = auth_time
+    return jwt.encode(claims, "test-signing-key-at-least-32-bytes-long", algorithm="HS256")
 
 
 @pytest.fixture
@@ -289,20 +304,87 @@ def test_maintenance_get_is_not_step_up_gated(client, setup):
 
 
 @pytest.mark.django_db
-def test_login_signal_records_step_up_only_when_pending(client, setup, rf):
-    """The user_logged_in signal handler stamps the session ONLY when the
-    step_up_pending flag was set on the request session."""
+def test_login_signal_records_step_up_when_pending_and_reauthed(client, setup, rf):
+    """The signal handler stamps freshness when the pending flag is set AND the
+    completing login carried a fresh ``auth_time`` (a genuine prompt=login re-auth)."""
     request = rf.get("/")
-    request.session = {STEP_UP_FLAG_KEY: True}
+    request.session = {STEP_UP_FLAG_KEY: True, "oidc_id_token": _id_token(time.time())}
     user_logged_in.send(sender=type(setup["admin"]), request=request, user=setup["admin"])
     assert STEP_UP_AGE_KEY in request.session
     assert STEP_UP_FLAG_KEY not in request.session  # consumed
 
     # And: an ordinary login (no pending flag) does NOT stamp.
     request2 = rf.get("/")
-    request2.session = {}
+    request2.session = {"oidc_id_token": _id_token(time.time())}
     user_logged_in.send(sender=type(setup["admin"]), request=request2, user=setup["admin"])
     assert STEP_UP_AGE_KEY not in request2.session
+
+
+# ---- step-up bypass regression (F001) -----------------------------------
+#
+# The pending flag is set BEFORE the IdP round-trip and survives auth.login's
+# session-key cycling, so an ordinary /oidc/authenticate/ SSO login (no
+# prompt=login, no credential re-entry) carries it into the callback. Freshness
+# must therefore be gated on the ID token's auth_time, not on the flag alone.
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_MAX_AGE_SECONDS=300)
+def test_login_signal_does_not_stamp_when_pending_but_stale_authtime(client, setup, rf):
+    """SSO carry-over: flag is set but the login was answered from the OP's
+    existing session, so auth_time is old. Step-up must NOT be granted."""
+    request = rf.get("/")
+    request.session = {
+        STEP_UP_FLAG_KEY: True,
+        "oidc_id_token": _id_token(time.time() - 10_000),
+    }
+    user_logged_in.send(sender=type(setup["admin"]), request=request, user=setup["admin"])
+    assert STEP_UP_AGE_KEY not in request.session  # bypass refused
+    assert STEP_UP_FLAG_KEY not in request.session  # flag still consumed
+
+
+@pytest.mark.django_db
+def test_login_signal_does_not_stamp_when_pending_but_no_id_token(client, setup, rf):
+    """No ID token in session (cannot prove a re-auth) → fail closed."""
+    request = rf.get("/")
+    request.session = {STEP_UP_FLAG_KEY: True}
+    user_logged_in.send(sender=type(setup["admin"]), request=request, user=setup["admin"])
+    assert STEP_UP_AGE_KEY not in request.session
+    assert STEP_UP_FLAG_KEY not in request.session
+
+
+@pytest.mark.django_db
+def test_login_signal_does_not_stamp_when_authtime_missing(client, setup, rf):
+    """OP omitted auth_time entirely → cannot confirm a re-auth → fail closed."""
+    request = rf.get("/")
+    request.session = {STEP_UP_FLAG_KEY: True, "oidc_id_token": _id_token(None)}
+    user_logged_in.send(sender=type(setup["admin"]), request=request, user=setup["admin"])
+    assert STEP_UP_AGE_KEY not in request.session
+    assert STEP_UP_FLAG_KEY not in request.session
+
+
+# ---- _login_reauthed_recently helper ------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(STEP_UP_MAX_AGE_SECONDS=300)
+@pytest.mark.parametrize(
+    ("session", "expected"),
+    [
+        pytest.param(lambda: {"oidc_id_token": _id_token(time.time())}, True, id="fresh"),
+        pytest.param(lambda: {"oidc_id_token": _id_token(time.time() - 10_000)}, False, id="stale"),
+        pytest.param(lambda: {"oidc_id_token": _id_token(None)}, False, id="no-auth_time"),
+        pytest.param(lambda: {}, False, id="no-id_token"),
+        pytest.param(lambda: {"oidc_id_token": "not-a-jwt"}, False, id="malformed"),
+        pytest.param(lambda: {"oidc_id_token": _id_token(True)}, False, id="bool-auth_time"),
+    ],
+)
+def test_login_reauthed_recently(rf, session, expected):
+    from accounts.step_up import _login_reauthed_recently
+
+    request = rf.get("/")
+    request.session = session()
+    assert _login_reauthed_recently(request) is expected
 
 
 # ---- helpers -------------------------------------------------------------

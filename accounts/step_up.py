@@ -17,21 +17,36 @@ session has been alive. The flow:
 
 Why a session-scoped timestamp and not ``user.last_login``: a normal
 sign-in updates ``last_login``, so basing step-up on it would let a
-2-hour-old session pass the freshness check. The session-scoped marker
-is set *only* when the OIDC flow ran with our ``prompt=login`` flag.
+2-hour-old session pass the freshness check.
+
+The freshness stamp is written *only* when two conditions hold together:
+the ``step_up_pending`` flag was set (so an *intended* step-up flow is in
+progress) **and** the OIDC login that just completed actually re-prompted
+for credentials. The latter is proven from the ID token's ``auth_time``
+claim, not from the pending flag alone — the flag is set in the session
+*before* the IdP round-trip, so on its own it would also be satisfied by
+an ordinary ``/oidc/authenticate/`` SSO login that never asked for
+credentials. ``prompt=login&max_age=0`` makes a conformant OP set
+``auth_time`` to "now" (OpenID Connect Core §3.1.2.1); a login answered
+from the OP's existing SSO session carries an *old* ``auth_time``. Binding
+to the claim closes the SSO carry-over bypass (see F001).
 """
 
 from __future__ import annotations
 
+import logging
 import time
 from urllib.parse import urlencode
 
+import jwt
 from django.conf import settings
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from mozilla_django_oidc.views import OIDCAuthenticationRequestView
+
+log = logging.getLogger(__name__)
 
 STEP_UP_AGE_KEY = "step_up_auth_at"
 STEP_UP_FLAG_KEY = "step_up_pending"
@@ -95,29 +110,74 @@ def step_up_callback_redirect(request) -> str:
     return request.session.pop(STEP_UP_NEXT_KEY, "/") or "/"
 
 
+def _login_reauthed_recently(request) -> bool:
+    """Whether the OIDC login that just completed actually re-prompted for credentials.
+
+    Decodes the freshly-issued ID token from the session (``oidc_id_token`` —
+    present because ``OIDC_STORE_ID_TOKEN`` is on, and written by the backend's
+    ``store_tokens`` *before* the ``user_logged_in`` signal fires) and requires
+    its ``auth_time`` claim to be within ``STEP_UP_MAX_AGE_SECONDS``. The
+    signature was already verified by mozilla-django-oidc at the callback before
+    the token was stored, so we decode without re-verifying it.
+
+    Fails closed: a missing token, missing/non-numeric ``auth_time``, or any
+    decode error returns ``False`` — step-up is only granted on positive proof
+    of a recent re-authentication. ``prompt=login&max_age=0`` makes a conformant
+    OP emit a fresh ``auth_time`` (OIDC Core §3.1.2.1); if a deployment's OP
+    omits it, the caller logs a warning so the misconfiguration is visible rather
+    than a silent step-up failure.
+    """
+    id_token = request.session.get("oidc_id_token")
+    if not id_token:
+        return False
+    try:
+        claims = jwt.decode(id_token, options={"verify_signature": False})
+    except Exception:  # noqa: BLE001 — a malformed token must never satisfy step-up
+        return False
+    auth_time = claims.get("auth_time")
+    if not isinstance(auth_time, (int, float)) or isinstance(auth_time, bool):
+        return False
+    return (time.time() - auth_time) <= step_up_max_age()
+
+
 @receiver(user_logged_in)
 def record_step_up_on_login(sender, request, user, **kwargs):  # noqa: ARG001
-    """When OIDC login completes, audit it and (if a step-up flow) stamp the session.
+    """When OIDC login completes, audit it and (if a real step-up flow) stamp the session.
 
-    The pending flag is set by ``StepUpAuthRequestView`` (or by
-    ``require_step_up_or_redirect``) before the redirect; we only flip
-    it into a fresh timestamp if it was set, so an ordinary sign-in
-    does NOT satisfy the step-up freshness check.
+    A step-up is recorded only when BOTH the ``step_up_pending`` flag was set
+    (an *intended* step-up flow, marked by ``StepUpAuthRequestView`` or
+    ``require_step_up_or_redirect`` before the redirect) AND the login that just
+    completed actually re-prompted for credentials (``_login_reauthed_recently``,
+    proven from the ID token's ``auth_time``). The flag alone is insufficient: it
+    is set before the IdP round-trip and survives ``auth.login``'s session-key
+    cycling, so an ordinary ``/oidc/authenticate/`` SSO login would otherwise
+    redeem it without any credential re-entry (F001). An ordinary sign-in (no
+    flag) never stamps either way. The flag is always consumed.
 
     This is the single ``user_logged_in`` receiver, so it also writes the
-    authentication access-log entry: ``auth.step_up_completed`` for a step-up
-    re-auth, ``auth.login`` for an ordinary sign-in. Reading the pending flag
-    once here (rather than from a second receiver) avoids racing the ``pop``.
-    Routed to the ephemeral access log via ``record_from_request`` (IP +
-    user-agent captured); ``actor`` is passed explicitly because ``request.user``
-    is not populated when the signal is sent manually (as in tests).
+    authentication access-log entry: ``auth.step_up_completed`` for a confirmed
+    step-up re-auth, ``auth.login`` otherwise (ordinary sign-in, or a pending
+    flag that no re-auth backed). Reading the pending flag once here (rather than
+    from a second receiver) avoids racing the ``pop``. Routed to the ephemeral
+    access log via ``record_from_request`` (IP + user-agent captured); ``actor``
+    is passed explicitly because ``request.user`` is not populated when the signal
+    is sent manually (as in tests).
     """
     if not request:
         return
     from audit.models import Action
     from audit.services import record_from_request
 
-    was_step_up = bool(request.session.pop(STEP_UP_FLAG_KEY, False))
+    pending = bool(request.session.pop(STEP_UP_FLAG_KEY, False))
+    was_step_up = pending and _login_reauthed_recently(request)
+    if pending and not was_step_up:
+        # An intended step-up flow that we could not confirm as a fresh re-auth.
+        # Usually a non-`prompt=login` login carried the flag (the bypass we
+        # refuse to honour); also fires if the OP omitted `auth_time`.
+        log.warning(
+            "step_up_pending was set but the login carried no fresh auth_time; "
+            "not granting step-up freshness"
+        )
     if was_step_up:
         request.session[STEP_UP_AGE_KEY] = time.time()
         try:

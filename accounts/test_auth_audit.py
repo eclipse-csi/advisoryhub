@@ -9,6 +9,9 @@ does not fire it (only the real ``login`` flow does); this mirrors
 
 from __future__ import annotations
 
+import time
+
+import jwt
 import pytest
 from django.contrib.auth.signals import user_logged_in
 
@@ -34,7 +37,14 @@ def test_login_records_auth_login_in_access_log(make_user, rf):
 def test_step_up_reauth_records_step_up_completed_and_stamps_session(make_user, rf):
     user = make_user(email="stepup@example.org")
     request = rf.get("/")
-    request.session = {STEP_UP_FLAG_KEY: True}
+    # A genuine step-up: the pending flag AND a freshly re-authenticated login
+    # (ID token with a current ``auth_time``, as a ``prompt=login`` flow yields).
+    fresh_id_token = jwt.encode(
+        {"sub": "stepup", "auth_time": time.time()},
+        "test-signing-key-at-least-32-bytes-long",
+        algorithm="HS256",
+    )
+    request.session = {STEP_UP_FLAG_KEY: True, "oidc_id_token": fresh_id_token}
 
     user_logged_in.send(sender=type(user), request=request, user=user)
 

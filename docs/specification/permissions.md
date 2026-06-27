@@ -421,6 +421,19 @@ missing or older than `STEP_UP_MAX_AGE_SECONDS` (default 300 s), the
 view redirects through `require_step_up_or_redirect` for a forced
 re-prompt.
 
+The `step_up_auth_at` timestamp is written by the sole `user_logged_in`
+receiver (`accounts.step_up.record_step_up_on_login`) only when **both** a
+`step_up_pending` session marker is present *and* the completing OIDC login
+actually re-authenticated the user — proven from the ID token's `auth_time`
+claim being within `STEP_UP_MAX_AGE_SECONDS`. The forced-re-prompt flow sends
+`prompt=login&max_age=0`, so a conformant OP sets `auth_time` to "now"; a login
+satisfied from the OP's existing SSO session carries an old `auth_time`. The
+`step_up_pending` flag alone does **not** satisfy step-up: it is set before the
+IdP round-trip and survives `auth.login`'s session-key cycling, so without the
+`auth_time` check an ordinary `/oidc/authenticate/` SSO login (no credential
+re-entry) could redeem it. The check fails closed — an absent or non-fresh
+`auth_time` never grants step-up.
+
 Two rationales drive the gated set: **actions that emit to / reconfigure
 an external system** (the public Git repo, the GitHub App, GHSA), and a
 small number of **break-glass admin actions** that are irreversible or

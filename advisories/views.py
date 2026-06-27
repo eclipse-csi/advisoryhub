@@ -1116,6 +1116,11 @@ def advisory_flag(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     if advisory.state != State.TRIAGE:
         raise PermissionDenied("This advisory is not in triage.")
+    # Re-check authorization before any validation-error re-render: the error
+    # paths below render the full detail page, which must never disclose content
+    # to a caller who may not act here (INV-AUTH-1). The service re-checks too.
+    if not perms.can_flag_for_admin_routing(request.user, advisory):
+        raise PermissionDenied("You may not flag this advisory.")
     note = (request.POST.get("note") or "").strip()
     is_htmx = bool(getattr(request, "htmx", False))
     try:
@@ -1292,6 +1297,11 @@ def advisory_reassign_triage(request, advisory_id: str):
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
     if advisory.state != State.TRIAGE:
         raise PermissionDenied("This advisory is not in triage.")
+    # Re-check authorization before the slug-validation error re-render below,
+    # which renders the full detail page (INV-AUTH-1). The picker is admin-only;
+    # the service re-checks authority per chosen project.
+    if not perms.can_reassign_triage(request.user, advisory):
+        raise PermissionDenied("You may not reassign this advisory.")
     raw_slug = (request.POST.get("project_slug") or "").strip()
     new_project = Project.objects.filter(slug=raw_slug).first() if raw_slug else None
     if new_project is None:
@@ -1336,7 +1346,17 @@ def _provenance_actors(advisory: Advisory):
 
 
 def _detail_with_error(request, advisory: Advisory, message: str):
-    """Re-render the advisory detail with an inline error banner."""
+    """Re-render the advisory detail with an inline error banner.
+
+    This renders the full detail page (the same content the GET detail view
+    gates on ``can_view``). Assert that gate here too, so a validation-error
+    recovery path can never disclose advisory content to a caller without read
+    access — a fail-closed backstop for the per-view guards (INV-AUTH-1). Every
+    legitimate caller reaches this only after a stricter authorization check, so
+    this is a no-op for them.
+    """
+    if not perms.can_view(request.user, advisory):
+        raise PermissionDenied("You don't have access to this advisory.")
     is_triage = advisory.state == State.TRIAGE
     intake = getattr(advisory, "intake", None) if is_triage else None
     last_editor, publisher = _provenance_actors(advisory)
@@ -1440,6 +1460,12 @@ def advisory_request_reassignment_modal(request, advisory_id: str):
 def advisory_request_reassignment(request, advisory_id: str):
     """Request reassignment of a draft advisory (rendered in an HTMX modal)."""
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    # Re-check authorization up front: the validation-error branches below
+    # re-render the full detail page, which must never disclose content to a
+    # caller who may not request reassignment here (INV-AUTH-1). Mirrors the
+    # gate on advisory_request_reassignment_modal; the service re-checks too.
+    if not perms.can_request_reassignment(request.user, advisory):
+        raise PermissionDenied("Reassignment request is not available for this user/advisory.")
     note = (request.POST.get("note") or "").strip()
     raw_slug = (request.POST.get("suggested_project_slug") or "").strip()
     is_htmx = bool(getattr(request, "htmx", False))
@@ -1513,6 +1539,18 @@ def advisory_accept_reassignment(request, advisory_id: str):
     picker chose that project. Authorization is re-checked in the service.
     """
     advisory = get_object_or_404(Advisory, advisory_id=advisory_id)
+    # Re-check authorization before the slug-validation error re-render below,
+    # which renders the full detail page (INV-AUTH-1). Admit both legitimate
+    # caller types — the non-admin target-team one-click accept and the admin
+    # picker — and let the service's can_resolve_reassignment enforce the precise
+    # per-target check (a member posting a foreign project is still rejected
+    # there). NB: a bare can_view would wrongly bar a target-team member who is
+    # not on the advisory's *current* project.
+    if not (
+        perms.can_accept_reassignment_suggestion(request.user, advisory)
+        or perms.can_pick_reassignment_target(request.user, advisory)
+    ):
+        raise PermissionDenied("You may not resolve this reassignment request.")
     raw_slug = (request.POST.get("project_slug") or "").strip()
     new_project = None
     if raw_slug:

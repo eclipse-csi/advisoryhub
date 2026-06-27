@@ -807,13 +807,16 @@ def flag_for_admin_routing(advisory: Advisory, *, by, note: str) -> Advisory:
     — the whole point of the flag is to tell admins where it should go.
     """
     clean_note = (note or "").strip()
-    if not clean_note:
-        raise ValueError("A routing note is required.")
 
     with transaction.atomic():
         locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        # Authorize before validating input, so an unauthorized caller is
+        # rejected with PermissionDenied rather than leaking through a validation
+        # error a view may re-render into the detail page (INV-AUTH-1).
         if not can_flag_for_admin_routing(by, locked):
             raise PermissionDenied("You may not flag this advisory.")
+        if not clean_note:
+            raise ValueError("A routing note is required.")
         if locked.state != State.TRIAGE:
             raise ValueError(f"Advisory is not in triage state (currently {locked.state}).")
 
@@ -1012,13 +1015,16 @@ def request_admin_reassignment(
     admin exclusions live in :func:`can_request_reassignment`.
     """
     clean_note = (note or "").strip()
-    if not clean_note:
-        raise ValueError("A reassignment note is required.")
 
     with transaction.atomic():
         locked = Advisory.objects.select_for_update().get(pk=advisory.pk)
+        # Authorize before validating input, so an unauthorized caller is
+        # rejected with PermissionDenied rather than leaking through a validation
+        # error a view may re-render into the detail page (INV-AUTH-1).
         if not can_request_reassignment(by, locked):
             raise PermissionDenied("You may not request reassignment of this advisory.")
+        if not clean_note:
+            raise ValueError("A reassignment note is required.")
         if suggested_project is not None and suggested_project == locked.project:
             raise ValueError("The suggested project is the advisory's current project.")
 

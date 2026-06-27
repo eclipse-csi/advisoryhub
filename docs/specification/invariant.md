@@ -509,7 +509,9 @@ re-verify authorization with the same predicates used to render the page.
 crafting a POST.
 
 **Tests.** `advisories/tests/test_views.py`, `api/tests/test_advisories.py`,
-`api/tests/test_access.py`.
+`api/tests/test_access.py`,
+`advisories/tests/test_authz_error_disclosure.py` (validation-error re-render
+paths re-check authorization before disclosing advisory content).
 
 **Related.** [INV-OIDC-2](#inv-oidc-2).
 

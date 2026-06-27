@@ -193,6 +193,23 @@ def test_unknown_project_slug_returns_form_error(db, client, unsorted_project):
     assert not Advisory.objects.exists()
 
 
+@pytest.mark.django_db
+@override_settings(RATELIMIT_ENABLE=True, RATELIMIT_INTAKE_ANON="1/h", ALTCHA_HMAC_KEY="")
+def test_anon_intake_rate_limit_blocks_advisory_creation(client, unsorted_project, make_project):
+    """Regression for report 003 / INV-RATELIMIT-1: on the unauthenticated
+    ``/report/`` surface, a throttled request must report 429 *and* create no
+    ``Advisory(state=triage)`` — the 429 path must not run ``_do_submit``.
+    Before the fix all three POSTs created a row despite the 429s."""
+    target = make_project(name="technology.demo")
+    before = Advisory.objects.filter(state=State.TRIAGE).count()
+
+    statuses = [_post(client, project_slug=target.slug).status_code for _ in range(3)]
+
+    created = Advisory.objects.filter(state=State.TRIAGE).count() - before
+    assert statuses == [302, 429, 429]
+    assert created == 1  # the 429 path created nothing
+
+
 def test_unsorted_sentinel_slug_is_not_pickable_directly(db, client, unsorted_project):
     """Submitting with ``project_slug=unsorted`` directly is rejected.
     The form only routes to the sentinel via the explicit ``__unsorted__``

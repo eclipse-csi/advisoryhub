@@ -80,6 +80,7 @@ and [Appendix B](#appendix-b--deprecating-an-invariant).
 | [INV-INTAKE-2](#inv-intake-2) | The public form has no reporter-email field; anonymous reports cannot be re-associated. | Intake | Critical |
 | [INV-INTAKE-3](#inv-intake-3) | Authenticated reporters auto-receive a *viewer* grant on their own report. | Intake | High |
 | [INV-INTAKE-4](#inv-intake-4) | Reports filed against the `unsorted` project default to `needs_admin_routing=True`. | Intake | High |
+| [INV-RATELIMIT-1](#inv-ratelimit-1) | Rate limits are enforced before the protected operation runs; no side effect on the `429` path. | Rate limit | High |
 | [INV-OIDC-1](#inv-oidc-1) | Groups are re-synced from OIDC claims on every login; client group data is never trusted. | Identity | Critical |
 | [INV-OIDC-2](#inv-oidc-2) | Authorization always reads from the DB groups mirror, never from request input. | Identity | Critical |
 | [INV-OIDC-3](#inv-oidc-3) | `is_staff` / `is_superuser` track admin-group membership on each login. | Identity | High |
@@ -1296,6 +1297,38 @@ flagging it for routing. Clearing in place stays valid only on a **real** projec
 **Tests.** `advisories/tests/test_triage.py`.
 
 **Related.** [INV-AUTH-6](#inv-auth-6), [INV-PROJECT-2](#inv-project-2).
+
+---
+
+<a id="inv-ratelimit-1"></a>
+### INV-RATELIMIT-1 — Rate limits are enforced before the protected operation   [High]
+
+**Statement.** A rate-limited view's side effects — DB writes, outbound email,
+LLM / GitHub-API calls, Git pushes — never run on a throttled request. The limit
+is evaluated (and counted) and the `429` returned **before** the wrapped view is
+invoked, not after it has already run.
+
+**Rationale.** A limit checked *after* the view runs is cosmetic: the side effect
+has already happened and swapping in a `429` only changes the response body,
+actively misleading log-based abuse monitoring into reporting the cap as
+"working". The anonymous intake limit (`RATELIMIT_INTAKE_ANON`) is the only
+quantitative cap on the sole unauthenticated mutating endpoint
+([INV-INTAKE-1](#inv-intake-1)), so its enforcement timing is load-bearing.
+
+**Enforced in.**
+- `common/ratelimit.py` — `html_ratelimit` / `json_ratelimit` call
+  `is_ratelimited(..., increment=True)` and short-circuit with the `429` body
+  *before* dispatching to the view.
+- `intake/views.py` — `_handle_post` checks the limit before `_do_submit`.
+
+**Violation impact.** Unbounded `Advisory(state=triage)` creation plus one triage
+email per project-security-team member from anonymous clients; unbounded
+invitation email, LLM cost, GitHub-API fan-out, and Git pushes from users who
+already hold the relevant role.
+
+**Tests.** `common/tests.py`, `intake/tests/test_views_public.py`.
+
+**Related.** [INV-INTAKE-1](#inv-intake-1), [INV-LIFECYCLE-2](#inv-lifecycle-2).
 
 ---
 

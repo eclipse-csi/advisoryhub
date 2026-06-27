@@ -24,7 +24,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
-from django_ratelimit.decorators import ratelimit
+from django_ratelimit.core import is_ratelimited
 
 from advisories.form_assembly import (
     advanced_form_context,
@@ -64,8 +64,12 @@ def report_form(request):
 
 
 def _handle_post(request):
-    """Apply rate limit (settings read at request time so tests can override)
-    and dispatch to the submission handler.
+    """Apply the rate limit *before* dispatching to the submission handler
+    (settings read at request time so tests can override).
+
+    Checking up front — rather than after ``_do_submit`` runs — is what keeps
+    the limit from being cosmetic: a throttled request must not create an
+    ``Advisory(state=triage)`` or fan out triage emails (INV-RATELIMIT-1).
     """
     if request.user.is_authenticated:
         rate = settings.RATELIMIT_INTAKE_USER
@@ -73,15 +77,15 @@ def _handle_post(request):
     else:
         rate = settings.RATELIMIT_INTAKE_ANON
         key_fn = client_ip_key
-    limited = ratelimit(group="intake:report", key=key_fn, rate=rate, block=False)(_do_submit)
-    response = limited(request)
-    if getattr(request, "limited", False) and getattr(response, "status_code", None) != 429:
+    if is_ratelimited(
+        request=request, group="intake:report", key=key_fn, rate=rate, increment=True
+    ):
         return HttpResponse(
             "Rate limit exceeded. Try again in a minute.",
             status=429,
             content_type="text/plain",
         )
-    return response
+    return _do_submit(request)
 
 
 def _do_submit(request):

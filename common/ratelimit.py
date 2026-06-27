@@ -23,7 +23,7 @@ from collections.abc import Callable
 from functools import wraps
 
 from django.http import HttpResponse
-from django_ratelimit.decorators import ratelimit
+from django_ratelimit.core import is_ratelimited
 
 from common.net import client_ip_key
 
@@ -35,20 +35,38 @@ def per_user_or_ip(group, request) -> str:
     return client_ip_key(group, request)
 
 
+def _check_limited(view, request, *, rate, key) -> bool:
+    """Evaluate (and count) the limit *before* the view runs.
+
+    ``increment=True`` mirrors what ``ratelimit(block=False)`` did internally;
+    passing the same ``group``/``key``/``rate`` (``method`` defaults to ``ALL``
+    in both) keeps the cache key — and therefore the counting semantics —
+    identical. The only change vs. the old wrapper is ordering: the caller
+    short-circuits with a 429 instead of running the view (INV-RATELIMIT-1).
+    """
+    limited = is_ratelimited(
+        request=request,
+        group=view.__qualname__,
+        key=key,
+        rate=rate,
+        increment=True,
+    )
+    # Preserve the django-ratelimit contract for any middleware that reads it.
+    request.limited = limited or getattr(request, "limited", False)
+    return limited
+
+
 def html_ratelimit(*, rate: str, key: Callable | str = per_user_or_ip) -> Callable:
     def deco(view):
-        wrapped = ratelimit(group=view.__qualname__, key=key, rate=rate, block=False)(view)
-
         @wraps(view)
         def inner(request, *args, **kwargs):
-            response = wrapped(request, *args, **kwargs)
-            if getattr(request, "limited", False) and not _already_429(response):
+            if _check_limited(view, request, rate=rate, key=key):
                 return HttpResponse(
                     "Rate limit exceeded. Try again in a minute.",
                     status=429,
                     content_type="text/plain",
                 )
-            return response
+            return view(request, *args, **kwargs)
 
         return inner
 
@@ -59,23 +77,16 @@ def json_ratelimit(*, rate: str, key: Callable | str = per_user_or_ip) -> Callab
     from api.responses import error  # local to keep api → common edge clean
 
     def deco(view):
-        wrapped = ratelimit(group=view.__qualname__, key=key, rate=rate, block=False)(view)
-
         @wraps(view)
         def inner(request, *args, **kwargs):
-            response = wrapped(request, *args, **kwargs)
-            if getattr(request, "limited", False) and not _already_429(response):
+            if _check_limited(view, request, rate=rate, key=key):
                 return error(
                     "rate_limited",
                     "Rate limit exceeded; please retry shortly.",
                     status=429,
                 )
-            return response
+            return view(request, *args, **kwargs)
 
         return inner
 
     return deco
-
-
-def _already_429(response) -> bool:
-    return getattr(response, "status_code", None) == 429

@@ -67,6 +67,54 @@ def test_rate_limit_off_in_default_test_settings(client, setup):
         assert r.status_code != 429
 
 
+@override_settings(RATELIMIT_ENABLE=True)
+def test_html_ratelimit_does_not_run_view_when_limited():
+    """Regression for report 003 / INV-RATELIMIT-1: the limit is enforced
+    *before* the view runs, so a throttled request never executes the body
+    (where the DB writes / emails / Git pushes live). The 429 alone is not
+    enough — the side effect must not happen."""
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+
+    from common.ratelimit import html_ratelimit
+
+    calls: list[int] = []
+
+    @html_ratelimit(rate="1/h", key=lambda group, req: "fixed")
+    def view(request):
+        calls.append(1)
+        return HttpResponse("ok")
+
+    rf = RequestFactory()
+    statuses = [view(rf.post("/x/")).status_code for _ in range(3)]
+
+    assert statuses == [200, 429, 429]
+    assert len(calls) == 1  # body ran only for the allowed request, not the 429s
+
+
+@override_settings(RATELIMIT_ENABLE=True)
+def test_json_ratelimit_does_not_run_view_when_limited():
+    """Same guarantee for the JSON variant, and the 429 carries our error code."""
+    from django.http import JsonResponse
+    from django.test import RequestFactory
+
+    from common.ratelimit import json_ratelimit
+
+    calls: list[int] = []
+
+    @json_ratelimit(rate="1/h", key=lambda group, req: "fixed")
+    def view(request):
+        calls.append(1)
+        return JsonResponse({"ok": True})
+
+    rf = RequestFactory()
+    responses = [view(rf.post("/x/")) for _ in range(3)]
+
+    assert [r.status_code for r in responses] == [200, 429, 429]
+    assert len(calls) == 1
+    assert json.loads(responses[1].content)["error"] == "rate_limited"
+
+
 # ---- Health endpoints ----------------------------------------------------
 
 

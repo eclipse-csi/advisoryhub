@@ -1328,6 +1328,13 @@ deployments). Public intake uses two separate rate strings —
 `RATELIMIT_INTAKE_ANON` (per IP) and `RATELIMIT_INTAKE_USER` (per
 user) — picked dynamically in `intake.views`.
 
+Both helpers (and the inline intake check in `_handle_post`) evaluate the limit
+*before* dispatching, via `django_ratelimit.core.is_ratelimited(..., increment=True)`:
+on a hit the `429` is returned and the wrapped view never runs, so no DB write,
+email, LLM call, or Git push happens on the throttled path
+([INV-RATELIMIT-1](./invariant.md#inv-ratelimit-1)). Checking after the view ran
+would make the limit cosmetic.
+
 ### 8.6 Audit hygiene
 
 The audit log is split into two tables (see [INV-AUDIT-5](./invariant.md#inv-audit-5)). The durable,

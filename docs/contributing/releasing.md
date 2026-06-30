@@ -7,10 +7,10 @@ A release is one signed git tag `vX.Y.Z` that produces, automatically:
 
 | Artifact | Where | Built by |
 |---|---|---|
-| Container image `X.Y.Z` / `X.Y` (+ SBOM & SLSA provenance attestations, keyless cosign signature) | `ghcr.io/mbarbero/advisoryhub` | `.github/workflows/release-image.yml` |
-| Helm chart `X.Y.Z` (keyless cosign signature) | `oci://ghcr.io/mbarbero/charts/advisoryhub` | `.github/workflows/release.yml` |
+| Container image `X.Y.Z` / `X.Y` (+ SBOM & SLSA provenance attestations, keyless cosign signature) | `ghcr.io/eclipse-csi/advisoryhub` | `.github/workflows/release-image.yml` |
+| Helm chart `X.Y.Z` (keyless cosign signature) | `oci://ghcr.io/eclipse-csi/charts/advisoryhub` | `.github/workflows/release.yml` |
 | GitHub release with git-cliff notes + chart `.tgz`, CycloneDX dependency SBOM, `checksums.txt` | repo **Releases** page | `.github/workflows/release.yml` |
-| Versioned docs `X.Y.Z` (+ `latest` alias and root redirect) | <https://mbarbero.github.io/advisoryhub/> | `.github/workflows/docs.yml` |
+| Versioned docs `X.Y.Z` (+ `latest` alias and root redirect) | <https://eclipse-csi.github.io/advisoryhub/> | `.github/workflows/docs.yml` |
 
 ## The version lockstep rule
 
@@ -64,15 +64,15 @@ The tag triggers three release workflows in parallel:
 
 ```sh
 # Image and chart signatures (identities are also in the release notes):
-cosign verify ghcr.io/mbarbero/advisoryhub:X.Y.Z \
-  --certificate-identity-regexp 'https://github.com/mbarbero/advisoryhub/\.github/workflows/release-image\.yml@.*' \
+cosign verify ghcr.io/eclipse-csi/advisoryhub:X.Y.Z \
+  --certificate-identity-regexp 'https://github.com/eclipse-csi/advisoryhub/\.github/workflows/release-image\.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-cosign verify ghcr.io/mbarbero/charts/advisoryhub:X.Y.Z \
-  --certificate-identity-regexp 'https://github.com/mbarbero/advisoryhub/\.github/workflows/release\.yml@.*' \
+cosign verify ghcr.io/eclipse-csi/charts/advisoryhub:X.Y.Z \
+  --certificate-identity-regexp 'https://github.com/eclipse-csi/advisoryhub/\.github/workflows/release\.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # The chart installs from the OCI ref:
-helm pull oci://ghcr.io/mbarbero/charts/advisoryhub --version X.Y.Z
+helm pull oci://ghcr.io/eclipse-csi/charts/advisoryhub --version X.Y.Z
 
 # Release attachments match their checksums (in the downloaded assets dir):
 sha256sum -c checksums.txt
@@ -108,7 +108,7 @@ gh api -X DELETE "/user/packages/container/charts%2Fadvisoryhub/versions/<id>"
 
 ### First chart push
 
-The first push to `oci://ghcr.io/mbarbero/charts` creates a brand-new ghcr
+The first push to `oci://ghcr.io/eclipse-csi/charts` creates a brand-new ghcr
 package; package creation in a *user* namespace via `GITHUB_TOKEN`
 occasionally 403s. If it does: push once with a PAT
 (`helm registry login ghcr.io` + `helm push`), grant the repo **write** access

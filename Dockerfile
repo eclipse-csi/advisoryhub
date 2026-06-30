@@ -151,7 +151,7 @@ FROM ${DHI_RUNTIME_IMAGE} AS production
 # revision/version/created are stamped by CI (docker/metadata-action).
 LABEL org.opencontainers.image.title="AdvisoryHub" \
       org.opencontainers.image.description="Security advisory authoring, review and publication for Eclipse Foundation projects" \
-      org.opencontainers.image.source="https://github.com/mbarbero/advisoryhub" \
+      org.opencontainers.image.source="https://github.com/eclipse-csi/advisoryhub" \
       org.opencontainers.image.vendor="Eclipse Foundation" \
       org.opencontainers.image.licenses="EPL-2.0"
 

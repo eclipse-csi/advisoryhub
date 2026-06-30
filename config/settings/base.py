@@ -30,7 +30,7 @@ env = environ.Env(
     # DERIVED from one base repo URL (issues/new, security/advisories/new);
     # only ADVISORYHUB_DISCUSSIONS_URL is independent (Eclipse CSI org
     # discussions). Blank disables the corresponding footer link.
-    ADVISORYHUB_REPO_URL=(str, "https://github.com/mbarbero/advisoryhub"),
+    ADVISORYHUB_REPO_URL=(str, "https://github.com/eclipse-csi/advisoryhub"),
     ADVISORYHUB_DISCUSSIONS_URL=(str, "https://github.com/orgs/eclipse-csi/discussions"),
     # Database
     DATABASE_URL=(str, "postgres://advisoryhub:advisoryhub@localhost:5432/advisoryhub"),

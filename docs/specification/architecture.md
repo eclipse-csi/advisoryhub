@@ -1134,7 +1134,7 @@ construct absolute URLs in notification bodies; SMTP transport:
 `EMAIL_HOST_PASSWORD` (secret), `EMAIL_USE_TLS`, `EMAIL_USE_SSL`.
 
 **Footer help links.** `ADVISORYHUB_REPO_URL` (default
-`https://github.com/mbarbero/advisoryhub`) is the base GitHub repo for
+`https://github.com/eclipse-csi/advisoryhub`) is the base GitHub repo for
 AdvisoryHub itself; the footer's "Report an issue" (`/issues/new`) and "Report a
 vulnerability in AdvisoryHub" (`/security/advisories/new`, GitHub private
 vulnerability reporting) links are derived from it, so a repo move is a single
@@ -1604,7 +1604,7 @@ and `python manage.py check --deploy --fail-level WARNING`.
   Celery / intake / comment-read filter).
 - [`requirements.md`](./requirements.md) — top-down functional
   specification (actors, domain concepts, use cases).
-- [`../../CLAUDE.md`](https://github.com/mbarbero/advisoryhub/blob/main/CLAUDE.md) — agent-facing operational
+- [`../../CLAUDE.md`](https://github.com/eclipse-csi/advisoryhub/blob/main/CLAUDE.md) — agent-facing operational
   notes (app layout, common commands, network policy, persistence
   rules).
-- [`../../README.md`](https://github.com/mbarbero/advisoryhub/blob/main/README.md) — setup instructions.
+- [`../../README.md`](https://github.com/eclipse-csi/advisoryhub/blob/main/README.md) — setup instructions.

@@ -1218,6 +1218,6 @@ The UI carries English and French locales (`LANGUAGES = [("en", …),
   capability matrix, enforcement surfaces.
 - [`architecture.md`](./architecture.md) — technology stack,
   internal structure, operations, testing.
-- [`../../CLAUDE.md`](https://github.com/mbarbero/advisoryhub/blob/main/CLAUDE.md) — agent-facing operational
+- [`../../CLAUDE.md`](https://github.com/eclipse-csi/advisoryhub/blob/main/CLAUDE.md) — agent-facing operational
   notes (app layout, common commands, persistence rules).
-- [`../../README.md`](https://github.com/mbarbero/advisoryhub/blob/main/README.md) — setup instructions.
+- [`../../README.md`](https://github.com/eclipse-csi/advisoryhub/blob/main/README.md) — setup instructions.

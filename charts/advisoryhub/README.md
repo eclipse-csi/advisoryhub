@@ -1,7 +1,7 @@
 # AdvisoryHub Helm chart
 
 Deploys AdvisoryHub — web (gunicorn), Celery worker, Celery beat — from the
-single image published at `ghcr.io/mbarbero/advisoryhub`, plus a migration
+single image published at `ghcr.io/eclipse-csi/advisoryhub`, plus a migration
 hook Job, Route/Ingress exposure, probes, PDB/HPA, NetworkPolicies, and
 optional prometheus-operator / Grafana wiring.
 

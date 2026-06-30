@@ -1,7 +1,7 @@
 # Deploying on OKD / Kubernetes (Helm)
 
 The repository ships a production Helm chart at
-[`charts/advisoryhub/`](https://github.com/mbarbero/advisoryhub/tree/main/charts/advisoryhub). It deploys the three
+[`charts/advisoryhub/`](https://github.com/eclipse-csi/advisoryhub/tree/main/charts/advisoryhub). It deploys the three
 application processes — web (gunicorn), Celery worker, Celery beat — from the
 single published image, plus the migration hook, exposure, probes, and the
 optional observability wiring. **It deploys no backing services**: PostgreSQL,
@@ -12,7 +12,7 @@ external prerequisites (see the
 The chart targets **OKD/OpenShift first** (`restricted-v2` SCC compatible,
 Route exposure) and runs unchanged on **vanilla Kubernetes** (Ingress
 exposure, explicit UID/fsGroup). The chart's own
-[README](https://github.com/mbarbero/advisoryhub/blob/main/charts/advisoryhub/README.md) documents every value; this page
+[README](https://github.com/eclipse-csi/advisoryhub/blob/main/charts/advisoryhub/README.md) documents every value; this page
 is the end-to-end walkthrough.
 
 ---
@@ -132,7 +132,7 @@ Notes for OKD:
 ## 4. Install on vanilla Kubernetes
 
 Differences from §3 (full example in
-[`charts/advisoryhub/ci/vanilla-values.yaml`](https://github.com/mbarbero/advisoryhub/blob/main/charts/advisoryhub/ci/vanilla-values.yaml)):
+[`charts/advisoryhub/ci/vanilla-values.yaml`](https://github.com/eclipse-csi/advisoryhub/blob/main/charts/advisoryhub/ci/vanilla-values.yaml)):
 
 ```yaml
 ingress:
@@ -221,7 +221,7 @@ metrics:
 
 The ServiceMonitors pin the Prometheus `job` label to `advisoryhub-web` /
 `advisoryhub-worker` — the bundled alert rules and dashboards (byte-copies of
-[`dev/observability/`](https://github.com/mbarbero/advisoryhub/tree/main/dev/observability), sync-guarded in CI) select
+[`dev/observability/`](https://github.com/eclipse-csi/advisoryhub/tree/main/dev/observability), sync-guarded in CI) select
 on those names. On OKD, enable
 [user-workload monitoring](https://docs.okd.io/latest/observability/monitoring/enabling-monitoring-for-user-defined-projects.html)
 and drop the `labels`.

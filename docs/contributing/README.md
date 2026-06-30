@@ -114,7 +114,7 @@ are documented in [`architecture.md §9`](../specification/architecture.md).
 
 Lint, format, type, and Django checks run locally through
 [prek](https://github.com/j178/prek) — the fast Rust reimplementation of
-pre-commit — from [`.pre-commit-config.yaml`](https://github.com/mbarbero/advisoryhub/blob/main/.pre-commit-config.yaml). The
+pre-commit — from [`.pre-commit-config.yaml`](https://github.com/eclipse-csi/advisoryhub/blob/main/.pre-commit-config.yaml). The
 hooks invoke the Python tools out of the project venv, so they run the exact
 versions pinned in `uv.lock`: what passes locally is what CI runs.
 
@@ -187,7 +187,7 @@ verifying a release, failure recovery — is [`releasing.md`](./releasing.md).
 ## 9. Documentation
 
 Everything under `docs/` is published as a **versioned** site at
-<https://mbarbero.github.io/advisoryhub/> (`.github/workflows/docs.yml`):
+<https://eclipse-csi.github.io/advisoryhub/> (`.github/workflows/docs.yml`):
 `latest` is the newest release, numbered versions are immutable per-release
 snapshots (deployed on every `vX.Y.Z` tag), and `dev` tracks `main`. The
 site is built with MkDocs + mkdocs-material and versioned with

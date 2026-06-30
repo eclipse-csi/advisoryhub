@@ -131,7 +131,7 @@ The repository `Dockerfile` is multi-target:
 - **`dev`** (what docker-compose builds): dependencies only, dev extras
   included, `CMD runserver`, source bind-mounted. Never serves real traffic.
 - **`production`** (the default target — CI publishes it to
-  `ghcr.io/mbarbero/advisoryhub` via `.github/workflows/release-image.yml`,
+  `ghcr.io/eclipse-csi/advisoryhub` via `.github/workflows/release-image.yml`,
   scanned, SBOM/provenance-attested, and cosign-signed): runtime dependencies
   only, source and `collectstatic` output baked in, default `CMD` gunicorn.
 

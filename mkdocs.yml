@@ -1,5 +1,5 @@
 # MkDocs configuration for the AdvisoryHub documentation site
-# (https://mbarbero.github.io/advisoryhub/). Built with mkdocs-material and
+# (https://eclipse-csi.github.io/advisoryhub/). Built with mkdocs-material and
 # versioned with mike (.github/workflows/docs.yml): one directory per release
 # on the gh-pages branch + versions.json; `latest` tracks the newest release,
 # `dev` tracks main. README.md files render as section indexes natively.
@@ -14,9 +14,9 @@
 
 site_name: AdvisoryHub
 site_description: Eclipse Foundation security advisory authoring, review, and publication system
-site_url: https://mbarbero.github.io/advisoryhub/
-repo_url: https://github.com/mbarbero/advisoryhub
-repo_name: mbarbero/advisoryhub
+site_url: https://eclipse-csi.github.io/advisoryhub/
+repo_url: https://github.com/eclipse-csi/advisoryhub
+repo_name: eclipse-csi/advisoryhub
 
 docs_dir: docs
 

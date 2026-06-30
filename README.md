@@ -11,8 +11,10 @@ Stack: Python 3.14, Django 5.2 LTS, PostgreSQL, Celery + Valkey,
 mozilla-django-oidc, server-rendered templates with HTMX.
 
 The documentation below is also published as a **versioned** site at
-<https://mbarbero.github.io/advisoryhub/> — `latest` is the newest release,
+<https://eclipse-csi.github.io/advisoryhub/> — `latest` is the newest release,
 numbered versions are per-release snapshots, `dev` tracks `main`.
+
+**Until a release is made, doc is only available at <https://eclipse-csi.github.io/advisoryhub/dev/>**
 
 ## Specifications
 

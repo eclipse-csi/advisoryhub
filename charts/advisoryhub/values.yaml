@@ -12,7 +12,7 @@
 # (see the chart README for the expected keys).
 
 image:
-  repository: ghcr.io/mbarbero/advisoryhub
+  repository: ghcr.io/eclipse-csi/advisoryhub
   # Defaults to the chart appVersion.
   tag: ""
   pullPolicy: IfNotPresent

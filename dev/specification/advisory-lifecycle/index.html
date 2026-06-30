@@ -1,0 +1,3246 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/specification/advisory-lifecycle/">
+      
+      
+        <link rel="prev" href="../permissions/">
+      
+      
+        <link rel="next" href="../requirements/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Advisory lifecycle - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#advisory-lifecycle" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Advisory lifecycle
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../manual/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../manual/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/security-team/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/administrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/running-in-production/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-high-level-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. High-level lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. High-level lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-lifecycle-transitions-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Lifecycle transitions table
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.1 Lifecycle transitions table">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-notes-on-row-1--triage-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.1 Notes on row 1 — triage creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-notes-on-row-7--the-only-path-to-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.2 Notes on row 7 — the only path to published
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#313-notes-on-row-6--dismiss-from-draft-auto-cancellations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.3 Notes on row 6 — dismiss-from-draft auto-cancellations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#314-notes-on-row-9--reopen-side-effect-restoration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.4 Notes on row 9 — reopen side-effect restoration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-what-does-not-transition-the-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. What does not transition the lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-review-sub-machine-advisoryreview_status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Review sub-machine (Advisory.review_status)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Review sub-machine (Advisory.review_status)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-review-status-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Review-status transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-interaction-with-publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Interaction with publishing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cve-request-sub-machine-workflowscverequesttaskstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. CVE-request sub-machine (workflows.CveRequestTask.status)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. CVE-request sub-machine (workflows.CveRequestTask.status)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-cve-request-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 CVE-request transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-related-cleanup-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Related cleanup paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-publication-task-sub-machine-publicationpublicationtaskstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Publication-task sub-machine (publication.PublicationTask.status)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Publication-task sub-machine (publication.PublicationTask.status)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-publication-task-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Publication-task transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-publication-sequence-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Publication sequence diagram
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-edit-side-effects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Edit side-effects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-triage-specific-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Triage-specific behaviour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-draft-admin-reassignment-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Draft admin-reassignment request
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-withdrawal-request-published-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Withdrawal request (published advisories)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-cross-reference-invariants-per-transition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Cross-reference: invariants per transition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Out of scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-high-level-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. High-level lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. High-level lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-lifecycle-transitions-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Lifecycle transitions table
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.1 Lifecycle transitions table">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-notes-on-row-1--triage-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.1 Notes on row 1 — triage creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-notes-on-row-7--the-only-path-to-published" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.2 Notes on row 7 — the only path to published
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#313-notes-on-row-6--dismiss-from-draft-auto-cancellations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.3 Notes on row 6 — dismiss-from-draft auto-cancellations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#314-notes-on-row-9--reopen-side-effect-restoration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.4 Notes on row 9 — reopen side-effect restoration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-what-does-not-transition-the-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. What does not transition the lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-review-sub-machine-advisoryreview_status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Review sub-machine (Advisory.review_status)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Review sub-machine (Advisory.review_status)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-review-status-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Review-status transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-interaction-with-publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Interaction with publishing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cve-request-sub-machine-workflowscverequesttaskstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. CVE-request sub-machine (workflows.CveRequestTask.status)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. CVE-request sub-machine (workflows.CveRequestTask.status)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-cve-request-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 CVE-request transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-related-cleanup-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Related cleanup paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-publication-task-sub-machine-publicationpublicationtaskstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Publication-task sub-machine (publication.PublicationTask.status)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Publication-task sub-machine (publication.PublicationTask.status)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-publication-task-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Publication-task transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-publication-sequence-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Publication sequence diagram
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-edit-side-effects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Edit side-effects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-triage-specific-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Triage-specific behaviour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-draft-admin-reassignment-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Draft admin-reassignment request
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-withdrawal-request-published-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Withdrawal request (published advisories)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-cross-reference-invariants-per-transition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Cross-reference: invariants per transition
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Out of scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="advisory-lifecycle">Advisory Lifecycle<a class="headerlink" href="#advisory-lifecycle" title="Permanent link">&para;</a></h1>
+<p>This document describes the lifecycle of an <code>Advisory</code> row in AdvisoryHub —
+every state it can be in, every transition that can move it from one state to
+another, who is allowed to trigger each transition, and what side-effects each
+transition produces (audit entries, version rows, dependent task cancellations).</p>
+<p>It is a companion to <a href="../invariant/"><code>invariant.md</code></a> (the catalogue of
+load-bearing rules) and <a href="../permissions/"><code>permissions.md</code></a> (the
+authorization model). Where a rule has a stable invariant ID, this document
+references it by ID (<code>INV-XYZ-N</code>) rather than restating the reasoning.</p>
+<p>This document is the single source of truth for the advisory lifecycle:
+the executable transitions in <code>advisories/services.py</code> and
+<code>advisories/views.py</code>, <code>workflows/services.py</code>, <code>publication/services.py</code>
+and <code>publication/tasks.py</code>, and the GHSA sync paths in <code>ghsa/services.py</code>
+must conform to it. If this document and the code disagree, that is a
+defect — either the code drifted (fix the code) or the behavior changed
+deliberately without a spec update (fix this document in the same
+change). Deviating from this document requires explicit maintainer
+confirmation <em>before</em> implementation.</p>
+<hr />
+<h2 id="1-scope">1. Scope<a class="headerlink" href="#1-scope" title="Permanent link">&para;</a></h2>
+<p>This page covers the <strong>authoring</strong> lifecycle inside AdvisoryHub: how an
+advisory becomes a triage row, gets curated into a draft, is reviewed,
+optionally has a CVE reserved against it, and is finally exported to the
+publication Git repository. The static public website rendered from that
+repository is <strong>out of scope</strong> — published state inside AdvisoryHub grants no
+implicit access to anyone who is not already an owner or grantee
+(<a href="../invariant/#inv-auth-7">INV-AUTH-7</a>).</p>
+<p>The four lifecycle states are exhaustive and mutually exclusive
+(<a href="../invariant/#inv-lifecycle-1">INV-LIFECYCLE-1</a>).</p>
+<hr />
+<h2 id="2-vocabulary">2. Vocabulary<a class="headerlink" href="#2-vocabulary" title="Permanent link">&para;</a></h2>
+<p>An advisory's "life" is described by <strong>one</strong> lifecycle state plus three
+orthogonal status machines that ride alongside it:</p>
+<table>
+<thead>
+<tr>
+<th>Machine</th>
+<th>Field</th>
+<th>Values</th>
+<th>Diagram</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lifecycle</td>
+<td><code>Advisory.state</code></td>
+<td><code>triage</code>, <code>draft</code>, <code>published</code>, <code>dismissed</code></td>
+<td>§3</td>
+</tr>
+<tr>
+<td>Review</td>
+<td><code>Advisory.review_status</code></td>
+<td><code>none</code>, <code>submitted</code>, <code>changes_requested</code>, <code>approved</code></td>
+<td>§5</td>
+</tr>
+<tr>
+<td>CVE request</td>
+<td><code>workflows.CveRequestTask.status</code></td>
+<td><code>queued</code>, <code>reserved</code>, <code>rejected</code>, <code>cancelled</code></td>
+<td>§6</td>
+</tr>
+<tr>
+<td>Publication</td>
+<td><code>publication.PublicationTask.status</code></td>
+<td><code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code></td>
+<td>§7</td>
+</tr>
+</tbody>
+</table>
+<p>An advisory has exactly one lifecycle state, exactly one review status, at
+most one <em>open</em> <code>CveRequestTask</code> (<a href="../invariant/#inv-cve-1">INV-CVE-1</a>), and zero-or-more
+<code>PublicationTask</code> rows (one per publish or re-publish attempt). The review
+machine is logically attached to the advisory; the CVE and publication
+machines are attached to task rows that pin a specific <code>AdvisoryVersion</code>
+(<a href="../invariant/#inv-version-2">INV-VERSION-2</a>).</p>
+<p>The append-only edit log (<code>AdvisoryVersion</code>) is not a state machine — it
+grows monotonically as content changes (<a href="../invariant/#inv-version-1">INV-VERSION-1</a>, <a href="../invariant/#inv-impl-5">INV-IMPL-5</a>) and
+is referenced from §8.</p>
+<hr />
+<h2 id="3-high-level-lifecycle">3. High-level lifecycle<a class="headerlink" href="#3-high-level-lifecycle" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; triage      : public intake&lt;br/&gt;(submit_triage_report)&lt;br/&gt;or GHSA import in GitHub triage
+    [*] --&gt; draft       : internal create&lt;br/&gt;(advisory_create / GHSA import)
+
+    triage --&gt; draft    : promote_triage_to_draft&lt;br/&gt;or GHSA mirror (GitHub accepts → draft)
+    triage --&gt; dismissed: dismiss_triage&lt;br/&gt;or GHSA mirror (GitHub closed/withdrawn)
+
+    draft --&gt; dismissed : advisory_dismiss view
+    draft --&gt; published : publication worker&lt;br/&gt;(run_publication, success only)
+
+    published --&gt; published: re-publish&lt;br/&gt;(edit → republish_required → run_publication)
+    published --&gt; dismissed : withdraw_advisory&lt;br/&gt;(OSV/CSAF marked withdrawn, INV-WITHDRAW)
+
+    dismissed --&gt; draft  : reopen_advisory&lt;br/&gt;(dismissed_from_state == "draft")
+    dismissed --&gt; triage : reopen_advisory&lt;br/&gt;(dismissed_from_state == "triage")
+    dismissed --&gt; published : reopen_advisory (un-withdraw)&lt;br/&gt;(dismissed_from_state == "published", re-publish)</code></pre>
+<p>Notes on the diagram:</p>
+<ul>
+<li><code>published</code> is reachable <strong>only</strong> via the publication worker's success
+  branch, inside <code>select_for_update</code> and after a clean Git push
+  (<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>, <a href="../invariant/#inv-pub-4">INV-PUB-4</a>).</li>
+<li><code>dismissed</code> is <strong>reversible</strong> by owner or admin via
+  <code>advisories.services.reopen_advisory</code> (<a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>). The advisory
+  returns to its pre-dismissal state recorded in
+  <code>Advisory.dismissed_from_state</code> (<code>triage</code> or <code>draft</code>); the <code>dismissed_reason</code>
+  and the audit trail stay as historical context. The one exception is a
+  <strong>withdrawal</strong> (<code>dismissed_from_state == "published"</code>): reopening it is an
+  <em>un-withdraw</em> that re-publishes (clears the OSV/CSAF withdrawn marker) and
+  returns to <code>published</code> after the push — a <code>dismissed → published</code> transition
+  that still goes through the publication pipeline, never a bare state flip
+  (<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>).</li>
+<li>The self-loop on <code>published</code> is logical, not a state change: edits append a
+  new <code>AdvisoryVersion</code> and set <code>republish_required=True</code>, which makes the
+  re-publish button surface; a successful re-publish writes a new commit on
+  the same path but the <code>state</code> value does not change (<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>,
+  <a href="../invariant/#inv-version-1">INV-VERSION-1</a>).</li>
+<li>There is no <code>published → draft</code> transition; ordinary corrections go through
+  Edit + Re-publish. A <code>published → dismissed</code> transition exists only via
+  <strong>withdrawal</strong> (<code>advisories.services.withdraw_advisory</code>,
+  <a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>): the OSV/CSAF documents are
+  re-exported marked withdrawn (never deleted) and the state flips to
+  <code>dismissed</code> only after that push, with <code>dismissed_from_state=published</code>.</li>
+<li><code>triage</code> is created <strong>only</strong> by the public intake handler
+  (<a href="../invariant/#inv-lifecycle-2">INV-LIFECYCLE-2</a>); no admin or API path produces it.</li>
+</ul>
+<h3 id="31-lifecycle-transitions-table">3.1 Lifecycle transitions table<a class="headerlink" href="#31-lifecycle-transitions-table" title="Permanent link">&para;</a></h3>
+<p>The actor / precondition columns are the <em>minimum</em> requirements; admins
+satisfy any "owner" requirement.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>From</th>
+<th>To</th>
+<th>Trigger (function)</th>
+<th>Actor</th>
+<th>Preconditions</th>
+<th>Audit action(s)</th>
+<th>Side effects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>—</td>
+<td><code>triage</code></td>
+<td><code>advisories.services.submit_triage_report</code></td>
+<td>Anonymous or authenticated reporter (public form)</td>
+<td>Honeypot field empty (<a href="../invariant/#inv-intake-1">INV-INTAKE-1</a>); rate-limit not tripped (checked before the row is created — <a href="../invariant/#inv-ratelimit-1">INV-RATELIMIT-1</a>)</td>
+<td><code>ADVISORY_TRIAGE_SUBMITTED</code></td>
+<td><code>AdvisoryIntakeMetadata</code> created; <code>needs_admin_routing=True</code> if <code>project.slug == "unsorted"</code> (<a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>); viewer grant for authenticated reporter (<a href="../invariant/#inv-intake-3">INV-INTAKE-3</a>); v1 seeded by post_save signal</td>
+</tr>
+<tr>
+<td>2</td>
+<td>—</td>
+<td><code>draft</code></td>
+<td><code>advisories.views.advisory_create</code></td>
+<td>Owner (admin or project security team)</td>
+<td>Caller can create for the chosen project</td>
+<td><code>ADVISORY_CREATED</code></td>
+<td>v1 seeded by post_save signal; <code>advisory_created</code> notification queued</td>
+</tr>
+<tr>
+<td>3</td>
+<td>—</td>
+<td><code>triage</code> <em>or</em> <code>draft</code></td>
+<td><code>ghsa.services.create_ghsa_linked_advisory</code></td>
+<td>Admin or project security team via a triggered GHSA sync; also the scheduled discovery sweep and webhook ingest — incl. <code>repository_advisory.reported</code> (system)</td>
+<td>GHSA ID not already mapped to another advisory (<a href="../invariant/#inv-id-2">INV-ID-2</a>)</td>
+<td><code>GHSA_LINKED_ADVISORY_CREATED</code></td>
+<td><code>kind=GHSA_LINKED</code>; <strong>initial state mirrors GitHub's <code>ghsa_state</code></strong> — <code>triage</code> when the GHSA is in triage upstream (a private report not yet accepted into a draft), else <code>draft</code> (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>); v1 seeded; initial <code>sync_single_ghsa</code> may append v2 if upstream returns content</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>triage</code></td>
+<td><code>draft</code></td>
+<td><code>advisories.services.promote_triage_to_draft</code></td>
+<td>Owner (project security team or admin)</td>
+<td><code>can_triage(user, advisory)</code>; <code>needs_admin_routing=False</code> for non-admin actor (<a href="../invariant/#inv-auth-6">INV-AUTH-6</a>); explicit non-<code>unsorted</code> target <code>project</code> required when the advisory is on <code>unsorted</code>; when promotion reassigns the project, a non-admin actor must also be on the destination project's security team</td>
+<td><code>ADVISORY_TRIAGE_PROMOTED</code>, <code>ADVISORY_STATE_CHANGED</code></td>
+<td>Same PK / public ID / <code>created_at</code> preserved (<a href="../invariant/#inv-lifecycle-5">INV-LIFECYCLE-5</a>); existing comments, audit entries, intake metadata, and the reporter's viewer grant survive intact; admin-routing flag cleared if set; a version row is appended when promotion reassigns the project (<code>project_slug</code> is payload-visible); <code>advisory_triage_promoted</code> notification queued</td>
+</tr>
+<tr>
+<td>4a</td>
+<td><code>triage</code></td>
+<td><code>draft</code></td>
+<td><code>ghsa.services.react_to_ghsa_state</code> (system)</td>
+<td>System — GitHub accepted the report into a draft (<code>ghsa_state</code> <code>triage</code> → <code>draft</code>) (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>)</td>
+<td>GHSA-linked; observed <code>ghsa_state == draft</code> while AdvisoryHub <code>state == triage</code>; forward-only (a draft is never demoted back to triage)</td>
+<td><code>ADVISORY_STATE_CHANGED</code></td>
+<td>State-only flip (no version appended, <a href="../invariant/#inv-version-1">INV-VERSION-1</a>); the standard draft workflow takes over. No human promote/dismiss/flag applies to a GHSA-linked triage row — <code>can_triage</code> / <code>can_flag_for_admin_routing</code> return False for them; the row mirrors GitHub</td>
+</tr>
+<tr>
+<td>4b</td>
+<td><code>triage</code>/<code>draft</code> (native)</td>
+<td><code>triage</code>/<code>draft</code> (GHSA-linked)</td>
+<td><code>ghsa.services.move_advisory_to_ghsa</code> (via <code>advisories.views.advisory_move_to_ghsa</code>)</td>
+<td>Owner (project security team or admin)</td>
+<td><code>can_move_to_ghsa</code>: <code>GHSA_FEATURE_ENABLED</code>; native <code>kind</code>; state ∈ {<code>triage</code>, <code>draft</code>}; target repo is an active repo of the <strong>same</strong> project with private vulnerability reporting enabled (re-validated live at move time); step-up (<a href="../invariant/#inv-ghsa-4">INV-GHSA-4</a>)</td>
+<td><code>ADVISORY_MOVED_TO_GHSA</code> (+ <code>ADVISORY_STATE_CHANGED</code> when mirroring forward-promotes <code>triage</code>→<code>draft</code>; + <code>GHSA_METADATA_FETCHED</code> from the initial sync)</td>
+<td>The <strong>one sanctioned <code>kind</code> flip</strong> (<code>native</code>→<code>ghsa_linked</code>) and outbound <em>create</em>: a repository security advisory is authored on GitHub from the report content (an assigned CVE is carried into the create payload); <code>ghsa_id</code>/<code>ghsa_owner</code>/<code>ghsa_repo</code> set; <strong>project unchanged</strong> (<a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>); a version row is appended (kind/ghsa fields are payload-visible); any pending review/reassignment request is cleared; the row then follows the inbound-only lifecycle (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>triage</code></td>
+<td><code>dismissed</code></td>
+<td><code>advisories.services.dismiss_triage</code></td>
+<td>Owner (project security team or admin)</td>
+<td><code>can_triage(user, advisory)</code>; non-empty <code>reason</code></td>
+<td><code>ADVISORY_DISMISSED</code>, <code>ADVISORY_STATE_CHANGED</code> (and, when <code>review_status != none</code> at dismiss time — rare for triage: <code>ADVISORY_REVIEW_WITHDRAWN</code>, conditionally <code>REVIEW_TASK_STATUS_CHANGED</code>)</td>
+<td><code>dismissed_reason</code> and <code>dismissed_from_state=triage</code> set; <code>cancel_pending_review</code> resets <code>review_status</code> to <code>none</code> and closes any open <code>ReviewTask</code> as <code>withdrawn</code>; <code>advisory_triage_dismissed</code> notification queued</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>draft</code></td>
+<td><code>dismissed</code></td>
+<td><code>advisories.services.dismiss_advisory</code> (via the <code>advisory_dismiss</code> view)</td>
+<td>Owner</td>
+<td><code>can_dismiss(user, advisory)</code>: not yet <code>published</code>; advisory has no <code>assigned_cve_id</code> unless actor is admin (footnote ² of <code>permissions.md</code> §5)</td>
+<td><code>ADVISORY_DISMISSED</code>, <code>ADVISORY_STATE_CHANGED</code> (plus, when applicable: <code>CVE_REQUEST_CANCELLED</code>, <code>CVE_UNASSIGNED</code>, <code>ADVISORY_REVIEW_WITHDRAWN</code>, <code>REVIEW_TASK_STATUS_CHANGED</code>)</td>
+<td><code>cancel_open_cve_request</code> runs (any open CVE request → <code>cancelled</code>); <code>unassign_cve</code> runs if a CVE was assigned (admin-only path, leaves an <code>OrphanCve</code> to be marked rejected at cve.org); <code>cancel_pending_review</code> runs (resets <code>review_status</code> to <code>none</code> and closes any open <code>ReviewTask</code> as <code>withdrawn</code>)</td>
+</tr>
+<tr>
+<td>6a</td>
+<td><code>draft</code>/<code>triage</code></td>
+<td><code>dismissed</code></td>
+<td><code>advisories.services.dismiss_advisory</code> (system, via <code>ghsa.services.react_to_ghsa_state</code>)</td>
+<td>System — GitHub closed/withdrew/deleted the linked GHSA (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>)</td>
+<td>GHSA-linked; observed <code>ghsa_state ∈ {closed, withdrawn}</code> or 404 (<code>missing_upstream</code>); <strong>no</strong> <code>assigned_cve_id</code> (a CVE-bearing row is left flagged for an admin — orphaning is a CNA action)</td>
+<td><code>ADVISORY_DISMISSED</code>, <code>ADVISORY_STATE_CHANGED</code></td>
+<td>Same cascade as row 6; <code>dismissed_reason</code> records the GitHub cause; a <code>published</code> advisory is <strong>not</strong> auto-dismissed (undismissable; surfaced for manual handling)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>draft</code></td>
+<td><code>published</code></td>
+<td><code>publication.tasks.run_publication</code> (success branch)</td>
+<td>Celery worker, on behalf of the user who called <code>publication.services.publish</code></td>
+<td><code>can_publish</code> was true at enqueue time; OSV+CSAF built and validated; Git clone, commit, and push succeeded; no other queued/running task (<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>)</td>
+<td><code>ADVISORY_PUBLISHED</code>, <code>PUBLICATION_OSV_GENERATED</code>, <code>PUBLICATION_CSAF_GENERATED</code>, <code>PUBLICATION_CVE_GENERATED</code> (when a CVE is assigned), <code>PUBLICATION_GIT_COMMIT</code>, <code>PUBLICATION_GIT_PUSH</code>, <code>PUBLICATION_EXPORT_COMPLETED</code></td>
+<td><code>published_at</code> stamped if previously null; <code>republish_required=False</code>; <code>PublicationTask.status=SUCCEEDED</code> with <code>commit_sha</code>; one <code>PublicationArtifact</code> row per kind — <code>osv</code>, <code>csaf</code>, plus <code>cve</code> when the pinned payload carries an <code>assigned_cve_id</code> (<a href="../invariant/#inv-version-3">INV-VERSION-3</a>; architecture.md §4.2). The artifact rows and the build/commit/push audits land <em>outside</em> the final atomic block (artifacts before the push, the git audits right after it); the state flip, task success, and the <code>ADVISORY_PUBLISHED</code> / <code>PUBLICATION_EXPORT_COMPLETED</code> audits share one <code>transaction.atomic</code> block (<a href="../invariant/#inv-pub-4">INV-PUB-4</a>)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>published</code></td>
+<td><code>published</code></td>
+<td><code>publication.services.publish</code> → <code>run_publication</code> again</td>
+<td>Owner (publish-eligible — §7 of <code>permissions.md</code>); <strong>native</strong> advisories — GHSA-linked re-publish is system-driven (row 8b) or admin break-glass</td>
+<td>Edit happened since last publish (<code>republish_required=True</code>) <strong>or</strong> explicit re-publish for any reason; review gate per §5 applies</td>
+<td>Same set as row 7</td>
+<td>A new <code>PublicationTask</code> row pins the <strong>latest</strong> <code>AdvisoryVersion</code>; OSV/CSAF and the commit on the same Git path are regenerated; prior <code>PublicationArtifact</code> and version rows remain immutable</td>
+</tr>
+<tr>
+<td>8b</td>
+<td><code>published</code></td>
+<td><code>published</code></td>
+<td><code>ghsa.tasks.run_ghsa_auto_publish</code> → <code>publish(system=True)</code></td>
+<td>System (synced GHSA content changed)</td>
+<td>GHSA-linked; <code>state == published</code>; a sync moved synced content (<code>republish_required=True</code>); linked GHSA still <code>published</code> upstream (not 404); <code>GHSA_AUTO_PUBLISH_ENABLED</code> (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). No owner re-publish button exists for GHSA-linked rows; an admin may still re-drive via break-glass</td>
+<td>Same set as row 7</td>
+<td>As row 8; enqueued by <code>ghsa.services.react_to_ghsa_state</code> after an observing sync, keyed on the GHSA still being published so it never collides with the auto-withdraw <code>gone</code> branch. Best-effort: a gating refusal (CVE conflict / concurrent run) is logged and skipped, leaving <code>republish_required</code> set for the next sync</td>
+</tr>
+<tr>
+<td>8a</td>
+<td><code>published</code></td>
+<td><code>dismissed</code></td>
+<td><code>advisories.services.withdraw_advisory</code> → <code>run_publication</code> (withdrawal branch)</td>
+<td>Admin or <strong>mature-publisher</strong> owner (<code>can_withdraw_published</code>); non-mature owners request one (§ withdrawal request)</td>
+<td><code>withdrawn_reason</code> set + version appended; OSV/CSAF built <strong>with</strong> the withdrawn marker; Git push succeeded (<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>)</td>
+<td><code>ADVISORY_DISMISSED</code>, <code>ADVISORY_STATE_CHANGED</code> (metadata <code>withdrawn=True</code>); <code>CVE_UNASSIGNED</code> when a CVE was assigned; the usual <code>PUBLICATION_*</code> build/push audits</td>
+<td>OSV gains <code>withdrawn</code>; CSAF gains a withdrawal <code>revision_history</code> entry (version <code>2</code>) + document note — the documents stay in the repo, updated not deleted; <code>state→dismissed</code> with <code>dismissed_from_state=published</code> <strong>only after</strong> the push (a failed push leaves it <code>published</code> + a retryable <code>PublicationTask</code>); any assigned CVE's on-disk record is re-exported as a <code>REJECTED</code> CVE 5.x record (<code>rejectedReasons</code> = the withdrawal reason — the repo mirrors cve.org) and the CVE is orphaned for cve.org rejection</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>dismissed</code></td>
+<td><code>dismissed_from_state</code> (<code>draft</code> or <code>triage</code>)</td>
+<td><code>advisories.services.reopen_advisory</code></td>
+<td>Owner (project security team or admin)</td>
+<td><code>can_reopen(user, advisory)</code>: state is dismissed</td>
+<td><code>ADVISORY_REOPENED</code>, <code>ADVISORY_STATE_CHANGED</code> (and, depending on orphan/CVE state: <code>CVE_REASSIGNED_FROM_ORPHAN</code> <em>or</em> <code>ORPHAN_REASSIGNMENT_REQUESTED</code>; <code>CVE_REQUESTED</code> if a cancelled queued request is re-created)</td>
+<td><code>state</code> flips to <code>dismissed_from_state</code>; <code>dismissed_reason</code> / <code>dismissed_from_state</code> kept as historical metadata; auto-cancelled <code>CveRequestTask</code> re-created in <code>queued</code> if no other open task and target is <code>draft</code>; latest <code>OrphanCve</code> reattached directly (orphan → <code>REASSIGNED</code>) when <code>ORPHANED</code>, else an <code>OrphanCveReassignmentTask</code> is queued for admin (see §3.1.4) when <code>MARKED_REJECTED</code>; <code>advisory_reopened</code> notification queued</td>
+</tr>
+<tr>
+<td>9a</td>
+<td><code>dismissed</code> (<code>dismissed_from_state=published</code>)</td>
+<td><code>published</code></td>
+<td><code>advisories.services.reopen_advisory</code> → <code>run_publication</code> (un-withdraw)</td>
+<td>Admin or <strong>mature-publisher</strong> owner (<code>can_reopen</code> requires publish authority for a withdrawal)</td>
+<td><code>can_reopen</code>: state is dismissed and was withdrawn from <code>published</code></td>
+<td><code>ADVISORY_REOPENED</code> (metadata <code>unwithdraw=True</code>), then <code>ADVISORY_PUBLISHED</code> + <code>PUBLICATION_*</code> on the re-export</td>
+<td><code>withdrawn_reason</code> cleared + version appended; the orphaned CVE is reattached (orphan → <code>REASSIGNED</code>, or an admin task when <code>MARKED_REJECTED</code>); the advisory re-publishes <strong>without</strong> the withdrawn marker — the reattached CVE's record is re-exported <code>PUBLISHED</code> again (when an admin task is queued instead, the record stays <code>REJECTED</code> until resolved) — and returns to <code>published</code> <strong>only after</strong> the push (<code>publish(allow_from_dismissed=True)</code>)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Ledger vs. activity timeline.</strong> The <em>Audit action(s)</em> column lists what is
+written to the append-only ledger (<a href="../invariant/#inv-audit-1">INV-AUDIT-1</a>).
+The per-advisory <strong>activity timeline</strong> (<code>advisories.timeline</code>) renders a curated
+subset: the structured <code>ADVISORY_STATE_CHANGED</code> row is suppressed whenever a
+descriptive companion narrates the same transition (rows 4, 5, 6, 6a, 8a — paired
+with <code>ADVISORY_TRIAGE_PROMOTED</code> / <code>ADVISORY_DISMISSED</code>; the write carries
+<code>metadata.narrated=true</code>), so the event appears <strong>once</strong>. The state-change rows
+that are the <em>sole</em> narration of their event stay on the timeline: the GHSA
+accepted-to-draft flip (row 4a), reopen (row 9), and the <code>review_status</code> flip
+emitted by <code>reopen_review</code> (§5.1). <code>REVIEW_TASK_STATUS_CHANGED</code> is likewise
+ledger-only — every write is paired with a descriptive <code>ADVISORY_REVIEW_*</code> row
+(§5.1) — so it never reaches the timeline. This is the same companion-suppression
+rule already applied to <code>ADVISORY_REASSIGNMENT_REQUEST_CLEARED</code> (§11).</p>
+</blockquote>
+<h4 id="311-notes-on-row-1--triage-creation">3.1.1 Notes on row 1 — triage creation<a class="headerlink" href="#311-notes-on-row-1--triage-creation" title="Permanent link">&para;</a></h4>
+<p><code>submit_triage_report</code> is the only constructor for <code>state=triage</code>
+(<a href="../invariant/#inv-lifecycle-2">INV-LIFECYCLE-2</a>). It does the following in one transaction:</p>
+<ul>
+<li>creates the <code>Advisory(state=TRIAGE)</code> row;</li>
+<li>creates <code>AdvisoryIntakeMetadata</code> with the reporter user (if authenticated),
+  the request IP, and the User-Agent;</li>
+<li>if <code>project.slug == UNSORTED_PROJECT_SLUG</code>, sets
+  <code>needs_admin_routing=True</code> (<a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>);</li>
+<li>if the reporter is authenticated, issues an <code>AdvisoryAccessGrant(viewer)</code>
+  to that user (<a href="../invariant/#inv-intake-3">INV-INTAKE-3</a>);</li>
+<li>emits <code>ADVISORY_TRIAGE_SUBMITTED</code>;</li>
+<li>queues the <code>advisory_triage_submitted</code> notification on <code>transaction.on_commit</code>.</li>
+</ul>
+<p>The public form has <strong>no reporter-email field</strong>: anonymous reporters cannot
+be re-associated with the report later (<a href="../invariant/#inv-intake-2">INV-INTAKE-2</a>).</p>
+<h4 id="312-notes-on-row-7--the-only-path-to-published">3.1.2 Notes on row 7 — the only path to <code>published</code><a class="headerlink" href="#312-notes-on-row-7--the-only-path-to-published" title="Permanent link">&para;</a></h4>
+<p>The flip to <code>published</code> runs inside <code>publication/tasks.run_publication</code>,
+inside <code>Advisory.objects.select_for_update</code>, <strong>only on the success branch</strong>.
+If any step fails — schema validation, clone, file write, commit, or push —
+the task is marked <code>failed</code> (row in §7 below), the advisory's state remains
+exactly what it was, and the audit log records the failure
+(<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>). The Celery task is enqueued via
+<code>transaction.on_commit</code> so a rolled-back caller transaction never leaves a
+stray queued task (<a href="../invariant/#inv-pub-5">INV-PUB-5</a>).</p>
+<h4 id="313-notes-on-row-6--dismiss-from-draft-auto-cancellations">3.1.3 Notes on row 6 — dismiss-from-draft auto-cancellations<a class="headerlink" href="#313-notes-on-row-6--dismiss-from-draft-auto-cancellations" title="Permanent link">&para;</a></h4>
+<p>When a draft is dismissed via <code>advisories.services.dismiss_advisory</code> (the
+reusable core behind the <code>advisory_dismiss</code> view and the GHSA auto-dismiss
+path, row 6a), the same atomic block runs <code>cancel_open_cve_request</code> (emitting
+<code>CVE_REQUEST_CANCELLED</code> if a
+queued task existed) and, when an <code>assigned_cve_id</code> is present, calls
+<code>unassign_cve</code> (emitting <code>CVE_UNASSIGNED</code> and producing an <code>OrphanCve</code> for
+the admin team to mark rejected at cve.org). It also runs
+<code>workflows.services.cancel_pending_review</code>, which resets
+<code>review_status</code> to <code>none</code> and closes any <code>OPEN</code> <code>ReviewTask</code> as
+<code>WITHDRAWN</code>. This last cleanup matters specifically because:</p>
+<ul>
+<li>A surviving <code>CHANGES_REQUESTED</code> would persist a stale review badge
+  across the dismiss/reopen cycle without a live task to act on.</li>
+<li>A surviving <code>SUBMITTED</code> would leave a phantom <code>OPEN</code> <code>ReviewTask</code> on
+  the admin queue during the dismissed phase and after any subsequent
+  reopen.</li>
+<li>A surviving <code>APPROVED</code> is the security-relevant case: it would let
+  the owner publish without re-review on the way back out via
+  <code>reopen_advisory</code>, contradicting <a href="../invariant/#inv-perm-3">INV-PERM-3</a> / <a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>.</li>
+</ul>
+<p>Both dismiss paths additionally stamp <code>Advisory.dismissed_from_state</code>
+with the prior state so that <code>reopen_advisory</code> (row 9) knows the
+destination. <code>dismiss_triage</code> calls the same <code>cancel_pending_review</code>
+helper for symmetry, even though triage advisories almost never carry a
+non-<code>NONE</code> <code>review_status</code> in practice (<code>can_submit_for_review</code> blocks
+non-<code>draft</code> state).</p>
+<h4 id="314-notes-on-row-9--reopen-side-effect-restoration">3.1.4 Notes on row 9 — reopen side-effect restoration<a class="headerlink" href="#314-notes-on-row-9--reopen-side-effect-restoration" title="Permanent link">&para;</a></h4>
+<p><code>advisories.services.reopen_advisory</code> is the inverse entry point. The state
+flip is <strong>immediate</strong> even when admin work is still pending — keeping the
+owner unblocked is more important than waiting on an out-of-band cve.org
+operation.</p>
+<p>CVE-side restoration runs inside the same atomic block as the state flip:</p>
+<ol>
+<li><strong>Cancelled queued CVE request</strong> — when the latest <code>CveRequestTask</code> for
+   the advisory is <code>CANCELLED</code> (the auto-cancel from dismiss), no other open
+   request exists, no CVE is currently assigned, and the target state is
+   <code>draft</code>, a fresh <code>CveRequestTask</code> is created in <code>QUEUED</code> via
+   <code>workflows.services.request_cve</code>. Triage targets skip this — triage
+   advisories don't carry CVE requests in the first place
+   (<a href="../permissions/#5-capability-matrix">can_request_cve</a>).</li>
+<li><strong>Orphan CVE disposition</strong> — the newest <code>OrphanCve</code> for the advisory is
+   consulted:</li>
+<li><code>status == ORPHANED</code> → <code>workflows.services.reassign_orphan_cve</code> runs
+     immediately, transitioning the orphan to <code>REASSIGNED</code> and writing the
+     CVE id back to <code>Advisory.assigned_cve_id</code>. Audit:
+     <code>CVE_REASSIGNED_FROM_ORPHAN</code>. If the direct reassignment conflicts
+     (the CVE is now held by another advisory, or this advisory already
+     holds one), an <code>OrphanCveReassignmentTask</code> is queued for admin
+     resolution instead. Audit: <code>ORPHAN_REASSIGNMENT_REQUESTED</code>.</li>
+<li><code>status == MARKED_REJECTED</code> → an <code>OrphanCveReassignmentTask</code> is
+     created in <code>QUEUED</code> and surfaces in the admin inbox at
+     <code>/admin/cves/</code>. The advisory itself is back in <code>draft</code> / <code>triage</code> with
+     no <code>assigned_cve_id</code>. Audit: <code>ORPHAN_REASSIGNMENT_REQUESTED</code>. Admin
+     resolves the task with one of two outcomes:<ul>
+<li><code>reassigned</code> — cve.org rejection was undone out-of-band; the orphan
+   transitions to <code>REASSIGNED</code> and the CVE id is reattached. Audit:
+   <code>CVE_REASSIGNED_FROM_ORPHAN</code> + <code>ORPHAN_REASSIGNMENT_RESOLVED</code>.</li>
+<li><code>replaced</code> — rejection couldn't be undone; admin enters a fresh
+   <code>replacement_cve_id</code> on the resolution form. A new
+   <code>CveRequestTask(status=RESERVED, cve_id=…)</code> is created, the
+   advisory's <code>assigned_cve_id</code> is set, and the orphan stays
+   <code>MARKED_REJECTED</code>. Audit: <code>CVE_TASK_STATUS_CHANGED</code> and
+   <code>ORPHAN_REASSIGNMENT_RESOLVED</code>.</li>
+</ul>
+</li>
+<li><code>status == REASSIGNED</code> (orphan was already reclaimed previously) → no
+     op.</li>
+<li>No orphan exists → no op.</li>
+</ol>
+<p>The <code>advisory_reopened</code> notification is queued post-commit through the same
+<code>send_advisory_triage_event_email</code> task already used by other lifecycle
+events.</p>
+<p>Reopen does <strong>not</strong> touch <code>review_status</code> or any <code>ReviewTask</code>: dismiss
+(rows 5 and 6) already ran <code>cancel_pending_review</code>, so the reopened
+advisory always re-enters the review pipeline from <code>review_status=NONE</code>
+and the normal submit/approve/publish gates apply on the way back out.</p>
+<hr />
+<h2 id="4-what-does-not-transition-the-lifecycle">4. What does <strong>not</strong> transition the lifecycle<a class="headerlink" href="#4-what-does-not-transition-the-lifecycle" title="Permanent link">&para;</a></h2>
+<p>These changes are intentionally listed because they look like state changes
+but are not — they update other fields and may set the re-publication flag,
+but <code>Advisory.state</code> itself is unchanged:</p>
+<ul>
+<li>Editing draft or published content (<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>).</li>
+<li>Toggling <code>republish_required</code> (set by edits, cleared by a successful
+  publication).</li>
+<li>Stamping <code>access_review_required_at</code> after a project change.</li>
+<li>Refreshing <code>ghsa_metadata_synced_at</code> on a heartbeat sync that returned no
+  payload changes (see §8.4).</li>
+<li>Submitting for review / approving / requesting changes / withdrawing —
+  these change <code>review_status</code>, not <code>state</code> (<a href="../invariant/#inv-review-1">INV-REVIEW-1</a>; §5).</li>
+<li>Opening or transitioning a <code>CveRequestTask</code> — touches a separate row, not
+  the advisory's <code>state</code> (§6).</li>
+<li>Flagging / un-flagging an advisory for admin routing — toggles
+  <code>AdvisoryIntakeMetadata.needs_admin_routing</code>, not <code>state</code> (<a href="../invariant/#inv-auth-6">INV-AUTH-6</a>).</li>
+<li>Locking / unlocking new comments (dispute cool-down) — toggles
+  <code>Advisory.comments_locked</code> in <strong>any</strong> state; owner/admin-only, enforced through
+  <code>can_comment</code> so only owners/admins may still post while locked. Workflow
+  metadata, absent from <code>to_payload</code>, so it is not versioned (§ permissions.md
+  footnote ¹²).</li>
+<li>Running a duplicate-detection check (<code>similarity</code> app) — enqueued on every
+  advisory-creation path and re-runnable by owners; it reads the pinned
+  <code>AdvisoryVersion</code> payload and writes only its own <code>SimilarityCheck</code> /
+  <code>SimilarityCandidate</code> rows, never the advisory (<a href="../invariant/#inv-sim-4">INV-SIM-4</a>).</li>
+</ul>
+<p>Adding a new payload-visible field to <code>Advisory.to_payload()</code> is therefore a
+load-bearing decision: the field will start being versioned automatically
+(<a href="../invariant/#inv-version-1">INV-VERSION-1</a>).</p>
+<hr />
+<h2 id="5-review-sub-machine-advisoryreview_status">5. Review sub-machine (<code>Advisory.review_status</code>)<a class="headerlink" href="#5-review-sub-machine-advisoryreview_status" title="Permanent link">&para;</a></h2>
+<p>The review machine is orthogonal to the lifecycle (<a href="../invariant/#inv-review-1">INV-REVIEW-1</a>) and is
+meaningful only while <code>state=draft</code>. Submission freezes the content under
+review against a specific <code>AdvisoryVersion</code> via <code>workflows.ReviewTask.version</code>
+(<a href="../invariant/#inv-review-2">INV-REVIEW-2</a>, <a href="../invariant/#inv-version-2">INV-VERSION-2</a>).</p>
+<p><strong>Native advisories only.</strong> GHSA-linked advisories do not participate in review — their
+content is synced from GitHub and isn't human-editable, so there is nothing to review
+(<a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>). <code>can_submit_for_review</code> / <code>can_withdraw_review</code> /
+<code>can_revoke_approval</code> all refuse them, the review card is hidden, and a GHSA sync never touches
+<code>review_status</code>. They publish without an AdvisoryHub review (the upstream GitHub advisory is the
+vetting; see §5.2 and permissions.md footnote ¹⁰).</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; none
+
+    none --&gt; submitted          : submit_for_review
+    submitted --&gt; approved      : approve_review (admin)
+    submitted --&gt; changes_requested: request_changes (admin)
+    submitted --&gt; none          : withdraw_review (submitter)
+
+    changes_requested --&gt; none  : reopen_review
+    changes_requested --&gt; submitted: submit_for_review (re-submission opens a new ReviewTask)
+
+    approved --&gt; none           : revoke_approval (admin)
+    approved --&gt; none           : non-admin edit (implicit)
+    approved --&gt; submitted      : submit_for_review (supersedes the standing approval)
+
+    note right of submitted     : Publishing is blocked for everyone\nincluding admins (INV-PERM-3)</code></pre>
+<h3 id="51-review-status-transitions">5.1 Review-status transitions<a class="headerlink" href="#51-review-status-transitions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>From</th>
+<th>To</th>
+<th>Trigger</th>
+<th>Actor</th>
+<th>Preconditions</th>
+<th>Audit action(s)</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>none</code></td>
+<td><code>submitted</code></td>
+<td><code>workflows.services.submit_for_review</code></td>
+<td>Owner (security team)</td>
+<td><code>can_submit_for_review</code>: lifecycle <code>state=draft</code>, advisory not currently <code>submitted</code>; <strong>admins cannot submit</strong> (<a href="../invariant/#inv-review-3">INV-REVIEW-3</a>)</td>
+<td><code>ADVISORY_SUBMITTED_FOR_REVIEW</code></td>
+<td>Creates a <code>ReviewTask</code> pinned to the current latest <code>AdvisoryVersion</code> (<a href="../invariant/#inv-review-2">INV-REVIEW-2</a>, <a href="../invariant/#inv-version-2">INV-VERSION-2</a>)</td>
+</tr>
+<tr>
+<td><code>submitted</code></td>
+<td><code>approved</code></td>
+<td><code>workflows.services.approve_review</code></td>
+<td>Admin (global reviewer)</td>
+<td><code>can_review(by)</code>; <code>ReviewTask.status=OPEN</code></td>
+<td><code>ADVISORY_REVIEW_APPROVED</code>, <code>REVIEW_TASK_STATUS_CHANGED</code></td>
+<td><code>ReviewTask.status=APPROVED</code></td>
+</tr>
+<tr>
+<td><code>submitted</code></td>
+<td><code>changes_requested</code></td>
+<td><code>workflows.services.request_changes</code></td>
+<td>Admin</td>
+<td><code>can_review(by)</code>; <code>ReviewTask.status=OPEN</code></td>
+<td><code>ADVISORY_REVIEW_CHANGES_REQUESTED</code>, <code>REVIEW_TASK_STATUS_CHANGED</code></td>
+<td><code>ReviewTask.status=CHANGES_REQUESTED</code></td>
+</tr>
+<tr>
+<td><code>submitted</code></td>
+<td><code>none</code></td>
+<td><code>workflows.services.withdraw_review</code></td>
+<td>Owner (submitter side)</td>
+<td>Any non-admin owner (need not be the original submitter); admins cannot withdraw (<a href="../invariant/#inv-review-3">INV-REVIEW-3</a>)</td>
+<td><code>ADVISORY_REVIEW_WITHDRAWN</code>, <code>REVIEW_TASK_STATUS_CHANGED</code></td>
+<td><code>ReviewTask.status=WITHDRAWN</code></td>
+</tr>
+<tr>
+<td><code>changes_requested</code></td>
+<td><code>none</code></td>
+<td><code>workflows.services.reopen_review</code></td>
+<td>Owner or admin</td>
+<td><code>review_status=CHANGES_REQUESTED</code></td>
+<td><code>ADVISORY_STATE_CHANGED</code> (review-status field)</td>
+<td>Allows edits to be made before a new submission</td>
+</tr>
+<tr>
+<td><code>changes_requested</code></td>
+<td><code>submitted</code></td>
+<td><code>workflows.services.submit_for_review</code></td>
+<td>Owner (security team)</td>
+<td>Same as the initial submission</td>
+<td><code>ADVISORY_SUBMITTED_FOR_REVIEW</code></td>
+<td>Opens a <strong>new</strong> <code>ReviewTask</code> pinned to the (possibly newer) latest version</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td><code>submitted</code></td>
+<td><code>workflows.services.submit_for_review</code></td>
+<td>Owner (security team)</td>
+<td>Same as the initial submission — <code>can_submit_for_review</code> blocks only the <code>submitted</code> status, so a standing approval may be sent back for a fresh review</td>
+<td><code>ADVISORY_SUBMITTED_FOR_REVIEW</code></td>
+<td>Opens a <strong>new</strong> <code>ReviewTask</code>; the standing approval is superseded (a later withdraw lands on <code>none</code>, not back on <code>approved</code>)</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td><code>none</code></td>
+<td><code>workflows.services.revoke_approval</code></td>
+<td>Admin</td>
+<td><code>can_revoke_approval(by)</code>; <code>review_status=APPROVED</code></td>
+<td><code>ADVISORY_REVIEW_APPROVAL_REVOKED</code></td>
+<td>Used when the admin wants to retract approval before publication</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td><code>none</code></td>
+<td>implicit, via <code>advisories.views.advisory_edit</code></td>
+<td>Non-admin owner / collaborator editing payload</td>
+<td>Edit is by a non-admin and <code>review_status</code> was <code>approved</code> (<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>)</td>
+<td><code>ADVISORY_REVIEW_APPROVAL_INVALIDATED</code></td>
+<td>Triggered by the edit itself; admins editing keep the approval (they could re-approve anyway)</td>
+</tr>
+</tbody>
+</table>
+<p>The optional decision notes on <code>approve_review</code> / <code>request_changes</code> post a <strong>public</strong>
+author-attributed comment, and the optional <code>revoke_approval</code> reason posts an
+<strong>internal</strong> one (<code>comments.services.record_action_note</code>, requirements.md
+§AdvisoryComment); both no-op when left blank.</p>
+<p>The <code>REVIEW_TASK_STATUS_CHANGED</code> row paired with each decision is <strong>ledger-only</strong> —
+the descriptive <code>ADVISORY_REVIEW_*</code> row narrates the same change, so the activity
+timeline shows it once (see §3.1, <em>Ledger vs. activity timeline</em>). The
+<code>reopen_review</code> row reuses <code>ADVISORY_STATE_CHANGED</code> for the <code>review_status</code> field and
+has no descriptive companion, so it <strong>does</strong> surface on the timeline.</p>
+<h3 id="52-interaction-with-publishing">5.2 Interaction with publishing<a class="headerlink" href="#52-interaction-with-publishing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>review_status=submitted</code> blocks <code>Publish</code> for <strong>everyone</strong>, including
+  global admins (<a href="../invariant/#inv-perm-3">INV-PERM-3</a>). The pending review must be decided
+  (approved or changes requested) or withdrawn first.</li>
+<li>For projects with <code>is_mature_publisher=False</code>, the project's security
+  team may only publish when <code>review_status=approved</code> (or hand it to an
+  admin who can). For <code>is_mature_publisher=True</code> projects, the security
+  team may publish drafts without a top-level review (<a href="../invariant/#inv-perm-1">INV-PERM-1</a>,
+  <a href="../invariant/#inv-perm-2">INV-PERM-2</a>).</li>
+</ul>
+<hr />
+<h2 id="6-cve-request-sub-machine-workflowscverequesttaskstatus">6. CVE-request sub-machine (<code>workflows.CveRequestTask.status</code>)<a class="headerlink" href="#6-cve-request-sub-machine-workflowscverequesttaskstatus" title="Permanent link">&para;</a></h2>
+<p>A <code>CveRequestTask</code> represents a request to the top-level security team to
+reserve a CVE for the advisory. At most one task with <code>status=queued</code> exists
+per advisory at any time, enforced by a DB unique constraint
+(<a href="../invariant/#inv-cve-1">INV-CVE-1</a>).</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; queued      : request_cve
+
+    queued --&gt; reserved : transition_cve_request&lt;br/&gt;(RESERVED, cve_id=...)
+    queued --&gt; rejected : transition_cve_request&lt;br/&gt;(REJECTED, notes=...)
+    queued --&gt; cancelled: cancel_open_cve_request&lt;br/&gt;(auto on advisory dismiss)
+
+    reserved --&gt; [*]
+    rejected --&gt; [*]
+    cancelled --&gt; [*]</code></pre>
+<h3 id="61-cve-request-transitions">6.1 CVE-request transitions<a class="headerlink" href="#61-cve-request-transitions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>From</th>
+<th>To</th>
+<th>Trigger</th>
+<th>Actor</th>
+<th>Preconditions</th>
+<th>Audit action(s)</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td><code>queued</code></td>
+<td><code>workflows.services.request_cve</code></td>
+<td>Owner (security team) on a draft or published advisory</td>
+<td><code>can_request_cve</code>: lifecycle is <code>draft</code> or <code>published</code> (blocked in <code>triage</code> and <code>dismissed</code>), no <code>assigned_cve_id</code> (<a href="../invariant/#inv-cve-2">INV-CVE-2</a>), no other open task (<a href="../invariant/#inv-cve-1">INV-CVE-1</a>), <code>cve_requests_banned=False</code> (<a href="../invariant/#inv-cve-3">INV-CVE-3</a>)</td>
+<td><code>CVE_REQUESTED</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>queued</code></td>
+<td><code>reserved</code></td>
+<td><code>workflows.services.transition_cve_request(..., new_status=RESERVED, cve_id=...)</code></td>
+<td>Admin (CNA-side reviewer)</td>
+<td><code>can_review(by)</code>; valid <code>CVE-YYYY-NNNN…</code> format (<a href="../invariant/#inv-id-3">INV-ID-3</a>)</td>
+<td><code>CVE_TASK_STATUS_CHANGED</code></td>
+<td>Sets <code>Advisory.assigned_cve_id</code>; if the advisory is already <code>published</code>, also sets <code>republish_required=True</code>; for GHSA-linked advisories, additionally enqueues the EF-CVE push to GitHub (architecture.md §5.4)</td>
+</tr>
+<tr>
+<td><code>queued</code></td>
+<td><code>rejected</code></td>
+<td><code>workflows.services.transition_cve_request(..., new_status=REJECTED, notes=...)</code></td>
+<td>Admin</td>
+<td><code>can_review(by)</code>; non-empty <code>notes</code></td>
+<td><code>CVE_TASK_STATUS_CHANGED</code>, optional <code>CVE_REQUEST_BANNED</code></td>
+<td>Posts a comment to the advisory; admin may also flip <code>cve_requests_banned=True</code> (<a href="../invariant/#inv-cve-3">INV-CVE-3</a>)</td>
+</tr>
+<tr>
+<td><code>queued</code></td>
+<td><code>cancelled</code></td>
+<td><code>workflows.services.cancel_open_cve_request</code></td>
+<td>System (called from the dismiss-from-draft flow)</td>
+<td>Advisory is being dismissed</td>
+<td><code>CVE_REQUEST_CANCELLED</code></td>
+<td>Not user-callable; runs inside the dismissal atomic block</td>
+</tr>
+</tbody>
+</table>
+<p>After <code>reserved</code> / <code>rejected</code> / <code>cancelled</code>, the task is terminal — a new
+request opens a fresh <code>CveRequestTask</code> row only if the constraint in row 1
+still permits it (<code>assigned_cve_id</code> empty, no ban, no open task).</p>
+<p><code>Advisory.cve_requests_banned</code> is an advisory-level flag, <strong>not</strong> a CVE-task
+state: it is set as an optional side-effect of a rejection (row above) and is
+orthogonal to the task sub-machine. It is reversible — an admin clears it via
+<code>workflows.services.unban_cve_requests</code> (see §6.2).</p>
+<h3 id="62-related-cleanup-paths">6.2 Related cleanup paths<a class="headerlink" href="#62-related-cleanup-paths" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>workflows.services.unban_cve_requests</code> (admin-only) clears
+  <code>Advisory.cve_requests_banned</code>, re-allowing the owner to request a CVE. Surfaced
+  as the "CVE requests banned" section on the CVE Assignment page (<code>/admin/cves</code>,
+  <code>admin_console:cve_allow</code>). Emits <code>CVE_REQUEST_UNBANNED</code>; a no-op (no audit row)
+  when the advisory was not banned. See <a href="../invariant/#inv-cve-3">INV-CVE-3</a>.</li>
+<li><code>workflows.services.unassign_cve</code> (admin-only) clears
+  <code>Advisory.assigned_cve_id</code> and creates an <code>OrphanCve</code> row that admins are
+  expected to mark rejected at cve.org. Emits <code>CVE_UNASSIGNED</code>.</li>
+<li><code>workflows.services.mark_orphan_rejected</code> flips the orphan row to
+  <code>marked_rejected</code>. Emits <code>CVE_MARKED_REJECTED_AT_CVE_ORG</code>.</li>
+</ul>
+<hr />
+<h2 id="7-publication-task-sub-machine-publicationpublicationtaskstatus">7. Publication-task sub-machine (<code>publication.PublicationTask.status</code>)<a class="headerlink" href="#7-publication-task-sub-machine-publicationpublicationtaskstatus" title="Permanent link">&para;</a></h2>
+<p>Each call to <code>publication.services.publish</code> (or <code>retry</code>) creates one
+<code>PublicationTask</code> pinned to the <strong>latest</strong> existing <code>AdvisoryVersion</code> at
+enqueue time (<a href="../invariant/#inv-version-2">INV-VERSION-2</a>). The Celery worker
+(<code>publication.tasks.run_publication</code>) drives it through the states below.</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; queued      : publish()&lt;br/&gt;or retry()
+    queued --&gt; running  : worker picks up (mark_running)
+
+    running --&gt; succeeded: clean push&lt;br/&gt;(OSV+CSAF built, validated,&lt;br/&gt;committed, pushed)
+    running --&gt; failed   : any error&lt;br/&gt;(validation, clone, write,&lt;br/&gt;commit, push)
+    running --&gt; failed   : reaper (stale —&lt;br/&gt;worker hard-killed)
+    queued --&gt; failed    : reaper (stale —&lt;br/&gt;enqueue never reached broker)
+
+    failed --&gt; queued   : retry()
+    succeeded --&gt; [*]
+
+    note right of succeeded : Inside the same atomic block,\nAdvisory.state flips to published\n(see §3, row 7) — INV-PUB-4
+    note right of failed    : Advisory.state is NOT changed.\nlast_error is redacted\n(INV-SECRET-1)</code></pre>
+<p>The two <code>reaper</code> edges are the beat-scheduled stale-task reaper
+(<code>publication.reap_stale_publication_tasks</code>, every 10 minutes), which
+force-fails rows orphaned in <code>queued</code>/<code>running</code> so the in-flight guard can
+never block publishing forever (<a href="../invariant/#inv-pub-7">INV-PUB-7</a>).</p>
+<h3 id="71-publication-task-transitions">7.1 Publication-task transitions<a class="headerlink" href="#71-publication-task-transitions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>From</th>
+<th>To</th>
+<th>Trigger</th>
+<th>Actor</th>
+<th>Preconditions</th>
+<th>Audit action(s)</th>
+<th>Side effects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td><code>queued</code></td>
+<td><code>publication.services.publish</code></td>
+<td>Owner (publish-eligible per §5.2); for <strong>GHSA-linked</strong>, admins only (break-glass — <code>can_publish</code> is false for owners, <code>permissions.md</code> §5 footnote ¹⁰)</td>
+<td><code>can_publish(by)</code>; for the interactive owner path the <code>publication.views.publish</code> view first requires the operator to re-enter the advisory's <code>ECL-…</code> ID (client-gated, server re-checked) before this is reached; lifecycle <code>state</code> ≠ <code>dismissed</code>; no other queued/running task (<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>); GHSA-linked advisories refresh metadata from GitHub first</td>
+<td><code>PUBLICATION_EXPORT_STARTED</code></td>
+<td>New <code>PublicationTask</code> row pins the latest <code>AdvisoryVersion</code>; Celery <code>run_publication</code> enqueued via <code>transaction.on_commit</code> (<a href="../invariant/#inv-pub-5">INV-PUB-5</a>)</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>queued</code></td>
+<td><code>ghsa.tasks.run_ghsa_auto_publish</code> → <code>publish(system=True)</code></td>
+<td>System (GitHub published the linked GHSA)</td>
+<td>GHSA-linked; AdvisoryHub <code>state</code> is <code>draft</code> <em>or</em> <code>triage</code> (a GHSA published straight from triage upstream); linked GHSA <code>published</code>; <code>GHSA_AUTO_PUBLISH_ENABLED</code> (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). Skips the human <code>can_publish</code> gate but keeps the dismissed / in-flight / refresh-for-publish guards</td>
+<td><code>PUBLICATION_EXPORT_STARTED</code></td>
+<td>As the row above; enqueued by <code>ghsa.services.react_to_ghsa_state</code> after an observing sync. Best-effort: a gating refusal is logged and skipped</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>queued</code></td>
+<td><code>ghsa.tasks.run_ghsa_auto_publish</code> → <code>publish(system=True)</code></td>
+<td>System (synced GHSA content changed)</td>
+<td>GHSA-linked; AdvisoryHub <code>state</code> is <code>published</code> with <code>republish_required=True</code>; linked GHSA still <code>published</code> upstream; <code>GHSA_AUTO_PUBLISH_ENABLED</code> (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). Same guard set as the row above — keyed on the GHSA still being published, so it never collides with auto-withdraw</td>
+<td><code>PUBLICATION_EXPORT_STARTED</code></td>
+<td>As the rows above; the auto-re-publish path (transition table row 8b) for upstream content edits to an already-published advisory</td>
+</tr>
+<tr>
+<td><code>queued</code></td>
+<td><code>running</code></td>
+<td><code>publication.services.mark_running</code> (called from <code>run_publication</code>)</td>
+<td>Celery worker</td>
+<td>Task picked up</td>
+<td>—</td>
+<td><code>attempts</code> incremented</td>
+</tr>
+<tr>
+<td><code>running</code></td>
+<td><code>succeeded</code></td>
+<td><code>publication.tasks.run_publication</code> (happy path)</td>
+<td>Celery worker</td>
+<td>OSV+CSAF built from <code>task.version.payload</code> (<a href="../invariant/#inv-version-3">INV-VERSION-3</a>), validated against vendored schemas (<a href="../invariant/#inv-pub-6">INV-PUB-6</a>), committed to a fresh <code>TemporaryDirectory</code> clone (<a href="../invariant/#inv-pub-1">INV-PUB-1</a>, <a href="../invariant/#inv-pub-3">INV-PUB-3</a>), and pushed (<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>)</td>
+<td><code>PUBLICATION_OSV_GENERATED</code>, <code>PUBLICATION_CSAF_GENERATED</code>, <code>PUBLICATION_GIT_COMMIT</code>, <code>PUBLICATION_GIT_PUSH</code>, <code>PUBLICATION_EXPORT_COMPLETED</code>, <code>ADVISORY_PUBLISHED</code></td>
+<td>Inside the same <code>transaction.atomic</code> (<a href="../invariant/#inv-pub-4">INV-PUB-4</a>): <code>Advisory.state=published</code>, <code>published_at</code> stamped (if null), <code>republish_required=False</code>, <code>commit_sha</code> recorded on the task</td>
+</tr>
+<tr>
+<td><code>running</code></td>
+<td><code>failed</code></td>
+<td><code>publication.tasks.run_publication</code> (exception branch)</td>
+<td>Celery worker</td>
+<td>Any of the steps above raised</td>
+<td><code>PUBLICATION_EXPORT_FAILED</code> (validation / unexpected) or <code>PUBLICATION_GIT_PUSH_FAILED</code> (any git-layer failure: clone, write, commit, or push)</td>
+<td><code>task.last_error</code> set to the redacted error string (<a href="../invariant/#inv-secret-1">INV-SECRET-1</a>); <code>Advisory.state</code> unchanged; surface appears in the Admin Console's Publication page (failed-exports section) and the Inbox "publish required" category; the failure e-mail announces the event only and embeds no error text (<a href="../invariant/#inv-secret-3">INV-SECRET-3</a>) — the redacted <code>last_error</code> is visible in the Admin Console</td>
+</tr>
+<tr>
+<td><code>running</code></td>
+<td><code>failed</code></td>
+<td>Beat reaper <code>publication.tasks.reap_stale_publication_tasks</code> (every 10 min) → <code>publication.services.reap_stale_tasks</code></td>
+<td>System (Celery beat)</td>
+<td><code>started_at</code> older than <code>PUB_TASK_STALE_RUNNING_AFTER_SECONDS</code> (default 1800 s — comfortably beyond the 660 s hard <code>time_limit</code>, so the row can only belong to a worker hard-killed mid-run: SIGKILL at the time limit, OOM kill, pod eviction); status re-checked per row under <code>select_for_update(skip_locked=True)</code> (<a href="../invariant/#inv-pub-7">INV-PUB-7</a>)</td>
+<td><code>PUBLICATION_TASK_REAPED</code> (metadata: <code>previous_status</code>, <code>age_seconds</code>, <code>stale_after_seconds</code>)</td>
+<td>Same failure machinery as the row above: synthetic redacted <code>last_error</code> explains the reap (<a href="../invariant/#inv-secret-1">INV-SECRET-1</a>); <code>Advisory.state</code> unchanged (<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>); the in-flight guard releases (<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>) so Retry applies; best-effort <code>publication_export_status</code> e-mail (<a href="../invariant/#inv-secret-3">INV-SECRET-3</a>)</td>
+</tr>
+<tr>
+<td><code>queued</code></td>
+<td><code>failed</code></td>
+<td>Beat reaper (same task)</td>
+<td>System (Celery beat)</td>
+<td><code>created_at</code> older than <code>PUB_TASK_STALE_QUEUED_AFTER_SECONDS</code> (default 7200 s — beyond the broker's 3600 s <code>visibility_timeout</code>, so a delayed redelivery always wins first); covers the broker-outage case where <code>common.enqueue.safe_enqueue</code> swallowed the enqueue and no Celery message exists</td>
+<td><code>PUBLICATION_TASK_REAPED</code></td>
+<td>As above</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td><code>queued</code></td>
+<td><code>publication.services.retry</code></td>
+<td>Owner (publish-eligible); for <strong>GHSA-linked</strong>, admins only (<code>can_publish</code> break-glass)</td>
+<td><code>task.status=failed</code>; <code>can_publish(by)</code> true now</td>
+<td><code>PUBLICATION_EXPORT_STARTED</code> (on the new task row)</td>
+<td>Re-pins the <strong>current</strong> latest <code>AdvisoryVersion</code> — so a retry after additional edits picks up the new content</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>succeeded</code> and <code>failed</code> states are terminal for the individual task
+row; a retry creates a new row rather than reanimating the old one. (One
+deliberate exception at the worker boundary: <code>run_publication</code> re-runs a
+row it finds in <code>failed</code> — with <code>acks_late</code>, a broker redelivery that
+arrives after a failure re-attempts in place, incrementing <code>attempts</code>;
+every <em>user-facing</em> retry still goes through <code>publication.services.retry</code>,
+which creates a new row.) The reaper is a second system-side exception in
+the other direction: it moves stuck non-terminal rows <em>into</em> <code>failed</code>, so
+no row can wedge the in-flight guard forever (<a href="../invariant/#inv-pub-7">INV-PUB-7</a>). A reaped row
+then behaves like any failed row — including the worker-boundary exception
+above: a very late redelivery that finds a queued-reaped row in <code>failed</code>
+may still re-run it in place, which the 2× visibility-timeout threshold
+makes effectively impossible. Because
+each successful publish writes the same deterministic file paths
+(<code>PUB_OSV_PATH_TEMPLATE</code> / <code>PUB_CSAF_PATH_TEMPLATE</code>), a re-publish appears
+in the publication repo as a new commit on those same paths — earlier
+artifacts and earlier <code>AdvisoryVersion</code> rows are preserved on this side
+(<a href="../invariant/#inv-impl-5">INV-IMPL-5</a>).</p>
+<hr />
+<h2 id="8-publication-sequence-diagram">8. Publication sequence diagram<a class="headerlink" href="#8-publication-sequence-diagram" title="Permanent link">&para;</a></h2>
+<p>The diagram below shows one publish attempt end-to-end. The same flow drives
+re-publishes; the only difference is that the pinned <code>AdvisoryVersion</code> is
+v(n+1) instead of v1.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    actor Owner
+    participant View as publication.views&lt;br/&gt;(Publish button)
+    participant Svc as publication.services.publish
+    participant DB as Advisory + PublicationTask&lt;br/&gt;(Postgres)
+    participant Q as Celery queue
+    participant Worker as publication.tasks.run_publication
+    participant Git as Publication Git repo
+
+    Owner-&gt;&gt;View: POST /publication/:id/publish
+    View-&gt;&gt;View: can_publish(user, advisory)&lt;br/&gt;+ step-up auth (§8 permissions.md)&lt;br/&gt;+ typed-ID confirmation
+    View-&gt;&gt;Svc: publish(advisory, by=user)
+    Svc-&gt;&gt;DB: SELECT … FOR UPDATE (advisory)
+    Svc-&gt;&gt;DB: pin latest AdvisoryVersion;&lt;br/&gt;create PublicationTask(status=queued)
+    Svc-&gt;&gt;Svc: transaction.on_commit(enqueue)
+    Svc--&gt;&gt;View: PublicationTask
+    View--&gt;&gt;Owner: redirect + "Publication started."
+
+    Note over Svc,Q: On commit only (INV-PUB-5)
+    Svc-&gt;&gt;Q: run_publication.delay(task_id)
+
+    Q-&gt;&gt;Worker: dequeue
+    Worker-&gt;&gt;DB: mark_running(task)
+    Worker-&gt;&gt;Worker: build OSV (from task.version.payload)&lt;br/&gt;build CSAF (+ CVE record when assigned)&lt;br/&gt;validate against schemas (INV-PUB-6)
+    Worker-&gt;&gt;DB: PublicationArtifact rows (OSV, CSAF, + CVE when assigned)
+    Worker-&gt;&gt;Git: shallow clone into TemporaryDirectory (INV-PUB-1, INV-PUB-3)
+    Worker-&gt;&gt;Git: write files, commit, push
+    Worker-&gt;&gt;DB: audit: PUBLICATION_GIT_COMMIT, PUBLICATION_GIT_PUSH
+
+    alt All steps succeed
+        Worker-&gt;&gt;DB: BEGIN ATOMIC
+        Worker-&gt;&gt;DB: SELECT advisory … FOR UPDATE
+        Worker-&gt;&gt;DB: state=published, published_at set,&lt;br/&gt;republish_required=False
+        Worker-&gt;&gt;DB: PublicationTask.status=succeeded, commit_sha
+        Worker-&gt;&gt;DB: audit: ADVISORY_PUBLISHED,&lt;br/&gt;PUBLICATION_EXPORT_COMPLETED
+        Worker-&gt;&gt;DB: COMMIT (INV-PUB-4)
+        Worker-&gt;&gt;Q: notification: advisory_published
+    else Any step fails
+        Worker-&gt;&gt;DB: mark_failed(task, error=redact(error))
+        Worker-&gt;&gt;DB: audit: PUBLICATION_EXPORT_FAILED&lt;br/&gt;or PUBLICATION_GIT_PUSH_FAILED
+        Note over Worker,DB: Advisory.state unchanged&lt;br/&gt;(INV-LIFECYCLE-3)
+        Worker-&gt;&gt;Q: notification: publication failure (event-only body, no error text — INV-SECRET-3)
+    end</code></pre>
+<p>Key properties enforced by the diagram order:</p>
+<ul>
+<li>The Celery enqueue happens <strong>only on commit</strong> of the calling transaction
+  (<a href="../invariant/#inv-pub-5">INV-PUB-5</a>). A rolled-back caller never produces a queued task.</li>
+<li>The Git push happens <strong>before</strong> any state mutation on <code>Advisory</code>
+  (<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>). A push failure leaves the advisory in its prior
+  state.</li>
+<li>The state flip, task finalisation, <code>published_at</code>, and the
+  <code>ADVISORY_PUBLISHED</code> / <code>PUBLICATION_EXPORT_COMPLETED</code> audits are inside
+  one <code>transaction.atomic</code> block guarded by <code>select_for_update</code>
+  (<a href="../invariant/#inv-pub-4">INV-PUB-4</a>, <a href="../invariant/#inv-concurrency-2">INV-CONCURRENCY-2</a>); the git audits land right after the
+  push, just before that block (§3.1 row 7).</li>
+<li>The clone uses a fresh <code>TemporaryDirectory</code> per attempt (<a href="../invariant/#inv-pub-1">INV-PUB-1</a>) and
+  is shallow (<a href="../invariant/#inv-pub-3">INV-PUB-3</a>).</li>
+<li>Any error string that may carry a token has been through
+  <code>_redact</code> / <code>redact_secrets</code> before reaching the task row, the audit
+  metadata, or the e-mail body (<a href="../invariant/#inv-secret-1">INV-SECRET-1</a>, <a href="../invariant/#inv-secret-3">INV-SECRET-3</a>).</li>
+</ul>
+<hr />
+<h2 id="9-edit-side-effects">9. Edit side-effects<a class="headerlink" href="#9-edit-side-effects" title="Permanent link">&para;</a></h2>
+<p>Editing an advisory never changes <code>state</code> directly. It does, however, ripple
+into the orthogonal machines and the version log:</p>
+<table>
+<thead>
+<tr>
+<th>Edit scenario</th>
+<th><code>AdvisoryVersion</code></th>
+<th><code>review_status</code></th>
+<th><code>republish_required</code></th>
+<th>Other</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First payload-visible edit on a draft (any editor)</td>
+<td>new row appended via <code>record_advisory_version</code> (<a href="../invariant/#inv-version-1">INV-VERSION-1</a>)</td>
+<td>unchanged</td>
+<td>unchanged</td>
+<td><code>ADVISORY_EDITED</code> audit</td>
+</tr>
+<tr>
+<td>Edit on a draft with <code>review_status=approved</code>, by a <strong>non-admin</strong></td>
+<td>new row appended</td>
+<td>reset to <code>none</code>, audit <code>ADVISORY_REVIEW_APPROVAL_INVALIDATED</code> (<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>)</td>
+<td>unchanged</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Edit on a draft with <code>review_status=approved</code>, by an admin</td>
+<td>new row appended</td>
+<td>unchanged</td>
+<td>unchanged</td>
+<td>Admin can re-approve at will</td>
+</tr>
+<tr>
+<td>Edit on a <code>published</code> advisory</td>
+<td>new row appended</td>
+<td>reset to <code>none</code> for non-admin if it was <code>approved</code></td>
+<td>set to <code>True</code> (re-publish required)</td>
+<td>The Publish button becomes "Re-publish" in the UI; the advisory also surfaces in the Admin Console Inbox "publish required" category and the Publication page's "Awaiting re-publication" section (GHSA-linked rows excluded — they auto-re-publish, <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>)</td>
+</tr>
+<tr>
+<td>Project change (native advisory, human editor)</td>
+<td>new row appended (project is payload-visible)</td>
+<td>reset to <code>none</code> if <code>approved</code> and editor is non-admin</td>
+<td>set to <code>True</code> if <code>published</code></td>
+<td><code>access_review_required_at</code> stamped — surfaces the access-review banner; <code>ADVISORY_PROJECT_CHANGED</code> audit; <code>advisory_created</code> notification queued for the new project's team; <strong>any pending admin-reassignment request is fulfilled and cleared</strong> (cause <code>accepted</code>, <a href="../invariant/#inv-auth-9">INV-AUTH-9</a>)</td>
+</tr>
+<tr>
+<td>PMI re-home of a GHSA-linked advisory (system, <a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>)</td>
+<td>new row appended (<code>project_slug</code> is payload-visible)</td>
+<td><strong>unchanged</strong> — GHSA-linked advisories carry no review</td>
+<td>set to <code>True</code> if <code>published</code></td>
+<td><code>access_review_required_at</code> stamped; <code>ADVISORY_PROJECT_CHANGED</code> audit with <code>reason=pmi_repo_reassignment</code>; <code>advisory_created</code> notification queued for the new project's team</td>
+</tr>
+<tr>
+<td>Non-payload save (state-only flip, heartbeat sync, <code>republish_required</code> toggle, <code>access_review_required_at</code> stamp, <code>comments_locked</code> toggle)</td>
+<td><strong>no row</strong> (<a href="../invariant/#inv-version-1">INV-VERSION-1</a>)</td>
+<td>unchanged</td>
+<td>depends on the field</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GHSA heartbeat sync that returned no payload changes</td>
+<td><strong>no row</strong></td>
+<td>unchanged</td>
+<td>unchanged</td>
+<td><code>ghsa_metadata_synced_at</code> refreshed</td>
+</tr>
+<tr>
+<td>GHSA sync that returned changed fields (<code>result.changed_field_names</code> non-empty)</td>
+<td>new row appended</td>
+<td><strong>unchanged</strong> — GHSA-linked advisories carry no review (it's removed for them; <a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>, <a href="../invariant/#inv-review-4">INV-REVIEW-4</a>)</td>
+<td>set to <code>True</code> if <code>published</code></td>
+<td><code>GHSA_METADATA_FETCHED</code> audit; when <code>published</code> this <strong>auto-re-publishes</strong> via <code>react_to_ghsa_state</code> (transition row 8b, <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>) — no human re-publish button</td>
+</tr>
+</tbody>
+</table>
+<p>The two key invariants in this table:</p>
+<ul>
+<li><code>AdvisoryVersion</code> rows are append-only (<a href="../invariant/#inv-impl-5">INV-IMPL-5</a>); workflow tasks
+  <code>PROTECT</code>-FK into them, so a version ever pinned by a <code>ReviewTask</code> or
+  <code>PublicationTask</code> cannot be removed even from raw ORM
+  (<a href="../invariant/#inv-version-2">INV-VERSION-2</a>).</li>
+<li>Adding a new field to <code>Advisory.to_payload()</code> automatically pulls it into
+  the versioning machinery — versions, reviews, and publications all start
+  tracking the new field on the next edit (<a href="../invariant/#inv-version-1">INV-VERSION-1</a>).</li>
+</ul>
+<hr />
+<h2 id="10-triage-specific-behaviour">10. Triage-specific behaviour<a class="headerlink" href="#10-triage-specific-behaviour" title="Permanent link">&para;</a></h2>
+<p>Triage rows ride alongside the lifecycle as a distinct, owner-only mini-state
+because they originate from an <strong>untrusted</strong> public form
+(<a href="../invariant/#inv-auth-5">INV-AUTH-5</a>). The transitions in §3 cover the lifecycle exits
+(<code>promote_triage_to_draft</code>, <code>dismiss_triage</code>); two further sub-transitions
+mutate intake metadata without changing <code>state</code>:</p>
+<blockquote>
+<p><strong>GHSA-linked triage rows are the exception.</strong> A GHSA-linked advisory can also
+sit in <code>triage</code> — but as a <em>read-only mirror</em> of GitHub's triage state
+(<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>), not an untrusted human report. It carries
+no intake sidecar, advances only via the GHSA mirror (rows 4a/6a, and
+auto-publish), and none of the human triage affordances below apply:
+<code>can_triage</code> (promote/dismiss) and <code>can_flag_for_admin_routing</code> both return
+<code>False</code> for it, and it is kept out of the admin-console Inbox work queue.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Actor</th>
+<th>Preconditions</th>
+<th>Audit action</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>advisories.services.flag_for_admin_routing</code></td>
+<td>Owner (project security team)</td>
+<td>Lifecycle <code>state=triage</code>; <strong>native</strong> advisory (GHSA-linked excluded — <a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>: a GHSA-linked row <em>can</em> sit in triage as a read-only mirror of GitHub's triage state, but its project follows PMI, so the routing flag stays unavailable); not already flagged; advisory not on the <code>unsorted</code> sentinel project; non-empty note</td>
+<td><code>ADVISORY_FLAGGED_FOR_ROUTING</code></td>
+<td>Sets <code>AdvisoryIntakeMetadata.needs_admin_routing=True</code>; advisory becomes admin-only for edit / triage decisions (<a href="../invariant/#inv-auth-6">INV-AUTH-6</a>); <code>advisory_flagged_for_routing</code> notification queued</td>
+</tr>
+<tr>
+<td><code>advisories.services.clear_admin_routing_flag</code></td>
+<td>Owner (project security team or admin) — the flagging team may retract its own handoff (<a href="../invariant/#inv-auth-6">INV-AUTH-6</a>)</td>
+<td>Lifecycle <code>state=triage</code>; currently flagged; advisory <strong>not</strong> on the <code>unsorted</code> sentinel project (an <code>unsorted</code> advisory is unflagged only by reassigning it to a real project — <a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>)</td>
+<td><code>ADVISORY_ROUTING_FLAG_CLEARED</code></td>
+<td>Sets <code>needs_admin_routing=False</code>; project owners regain triage capability; <code>advisory_routing_flag_cleared</code> notification queued</td>
+</tr>
+<tr>
+<td><code>advisories.services.reassign_triage_project</code></td>
+<td>Admin, or an owner of the advisory who is also on the destination project's security team</td>
+<td>Lifecycle <code>state=triage</code>; non-admins need triage rights on the advisory (owner; blocked while flagged for admin routing) <strong>and</strong> destination security-team membership</td>
+<td><code>ADVISORY_PROJECT_CHANGED</code></td>
+<td>Moves the advisory to a different project; useful when routing a misrouted report. For a flagged advisory it is surfaced as an admin-only "assign to project" picker on the routing banner (<code>advisories:reassign_triage</code>). Appends a version row (<code>project_slug</code> is payload-visible); clears the admin-routing flag <strong>iff</strong> the actor is an admin <strong>and</strong> the destination is a real project, and (re)sets the flag when the destination is the <code>unsorted</code> sentinel (<a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>); <code>advisory_triage_reassigned</code> notification queued</td>
+</tr>
+</tbody>
+</table>
+<p>The free-text note on <code>flag_for_admin_routing</code> / <code>clear_admin_routing_flag</code> (and
+the <code>dismiss_triage</code> reason) is also surfaced in the Activity pane as an
+author-attributed comment — <strong>internal</strong> for the routing notes, <strong>public</strong> for
+the dismiss reason — via <code>comments.services.record_action_note</code> (requirements.md
+§AdvisoryComment). The <code>dismissed this advisory</code> timeline event is a terse
+marker; the reason text lives only in the comment.</p>
+<p>Once promoted to <code>draft</code> (row 4 in §3.1), these triage-specific affordances
+no longer apply; the standard owner/collaborator/viewer matrix from
+<code>permissions.md</code> §5 takes over.</p>
+<p><strong>Metrics note.</strong> The Admin Console Stats page (architecture §8.9) measures
+<em>time to first response</em> for intake reports as the gap from
+<code>AdvisoryIntakeMetadata.submitted_at</code> to the <strong>earliest</strong> of these triage
+outcomes — <code>ADVISORY_TRIAGE_PROMOTED</code>, <code>ADVISORY_DISMISSED</code>, or
+<code>ADVISORY_FLAGGED_FOR_ROUTING</code>. The authoritative set lives in one place,
+<code>admin_console.stats.FIRST_RESPONSE_ACTIONS</code>; a report promoted and later
+dismissed is timed from its promotion (the earliest qualifying event) and is
+also counted in the page's separate <em>reverted</em> tally.</p>
+<hr />
+<h2 id="11-draft-admin-reassignment-request">11. Draft admin-reassignment request<a class="headerlink" href="#11-draft-admin-reassignment-request" title="Permanent link">&para;</a></h2>
+<p>A <strong>draft</strong>-state escalation, parallel to the triage routing flag (§10) but
+<strong>non-locking</strong> (<a href="../invariant/#inv-auth-9">INV-AUTH-9</a>): a project owner who finds a
+draft belongs to a team they're not on asks an admin to re-home it, while the team keeps
+editing. The four <code>Advisory.reassignment_*</code> fields hold the pending request; none is
+payload-visible, so requesting/withdrawing never appends a version. These transitions
+ride alongside the lifecycle; only <em>accept</em> changes the advisory's project.</p>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Actor</th>
+<th>Preconditions</th>
+<th>Audit action</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>advisories.services.request_admin_reassignment</code></td>
+<td>Owner (project security team) — <strong>not</strong> admin</td>
+<td>Lifecycle <code>state=draft</code>; <strong>native</strong> advisory (GHSA-linked excluded — <a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>); no request already pending; non-empty note; optional suggested project ≠ current</td>
+<td><code>ADVISORY_REASSIGNMENT_REQUESTED</code></td>
+<td>Sets <code>reassignment_requested_at</code>/<code>_by</code>, <code>reassignment_request_note</code>, optional <code>reassignment_suggested_project</code>. The team's edit/publish capability is <strong>unchanged</strong> (<a href="../invariant/#inv-auth-9">INV-AUTH-9</a>)</td>
+</tr>
+<tr>
+<td><code>advisories.services.withdraw_admin_reassignment</code></td>
+<td>Requesting team (owner) or admin — via an in-banner withdraw modal</td>
+<td>A request is pending</td>
+<td><code>ADVISORY_REASSIGNMENT_REQUEST_CLEARED</code> (<code>cause=withdrawn</code>)</td>
+<td>Clears all four <code>reassignment_*</code> fields; the optional withdraw reason is recorded in the audit metadata (<code>note</code>) alongside the original request note (<code>previous_note</code>)</td>
+</tr>
+<tr>
+<td><code>advisories.services.accept_reassignment_suggestion</code></td>
+<td>A global admin (to <strong>any</strong> project, via the in-banner picker), or a security-team member of the <strong>suggested</strong> project (one-click, never the requester) — <code>can_resolve_reassignment</code></td>
+<td>A request is pending; the chosen/suggested project ≠ current</td>
+<td><code>ADVISORY_PROJECT_CHANGED</code> (metadata <code>cause=reassignment_accepted</code> when the suggestion is taken, <code>reassignment_resolved</code> when an admin picks another project) + <code>ADVISORY_REASSIGNMENT_REQUEST_CLEARED</code> (<code>cause=accepted</code>)</td>
+<td>Moves the advisory onto the target project; appends a version (<code>project_slug</code> is payload-visible); flags an access review (<code>access_review_required_at</code>); clears the request</td>
+</tr>
+</tbody>
+</table>
+<p>The request is also cleared automatically on <strong>any exit from draft</strong> — <code>cause=dismissed</code>
+when <code>advisory_dismiss</code> dismisses a draft, <code>cause=published</code> in the publication task's
+post-push finalisation — through the shared <code>clear_reassignment_request_if_pending</code>
+helper (a no-op when nothing is pending). Outside <code>draft</code> the affordance does not exist.</p>
+<p>The <strong>request</strong> (<code>ADVISORY_REASSIGNMENT_REQUESTED</code>) and its <strong>withdrawal</strong>
+(<code>ADVISORY_REASSIGNMENT_REQUEST_CLEARED</code>, <code>cause=withdrawn</code> only) surface on the advisory
+activity timeline at tier A (visible to every viewer, matching the in-banner request
+display). The <em>accept</em> path is represented there by the existing
+<code>ADVISORY_PROJECT_CHANGED</code> row; the <code>accepted</code>/<code>dismissed</code>/<code>published</code> clear rows are
+suppressed as duplicates of their companion events (see <code>advisories.timeline</code>).</p>
+<p>The request and withdraw notes are additionally posted as <strong>internal</strong>
+author-attributed comments (<code>comments.services.record_action_note</code>); the optional
+withdraw note no-ops when blank.</p>
+<hr />
+<h2 id="12-withdrawal-request-published-advisories">12. Withdrawal request (published advisories)<a class="headerlink" href="#12-withdrawal-request-published-advisories" title="Permanent link">&para;</a></h2>
+<p>A non-mature project owner cannot withdraw a published advisory directly
+(<code>can_withdraw_published</code> is admin / mature-publisher only), so they <strong>request</strong> one —
+the published analogue of the draft reassignment request (§11). <code>request_withdrawal</code>
+sets the three <code>withdrawal_requested_*</code> fields and records
+<code>ADVISORY_WITHDRAWAL_REQUESTED</code>; the request surfaces in the Admin Console Inbox. An
+admin <strong>approves</strong> it (<code>advisory_approve_withdrawal</code> → <code>withdraw_advisory</code>, using the
+request note as the withdrawal reason), which clears the request and starts the
+withdrawal (row 8a); the requester or an admin may <strong>cancel</strong> it
+(<code>cancel_withdrawal_request</code>). Mature-publisher owners and admins skip the queue and
+withdraw directly (<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>).</p>
+<p>The direct withdrawal (<code>advisory_withdraw</code>) and the admin approval
+(<code>advisory_approve_withdrawal</code>) both re-export and push to the public repo, so — like
+publish — they require a fresh <strong>step-up</strong> re-authentication
+(<a href="../permissions/#8-step-up-authentication"><code>permissions.md</code> §8</a>); merely requesting or
+cancelling a withdrawal does not.</p>
+<p>The request and cancel notes post <strong>internal</strong> author-attributed comments, while the
+withdrawal reason itself posts a <strong>public</strong> comment
+(<code>comments.services.record_action_note</code>, requirements.md §AdvisoryComment); the GHSA
+auto-withdraw (<code>by=None</code>) posts none.</p>
+<hr />
+<h2 id="13-cross-reference-invariants-per-transition">13. Cross-reference: invariants per transition<a class="headerlink" href="#13-cross-reference-invariants-per-transition" title="Permanent link">&para;</a></h2>
+<p>A quick map from each transition above to the load-bearing invariants that
+constrain it. The first column matches the row number in §3.1; the review,
+CVE, and publication tables are cited by their section.</p>
+<table>
+<thead>
+<tr>
+<th>Transition</th>
+<th>Critical invariants</th>
+<th>Other invariants</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§3.1 #1 (triage create)</td>
+<td><a href="../invariant/#inv-lifecycle-2">INV-LIFECYCLE-2</a>, <a href="../invariant/#inv-intake-1">INV-INTAKE-1</a>, <a href="../invariant/#inv-intake-2">INV-INTAKE-2</a></td>
+<td><a href="../invariant/#inv-intake-3">INV-INTAKE-3</a>, <a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>, <a href="../invariant/#inv-project-2">INV-PROJECT-2</a></td>
+</tr>
+<tr>
+<td>§3.1 #2 (draft create)</td>
+<td><a href="../invariant/#inv-auth-1">INV-AUTH-1</a>, <a href="../invariant/#inv-auth-3">INV-AUTH-3</a></td>
+<td><a href="../invariant/#inv-version-1">INV-VERSION-1</a> (v1 seed)</td>
+</tr>
+<tr>
+<td>§3.1 #3 (GHSA-linked create)</td>
+<td><a href="../invariant/#inv-auth-1">INV-AUTH-1</a>, <a href="../invariant/#inv-auth-3">INV-AUTH-3</a>, <a href="../invariant/#inv-id-2">INV-ID-2</a></td>
+<td><a href="../invariant/#inv-version-1">INV-VERSION-1</a></td>
+</tr>
+<tr>
+<td>§3.1 #4 (triage → draft)</td>
+<td><a href="../invariant/#inv-auth-5">INV-AUTH-5</a>, <a href="../invariant/#inv-lifecycle-5">INV-LIFECYCLE-5</a></td>
+<td><a href="../invariant/#inv-auth-6">INV-AUTH-6</a> (when flagged), <a href="../invariant/#inv-project-2">INV-PROJECT-2</a></td>
+</tr>
+<tr>
+<td>§3.1 #5 (triage → dismissed)</td>
+<td><a href="../invariant/#inv-auth-5">INV-AUTH-5</a>, <a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a></td>
+<td><a href="../invariant/#inv-audit-3">INV-AUDIT-3</a></td>
+</tr>
+<tr>
+<td>§3.1 #6 (draft → dismissed)</td>
+<td><a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>, <a href="../invariant/#inv-auth-1">INV-AUTH-1</a></td>
+<td><a href="../invariant/#inv-cve-1">INV-CVE-1</a> (cancel), <a href="../invariant/#inv-cve-2">INV-CVE-2</a> (unassign)</td>
+</tr>
+<tr>
+<td>§3.1 #7 (draft → published)</td>
+<td><a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>, <a href="../invariant/#inv-pub-4">INV-PUB-4</a>, <a href="../invariant/#inv-version-3">INV-VERSION-3</a>, <a href="../invariant/#inv-audit-1">INV-AUDIT-1</a></td>
+<td><a href="../invariant/#inv-pub-1">INV-PUB-1</a>, <a href="../invariant/#inv-pub-5">INV-PUB-5</a>, <a href="../invariant/#inv-pub-6">INV-PUB-6</a>, <a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>, <a href="../invariant/#inv-concurrency-2">INV-CONCURRENCY-2</a>, <a href="../invariant/#inv-secret-1">INV-SECRET-1</a></td>
+</tr>
+<tr>
+<td>§3.1 #8 (re-publish)</td>
+<td>Same as #7</td>
+<td><a href="../invariant/#inv-review-4">INV-REVIEW-4</a>, <a href="../invariant/#inv-version-1">INV-VERSION-1</a>, <a href="../invariant/#inv-impl-5">INV-IMPL-5</a></td>
+</tr>
+<tr>
+<td>§5 review transitions</td>
+<td><a href="../invariant/#inv-review-1">INV-REVIEW-1</a>, <a href="../invariant/#inv-review-2">INV-REVIEW-2</a></td>
+<td><a href="../invariant/#inv-review-3">INV-REVIEW-3</a>, <a href="../invariant/#inv-review-4">INV-REVIEW-4</a>, <a href="../invariant/#inv-perm-3">INV-PERM-3</a>, <a href="../invariant/#inv-version-2">INV-VERSION-2</a></td>
+</tr>
+<tr>
+<td>§6 CVE transitions</td>
+<td><a href="../invariant/#inv-cve-1">INV-CVE-1</a>, <a href="../invariant/#inv-cve-2">INV-CVE-2</a></td>
+<td><a href="../invariant/#inv-cve-3">INV-CVE-3</a>, <a href="../invariant/#inv-id-3">INV-ID-3</a></td>
+</tr>
+<tr>
+<td>§7 publication-task transitions</td>
+<td><a href="../invariant/#inv-pub-4">INV-PUB-4</a>, <a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a></td>
+<td><a href="../invariant/#inv-pub-1">INV-PUB-1</a>, <a href="../invariant/#inv-pub-3">INV-PUB-3</a>, <a href="../invariant/#inv-pub-5">INV-PUB-5</a>, <a href="../invariant/#inv-pub-6">INV-PUB-6</a>, <a href="../invariant/#inv-pub-7">INV-PUB-7</a>, <a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>, <a href="../invariant/#inv-secret-1">INV-SECRET-1</a>, <a href="../invariant/#inv-secret-3">INV-SECRET-3</a></td>
+</tr>
+<tr>
+<td>§9 edit side-effects</td>
+<td><a href="../invariant/#inv-version-1">INV-VERSION-1</a>, <a href="../invariant/#inv-impl-5">INV-IMPL-5</a></td>
+<td><a href="../invariant/#inv-review-4">INV-REVIEW-4</a>, <a href="../invariant/#inv-version-2">INV-VERSION-2</a></td>
+</tr>
+<tr>
+<td>§10 triage sub-transitions</td>
+<td><a href="../invariant/#inv-auth-5">INV-AUTH-5</a>, <a href="../invariant/#inv-auth-6">INV-AUTH-6</a></td>
+<td><a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>, <a href="../invariant/#inv-project-2">INV-PROJECT-2</a></td>
+</tr>
+<tr>
+<td>§11 draft reassignment request</td>
+<td><a href="../invariant/#inv-auth-9">INV-AUTH-9</a>, <a href="../invariant/#inv-auth-3">INV-AUTH-3</a></td>
+<td><a href="../invariant/#inv-version-1">INV-VERSION-1</a> (accept appends), <a href="../invariant/#inv-audit-1">INV-AUDIT-1</a></td>
+</tr>
+</tbody>
+</table>
+<p><a href="../invariant/#inv-auth-1">INV-AUTH-1</a>: ./invariant.md#inv-auth-1
+<a href="../invariant/#inv-auth-3">INV-AUTH-3</a>: ./invariant.md#inv-auth-3
+<a href="../invariant/#inv-auth-5">INV-AUTH-5</a>: ./invariant.md#inv-auth-5
+<a href="../invariant/#inv-auth-6">INV-AUTH-6</a>: ./invariant.md#inv-auth-6
+<a href="../invariant/#inv-auth-7">INV-AUTH-7</a>: ./invariant.md#inv-auth-7
+<a href="../invariant/#inv-lifecycle-1">INV-LIFECYCLE-1</a>: ./invariant.md#inv-lifecycle-1
+<a href="../invariant/#inv-lifecycle-2">INV-LIFECYCLE-2</a>: ./invariant.md#inv-lifecycle-2
+<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>: ./invariant.md#inv-lifecycle-3
+<a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>: ./invariant.md#inv-lifecycle-4
+<a href="../invariant/#inv-lifecycle-5">INV-LIFECYCLE-5</a>: ./invariant.md#inv-lifecycle-5
+<a href="../invariant/#inv-review-1">INV-REVIEW-1</a>: ./invariant.md#inv-review-1
+<a href="../invariant/#inv-review-2">INV-REVIEW-2</a>: ./invariant.md#inv-review-2
+<a href="../invariant/#inv-review-3">INV-REVIEW-3</a>: ./invariant.md#inv-review-3
+<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>: ./invariant.md#inv-review-4
+<a href="../invariant/#inv-version-1">INV-VERSION-1</a>: ./invariant.md#inv-version-1
+<a href="../invariant/#inv-version-2">INV-VERSION-2</a>: ./invariant.md#inv-version-2
+<a href="../invariant/#inv-version-3">INV-VERSION-3</a>: ./invariant.md#inv-version-3
+<a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>: ./invariant.md#inv-ghsa-1
+<a href="../invariant/#inv-audit-1">INV-AUDIT-1</a>: ./invariant.md#inv-audit-1
+<a href="../invariant/#inv-audit-3">INV-AUDIT-3</a>: ./invariant.md#inv-audit-3
+<a href="../invariant/#inv-secret-1">INV-SECRET-1</a>: ./invariant.md#inv-secret-1
+<a href="../invariant/#inv-secret-3">INV-SECRET-3</a>: ./invariant.md#inv-secret-3
+<a href="../invariant/#inv-intake-1">INV-INTAKE-1</a>: ./invariant.md#inv-intake-1
+<a href="../invariant/#inv-intake-2">INV-INTAKE-2</a>: ./invariant.md#inv-intake-2
+<a href="../invariant/#inv-intake-3">INV-INTAKE-3</a>: ./invariant.md#inv-intake-3
+<a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>: ./invariant.md#inv-intake-4
+<a href="../invariant/#inv-pub-1">INV-PUB-1</a>: ./invariant.md#inv-pub-1
+<a href="../invariant/#inv-pub-3">INV-PUB-3</a>: ./invariant.md#inv-pub-3
+<a href="../invariant/#inv-pub-4">INV-PUB-4</a>: ./invariant.md#inv-pub-4
+<a href="../invariant/#inv-pub-5">INV-PUB-5</a>: ./invariant.md#inv-pub-5
+<a href="../invariant/#inv-pub-6">INV-PUB-6</a>: ./invariant.md#inv-pub-6
+<a href="../invariant/#inv-pub-7">INV-PUB-7</a>: ./invariant.md#inv-pub-7
+<a href="../invariant/#inv-perm-1">INV-PERM-1</a>: ./invariant.md#inv-perm-1
+<a href="../invariant/#inv-perm-2">INV-PERM-2</a>: ./invariant.md#inv-perm-2
+<a href="../invariant/#inv-perm-3">INV-PERM-3</a>: ./invariant.md#inv-perm-3
+<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>: ./invariant.md#inv-concurrency-1
+<a href="../invariant/#inv-concurrency-2">INV-CONCURRENCY-2</a>: ./invariant.md#inv-concurrency-2
+<a href="../invariant/#inv-cve-1">INV-CVE-1</a>: ./invariant.md#inv-cve-1
+<a href="../invariant/#inv-cve-2">INV-CVE-2</a>: ./invariant.md#inv-cve-2
+<a href="../invariant/#inv-cve-3">INV-CVE-3</a>: ./invariant.md#inv-cve-3
+<a href="../invariant/#inv-id-2">INV-ID-2</a>: ./invariant.md#inv-id-2
+<a href="../invariant/#inv-id-3">INV-ID-3</a>: ./invariant.md#inv-id-3
+<a href="../invariant/#inv-impl-5">INV-IMPL-5</a>: ./invariant.md#inv-impl-5
+<a href="../invariant/#inv-project-2">INV-PROJECT-2</a>: ./invariant.md#inv-project-2
+<a href="../invariant/#inv-sim-4">INV-SIM-4</a>: ./invariant.md#inv-sim-4</p>
+<hr />
+<h2 id="14-out-of-scope">14. Out of scope<a class="headerlink" href="#14-out-of-scope" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The static public website.</strong> Lives in the publication Git repository
+  and is rendered by that repo's CI/CD. Its visibility / caching policy is
+  not part of this document. Inside AdvisoryHub, "published" never grants
+  implicit read (<a href="../invariant/#inv-auth-7">INV-AUTH-7</a>).</li>
+<li><strong>The MITRE CVE pipeline.</strong> <code>CveRequestTask</code> is an internal queue;
+  AdvisoryHub does not call any external CVE API. The actual reservation /
+  rejection happens off-system, and the admin updates the task to reflect
+  it.</li>
+<li><strong>Comments and access-grant lifecycles.</strong> These have their own (much
+  smaller) state machines covered by [INV-COMMENT-<em>] and [INV-ACCESS-</em>];
+  they ride alongside an advisory but do not transition its <code>state</code>.</li>
+<li><strong>IdP / OIDC group management.</strong> Group membership is mirrored from the
+  IdP on every login (<a href="../invariant/#inv-oidc-1">INV-OIDC-1</a>). AdvisoryHub does not let anyone edit
+  it from the application.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

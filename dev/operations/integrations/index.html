@@ -1,0 +1,1766 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/operations/integrations/">
+      
+      
+        <link rel="prev" href="../deploy-kubernetes/">
+      
+      
+        <link rel="next" href="../observability/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Integrations - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#integrations" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Integrations
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../manual/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../manual/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/security-team/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/administrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running-in-production/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-oidc-identity-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. OIDC identity provider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-publication-git-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Publication Git repository
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Publication Git repository">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh-mode-pub_repo_authssh--recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SSH mode (PUB_REPO_AUTH=ssh) — recommended
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-mode-pub_repo_authtoken" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token mode (PUB_REPO_AUTH=token)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-paths--cve-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output paths &amp; CVE identity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ghsa--github-app-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. GHSA / GitHub App (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-security-team-roster-sync-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Security-team roster sync (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-similarity-llm-provider-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Similarity LLM provider (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../specification/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/advisory-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-oidc-identity-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. OIDC identity provider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-publication-git-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Publication Git repository
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Publication Git repository">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh-mode-pub_repo_authssh--recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SSH mode (PUB_REPO_AUTH=ssh) — recommended
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-mode-pub_repo_authtoken" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token mode (PUB_REPO_AUTH=token)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-paths--cve-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output paths &amp; CVE identity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ghsa--github-app-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. GHSA / GitHub App (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-security-team-roster-sync-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Security-team roster sync (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-similarity-llm-provider-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Similarity LLM provider (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="integrations">Integrations<a class="headerlink" href="#integrations" title="Permanent link">&para;</a></h1>
+<p>AdvisoryHub talks to five external systems. The first two are required; the last
+three are optional and off by default. Variable defaults are in
+<a href="../configuration/">configuration.md</a>.</p>
+<hr />
+<h2 id="1-oidc-identity-provider">1. OIDC identity provider<a class="headerlink" href="#1-oidc-identity-provider" title="Permanent link">&para;</a></h2>
+<p>Authentication and <strong>group membership</strong> both flow from your OIDC provider;
+AdvisoryHub stores a mirror and never the authority (<a href="../../specification/invariant/#inv-oidc-2">INV-OIDC-2</a>).</p>
+<p><strong>Register a confidential client</strong> for each environment and configure:</p>
+<ul>
+<li><strong>Redirect URI:</strong> <code>https://&lt;host&gt;/oidc/callback/</code></li>
+<li><strong>Post-logout redirect:</strong> <code>https://&lt;host&gt;/accounts/signed-out/</code></li>
+<li><strong>Scopes:</strong> AdvisoryHub requests <code>openid email profile groups</code>.</li>
+<li><strong>PKCE:</strong> enabled (<code>S256</code>) by default — keep it on.</li>
+</ul>
+<p>Then set the endpoints (from the provider's discovery document) and client
+credentials: <code>OIDC_OP_AUTHORIZATION_ENDPOINT</code>, <code>OIDC_OP_TOKEN_ENDPOINT</code>,
+<code>OIDC_OP_USER_ENDPOINT</code>, <code>OIDC_OP_JWKS_ENDPOINT</code>, <code>OIDC_RP_CLIENT_ID</code>,
+<code>OIDC_RP_CLIENT_SECRET</code>, and <code>OIDC_RP_SIGN_ALGO</code> (match the provider's token
+signing algorithm).</p>
+<p><strong>Model the groups.</strong> The provider must emit a <strong><code>groups</code></strong> claim
+(<code>OIDC_GROUP_CLAIM</code>) listing each user's groups. On every login AdvisoryHub
+replaces the user's local groups from that claim (<a href="../../specification/invariant/#inv-oidc-1">INV-OIDC-1</a>) and recomputes
+admin status:</p>
+<ul>
+<li>The <strong>admin group</strong> named by <code>OIDC_ADMIN_GROUP</code> (default <code>advisoryhub-security</code>)
+  grants global admin — owner on every advisory, the exclusive reviewer, and Django
+  <code>is_staff</code>/<code>is_superuser</code> (<a href="../../specification/invariant/#inv-oidc-3">INV-OIDC-3</a>).</li>
+<li>Each <strong>project security team</strong> is a group referenced by the project's row; its
+  members are owners of that project's advisories. Create one group per team and
+  point the project at it (in-app, after first run).</li>
+</ul>
+<p><strong>Logout.</strong> Set <code>OIDC_OP_LOGOUT_ENDPOINT</code> to the provider's <code>end_session_endpoint</code>
+for RP-initiated logout (AdvisoryHub stores the ID token so it can pass
+<code>id_token_hint</code>). Left empty, "Sign out" ends only the local session — and with a
+live SSO session at the provider the next protected page silently re-authenticates.</p>
+<p><strong>Step-up.</strong> Publishing (and GitHub-App changes) require a fresh re-login
+(<code>STEP_UP_REQUIRED</code>, within <code>STEP_UP_MAX_AGE_SECONDS</code>). The provider must honour
+the re-prompt; otherwise users can't publish.</p>
+<blockquote>
+<p><strong>Worked example (dev).</strong> <code>dev/kanidm/setup.sh</code> registers the <code>advisoryhub</code>
+client against the bundled Kanidm with exactly the redirect URIs above, creates
+the <code>advisoryhub-security</code> admin group and two project-team groups, and writes the
+client secret into <code>dev/kanidm/.env.kanidm</code>. It uses <code>ES256</code> and self-signed TLS
+(<code>OIDC_VERIFY_SSL=False</code>) — both dev-only.</p>
+</blockquote>
+<hr />
+<h2 id="2-publication-git-repository">2. Publication Git repository<a class="headerlink" href="#2-publication-git-repository" title="Permanent link">&para;</a></h2>
+<p>Publishing builds OSV + CSAF (and, for CVE-assigned advisories, a CVE record) and
+<strong>pushes them to an external Git repository</strong> whose own CI renders the public
+site. Configure <code>PUB_REPO_URL</code> and <code>PUB_REPO_BRANCH</code>, choose an auth mode, and set
+the CVE-assigner identity. The worker image ships <code>git</code> + <code>openssh-client</code>.</p>
+<h3 id="ssh-mode-pub_repo_authssh--recommended">SSH mode (<code>PUB_REPO_AUTH=ssh</code>) — recommended<a class="headerlink" href="#ssh-mode-pub_repo_authssh--recommended" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Use an SSH URL (<code>git@github.com:eclipse/advisories.git</code>).</li>
+<li>Mount the deploy <strong>private key</strong> as a file and point <code>PUB_REPO_SSH_KEY_PATH</code> at
+  it (e.g. <code>/run/secrets/pub_repo_ssh_key</code>).</li>
+<li>AdvisoryHub points git's <code>GIT_SSH</code> hook at a per-publication generated
+  wrapper that execs <code>ssh -i &lt;key&gt; -o IdentitiesOnly=yes -o
+  StrictHostKeyChecking=accept-new -o BatchMode=yes</code>. (<code>GIT_SSH</code> is exec'd
+  directly by git; <code>GIT_SSH_COMMAND</code> would be run through a shell, which
+  the production image doesn't have.)</li>
+<li><code>accept-new</code> trusts the remote host key on first contact. For strict checking,
+  <strong>pre-populate a <code>known_hosts</code></strong> (e.g. bake one into the image) so a changed host
+  key is rejected.</li>
+</ul>
+<h3 id="token-mode-pub_repo_authtoken">Token mode (<code>PUB_REPO_AUTH=token</code>)<a class="headerlink" href="#token-mode-pub_repo_authtoken" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Use an HTTPS URL (<code>https://github.com/eclipse/advisories.git</code>).</li>
+<li>Set <code>PUB_REPO_TOKEN</code> to a push-capable token. AdvisoryHub rewrites the URL to
+  <code>https://x-access-token:&lt;token&gt;@…</code> at push time and <strong>strips the token from
+  every error, audit, artifact, and notification surface</strong> — it is never persisted.</li>
+</ul>
+<h3 id="output-paths--cve-identity">Output paths &amp; CVE identity<a class="headerlink" href="#output-paths--cve-identity" title="Permanent link">&para;</a></h3>
+<p><code>PUB_OSV_PATH_TEMPLATE</code>, <code>PUB_CSAF_PATH_TEMPLATE</code>, and <code>PUB_CVE_PATH_TEMPLATE</code>
+control where files land (placeholders <code>{year}</code>, <code>{advisory_id}</code>, <code>{bucket}</code>,
+<code>{cve_id}</code>). To publish a <strong>CVE-assigned</strong> advisory you <strong>must</strong> set
+<code>PUB_CVE_ASSIGNER_ORG_ID</code> to the Eclipse Foundation CNA's v4 UUID — publishing
+fails loudly while it is empty. <code>PUB_CVE_ASSIGNER_SHORT_NAME</code> defaults to <code>eclipse</code>.</p>
+<blockquote>
+<p>Set <code>READYZ_INCLUDE_PUB_REPO=True</code> to have <code>/readyz</code> verify the remote is
+reachable (a <code>git ls-remote</code>) — useful as a deploy gate, off by default because
+it egresses on every probe.</p>
+</blockquote>
+<hr />
+<h2 id="3-ghsa--github-app-optional">3. GHSA / GitHub App (optional)<a class="headerlink" href="#3-ghsa--github-app-optional" title="Permanent link">&para;</a></h2>
+<p>Off unless <code>GHSA_FEATURE_ENABLED=True</code>. AdvisoryHub authenticates to GitHub as a
+<strong>registered GitHub App</strong> to read/write GitHub Security Advisories.</p>
+<ol>
+<li><strong>Register a GitHub App</strong> with permissions <code>repository_security_advisories:
+   read &amp; write</code> (plus the default <code>metadata: read</code>). Org admins install it on the
+   relevant repositories.</li>
+<li>Configure <code>GITHUB_APP_ID</code>, mount the App <strong>private key</strong> as a file via
+   <code>GITHUB_APP_PRIVATE_KEY_PATH</code> (preferred; <code>GITHUB_APP_PRIVATE_KEY</code> inline is a
+   dev-only fallback), and set <code>GITHUB_APP_WEBHOOK_SECRET</code>.</li>
+<li><strong>Webhook:</strong> point the App's webhook at <code>https://&lt;host&gt;/ghsa/webhook/</code>. Inbound
+   deliveries are HMAC-verified against <code>GITHUB_APP_WEBHOOK_SECRET</code> and rejected
+   otherwise. (This path stays reachable during maintenance mode, since it is
+   machine traffic, not a user action.)</li>
+<li><strong>Installations</strong> are stored in the database — after enabling, run
+   <strong><code>python manage.py discover_github_installations</code></strong> once to populate the
+   registry, or wait for the first <code>installation.created</code> webhook.</li>
+</ol>
+<p>The Eclipse PMI API (<code>PMI_API_BASE_URL</code>, usually unauthenticated) is the
+source-of-truth for the project↔repository mapping the beat task mirrors. GHSA-linked
+advisories' content is read-only in AdvisoryHub and re-homed only by PMI sync
+(<a href="../../specification/invariant/#inv-ghsa-1">INV-GHSA-1</a>).</p>
+<hr />
+<h2 id="4-security-team-roster-sync-optional">4. Security-team roster sync (optional)<a class="headerlink" href="#4-security-team-roster-sync-optional" title="Permanent link">&para;</a></h2>
+<p>Off unless <code>PMI_ROSTER_SYNC_ENABLED=True</code>. This pre-provisions <strong>notification-only
+"shadow" users</strong> for each project's Eclipse security-team members, so <code>@team</code>
+mentions and team notifications reach members who have <strong>never logged in</strong>.</p>
+<ul>
+<li>It needs the <strong>authenticated</strong> Eclipse API (the public PMI feed hides member
+  emails): set <code>ECLIPSE_API_CLIENT_ID</code> and <code>ECLIPSE_API_CLIENT_SECRET</code> (OAuth2
+  client-credentials), with <code>ECLIPSE_API_TOKEN_URL</code> / <code>ECLIPSE_API_BASE_URL</code> /
+  optional <code>ECLIPSE_API_SCOPE</code>.</li>
+<li>The beat task <code>projects.tasks.run_roster_sync</code> runs every
+  <code>PMI_ROSTER_SYNC_INTERVAL_HOURS</code> (and no-ops while disabled); trigger it by hand
+  with <strong><code>python manage.py sync_roster --all</code></strong>.</li>
+<li>A shadow user holds <strong>no authorization</strong> — it is in no group and can act on
+  nothing. On first OIDC login it is linked by email, the provisioned flag clears,
+  and access then comes entirely from the OIDC group claim; the roster never grants
+  access (<a href="../../specification/invariant/#inv-oidc-5">INV-OIDC-5</a>, <a href="../../specification/invariant/#inv-roster-1">INV-ROSTER-1</a>).</li>
+</ul>
+<hr />
+<h2 id="5-similarity-llm-provider-optional">5. Similarity LLM provider (optional)<a class="headerlink" href="#5-similarity-llm-provider-optional" title="Permanent link">&para;</a></h2>
+<p>Off unless <code>SIMILARITY_CHECK_ENABLED=True</code>. LLM-assisted duplicate detection
+compares new reports against the project's existing advisories and surfaces
+candidate duplicates (owner-only, on the advisory page).</p>
+<blockquote>
+<p><strong>Enabling the switch is the consent</strong> for advisory content — including
+potentially embargoed drafts — to be sent to the configured LLM provider on
+every check (<a href="../../specification/invariant/#inv-sim-2">INV-SIM-2</a>). Leave it off if that egress is not acceptable.</p>
+</blockquote>
+<ul>
+<li><strong>Provider</strong>: <code>SIMILARITY_LLM_PROVIDER=anthropic</code> (default, needs
+  <code>SIMILARITY_LLM_API_KEY</code>) or <code>openai</code> — which covers any OpenAI-compatible
+  endpoint. For <strong>on-prem inference</strong>, set <code>SIMILARITY_LLM_PROVIDER=openai</code> and
+  point <code>SIMILARITY_LLM_BASE_URL</code> at a local server (Ollama, vLLM, LM Studio);
+  the API key may be blank for keyless local servers.</li>
+<li><strong>Where it runs</strong>: on the <strong>worker</strong> tier, as the Celery task
+  <code>similarity.run_similarity_check</code> — the egress to the provider comes from the
+  worker, not web, and there is no beat entry. Size network policy / proxy rules
+  accordingly.</li>
+<li><strong>When it fires</strong>: automatically on public intake submissions and on GHSA sync.
+  It is best-effort — a failed or timed-out check never fails intake or sync.</li>
+<li><strong>Rollout</strong>: after enabling, run <strong><code>python manage.py backfill_fingerprints</code></strong>
+  once so existing advisories enter the candidate corpus (one LLM call per
+  advisory; idempotent — see <a href="../maintenance/#4-management-command-reference">maintenance.md §4</a>).</li>
+<li><strong>Tuning</strong>: <code>SIMILARITY_LLM_TIMEOUT</code> (read timeout), <code>SIMILARITY_CANDIDATE_LIMIT</code>
+  (prefilter cap per check), <code>SIMILARITY_MIN_CONFIDENCE</code> (persistence threshold) —
+  defaults in <a href="../configuration/#11-llm-duplicate-detection-similarity">configuration.md §11</a>.</li>
+</ul>
+<hr />
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../configuration/">configuration.md</a> — the variables referenced here.</li>
+<li><a href="../running-in-production/">running-in-production.md</a> — health probes, beat schedule.</li>
+<li><a href="../../specification/architecture/">../specification/architecture.md</a> — the publication and GHSA pipelines in depth.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1966 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/manual/security-team/">
+      
+      
+        <link rel="prev" href="../collaborator-and-viewer/">
+      
+      
+        <link rel="next" href="../administrator/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Security team - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#security-team-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Security team
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-who-this-guide-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Who this guide is for
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-triaging-incoming-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Triaging incoming reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-creating-an-advisory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Creating an advisory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-editing-and-version-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Editing and version history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-managing-who-can-see-and-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Managing who can see and help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-requesting-a-cve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Requesting a CVE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Review
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Publishing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-dismissing-and-reopening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Dismissing and reopening
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-ghsa-linked-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. GHSA-linked advisories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-comments-and-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Comments and notifications
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/running-in-production/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../specification/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/advisory-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-who-this-guide-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Who this guide is for
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-triaging-incoming-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Triaging incoming reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-creating-an-advisory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Creating an advisory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-editing-and-version-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Editing and version history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-managing-who-can-see-and-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Managing who can see and help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-requesting-a-cve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Requesting a CVE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Review
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-publishing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Publishing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-dismissing-and-reopening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Dismissing and reopening
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-ghsa-linked-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. GHSA-linked advisories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-comments-and-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Comments and notifications
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="security-team-guide">Security-Team Guide<a class="headerlink" href="#security-team-guide" title="Permanent link">&para;</a></h1>
+<p><strong>Audience:</strong> members of a project's security team. You are an <strong>owner</strong> of every
+advisory belonging to your project — the role that does the real work of triaging
+reports, writing advisories, getting them reviewed, requesting CVEs, and
+publishing.</p>
+<p>This is the most complete guide because owners touch the whole lifecycle. For
+shared concepts (signing in, roles, the glossary), see the
+<a href="../">manual index</a>. For what happens on the reviewer/CVE/administrator
+side, follow the cross-links to the
+<a href="../administrator/">Administrator &amp; Reviewer Guide</a>.</p>
+<hr />
+<h2 id="1-who-this-guide-is-for">1. Who this guide is for<a class="headerlink" href="#1-who-this-guide-is-for" title="Permanent link">&para;</a></h2>
+<p>You become an owner by being a member of your project's <strong>security team</strong> group.
+That membership lives in the Eclipse Foundation identity provider and is mirrored
+into AdvisoryHub every time you sign in (<a href="../../specification/invariant/#inv-oidc-1">INV-OIDC-1</a>) — there is no "add me as
+owner" button, and owner access is never granted by hand (<a href="../../specification/invariant/#inv-auth-3">INV-AUTH-3</a>). When
+your project's roster changes, the change takes effect at the affected person's
+next login.</p>
+<blockquote>
+<p><strong>Notifications before your first login.</strong> If you are on a project's Eclipse
+security team, AdvisoryHub may email you about that project's advisories <em>before</em>
+you have ever signed in, so team mentions and alerts reach you. Until you sign
+in you cannot act on anything; your first sign-in turns that notification-only
+"shadow" record into a full security-team account (<a href="../../specification/invariant/#inv-oidc-5">INV-OIDC-5</a>).</p>
+</blockquote>
+<p>As an owner you can do everything in the capability matrix's owner column; the
+authoritative, state-by-state version is in
+<a href="../../specification/permissions/"><code>permissions.md</code></a>. A few high-privilege actions
+are reserved for administrators and noted as such below (unassigning a CVE,
+reviewing/approving, maintenance).</p>
+<p>Your work surface is the advisory list at <code>/advisories/</code>: search with the <code>q</code>
+box, switch the <strong>state tabs</strong> (All / triage / draft / published / dismissed),
+sort the columns, and click into any advisory. Rows are marked <strong>new</strong> or
+<strong>changed</strong> when something happened since your last visit, and every advisory
+page keeps a compact left-hand rail of the advisories you can see, for quick
+jumps.</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; triage : public report
+    [*] --&gt; draft  : you create it
+    triage --&gt; draft     : promote
+    triage --&gt; dismissed : dismiss
+    draft --&gt; published  : publish
+    draft --&gt; dismissed  : dismiss
+    published --&gt; published : edit + re-publish
+    dismissed --&gt; draft  : reopen
+    dismissed --&gt; triage : reopen</code></pre>
+<hr />
+<h2 id="2-triaging-incoming-reports">2. Triaging incoming reports<a class="headerlink" href="#2-triaging-incoming-reports" title="Permanent link">&para;</a></h2>
+<p>Public reports for your project arrive in the <strong>triage</strong> state. Find them via the
+<strong>triage</strong> tab on <code>/advisories/</code>. Open one; the <strong>Lifecycle</strong> card in the
+right-hand sidebar offers your options:</p>
+<ul>
+<li><strong>Accept as draft</strong> — treat the report as a genuine vulnerability worth working
+  on. It becomes a normal draft you can edit, review, and publish.</li>
+<li><strong>Dismiss…</strong> — reject it (duplicate, not a vulnerability, out of scope). You
+  must give a reason. Dismissed reports are reversible later (§9).</li>
+<li><strong>Flag for admin routing…</strong> — if the report clearly belongs to a <em>different</em>
+  project, this button opens a dialog to flag it with a note. It then moves to the
+  administrators' queue for re-homing (<a href="../../specification/invariant/#inv-intake-4">INV-INTAKE-4</a>): while flagged, the report
+  is locked to administrators, who alone can promote it (choosing its real
+  project) or dismiss it. If you flagged it by mistake, a <strong>Clear routing flag</strong>
+  button appears in the report's routing banner to take it back.</li>
+</ul>
+<p>While an advisory is in triage, owners are the only people who can act on it; the
+reporter (and any viewer) can read it and post comments but nothing more.</p>
+<blockquote>
+<p><strong>Possible duplicates.</strong> On deployments that enable it, the advisory page
+shows owners a <strong>Possible duplicates</strong> panel: a background check compares the
+report against your project's existing advisories and lists up to five
+similar ones with a confidence score. It is a triage aid, not a verdict — use
+it to spot duplicates before promoting, and cite the original when you
+dismiss one. Collaborators and viewers never see this panel.</p>
+</blockquote>
+<hr />
+<h2 id="3-creating-an-advisory">3. Creating an advisory<a class="headerlink" href="#3-creating-an-advisory" title="Permanent link">&para;</a></h2>
+<p>You don't have to start from a report — you can author directly. Open <strong>New →
+New advisory</strong> in the top navigation (<code>/advisories/new/</code>; the menu appears only
+for security-team members and administrators) and fill in:</p>
+<p><strong>Basics</strong></p>
+<ul>
+<li><strong>Project</strong> — must be a project whose security team you're on.</li>
+<li><strong>Summary</strong> — one sentence (≤300 characters).</li>
+<li><strong>Details</strong> — the full description; <strong>Markdown is supported</strong>.</li>
+</ul>
+<p><strong>Structured sections</strong> (each is a repeatable list; all optional, but the more
+complete the better the published OSV/CSAF output):</p>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>What it captures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Aliases</strong></td>
+<td>Other identifiers for the same vulnerability (e.g. a <code>GHSA-…</code> or <code>CVE-…</code> id).</td>
+</tr>
+<tr>
+<td><strong>CWE IDs</strong></td>
+<td>Weakness classifications, entered as <code>CWE-NN</code>; validated against the known CWE catalogue.</td>
+</tr>
+<tr>
+<td><strong>References</strong></td>
+<td>URLs with a type — Advisory, Article, Fix, Report, Web, and so on.</td>
+</tr>
+<tr>
+<td><strong>Severity</strong></td>
+<td>A CVSS v3/v4/v2 vector string, or an Ubuntu qualitative rating.</td>
+</tr>
+<tr>
+<td><strong>Affected</strong></td>
+<td>Affected packages: name, <strong>ecosystem</strong> (Maven, npm, PyPI, …), optional purl, and version <strong>ranges</strong> with <code>introduced</code> / <code>fixed</code> (or <code>last affected</code>) events.</td>
+</tr>
+<tr>
+<td><strong>Credits</strong></td>
+<td>People/organisations to credit, each with a type (Finder, Reporter, Analyst, …).</td>
+</tr>
+</tbody>
+</table>
+<p>These mirror the <a href="https://ossf.github.io/osv-schema/">OSV schema</a>; the form
+validates values as you go so they won't fail later at publish time. Saving
+creates the advisory as a <strong>draft</strong> and records the first version.</p>
+<hr />
+<h2 id="4-editing-and-version-history">4. Editing and version history<a class="headerlink" href="#4-editing-and-version-history" title="Permanent link">&para;</a></h2>
+<p>Open an advisory and choose <strong>Edit</strong> — the button is in the <strong>Lifecycle</strong> card of
+the right-hand sidebar. Key behaviours:</p>
+<ul>
+<li><strong>Versions are append-only.</strong> Every content change records a new version;
+  earlier versions are never overwritten (<a href="../../specification/invariant/#inv-version-1">INV-VERSION-1</a>). Open the
+  version-history view (the <strong>history</strong> link on the advisory page) and compare any
+  two versions with its diff view.</li>
+<li><strong>Editing a published advisory flags it for re-publication.</strong> The public copy
+  doesn't change until you re-publish (§8); the advisory shows a <strong>Re-publish</strong>
+  action once it has unpublished edits.</li>
+<li><strong>Editing can reset an approval.</strong> A content edit after an advisory was approved
+  in review invalidates that approval — you'll need to resubmit (§7).</li>
+<li><strong>Changing the project.</strong> Owners can move a <em>native</em> advisory to another
+  project, but only to a project whose security team you're also on. (GHSA-linked
+  advisories follow their source repository and are never moved by hand.) After
+  a move the advisory shows a banner asking you to <strong>review its access grants</strong>
+  — people invited in the old project's context may no longer belong; dismiss
+  the banner once you've checked.</li>
+</ul>
+<hr />
+<h2 id="5-managing-who-can-see-and-help">5. Managing who can see and help<a class="headerlink" href="#5-managing-who-can-see-and-help" title="Permanent link">&para;</a></h2>
+<p>Owners control per-advisory access from the <strong>Access</strong> card on the advisory page.
+You can:</p>
+<ul>
+<li><strong>Grant</strong> a user or a group <strong>viewer</strong> or <strong>collaborator</strong> access (see the
+  <a href="../collaborator-and-viewer/">Collaborator &amp; Viewer Guide</a> for what each can
+  do).</li>
+<li><strong>Invite by email</strong> someone who doesn't have an account yet. They receive a
+  link, and the grant activates automatically on their first sign-in with that
+  email (invitations expire after 14 days).</li>
+<li><strong>Revoke</strong> any grant or pending invitation.</li>
+</ul>
+<p>You <strong>cannot</strong> grant <code>owner</code> — that role comes only from security-team or
+administrator membership, by design (<a href="../../specification/invariant/#inv-auth-3">INV-AUTH-3</a>). Every grant, change, and
+revocation is written to the audit log.</p>
+<hr />
+<h2 id="6-requesting-a-cve">6. Requesting a CVE<a class="headerlink" href="#6-requesting-a-cve" title="Permanent link">&para;</a></h2>
+<p>If the advisory needs a CVE identifier, choose <strong>Request a CVE Number</strong> — the
+button sits next to the advisory's CVE field. This adds the advisory to the
+administrators' internal CVE
+queue; an administrator then <strong>reserves</strong> a CVE (which attaches it to your
+advisory) or <strong>rejects</strong> the request with a reason — see the
+<a href="../administrator/#4-managing-cves">Administrator &amp; Reviewer Guide</a>.</p>
+<p>You can request a CVE on a <strong>draft or published</strong> advisory — not in triage, not
+dismissed — when it has <strong>no open request already, no CVE already assigned, and
+isn't barred from requesting</strong> (<a href="../../specification/invariant/#inv-cve-1">INV-CVE-1</a>). Once a CVE is assigned, only an
+administrator can unassign it (that's a CNA-side action).</p>
+<hr />
+<h2 id="7-review">7. Review<a class="headerlink" href="#7-review" title="Permanent link">&para;</a></h2>
+<p>Most advisories are reviewed before publishing. The review is a small machine
+that rides alongside the draft:</p>
+<ol>
+<li><strong>Submit for review</strong> — the button is in the <strong>Review</strong> card of the sidebar.
+   This snapshots ("pins") the current version and notifies the reviewers. While
+   submitted, the content is locked (only administrators can edit it) and it
+   cannot be published yet.</li>
+<li><strong>An administrator decides</strong> — they <strong>approve</strong> it or <strong>request changes</strong>.
+   Administrators are the only reviewers, and they cannot review their own
+   submissions (<a href="../../specification/invariant/#inv-review-3">INV-REVIEW-3</a>).</li>
+<li><strong>If changes are requested</strong> — use <strong>Reopen for editing</strong> in the <strong>Review</strong>
+   card, edit, and submit again.</li>
+<li><strong>Withdraw from review</strong> — the <strong>Review</strong> card also lets you pull back a
+   submission you made if you decide it isn't ready.</li>
+</ol>
+<pre class="mermaid"><code>stateDiagram-v2
+    none --&gt; submitted : submit for review
+    submitted --&gt; approved : administrator approves
+    submitted --&gt; changes_requested : administrator requests changes
+    submitted --&gt; none : you withdraw
+    changes_requested --&gt; none : you reopen the review
+    approved --&gt; none : a non-admin edit (or a revoked approval)</code></pre>
+<hr />
+<h2 id="8-publishing">8. Publishing<a class="headerlink" href="#8-publishing" title="Permanent link">&para;</a></h2>
+<p>Publishing exports the advisory to <strong>OSV</strong> and <strong>CSAF</strong> JSON — plus a <strong>CVE
+record</strong> when a CVE is assigned — and pushes them to the publication Git
+repository, which renders the public site.</p>
+<p><strong>Before you can publish</strong>, both of these gates apply:</p>
+<ul>
+<li><strong>Approval gate.</strong> You may publish only if <strong>either</strong> your project is marked a
+  <strong>mature publisher</strong> (administrators set this per project) <strong>or</strong> the advisory's
+  review is <strong>approved</strong> (<a href="../../specification/permissions/">permissions.md §7</a>).
+  Publishing is always blocked while a review is still <em>submitted</em> — it must be
+  decided or withdrawn first.</li>
+<li><strong>Step-up authentication.</strong> Publishing is sensitive, so you may be prompted to
+  <strong>re-authenticate</strong> before it proceeds, even though you're already signed in
+  (<a href="../../specification/permissions/">permissions.md §8</a>).</li>
+</ul>
+<p>To publish: open the advisory and choose <strong>Publish</strong> in the sidebar's
+<strong>Publication</strong> card, completing the re-auth prompt if asked.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    actor Owner
+    participant Hub as AdvisoryHub
+    participant Worker as Publication worker
+    participant Repo as Publication Git repo
+    Owner-&gt;&gt;Hub: Publish (re-authenticate if prompted)
+    Hub-&gt;&gt;Hub: Pin current version, queue a publication task
+    Hub-&gt;&gt;Worker: Run publication
+    Worker-&gt;&gt;Worker: Build OSV + CSAF (+ CVE record), validate against schemas
+    Worker-&gt;&gt;Repo: Commit &amp; push
+    Repo--&gt;&gt;Worker: Push succeeds
+    Worker-&gt;&gt;Hub: Flip state to published
+    Hub--&gt;&gt;Owner: Published ✓</code></pre>
+<p>A few things to expect:</p>
+<ul>
+<li><strong>The advisory becomes "published" only after the Git push succeeds</strong>
+  (<a href="../../specification/invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>). If anything fails (validation, network, the push), the
+  state does <strong>not</strong> change and the attempt is recorded as <strong>failed</strong>.</li>
+<li><strong>Failures land back on the advisory page.</strong> The sidebar's <strong>Publication</strong>
+  card shows the latest run — its status, a secret-redacted error message, the
+  generated artifacts, and a diff against the current content. Because the
+  state didn't change, you can fix the cause and press <strong>Publish</strong> again
+  yourself. Administrators also see every failed task fleet-wide on the Admin
+  Console's Publication page (see the
+  <a href="../administrator/#5-publication-oversight">Administrator &amp; Reviewer Guide</a>).</li>
+<li><strong>Re-publishing.</strong> After you edit a published advisory (or a CVE is assigned to
+  it), it is marked as needing re-publication; choose <strong>Re-publish</strong> to push the
+  update.</li>
+</ul>
+<hr />
+<h2 id="9-dismissing-and-reopening">9. Dismissing and reopening<a class="headerlink" href="#9-dismissing-and-reopening" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Dismiss…</strong> — the <strong>Lifecycle</strong> card's dismiss button closes an advisory
+  without publishing, with a required reason. You can dismiss from triage or
+  draft. An open CVE <em>request</em>
+  is cancelled automatically when you dismiss (and restored if you reopen).
+  <strong>If a CVE is already assigned you cannot dismiss the advisory yourself</strong> —
+  pulling a reserved CVE is a CNA-side action, so ask an administrator: when
+  <em>they</em> dismiss it, the CVE is automatically unassigned into their orphan-CVE
+  queue. While dismissed, the content is read-only for every role (comments
+  stay open).</li>
+<li><strong>Reopen</strong> — the <strong>Lifecycle</strong> card brings a dismissed advisory back (the button
+  reads <strong>Reopen</strong>, or <strong>Reopen (re-publish)</strong> when un-withdrawing a published one).
+  It returns to whatever state it was in before (triage or draft), and the normal review and
+  publish gates apply again from there (<a href="../../specification/invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>). A dismissed advisory
+  stays viewable to its grantees the whole time.</li>
+</ul>
+<hr />
+<h2 id="10-ghsa-linked-advisories">10. GHSA-linked advisories<a class="headerlink" href="#10-ghsa-linked-advisories" title="Permanent link">&para;</a></h2>
+<p>Some advisories are <strong>linked to a GitHub Security Advisory (GHSA)</strong>. Their content
+is synced from GitHub and is <strong>read-only</strong> inside AdvisoryHub — you won't edit the
+fields here. The advisory page shows a <strong>Linked GitHub Security Advisory</strong> panel
+with the upstream id, repository, state, and last-sync time, plus a <strong>Refresh
+from GHSA</strong> button to pull the latest on demand (when the GHSA integration is
+enabled; wider project- and organisation-level syncs are administrator
+operations). Because their project follows the source repository, GHSA-linked
+advisories are never moved between projects by hand.</p>
+<p>Three behaviours to expect:</p>
+<ul>
+<li><strong>A sync counts as an edit.</strong> If a refresh brings changed content, it appends
+  a version like any edit — invalidating an existing review approval and, on a
+  published advisory, flagging it for re-publication.</li>
+<li><strong>Publishing follows upstream.</strong> A GHSA-linked advisory can be published only
+  once the GHSA itself is published on GitHub, and publishing re-fetches the
+  upstream metadata first so the export is current.</li>
+<li><strong>CVEs flow back to GitHub.</strong> When an administrator reserves a CVE for a
+  GHSA-linked advisory, AdvisoryHub pushes the id to the GHSA; the panel shows
+  the push status. If upstream already carries a <em>different</em> CVE id, the panel
+  warns about the conflict and publication is blocked until an administrator
+  reconciles it.</li>
+</ul>
+<hr />
+<h2 id="11-comments-and-notifications">11. Comments and notifications<a class="headerlink" href="#11-comments-and-notifications" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Comments.</strong> The advisory page ends with the <strong>Activity</strong> timeline — comments
+  merged chronologically with recorded actions — and the comment box lives
+  there. As an owner you can post ordinary or <strong>internal</strong> comments and
+  <code>@</code>-mention people or a whole <code>@team</code>. Whether a comment is internal is fixed
+  when posted. Authors can edit their comments (history is kept) or <strong>redact</strong>
+  them; redaction hides the text but leaves the entry visible in the timeline.</li>
+<li><strong>Notifications.</strong> Watch the in-app inbox at <code>/notifications/inbox/</code> and tune
+  delivery at <code>/notifications/preferences/</code> (with per-advisory overrides).</li>
+</ul>
+<hr />
+<h2 id="related-guides">Related guides<a class="headerlink" href="#related-guides" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../">Manual index</a> — concepts, lifecycle, glossary.</li>
+<li><a href="../administrator/">Administrator &amp; Reviewer Guide</a> — review decisions, CVE
+  reservation, publication retries, and project settings (including the
+  mature-publisher flag).</li>
+<li><a href="../collaborator-and-viewer/">Collaborator &amp; Viewer Guide</a> — what the people
+  you grant access to can do.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

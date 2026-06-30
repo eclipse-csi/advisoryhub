@@ -1,0 +1,2493 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/specification/permissions/">
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../advisory-lifecycle/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Permissions - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#permission-model" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Permissions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../manual/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../manual/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/security-team/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/administrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/running-in-production/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose--scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose &amp; scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-identity-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Identity sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-actors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Actors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-roles--resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Roles &amp; resolution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Roles &amp; resolution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-owner-is-structural-not-grantable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why owner is structural, not grantable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grants-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grants in detail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shadow-pre-login-security-team-members" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shadow (pre-login) security-team members
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-capability-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Capability matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-state-conditioned-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. State-conditioned overrides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-mature-publisher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Mature publisher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-step-up-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Step-up authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-enforcement-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Enforcement surfaces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-audit-footprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Audit footprint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Out of scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advisory-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose--scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose &amp; scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-identity-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Identity sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-actors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Actors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-roles--resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Roles &amp; resolution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Roles &amp; resolution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-owner-is-structural-not-grantable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why owner is structural, not grantable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grants-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grants in detail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shadow-pre-login-security-team-members" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shadow (pre-login) security-team members
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-capability-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Capability matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-state-conditioned-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. State-conditioned overrides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-mature-publisher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Mature publisher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-step-up-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Step-up authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-enforcement-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Enforcement surfaces
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-audit-footprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Audit footprint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-out-of-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Out of scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="permission-model">Permission Model<a class="headerlink" href="#permission-model" title="Permanent link">&para;</a></h1>
+<p>This document specifies the authorization model of AdvisoryHub: who the
+<strong>actors</strong> are, what <strong>roles</strong> they can hold, and what <strong>actions</strong> each role
+is allowed to take. It is a companion to <a href="../invariant/"><code>invariant.md</code></a>;
+where a rule has a stable invariant ID, this document references it by ID
+(<code>INV-XYZ-N</code>) rather than restating the reasoning. Every fact stated here
+appears in exactly one place — the capability matrix or the state-conditioned
+overrides, never both.</p>
+<p>This document is the single source of truth for the authorization model:
+the executable predicates in <code>advisories/permissions.py</code> and the
+enforcement surfaces in §9 must conform to it. If this document and the
+code disagree, that is a defect — either the code drifted (fix the code)
+or the behavior changed deliberately without a spec update (fix this
+document in the same change). Deviating from this document requires
+explicit maintainer confirmation <em>before</em> implementation.</p>
+<hr />
+<h2 id="1-purpose--scope">1. Purpose &amp; scope<a class="headerlink" href="#1-purpose--scope" title="Permanent link">&para;</a></h2>
+<p>AdvisoryHub is the <strong>authoring</strong> system for security advisories. This document
+covers authorization on its authoring surface: the web UI, the JSON API, the
+public intake endpoint, the admin console, and the Celery workers.</p>
+<p>It does <strong>not</strong> cover the public surface where end users read published
+advisories — that surface is a separate static site rendered from the
+publication Git repository, with its own (open) access policy. A published
+advisory inside AdvisoryHub remains visible only to the same people who could
+see it as a draft (<a href="../invariant/#inv-auth-7">INV-AUTH-7</a>).</p>
+<hr />
+<h2 id="2-identity-sources">2. Identity sources<a class="headerlink" href="#2-identity-sources" title="Permanent link">&para;</a></h2>
+<p>A user is identified by <strong>OIDC login</strong> through <code>mozilla-django-oidc</code>, backed
+by <code>accounts.auth.AdvisoryHubOIDCBackend</code>. Authentication and group
+membership both flow from the IdP; AdvisoryHub stores a mirror, never the
+authority.</p>
+<ul>
+<li><strong>User record.</strong> First login creates a Django <code>User</code>; subsequent logins
+  refresh email and display fields.</li>
+<li><strong>Groups.</strong> <code>sync_groups_from_claims</code> replaces <code>user.groups</code> from the
+  configured OIDC claim on every login — one-way sync, no caching across
+  sessions (<a href="../invariant/#inv-oidc-1">INV-OIDC-1</a>). Claim values are filtered to SPN form so the
+  <code>Group</code> table stays clean (<a href="../invariant/#inv-oidc-4">INV-OIDC-4</a>).</li>
+<li><strong>Admin flags.</strong> <code>is_staff</code> and <code>is_superuser</code> are set equal to
+  membership in <code>OIDC_ADMIN_GROUP</code> on every login, so demotion in the IdP
+  clears both flags on the next login (<a href="../invariant/#inv-oidc-3">INV-OIDC-3</a>).
+  These flags gate nothing in-app today (Django admin is not mounted; the
+  admin console keys off group membership) — the sync is defense-in-depth
+  hygiene that keeps the columns honest.</li>
+<li><strong>Trust boundary.</strong> Authorization predicates always read <code>user.groups</code>
+  (the DB mirror); request bodies, headers, or form fields naming a group
+  are ignored (<a href="../invariant/#inv-oidc-2">INV-OIDC-2</a>).</li>
+</ul>
+<p>There is no local password store and no local group editor: revocation
+happens in the IdP and propagates at next login.</p>
+<ul>
+<li><strong>Ban (local override).</strong> <code>is_active=False</code> is the one app-side override of
+  IdP-mediated authority: an admin can ban an account from the admin console
+  to deny login and drop its live session immediately, rather than wait for an
+  IdP group change to propagate at next login (<a href="../invariant/#inv-auth-8">INV-AUTH-8</a>). It is reversible
+  (unban) and audited at both ends. (A Celery task already queued under a
+  banned actor still re-checks group membership, not <code>is_active</code> — the same
+  next-login lag as an IdP demotion.)</li>
+</ul>
+<hr />
+<h2 id="3-actors">3. Actors<a class="headerlink" href="#3-actors" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Actor</th>
+<th>How identified</th>
+<th>Default authority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Anonymous web client</strong></td>
+<td>No session</td>
+<td>Submit a public triage report (<code>POST /report/</code>) and follow the OIDC redirect. Nothing else.</td>
+</tr>
+<tr>
+<td><strong>Authenticated user</strong></td>
+<td>OIDC session</td>
+<td>No role on any advisory by default; sees only advisories they have an explicit grant for.</td>
+</tr>
+<tr>
+<td><strong>Triage reporter (authenticated)</strong></td>
+<td>OIDC session at submission time</td>
+<td>Auto-granted <code>viewer</code> on the advisory they filed (<a href="../invariant/#inv-intake-3">INV-INTAKE-3</a>).</td>
+</tr>
+<tr>
+<td><strong>Triage reporter (anonymous)</strong></td>
+<td>None retained</td>
+<td>No link is recorded; the report cannot later be claimed (<a href="../invariant/#inv-intake-2">INV-INTAKE-2</a>).</td>
+</tr>
+<tr>
+<td><strong>Project security-team member</strong></td>
+<td>Member of <code>Project.security_team</code> (a Django <code>Group</code>)</td>
+<td>Derived <code>owner</code> on every advisory under that project.</td>
+</tr>
+<tr>
+<td><strong>Shadow roster member (pre-login)</strong></td>
+<td><code>User.is_provisioned=True</code>, linked to an active <code>SecurityTeamRosterEntry</code></td>
+<td><strong>No authority at all.</strong> Notification-only: reachable by their project's default notifications/<code>@team</code> mentions; not a member of any group; cannot act. Promoted to a real user on first login (<a href="../invariant/#inv-oidc-5">INV-OIDC-5</a>, <a href="../invariant/#inv-roster-1">INV-ROSTER-1</a>).</td>
+</tr>
+<tr>
+<td><strong>Global admin / reviewer</strong></td>
+<td>Member of <code>OIDC_ADMIN_GROUP</code></td>
+<td>Derived <code>owner</code> on every advisory and exclusive reviewer; sole holder of CNA-side and integration-admin powers.</td>
+</tr>
+<tr>
+<td><strong>Celery worker</strong></td>
+<td>Runs publication / notification / GHSA / CVE tasks</td>
+<td>No ambient authority — every task acts on behalf of a stored <code>created_by</code> / <code>enqueued_by</code> user. Permission predicates are checked at <em>enqueue</em> time (<code>advisory-lifecycle.md</code> §3.1 row 7; an operator retry re-runs <code>can_publish</code> via <code>publication.services.retry</code>); at execution the worker re-validates task state, and notification recipient lists are re-resolved at <em>send</em> time (<a href="../invariant/#inv-privacy-2">INV-PRIVACY-2</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>"Reviewer" is not a separate role: it is exactly the global-admin actor
+acting on a <code>ReviewTask</code>. The only place "reviewer" appears as a distinct
+column in this document is the capability matrix's admin-only rows.</p>
+<hr />
+<h2 id="4-roles--resolution">4. Roles &amp; resolution<a class="headerlink" href="#4-roles--resolution" title="Permanent link">&para;</a></h2>
+<p>There are exactly three roles (<a href="../invariant/#inv-auth-2">INV-AUTH-2</a>): <code>viewer</code>, <code>collaborator</code>,
+<code>owner</code>, ranked in that order.</p>
+<p><strong>Resolution algorithm</strong> (<code>advisories.permissions.resolved_permission</code>):</p>
+<ol>
+<li>Anonymous → no access.</li>
+<li>Global admin (<code>OIDC_ADMIN_GROUP</code> member) → <code>owner</code>.</li>
+<li>Project security-team member for <code>advisory.project</code> → <code>owner</code>.</li>
+<li>Explicit grant — the highest rank held across all matching
+   <code>AdvisoryAccessGrant</code> rows (direct user grant or via a group the user
+   belongs to) → <code>collaborator</code> or <code>viewer</code> (<a href="../invariant/#inv-auth-4">INV-AUTH-4</a>).</li>
+<li>Otherwise → no access.</li>
+</ol>
+<p>Resolution does <strong>not</strong> consult <code>advisory.state</code>: a published advisory is
+still gated by the same explicit grants as a draft (<a href="../invariant/#inv-auth-7">INV-AUTH-7</a>).</p>
+<h3 id="why-owner-is-structural-not-grantable">Why <code>owner</code> is structural, not grantable<a class="headerlink" href="#why-owner-is-structural-not-grantable" title="Permanent link">&para;</a></h3>
+<p><code>owner</code> is the most privileged role; making it grantable would let any
+existing owner escalate themselves or others, defeating the IdP-mediated
+admin / security-team gating. <code>AdvisoryAccessGrant.Permission.choices</code>
+therefore lists only <code>collaborator</code> and <code>viewer</code>, and the grant service
+rejects <code>permission="owner"</code> at the API boundary
+(<a href="../invariant/#inv-auth-3">INV-AUTH-3</a>, <a href="../invariant/#inv-access-4">INV-ACCESS-4</a>). The only paths to <code>owner</code> are admin-group
+or project-security-team membership — both managed in the IdP.</p>
+<h3 id="grants-in-detail">Grants in detail<a class="headerlink" href="#grants-in-detail" title="Permanent link">&para;</a></h3>
+<ul>
+<li>A grant is unique per <code>(advisory, principal_type, principal_id)</code>
+  (<a href="../invariant/#inv-access-1">INV-ACCESS-1</a>); a second grant for the same principal updates the
+  existing row in place.</li>
+<li><code>principal_type</code> is <code>"user"</code> or <code>"group"</code>; group grants apply to every
+  current member of the Django <code>Group</code> (which itself mirrors an IdP
+  group).</li>
+<li>Invitations (<code>PendingInvitation</code>) carry an email and a target
+  permission. Redemption matches the authenticated user's email
+  case-insensitively (<a href="../invariant/#inv-access-2">INV-ACCESS-2</a>) and refuses expired rows
+  (<a href="../invariant/#inv-access-3">INV-ACCESS-3</a>; default lifetime 14 days).</li>
+<li>Every create / update / revoke / invite / redeem emits an audit entry
+  (<a href="../invariant/#inv-access-5">INV-ACCESS-5</a>).</li>
+</ul>
+<h3 id="shadow-pre-login-security-team-members">Shadow (pre-login) security-team members<a class="headerlink" href="#shadow-pre-login-security-team-members" title="Permanent link">&para;</a></h3>
+<p>To make <code>@team</code> mentions and team notifications reach security-team members
+who have <strong>never logged in</strong>, a scheduled sync mirrors each project's Eclipse
+security team (<code>projects.services.sync_security_team_roster</code>, from the
+authenticated Eclipse API) into <code>SecurityTeamRosterEntry</code> rows and
+pre-provisions a <em>shadow</em> <code>User</code> (<code>is_provisioned=True</code>) per member.</p>
+<p>A shadow user is <strong>notify-only</strong>: it is not a member of any group, resolves to
+no permission, and cannot act. Its sole effect is notification reach — it
+receives the security-team member's <em>default</em> notification set <strong>for its own
+project only</strong> (advisory-created, lifecycle events, triage-queue events, and
+<code>@</code>-mentions), and is always dropped from internal comments (<a href="../invariant/#inv-roster-1">INV-ROSTER-1</a>).
+Triage notifications are gated by the global <code>on_triage_event</code> preference
+(default on), which authenticated members may turn off. On first OIDC login the
+shadow is linked by email,
+<code>is_provisioned</code> clears, and access then comes entirely from the OIDC group
+claim (<a href="../invariant/#inv-oidc-5">INV-OIDC-5</a>) — the roster never grants access.</p>
+<p>Because notification emails embed advisory/comment content, this is a
+deliberate decision to disclose that content to an email sourced from the
+authenticated Eclipse security-team roster before the recipient has logged in.
+That trust boundary is the project's own security team (the same audience a
+private security mailing list would reach); internal comments stay
+collaborator+ only.</p>
+<hr />
+<h2 id="5-capability-matrix">5. Capability matrix<a class="headerlink" href="#5-capability-matrix" title="Permanent link">&para;</a></h2>
+<p>The matrix below is the <strong>only</strong> role-action table in this document. It
+states what each role can do <em>when the advisory is in <code>state=draft</code> and
+<code>review_status</code> is <code>none</code> or <code>changes_requested</code></em> — i.e. the unconstrained
+case. The next section lists the overrides that apply in other states.</p>
+<p>A user holding multiple roles takes the highest (e.g. an admin who is
+also a viewer-by-grant acts as owner).</p>
+<p>Symbols: ✓ allowed, ✗ blocked, — not applicable. Footnoted cells have
+asymmetries with the same-row entries.</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Viewer</th>
+<th>Collaborator</th>
+<th>Owner (security team)</th>
+<th>Global admin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>View advisory</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Post comment</td>
+<td>✓ ¹²</td>
+<td>✓ ¹²</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>See internal comments</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Post internal comment</td>
+<td>✗</td>
+<td>✓ ¹²</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Lock / unlock comments</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹²</td>
+<td>✓ ¹²</td>
+</tr>
+<tr>
+<td>See other users' email addresses</td>
+<td>✗ ⁷</td>
+<td>✗ ⁷</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Edit advisory content</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Grant / revoke access</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>View duplicate-check results / trigger a re-run</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ⁸</td>
+<td>✓ ⁸</td>
+</tr>
+<tr>
+<td>Change advisory's project</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Request reassignment (draft)</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ⁹</td>
+<td>✗ ⁹</td>
+</tr>
+<tr>
+<td>Withdraw a reassignment request</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ⁹</td>
+<td>✓ ⁹</td>
+</tr>
+<tr>
+<td>Dismiss advisory</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ²</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Reopen dismissed advisory</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ⁶</td>
+<td>✓ ⁶</td>
+</tr>
+<tr>
+<td>Request a CVE</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ³</td>
+<td>✓ ³</td>
+</tr>
+<tr>
+<td>Submit advisory for review</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹⁰</td>
+<td>✗ ⁴</td>
+</tr>
+<tr>
+<td>Approve / request changes on a review</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹⁰</td>
+</tr>
+<tr>
+<td>Withdraw a pending review</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹⁰</td>
+<td>✗ ⁴</td>
+</tr>
+<tr>
+<td>Revoke an existing approval</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹⁰</td>
+</tr>
+<tr>
+<td>Publish</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ⁵ ¹⁰</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Withdraw a published advisory</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹¹</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Request withdrawal of a published advisory</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓ ¹¹</td>
+<td>✗ ¹¹</td>
+</tr>
+<tr>
+<td>Approve / cancel a withdrawal request</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗ / ✓ ¹¹</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Unassign a CVE</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Lift a CVE-request ban</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>✓ ³</td>
+</tr>
+<tr>
+<td>Mark an orphan CVE rejected</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Resolve an orphan CVE reassignment task</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Move a native triage/draft report to GHSA ¹³</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Sync GHSA metadata for one advisory</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Sync GHSA across one project</td>
+<td>—</td>
+<td>—</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Sync GHSA across the org</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Refresh all PMI repo mirrors / reconcile / discovery / webhook catch-up on demand</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Configure the GitHub App</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Retry a failed CVE push (single or bulk)</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Browse the triage queue (Admin Console Inbox)</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>View operational SLA stats (Admin Console Stats)</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>View the GHSA operations dashboard (Admin Console GHSA)</td>
+<td>—</td>
+<td>—</td>
+<td>✗</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Submit a public triage report</td>
+<td>✓ (also anonymous)</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+<p>Footnotes:</p>
+<p>¹ Both the source advisory's owner role <strong>and</strong> security-team membership
+on the destination project are required (admins are exempt from the
+destination check). Defined by <code>can_change_project</code>. This applies to
+<strong>native</strong> advisories only: a GHSA-linked advisory's project follows its
+source repository in PMI and is never reassigned by hand — it is re-homed
+only by the PMI repo sync (<a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>).</p>
+<p>² Owner-only <strong>and</strong> the advisory must not currently have an
+<code>assigned_cve_id</code> (pulling the CVE is a CNA-side action only admins can
+take). Admins may dismiss even with an assigned CVE.</p>
+<p>³ Owner-only <strong>and</strong> the advisory must not have an open
+<code>CveRequestTask</code>, an <code>assigned_cve_id</code>, or <code>cve_requests_banned=True</code>
+(<a href="../invariant/#inv-cve-1">INV-CVE-1</a>). Available while the lifecycle state is <code>draft</code> or
+<code>published</code>; blocked in <code>triage</code> (promote first) and <code>dismissed</code>
+(reopen first — dismissal auto-cancels open requests, §6). The ban is set and
+<strong>lifted only by admins</strong> (<code>workflows.services.unban_cve_requests</code>, surfaced on
+<code>/admin/cves</code>); see <a href="../invariant/#inv-cve-3">INV-CVE-3</a>.</p>
+<p>⁴ Admins are the reviewers and cannot submit or withdraw submissions —
+this avoids self-review (<a href="../invariant/#inv-review-3">INV-REVIEW-3</a>).</p>
+<p>⁵ Project security-team members may publish only when <em>either</em> the
+project is marked <code>is_mature_publisher</code> <em>or</em> the advisory carries
+<code>review_status=approved</code> (see §7).</p>
+<p>⁶ Reopen is the only allowed <code>state=dismissed</code> action besides viewing.
+The reopened advisory returns to <code>Advisory.dismissed_from_state</code>
+(<code>triage</code> or <code>draft</code>); the normal review and publication gates re-engage
+from there. There is no direct <code>dismissed → published</code> transition
+(<a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>). Defined by <code>can_reopen</code>.</p>
+<p>⁷ Owner-only PII gate (<a href="../invariant/#inv-privacy-4">INV-PRIVACY-4</a>).
+Collaborators and viewers see display names only — where a user has no display
+name, the email is rendered masked (<code>a•••@example.org</code>). A user always sees
+their <em>own</em> email. This applies to every surface: rendered pages, the
+<code>@</code>-mention autocomplete, and the JSON API. Defined by <code>can_see_user_emails</code>.</p>
+<p>⁸ Owner-only because results enumerate other same-project advisories
+(ids, confidence, rationale) — exactly the set every owner of the checked
+advisory can already see, and more than a per-advisory grantee may see
+(<a href="../invariant/#inv-sim-1">INV-SIM-1</a>). The whole surface 404s while
+<code>SIMILARITY_CHECK_ENABLED</code> is off (<a href="../invariant/#inv-sim-2">INV-SIM-2</a>).
+Enforced by <code>similarity.views</code> via <code>resolved_permission == "owner"</code>.</p>
+<p>⁹ Draft-only and <strong>non-locking</strong>: a pending request never removes the team's
+edit/publish capability (<a href="../invariant/#inv-auth-9">INV-AUTH-9</a>), unlike the triage
+routing flag (§6). <strong>Native</strong> drafts only — a GHSA-linked draft's project follows its
+source repository in PMI (cf. footnote ¹, <a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>), so
+<code>can_request_reassignment</code> is always false for it. Global admins cannot <em>request</em> (they reassign directly) but may
+<em>withdraw</em>; only one request is pending at a time. An optional suggested target project
+enables a one-click <em>accept</em> gated on the <strong>suggested</strong> project's security team (or a
+global admin) — never the requester; accepting moves the advisory and appends a version.
+A <strong>global admin</strong> additionally gets an in-banner project picker (<code>can_pick_reassignment_target</code>)
+to resolve the request by reassigning to <strong>any</strong> project, not just the suggestion — sparing
+them the full edit form; the destination authority is re-checked per chosen project by
+<code>can_resolve_reassignment</code>. Defined by <code>can_request_reassignment</code> /
+<code>can_withdraw_reassignment_request</code> / <code>can_accept_reassignment_suggestion</code> /
+<code>can_pick_reassignment_target</code> / <code>can_resolve_reassignment</code>. See advisory-lifecycle §11.</p>
+<p>¹⁰ <strong>GHSA-linked advisories are never reviewed in AdvisoryHub</strong> — their content is synced
+from GitHub and isn't human-editable (<a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>,
+<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>), so the three review actions (submit / withdraw /
+revoke) are unavailable for them and a sync never invalidates an approval. Publication is
+<strong>system-driven</strong> (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>): the EF feed mirrors the GHSA
+automatically (auto-publish when GitHub publishes, auto-re-publish when synced content changes),
+so <code>can_publish</code> returns <code>False</code> for <strong>owners</strong> — they get <strong>no</strong> Publish/Re-publish button. A
+manual owner publish would be a no-op anyway, since <code>ghsa.services.refresh_for_publish</code> (GHSA must
+be published on GitHub, not 404, no CVE conflict) only lets one through once GitHub has published.
+Global admins keep a manual <strong>break-glass</strong> publish/retry (to re-drive a stuck/failed run, or
+publish while <code>GHSA_AUTO_PUBLISH_ENABLED</code> is off), still gated by <code>refresh_for_publish</code> so they
+cannot push it public ahead of GitHub. Defined by <code>can_submit_for_review</code> / <code>can_withdraw_review</code> /
+<code>can_revoke_approval</code> / <code>can_publish</code>.</p>
+<p>¹¹ <strong>Withdrawing a published advisory</strong> (<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>) mirrors the
+publish authority: a global admin, or a <strong>mature-publisher</strong> project owner, may withdraw directly —
+even with an assigned CVE (the orphan cascade then runs). A non-mature owner cannot withdraw
+directly; they <strong>request a withdrawal</strong> an admin fulfils (§ withdrawal request). Withdrawal
+re-exports the OSV/CSAF marked withdrawn (the documents stay in the feed) and flips the advisory to
+<code>dismissed</code>. Defined by <code>can_withdraw_published</code>.</p>
+<p>¹² <strong>Comment lock (dispute cool-down).</strong> An owner or admin can pause new comments on an advisory in
+<strong>any</strong> lifecycle state (<code>Lock / unlock comments</code>, defined by <code>can_lock_comments</code> — owner-only:
+global admins + the project security team). While a lock is in effect, only owners/admins may post —
+collaborators and viewers are blocked from posting <strong>any</strong> comment (internal or not). The lock is enforced
+through the single <code>can_comment</code> gate (consulted by the web view, JSON API, the <code>add_comment</code> service,
+and the comment-form template), so it lands on every write path (<a href="../invariant/#inv-auth-1">INV-AUTH-1</a>).
+It is <strong>not</strong> versioned — <code>comments_locked</code> is workflow metadata, absent from <code>Advisory.to_payload</code>.
+Lock and unlock are recorded in the audit log and surfaced in the activity timeline
+(<code>ADVISORY_COMMENTS_LOCKED</code> / <code>ADVISORY_COMMENTS_UNLOCKED</code>); an optional, secret-redacted reason is
+posted as a <strong>public</strong> author-attributed comment (<code>record_action_note</code>, shown to everyone with
+access — note this uses <code>add_comment(system=True)</code> to bypass the very lock it is setting). Defined
+by <code>can_lock_comments</code> / <code>advisories.services.lock_advisory_comments</code> / <code>unlock_advisory_comments</code>.</p>
+<p>¹³ <strong>Move to GHSA</strong> (<a href="../invariant/#inv-ghsa-4">INV-GHSA-4</a>). For a vulnerability filed as a
+<strong>native</strong> report (<code>triage</code> or <code>draft</code>) that should have been a private vulnerability report on
+GitHub. Owner-only (project security team + global admins), gated on <code>GHSA_FEATURE_ENABLED</code>, and
+offered only when the advisory's project has at least one active GitHub repo with <strong>private
+vulnerability reporting (PVR)</strong> enabled (cached flag, refreshed live when the picker opens). The
+owner selects a target repo of the advisory's own project; AdvisoryHub authors a repository security
+advisory there from the report content and converts the row <strong>in place</strong> to GHSA-linked — the one
+sanctioned outbound <em>create</em> and <code>kind</code> flip. Requires step-up re-authentication. An assigned CVE
+does <strong>not</strong> block the move (it is carried onto the new GHSA). The target repo must be an active repo
+of the <strong>same</strong> project so the project never changes (<a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>) and
+must have PVR enabled (re-validated live at move time). After the move the advisory follows the
+inbound-only GHSA lifecycle (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). Defined by <code>can_move_to_ghsa</code>
+/ <code>ghsa.services.move_advisory_to_ghsa</code>.</p>
+<hr />
+<h2 id="6-state-conditioned-overrides">6. State-conditioned overrides<a class="headerlink" href="#6-state-conditioned-overrides" title="Permanent link">&para;</a></h2>
+<p>The matrix in §5 assumes <code>state=draft</code> with <code>review_status</code> in
+<code>{none, changes_requested}</code>. The other states and the review-pending
+state add the following restrictions on top of (never in addition to)
+the matrix:</p>
+<ul>
+<li><strong><code>triage</code>.</strong> Only the <code>owner</code> row of the matrix applies; collaborator
+  and viewer rows are suppressed for <em>every</em> action other than <code>View
+  advisory</code> and <code>Post comment</code>. The reporter's auto-granted
+  viewer can therefore read and comment on their report, but cannot
+  edit, publish, or request a CVE on it (<a href="../invariant/#inv-auth-5">INV-AUTH-5</a>). Internal
+  comments still require collaborator+. In addition: <code>Submit advisory
+  for review</code>, <code>Publish</code>, and <code>Request a CVE</code> are blocked for everyone
+  (advisories must be promoted to <code>draft</code> first). The triage-specific actions
+  <code>promote_triage_to_draft</code>, <code>dismiss_triage</code>, and
+  <code>flag_for_admin_routing</code> follow the <code>owner</code> column, with the
+  asymmetry that admins cannot flag (their queue is the destination).</li>
+</ul>
+<p><strong>GHSA-linked exception.</strong> A GHSA-linked advisory can also sit in <code>triage</code>,
+  but as a <em>read-only mirror</em> of GitHub's triage state
+  (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>), not an untrusted human report.
+  <code>can_triage</code> and <code>can_flag_for_admin_routing</code> return <code>False</code> for it, so
+  promote / dismiss-via-triage / flag are all unavailable; it advances only by
+  mirroring GitHub (triage → draft on acceptance, → published via auto-publish,
+  → dismissed on close). It is also kept out of the admin-console Inbox work
+  queue.</p>
+<ul>
+<li>
+<p><strong><code>triage</code> with <code>needs_admin_routing=True</code>.</strong> Edit and triage
+  decisions are further restricted to <strong>global admins only</strong>. Clearing
+  the flag is owner-level: a global admin <em>or</em> the project's security
+  team may unflag, retracting their own handoff — <strong>except</strong> on the
+  <code>unsorted</code> sentinel project, where the flag cannot be cleared in place
+  and is lifted only by reassigning to a real project (or promoting /
+  dismissing). Admins resolve routing by reassigning the advisory to a
+  real project — offered as an admin-only "assign to project" picker on
+  the routing banner (<code>reassign_triage</code>), or via the edit form. Project
+  owners may <em>flag</em> a misrouted report only when not already flagged and
+  not on the <code>unsorted</code> sentinel project
+  (<a href="../invariant/#inv-auth-6">INV-AUTH-6</a>, <a href="../invariant/#inv-intake-4">INV-INTAKE-4</a>).</p>
+</li>
+<li>
+<p><strong><code>review_status=submitted</code>.</strong> <code>Edit advisory content</code> is blocked for
+  every role except global admin. <code>Publish</code> is blocked for <strong>everyone,
+  including admins</strong> — the pending review must be decided or withdrawn
+  first (<a href="../invariant/#inv-perm-3">INV-PERM-3</a>). <code>Withdraw a pending review</code> is the
+  submitter-side affordance for non-admin owners; admins decide via
+  Approve / Request changes.</p>
+</li>
+<li>
+<p><strong><code>published</code>.</strong> <code>Dismiss advisory</code> is blocked (a published row stays
+  published; corrections go through Edit + Re-publish). Edits append a
+  new <code>AdvisoryVersion</code> and set <code>republish_required=True</code>, which makes
+  the existing matrix-allowed <code>Publish</code> action surface a re-publish
+  button (<a href="../invariant/#inv-version-1">INV-VERSION-1</a>, <a href="../invariant/#inv-review-4">INV-REVIEW-4</a>).
+  <em>(GHSA-linked exception, footnote ¹⁰: there is no owner re-publish button — a
+  synced content change auto-re-publishes via <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>;
+  only the admin break-glass surfaces the button.)</em> Non-admin edits that would
+  otherwise invalidate an <code>approved</code> review reset <code>review_status</code>
+  automatically; an admin's edit leaves the approval standing (the admin
+  <em>is</em> the reviewer — explicit retraction goes through <code>Revoke an
+  existing approval</code>).</p>
+</li>
+<li>
+<p><strong><code>dismissed</code>.</strong> While dismissed, <code>Publish</code>, <code>Submit advisory for
+  review</code>, <code>Request a CVE</code>, and <code>Edit advisory content</code> are blocked for
+  every role. <code>Reopen dismissed advisory</code> is the only state-change
+  action available; it is owner-gated and returns the advisory to
+  <code>Advisory.dismissed_from_state</code> (<a href="../invariant/#inv-lifecycle-4">INV-LIFECYCLE-4</a>). The advisory
+  remains viewable per its grants throughout.</p>
+</li>
+</ul>
+<p>These are the only state overrides. Anything not mentioned here follows
+the matrix unchanged.</p>
+<hr />
+<h2 id="7-mature-publisher">7. Mature publisher<a class="headerlink" href="#7-mature-publisher" title="Permanent link">&para;</a></h2>
+<p>A project may be flagged <code>is_mature_publisher</code> on its <code>Project</code> row
+(<a href="../invariant/#inv-perm-2">INV-PERM-2</a>). When set, the <code>Publish</code> matrix entry for the project's
+security-team members no longer requires <code>review_status=approved</code>: the
+team may publish drafts directly, subject only to the universal
+"no publish while review is submitted" gate from §6
+(<a href="../invariant/#inv-perm-1">INV-PERM-1</a>, <a href="../invariant/#inv-perm-3">INV-PERM-3</a>).</p>
+<p>Mature-publisher status is <strong>not</strong> an IdP group, an environment
+variable, or a per-user flag — it lives on the project row so admins
+can flip it from the admin console and the change is auditable.</p>
+<hr />
+<h2 id="8-step-up-authentication">8. Step-up authentication<a class="headerlink" href="#8-step-up-authentication" title="Permanent link">&para;</a></h2>
+<p>A small set of actions require a <strong>recent re-authentication</strong> in
+addition to passing the matrix check. <code>accounts.step_up.is_step_up_fresh</code>
+gates them against <code>session["step_up_auth_at"]</code>; if the timestamp is
+missing or older than <code>STEP_UP_MAX_AGE_SECONDS</code> (default 300 s), the
+view redirects through <code>require_step_up_or_redirect</code> for a forced
+re-prompt.</p>
+<p>The <code>step_up_auth_at</code> timestamp is written by the sole <code>user_logged_in</code>
+receiver (<code>accounts.step_up.record_step_up_on_login</code>) only when <strong>both</strong> a
+<code>step_up_pending</code> session marker is present <em>and</em> the completing OIDC login
+actually re-authenticated the user — proven from the ID token's <code>auth_time</code>
+claim being within <code>STEP_UP_MAX_AGE_SECONDS</code>. The forced-re-prompt flow sends
+<code>prompt=login&amp;max_age=0</code>, so a conformant OP sets <code>auth_time</code> to "now"; a login
+satisfied from the OP's existing SSO session carries an old <code>auth_time</code>. The
+<code>step_up_pending</code> flag alone does <strong>not</strong> satisfy step-up: it is set before the
+IdP round-trip and survives <code>auth.login</code>'s session-key cycling, so without the
+<code>auth_time</code> check an ordinary <code>/oidc/authenticate/</code> SSO login (no credential
+re-entry) could redeem it. The check fails closed — an absent or non-fresh
+<code>auth_time</code> never grants step-up.</p>
+<p>Two rationales drive the gated set: <strong>actions that emit to / reconfigure
+an external system</strong> (the public Git repo, the GitHub App, GHSA), and a
+small number of <strong>break-glass admin actions</strong> that are irreversible or
+have an org-wide blast radius. The actions currently gated by step-up
+are:</p>
+<ul>
+<li><strong>Publish / retry a publication</strong> — <code>publication/views.py</code>; the JSON
+  API equivalents answer <code>401 step_up_required</code> instead of redirecting
+  (<code>api/views_publication.py</code>). The interactive <code>publish</code> view additionally
+  requires the operator to re-enter the advisory's <code>ECL-…</code> ID — gated
+  client-side (<code>advisoryhub-forms.js</code>) and re-checked server-side before
+  <code>services.publish</code> — so a misclick can't publish the wrong advisory to the
+  public repo; <code>retry</code> (admin recovery on an already-confirmed task) does not.</li>
+<li><strong>Withdraw / approve a withdrawal of a published advisory</strong> —
+  <code>advisories/views.py</code> (<code>advisory_withdraw</code>, <code>advisory_approve_withdrawal</code>).
+  Withdrawal re-exports OSV/CSAF and pushes to the same public Git repo as
+  publish, so it carries the same gate. Merely <em>requesting</em> or <em>cancelling</em>
+  a withdrawal request is <em>not</em> gated (no external push).</li>
+<li><strong>Connect the GitHub App / rescan installations</strong> — <code>ghsa/views.py</code>.</li>
+<li><strong>Org-wide GHSA operations</strong> — <code>ghsa/views.py</code>: <code>sync_all_ghsas</code>,
+  <code>sync_all_pmi_repos</code>, <code>reconcile_now</code>, <code>discover_now</code>, <code>catch_up_webhooks</code>
+  (the on-demand backstop triggers surfaced on the Admin Console GHSA
+  dashboard). The project-scoped sync is <em>not</em> step-up gated.</li>
+<li><strong>Retry a failed CVE push to GHSA</strong> — <code>ghsa/views.py</code> (<code>retry_cve_push</code>
+  single, <code>retry_all_cve_pushes</code> bulk).</li>
+<li><strong>Break-glass admin actions</strong> — <code>admin_console/views/</code>: forget a user
+  (<code>users.py</code> <code>user_forget</code>, irreversible GDPR erasure), ban / unban a user
+  (<code>user_ban</code> / <code>user_unban</code>, account lockout), and toggling maintenance mode
+  (<code>maintenance.py</code>, org-wide write freeze — only the POST that flips the
+  switch is gated; viewing the page is not).</li>
+</ul>
+<p>The whole mechanism is switched off when <code>STEP_UP_REQUIRED=False</code>
+(default in the <code>test</code> settings module so test clients can <code>force_login</code>
+without an OIDC round-trip).</p>
+<hr />
+<h2 id="9-enforcement-surfaces">9. Enforcement surfaces<a class="headerlink" href="#9-enforcement-surfaces" title="Permanent link">&para;</a></h2>
+<p>Every surface re-checks the same predicates from
+<code>advisories/permissions.py</code>. Templates only display — they never decide
+(<a href="../invariant/#inv-auth-1">INV-AUTH-1</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Module(s)</th>
+<th>Enforcement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web views</td>
+<td><code>advisories/views.py</code>, <code>advisories/views_workflow.py</code>, <code>access/views.py</code>, <code>comments/views.py</code>, <code>publication/views.py</code>, <code>ghsa/views.py</code></td>
+<td><code>require_advisory_permission</code> decorator or <code>AdvisoryPermissionMixin</code>; explicit <code>can_*</code> calls before each state-changing action.</td>
+</tr>
+<tr>
+<td>JSON API</td>
+<td><code>api/views_*.py</code></td>
+<td>Same <code>can_*</code> predicates as the web views (e.g. <code>can_grant_access</code>, <code>can_view</code>, <code>can_see_internal_comment</code>, <code>can_publish</code>); list endpoints filter querysets through <code>can_view</code>.</td>
+</tr>
+<tr>
+<td>Admin console</td>
+<td><code>admin_console/views/*</code></td>
+<td>All sections wrapped with <code>@admin_required</code>, which is <code>can_review</code> (global admin only).</td>
+</tr>
+<tr>
+<td>Duplicate-check panel</td>
+<td><code>similarity/views.py</code></td>
+<td>Owner-only (<code>resolved_permission == "owner"</code>) on both the HTMX fragment and the re-run POST; the whole surface returns 404 while <code>SIMILARITY_CHECK_ENABLED</code> is off (<a href="../invariant/#inv-sim-1">INV-SIM-1</a>, <a href="../invariant/#inv-sim-2">INV-SIM-2</a>).</td>
+</tr>
+<tr>
+<td>Celery tasks</td>
+<td><code>publication/tasks.py</code>, <code>notifications/tasks.py</code>, <code>ghsa/tasks.py</code>, <code>similarity/tasks.py</code>, <code>projects/tasks.py</code>, <code>audit/tasks.py</code></td>
+<td>Act on behalf of the stored enqueuing user — predicates checked at enqueue (§3); execution re-validates task state; notification recipient lists are filtered again at send so revoked grants drop (<a href="../invariant/#inv-privacy-2">INV-PRIVACY-2</a>).</td>
+</tr>
+<tr>
+<td>Public intake</td>
+<td><code>intake/views.py</code></td>
+<td>No authorization (<code>can_submit_triage_report</code> always returns true). Abuse control is the form-layer honeypot (<a href="../invariant/#inv-intake-1">INV-INTAKE-1</a>) plus rate limits keyed on anonymous/authenticated (<code>RATELIMIT_INTAKE_ANON</code> / <code>RATELIMIT_INTAKE_USER</code>).</td>
+</tr>
+<tr>
+<td>Comment read filtering</td>
+<td><code>comments/services.py</code>, <code>comments/views.py</code></td>
+<td><code>is_internal</code> is fixed at creation (<a href="../invariant/#inv-comment-1">INV-COMMENT-1</a>); visibility is re-checked at <em>read</em> and notification <em>send</em> time (<a href="../invariant/#inv-comment-2">INV-COMMENT-2</a>).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-audit-footprint">10. Audit footprint<a class="headerlink" href="#10-audit-footprint" title="Permanent link">&para;</a></h2>
+<p>Every governance action that this document names emits exactly one
+<code>AuditLogEntry</code> row at the moment it succeeds (<a href="../invariant/#inv-audit-3">INV-AUDIT-3</a>). The
+authoritative catalogue of recordable actions is the <code>Action</code> enum in
+<code>audit/models.py</code>; web-originated entries additionally capture the
+requesting IP and User-Agent (<a href="../invariant/#inv-audit-4">INV-AUDIT-4</a>). The log is append-only
+in both the application and database layers (<a href="../invariant/#inv-audit-1">INV-AUDIT-1</a>).</p>
+<p>For an action to count as "audited" it must reach <code>audit.services.record</code>
+or <code>record_from_request</code> — both funnel every user/CI-supplied string
+through <code>redact_secrets</code> so tokens, key paths, and bearer URLs never
+land in audit metadata (<a href="../invariant/#inv-audit-2">INV-AUDIT-2</a>, <a href="../invariant/#inv-secret-1">INV-SECRET-1</a>).</p>
+<hr />
+<h2 id="11-out-of-scope">11. Out of scope<a class="headerlink" href="#11-out-of-scope" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Public anonymous reads.</strong> The website at which published advisories
+  are consumed lives in a separate Git repository; its access policy is
+  not part of this document. Inside AdvisoryHub, "published" never
+  grants implicit read (<a href="../invariant/#inv-auth-7">INV-AUTH-7</a>).</li>
+<li><strong>MITRE CVE assignment.</strong> <code>workflows.CveRequestTask</code> is an internal
+  queue; AdvisoryHub does not call any external CVE API and does not
+  authorize external CNA actions.</li>
+<li><strong>IdP-side group management.</strong> Group membership is managed in the
+  IdP (Kanidm in dev). AdvisoryHub mirrors and reads it, but does not
+  let anyone edit it from the application.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

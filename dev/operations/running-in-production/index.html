@@ -1,0 +1,1838 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/operations/running-in-production/">
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../deploy-kubernetes/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Running in production - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#running-in-production" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Running in production
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../manual/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../manual/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/security-team/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/administrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-process-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Process topology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-reverse-proxy--tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Reverse proxy &amp; TLS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-static-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Static files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-health--readiness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Health &amp; readiness
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-celery-beat-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The Celery beat schedule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-security-hardening-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Security hardening checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-database-hardening-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Database hardening checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../specification/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/advisory-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-process-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Process topology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-reverse-proxy--tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Reverse proxy &amp; TLS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-static-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Static files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-health--readiness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Health &amp; readiness
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-celery-beat-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The Celery beat schedule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-security-hardening-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Security hardening checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-database-hardening-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Database hardening checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="running-in-production">Running in production<a class="headerlink" href="#running-in-production" title="Permanent link">&para;</a></h1>
+<p>How to run the three processes, front them correctly, wire health probes, and
+harden the deployment. Configuration lives in <a href="../configuration/">configuration.md</a>;
+integrations in <a href="../integrations/">integrations.md</a>.</p>
+<hr />
+<h2 id="1-process-topology">1. Process topology<a class="headerlink" href="#1-process-topology" title="Permanent link">&para;</a></h2>
+<p>Run three long-lived processes, all from the same image and the same environment:</p>
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>Command</th>
+<th>Scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>web</strong></td>
+<td><code>gunicorn config.wsgi -c gunicorn.conf.py</code></td>
+<td>Horizontal — many replicas behind the proxy.</td>
+</tr>
+<tr>
+<td><strong>worker</strong></td>
+<td><code>celery -A config worker -l info --pool=threads --concurrency=N</code></td>
+<td>Horizontal.</td>
+</tr>
+<tr>
+<td><strong>beat</strong></td>
+<td><code>celery -A config beat -l info</code></td>
+<td><strong>Exactly one</strong> instance.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Settings-module gotcha.</strong> <code>config/wsgi.py</code>/<code>asgi.py</code> default to
+<code>config.settings.prod</code>, but <code>config/celery.py</code> defaults to <strong><code>config.settings.dev</code></strong>.
+Always export <strong><code>DJANGO_SETTINGS_MODULE=config.settings.prod</code></strong> for the worker and
+beat (and ideally for every process) so they don't silently run dev settings.</p>
+</blockquote>
+<p><strong>web</strong> — gunicorn with this repo's <code>gunicorn.conf.py</code> (its <code>child_exit</code> hook reaps
+Prometheus multiprocess files). Set <code>PROMETHEUS_MULTIPROC_DIR</code> to a writable,
+empty-at-boot tmpfs so the custom <code>advisoryhub_*</code> counters aggregate across
+workers; choose <code>--workers</code>/<code>--bind</code> to taste:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DJANGO_SETTINGS_MODULE</span><span class="o">=</span>config.settings.prod
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PROMETHEUS_MULTIPROC_DIR</span><span class="o">=</span>/run/prometheus<span class="w">     </span><span class="c1"># tmpfs, empty at boot</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>gunicorn<span class="w"> </span>config.wsgi<span class="w"> </span>-c<span class="w"> </span>gunicorn.conf.py<span class="w"> </span>--workers<span class="w"> </span><span class="m">4</span><span class="w"> </span>--bind<span class="w"> </span><span class="m">0</span>.0.0.0:8000
+</code></pre></div>
+<p><strong>worker</strong> — use <code>--pool=threads</code> so a single Prometheus exporter sees every task
+thread (the tasks are I/O-bound: git push, GitHub/PMI API, email). Set
+<code>PROMETHEUS_WORKER_METRICS_PORT</code> to expose its exporter:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">DJANGO_SETTINGS_MODULE</span><span class="o">=</span>config.settings.prod
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PROMETHEUS_WORKER_METRICS_PORT</span><span class="o">=</span><span class="m">9808</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>celery<span class="w"> </span>-A<span class="w"> </span>config<span class="w"> </span>worker<span class="w"> </span>-l<span class="w"> </span>info<span class="w"> </span>--pool<span class="o">=</span>threads<span class="w"> </span>--concurrency<span class="o">=</span><span class="m">4</span>
+</code></pre></div>
+<p><strong>beat</strong> — fires the periodic tasks (§5). Run a single instance; if the filesystem
+is read-only or ephemeral, point its schedule file somewhere writable with
+<code>--schedule=/var/run/celerybeat-schedule</code>.</p>
+<blockquote>
+<p>Task semantics: publication is enqueued on <code>transaction.on_commit</code> (so a row is
+never published before its DB transaction lands) and runs <code>acks_late</code>, so a task
+redelivers if a worker dies mid-flight. A failed publish leaves the advisory's
+state unchanged (<a href="../../specification/invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>).</p>
+</blockquote>
+<hr />
+<h2 id="2-reverse-proxy--tls">2. Reverse proxy &amp; TLS<a class="headerlink" href="#2-reverse-proxy--tls" title="Permanent link">&para;</a></h2>
+<p><code>web</code> expects to sit behind a TLS-terminating reverse proxy / load balancer:</p>
+<ul>
+<li>Terminate HTTPS upstream and forward to gunicorn.</li>
+<li>Set <strong><code>DJANGO_ALLOWED_HOSTS</code></strong> to your real hostname(s).</li>
+<li><code>prod.py</code> enables <strong><code>SECURE_SSL_REDIRECT</code></strong> and HSTS. Because TLS terminates
+  at the proxy, set <strong><code>USE_X_FORWARDED_PROTO=True</code></strong> so Django trusts the
+  proxy's <code>X-Forwarded-Proto</code> — without it every request 301-loops. Only enable
+  it when all traffic passes a proxy that sets (never forwards) that header.</li>
+<li>Set <strong><code>CSRF_TRUSTED_ORIGINS</code></strong> to the public origin(s), e.g.
+  <code>https://advisoryhub.example.org</code>, so CSRF origin checking accepts form posts
+  arriving via the proxy.</li>
+<li><code>/healthz</code>, <code>/readyz</code> and <code>/metrics</code> are exempt from the SSL redirect
+  (<code>SECURE_REDIRECT_EXEMPT</code>): plain-HTTP kubelet probes and Prometheus scrapes
+  get real status codes — a 301 would count as a passing probe while skipping
+  the actual readiness checks.</li>
+<li>Set <strong><code>TRUSTED_PROXY_COUNT</code></strong> to the number of proxies in front of the app so
+  per-IP rate limits and audit-log client IPs use the true client address and
+  can't be spoofed via a forged <code>X-Forwarded-For</code>.</li>
+<li>Keep <code>/metrics</code> off the public ingress (§ observability).</li>
+</ul>
+<hr />
+<h2 id="3-static-files">3. Static files<a class="headerlink" href="#3-static-files" title="Permanent link">&para;</a></h2>
+<p>Static assets are served by <strong>WhiteNoise</strong> directly from the app — no separate
+static host or CDN, and no third-party asset origins.</p>
+<ul>
+<li>Run <strong><code>python manage.py collectstatic --noinput</code></strong> at build/release time. It
+  hashes filenames and precompresses (gzip + brotli) into <code>STATIC_ROOT</code>
+  (<code>staticfiles/</code>).</li>
+<li><code>prod.py</code> selects <code>CompressedManifestStaticFilesStorage</code> and inserts
+  <code>WhiteNoiseMiddleware</code> right after <code>SecurityMiddleware</code>; hashed assets are served
+  with a 1-year immutable <code>Cache-Control</code>.</li>
+<li>Vendored assets (htmx, the Inter font) are checked in and integrity-verified by
+  <code>dev/check_vendored_assets.sh</code>; there is no font/script CDN.</li>
+</ul>
+<p>Never serve production static through the dev runserver.</p>
+<hr />
+<h2 id="4-health--readiness">4. Health &amp; readiness<a class="headerlink" href="#4-health--readiness" title="Permanent link">&para;</a></h2>
+<p>Two unauthenticated, CSRF-exempt <code>GET</code> endpoints (<code>common/health.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Use</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/healthz</code></td>
+<td><strong>Liveness</strong> probe</td>
+<td>Always <code>200 {"status":"ok"}</code> if the process answers — no dependency checks.</td>
+</tr>
+<tr>
+<td><code>/readyz</code></td>
+<td><strong>Readiness</strong> probe</td>
+<td><code>200</code> only if every enabled check passes; otherwise <code>503</code> with <code>{"status":"fail","failures":{…}}</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>/readyz</code> always probes the <strong>database</strong> and the <strong>cache</strong>. It additionally probes:</p>
+<ul>
+<li>the <strong>Celery broker</strong> when <code>READYZ_INCLUDE_BROKER=True</code> (recommended in prod —
+  <code>safe_enqueue</code> swallows broker outages, so without this a down broker is
+  invisible and enqueued work sits queued forever);</li>
+<li>the <strong>publication repo</strong> (<code>git ls-remote</code>) when <code>PUB_REPO_URL</code> is set <strong>and</strong>
+  <code>READYZ_INCLUDE_PUB_REPO=True</code> (off by default — it egresses to the remote on
+  every probe).</li>
+</ul>
+<p>Wire your orchestrator's liveness probe to <code>/healthz</code> and its readiness probe to
+<code>/readyz</code>.</p>
+<hr />
+<h2 id="5-the-celery-beat-schedule">5. The Celery beat schedule<a class="headerlink" href="#5-the-celery-beat-schedule" title="Permanent link">&para;</a></h2>
+<p><code>beat</code> fires four periodic tasks (defined in <code>config/settings/base.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Schedule entry</th>
+<th>Task</th>
+<th>Cadence</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pmi-repo-mirror</code></td>
+<td><code>ghsa.tasks.run_pmi_repo_sync</code></td>
+<td>every <code>PMI_SYNC_INTERVAL_HOURS</code> (6h)</td>
+<td>Refresh the project↔repo mirror from Eclipse PMI.</td>
+</tr>
+<tr>
+<td><code>access-log-partition-maintenance</code></td>
+<td><code>audit.tasks.maintain_access_log_partitions</code></td>
+<td>daily</td>
+<td>Create the upcoming month's access-log partition; drop expired ones (no-op when retention disabled).</td>
+</tr>
+<tr>
+<td><code>backlog-gauge-refresh</code></td>
+<td><code>audit.tasks.refresh_backlog_gauges</code></td>
+<td>every 60s</td>
+<td>Refresh the <code>advisoryhub_backlog</code> Prometheus gauge from live counts.</td>
+</tr>
+<tr>
+<td><code>security-roster-sync</code></td>
+<td><code>projects.tasks.run_roster_sync</code></td>
+<td>every <code>PMI_ROSTER_SYNC_INTERVAL_HOURS</code> (24h)</td>
+<td>Refresh security-team rosters (no-op unless <code>PMI_ROSTER_SYNC_ENABLED</code>).</td>
+</tr>
+</tbody>
+</table>
+<p>The PMI mirror and roster cadences follow their interval env vars; the other two
+are fixed. Without a running <code>beat</code>, none of these fire — notably the backlog
+gauge stays empty.</p>
+<hr />
+<h2 id="6-security-hardening-checklist">6. Security hardening checklist<a class="headerlink" href="#6-security-hardening-checklist" title="Permanent link">&para;</a></h2>
+<p>Most hardening is on by default in <code>prod.py</code> / <code>base.py</code>; verify and complete:</p>
+<ul>
+<li>[ ] Run <strong><code>python manage.py check --deploy --fail-level WARNING</code></strong> in your release
+      pipeline — it flags missing/weak security settings.</li>
+<li>[ ] <code>DEBUG=False</code>, <code>DJANGO_ALLOWED_HOSTS</code> set to real hosts.</li>
+<li>[ ] Cookies: <code>SESSION_COOKIE_SECURE</code>/<code>CSRF_COOKIE_SECURE</code> (auto-on when not
+      <code>DEBUG</code>) and the <code>__Host-</code> cookie name prefix — both require HTTPS. <em>(Changing
+      a cookie name logs everyone out once on that deploy.)</em></li>
+<li>[ ] HSTS (1 year, subdomains, preload) and <code>SECURE_SSL_REDIRECT</code> — on in <code>prod.py</code>.</li>
+<li>[ ] <strong>CSP</strong> is a nonce-based <code>script-src 'strict-dynamic'</code> policy, <strong>enforced</strong> by
+      default; use <code>CSP_REPORT_ONLY=True</code> (+ optional <code>CSP_REPORT_URI</code>) only to
+      diagnose a new violation.</li>
+<li>[ ] <code>X-Frame-Options: DENY</code>, <code>X-Content-Type-Options: nosniff</code>, and a restrictive
+      <code>Permissions-Policy</code> are emitted automatically.</li>
+<li>[ ] <code>TRUSTED_PROXY_COUNT</code> matches your proxy depth (§2).</li>
+<li>[ ] Secrets are mounted as <strong>files</strong> (<code>PUB_REPO_SSH_KEY_PATH</code>,
+      <code>GITHUB_APP_PRIVATE_KEY_PATH</code>) rather than inline where possible. All
+      user/CI-supplied strings are funnelled through <code>redact_secrets</code>, so tokens and
+      keys never reach logs, audit metadata, task errors, or notifications
+      (<a href="../../specification/invariant/#inv-secret-1">INV-SECRET-1</a>, <a href="../../specification/invariant/#inv-audit-2">INV-AUDIT-2</a>).</li>
+<li>[ ] <strong><code>/metrics</code> is reachable only from your monitoring network</strong> — it is
+      intentionally unauthenticated at the app layer; gate it with network policy or
+      a private port, never the public ingress.</li>
+<li>[ ] <code>RATELIMIT_ENABLE=True</code> and <code>STEP_UP_REQUIRED=True</code> in prod.</li>
+<li>[ ] Account <strong>ban</strong> (<code>is_active=False</code>, from the Admin Console) is the one
+      app-side override of IdP authority — it drops a live session immediately
+      (<a href="../../specification/invariant/#inv-auth-8">INV-AUTH-8</a>); everything else propagates at next login.</li>
+</ul>
+<hr />
+<h2 id="7-database-hardening-checklist">7. Database hardening checklist<a class="headerlink" href="#7-database-hardening-checklist" title="Permanent link">&para;</a></h2>
+<p>AdvisoryHub does <strong>not</strong> encrypt advisory content at the application layer
+(<a href="../../specification/invariant/#inv-conf-1">INV-CONF-1</a>) — search and duplicate
+detection need plaintext, queryable columns. Confidentiality of the (often
+embargoed) content at rest is therefore a <strong>deployment responsibility</strong>. The
+headline threat is an attacker who steals the database credentials and connects
+directly; note that disk / volume / TDE encryption does <strong>not</strong> address that
+case (the database decrypts for any client holding a valid password) — it only
+protects stolen media. Harden the database access path
+(<a href="../../specification/architecture/#39-data-confidentiality-and-the-database-compromise-threat">architecture.md §3.9</a>):</p>
+<ul>
+<li>[ ] <strong>Network reachability is the primary control.</strong> Put Postgres on a private
+      network reachable only from the web/worker/beat pods (no public IP); stolen
+      credentials are inert if port 5432 is unreachable. The chart's
+      <code>NetworkPolicy</code> is opt-in (<code>networkPolicy.enabled</code>) and ingress-only —
+      egress, including to the database, stays open — so pin egress to the DB
+      endpoint at the platform layer (security group / private subnet / firewall).</li>
+<li>[ ] <strong>Prefer short-lived / IAM credentials over a static password.</strong> Where the
+      platform offers it (cloud IAM database auth, or a secrets manager issuing
+      dynamic expiring credentials), use it so there is no long-lived
+      <code>DATABASE_URL</code> password to exfiltrate.</li>
+<li>[ ] <strong>Require TLS.</strong> Append <code>?sslmode=verify-full</code> (with a pinned server CA) to
+      <code>DATABASE_URL</code> so the app refuses an unencrypted or MITM'd connection
+      (<a href="../configuration/#3-database--cache">configuration.md §3</a>).</li>
+<li>[ ] <strong>Run under a least-privilege role.</strong> The app role should not be a
+      superuser, should not be able to <code>COPY … TO PROGRAM</code>, and should not be
+      able to lower <code>session_replication_role</code> (which would let a direct session
+      bypass the append-only triggers,
+      <a href="../../specification/invariant/#inv-audit-1">INV-AUDIT-1</a>).</li>
+<li>[ ] <strong>Row-level security is the in-database backstop.</strong> Advisory visibility is
+      re-enforced below the application by Postgres RLS as a fail-closed layer
+      (<a href="../../specification/invariant/#inv-conf-2">INV-CONF-2</a>,
+      <a href="../../specification/architecture/#310-project-data-isolation-and-the-authorization-bug-threat">architecture.md §3.10</a>).
+      The shipped default keeps the app connecting as the table owner with
+      <code>FORCE ROW LEVEL SECURITY</code> and an in-policy admin/system bypass keyed on the
+      <code>advisoryhub.is_admin</code> session GUC. For stronger isolation, run migrations as
+      the owner and point the app's <code>DATABASE_URL</code> at a <strong>separate non-owner login
+      role</strong> (neither owner nor <code>BYPASSRLS</code>): RLS then applies without <code>FORCE</code> and
+      there is no in-policy bypass to misconfigure.</li>
+<li>[ ] <strong>Encrypt and access-control backups.</strong> Backups are the most common real
+      leak vector — encrypt them with a key held outside the database and
+      restrict who can fetch them
+      (<a href="../maintenance/#1-backups--data-integrity">maintenance.md §1</a>).</li>
+<li>[ ] <strong>Enable encryption-at-rest</strong> (volume encryption or managed-DB TDE). This
+      covers stolen disks/snapshots, <strong>not</strong> stolen credentials — keep it, but
+      don't mistake it for protection against a direct connection.</li>
+<li>[ ] <strong>Enable database-level audit and anomaly detection</strong> (<code>pgaudit</code> /
+      <code>log_connections</code>, shipped to your SIEM; alert on connections from
+      unexpected source IPs or roles). Direct DB access bypasses the application
+      audit log (<a href="../../specification/invariant/#inv-audit-1">INV-AUDIT-1</a>)
+      entirely, so this is the compensating detection control.</li>
+</ul>
+<hr />
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../configuration/">configuration.md</a> — the variables referenced here.</li>
+<li><a href="../observability/">observability.md</a> — metrics, dashboards, alerts, Sentry.</li>
+<li><a href="../maintenance/">maintenance.md</a> — backups, upgrades, maintenance mode.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

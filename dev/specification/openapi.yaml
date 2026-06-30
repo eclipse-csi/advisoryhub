@@ -1,0 +1,1168 @@
+# OpenAPI description of AdvisoryHub's machine-consumable HTTP surface.
+#
+# This file is part of the specification set (single source of truth — see
+# docs/specification/README.md): the /api/ JSON namespace, the GitHub App
+# webhook receiver, the public project picker, and the health probes.
+# Server-rendered HTML/HTMX UI routes are deliberately NOT part of this
+# contract.
+#
+# Drift guards: api/tests/test_openapi_spec.py validates this document and
+# asserts a bidirectional path/method match against the Django URLconf.
+# info.version tracks the application version in lockstep (bumped by
+# dev/release.sh, checked by dev/check_release_versions.sh).
+#
+# OpenAPI 3.0.3 (not 3.1): the docs-site renderer (essentials-openapi, via
+# dev/mkdocs_oad_hook.py) documents support for 3.0 only, and nothing here
+# needs 3.1-only features.
+openapi: 3.0.3
+
+info:
+  title: AdvisoryHub API
+  version: 0.1.0
+  description: |
+    AdvisoryHub is a **private** application for authoring, reviewing,
+    publishing, and auditing security advisories for Eclipse Foundation
+    projects. This document describes its machine-consumable endpoints only;
+    there is no public anonymous API surface.
+
+    **Authentication.** The `/api/` namespace is an internal, same-origin
+    JSON API: it authenticates with the Django session cookie established via
+    the OIDC browser flow (there are no API tokens), and every unsafe method
+    additionally requires the CSRF token header. Unauthenticated requests get
+    a JSON `401 not_authenticated` instead of a login redirect. The GitHub
+    webhook authenticates with an HMAC signature; the project picker and
+    health probes are unauthenticated.
+
+    **Request bodies.** `/api/` POST endpoints accept either
+    `application/json` or `application/x-www-form-urlencoded` bodies (form
+    values arrive as strings — JSON is recommended, and required for
+    non-string semantics such as booleans).
+
+    **Errors.** JSON errors share the `Error` shape
+    `{"error": "<machine_code>", "message": "<human text>"}`. Two deliberate
+    exceptions: unknown resources return Django's default **HTML** 404 page
+    (except where noted), and a request with an HTTP method not listed here
+    returns an empty `405` with an `Allow` header.
+
+servers:
+  - url: /
+    description: Paths are absolute from the deployment root.
+
+tags:
+  - name: Advisories
+    description: Read access to advisories visible to the authenticated user.
+  - name: Comments
+    description: Per-advisory discussion threads.
+  - name: Access grants
+    description: >-
+      Per-advisory viewer/collaborator grants and pending email invitations
+      (owner is derived from project security-team membership and is never
+      grantable — INV-AUTH-3).
+  - name: Publication
+    description: >-
+      OSV+CSAF export pipeline status and controls. An advisory's state flips
+      to `published` only after a successful Git push (INV-LIFECYCLE-3).
+  - name: Dashboard tasks
+    description: Admin/security-team task transitions (CVE requests, reviews).
+  - name: GHSA webhook
+    description: Inbound GitHub App webhook receiver.
+  - name: Intake
+    description: Public report-form support endpoints.
+  - name: Health
+    description: Liveness/readiness probes for orchestration.
+
+security:
+  - sessionCookie: []
+
+paths:
+  /api/advisories/:
+    get:
+      tags: [Advisories]
+      operationId: listAdvisories
+      summary: List advisories visible to the authenticated user
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: >-
+            Case-insensitive substring match over summary, details,
+            advisory_id, and aliases.
+        - name: project
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filter to a single project by UUID.
+        - name: state
+          in: query
+          schema: { $ref: "#/components/schemas/AdvisoryState" }
+          description: Filter by lifecycle state (validated; unknown values are a 400).
+        - name: review_status
+          in: query
+          schema: { $ref: "#/components/schemas/ReviewStatus" }
+          description: >-
+            Filter by review sub-state. Not validated server-side — an unknown
+            value simply matches nothing.
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+          description: 1-indexed page; values below 1 are coerced to 1.
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+          description: Page size, clamped to 1–100.
+      responses:
+        "200":
+          description: One page of advisory summaries.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdvisoryListPage" }
+        "400":
+          description: >-
+            Invalid filter or pagination parameter (`invalid_project`,
+            `invalid_state`, `invalid_pagination`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+
+  /api/advisories/{advisory_id}/:
+    parameters:
+      - $ref: "#/components/parameters/AdvisoryId"
+    get:
+      tags: [Advisories]
+      operationId: getAdvisory
+      summary: Retrieve one advisory
+      responses:
+        "200":
+          description: The advisory.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Advisory" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+
+  /api/advisories/{advisory_id}/comments/:
+    parameters:
+      - $ref: "#/components/parameters/AdvisoryId"
+    get:
+      tags: [Comments]
+      operationId: listComments
+      summary: List comments on an advisory
+      description: >-
+        Comments are never published or disclosed externally; they are visible
+        only to users with access to the advisory inside AdvisoryHub. Internal
+        comments are omitted for users without internal-comment visibility.
+        Author emails are masked unless the caller may see user emails on this
+        advisory (INV-PRIVACY-4).
+      responses:
+        "200":
+          description: All comments visible to the caller, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/Comment" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    post:
+      tags: [Comments]
+      operationId: createComment
+      summary: Add a comment
+      description: Rate limited to 30 requests/minute per user.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommentCreate" }
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/CommentCreate" }
+      responses:
+        "201":
+          description: The created comment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "400":
+          description: Malformed body or empty `body` field (`invalid_body`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/advisories/{advisory_id}/grants/:
+    parameters:
+      - $ref: "#/components/parameters/AdvisoryId"
+    get:
+      tags: [Access grants]
+      operationId: listGrants
+      summary: List active grants and pending invitations
+      description: Owner-gated (requires grant-management permission).
+      responses:
+        "200":
+          description: Active grants plus invitations awaiting first login.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [grants, pending]
+                properties:
+                  grants:
+                    type: array
+                    items: { $ref: "#/components/schemas/Grant" }
+                  pending:
+                    type: array
+                    items: { $ref: "#/components/schemas/Invitation" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    post:
+      tags: [Access grants]
+      operationId: createGrant
+      summary: Grant access or invite by email
+      description: >-
+        Grants `viewer` or `collaborator` to a user (by email) or a group (by
+        name). An email with no matching account creates a pending invitation
+        redeemed on the recipient's first login. `owner` is never grantable
+        (INV-AUTH-3). Rate limited to 20 requests/hour per user.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GrantCreate" }
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/GrantCreate" }
+      responses:
+        "201":
+          description: A grant was created, or an invitation was recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created]
+                properties:
+                  created:
+                    type: string
+                    enum: [grant, invitation]
+                  grant:
+                    $ref: "#/components/schemas/Grant"
+                  invitation:
+                    $ref: "#/components/schemas/Invitation"
+                description: >-
+                  Exactly one of `grant` / `invitation` is present, matching
+                  the `created` discriminator.
+        "400":
+          description: >-
+            Malformed body, missing email/group, ungrantable or unknown
+            permission, or bad principal kind (`invalid_body`,
+            `invalid_permission`, `invalid_principal`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: >-
+            JSON `unknown_group` when `principal=group` names a group that
+            does not exist; HTML when the advisory itself is unknown.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+            text/html:
+              schema: { type: string }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/advisories/{advisory_id}/grants/{grant_id}/:
+    parameters:
+      - $ref: "#/components/parameters/AdvisoryId"
+      - name: grant_id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      tags: [Access grants]
+      operationId: revokeGrant
+      summary: Revoke a grant
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        "200":
+          description: The grant was revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked]
+                properties:
+                  revoked:
+                    type: integer
+                    description: Id of the revoked grant.
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+
+  /api/advisories/{advisory_id}/publication/:
+    parameters:
+      - $ref: "#/components/parameters/AdvisoryId"
+    get:
+      tags: [Publication]
+      operationId: getPublicationStatus
+      summary: List publication tasks for an advisory
+      responses:
+        "200":
+          description: Publication tasks, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tasks]
+                properties:
+                  tasks:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicationTask" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+
+  /api/advisories/{advisory_id}/publish/:
+    parameters:
+      - $ref: "#/components/parameters/AdvisoryId"
+    post:
+      tags: [Publication]
+      operationId: publishAdvisory
+      summary: Queue publication of an advisory
+      description: >-
+        Pins the latest AdvisoryVersion on a new PublicationTask and enqueues
+        the async OSV+CSAF export. The advisory's state flips to `published`
+        only after the Git push succeeds (INV-LIFECYCLE-3). Requires a fresh
+        step-up authentication when `STEP_UP_REQUIRED` is enabled. Rate
+        limited to 10 requests/hour per user. No request body.
+        For GHSA-linked advisories publication is system-driven (INV-GHSA-3):
+        owners receive `403` (the EF feed mirrors the GHSA automatically); only
+        global admins may call this as a break-glass, still gated on the linked
+        GHSA being published upstream.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        "202":
+          description: The queued publication task.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicationTask" }
+        "401":
+          description: >-
+            `not_authenticated`, or `step_up_required` with a `step_up_url`
+            to re-authenticate at before retrying.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example:
+                error: step_up_required
+                message: Re-authenticate before publishing.
+                step_up_url: /oidc/step-up/
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+        "409":
+          description: A publication task is already queued or running (`in_progress`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/publication/tasks/{task_id}/retry/:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [Publication]
+      operationId: retryPublicationTask
+      summary: Retry a failed publication task
+      description: >-
+        Creates a fresh task for the same pinned AdvisoryVersion. Only
+        `failed` tasks are retryable. Step-up and rate limit as for publish.
+        No request body.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        "202":
+          description: The newly queued publication task.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicationTask" }
+        "400":
+          description: The task is not in the `failed` state (`not_failed`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: "`not_authenticated`, or `step_up_required` with `step_up_url`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/publication/tasks/{task_id}/artifact/{kind}/:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+      - name: kind
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [osv, csaf]
+        description: Artifact kind; only OSV and CSAF artifacts are previewable.
+    get:
+      tags: [Publication]
+      operationId: getPublicationArtifact
+      summary: Preview a generated publication artifact
+      responses:
+        "200":
+          description: >-
+            The artifact exactly as committed (or about to be committed, for
+            a failed task).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kind, path, content]
+                properties:
+                  kind:
+                    type: string
+                    enum: [osv, csaf]
+                  path:
+                    type: string
+                    description: Path of the file inside the publication repo.
+                  content:
+                    type: object
+                    description: The OSV or CSAF JSON document.
+        "400":
+          description: Unknown artifact kind (`invalid_kind`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+
+  /api/dashboard/cve/{task_id}/transition/:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [Dashboard tasks]
+      operationId: transitionCveTask
+      summary: Transition a CVE request task
+      description: Admin/security-team only.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CveTransition" }
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/CveTransition" }
+      responses:
+        "200":
+          description: The task after the transition.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CveTask" }
+        "400":
+          description: >-
+            Malformed body, unknown status, or an illegal transition
+            (`invalid_body`, `invalid_status`, `invalid_transition`,
+            `validation_failed`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+
+  /api/dashboard/review/{task_id}/decide/:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [Dashboard tasks]
+      operationId: decideReviewTask
+      summary: Decide a review task
+      description: Admin/security-team only.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewDecision" }
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/ReviewDecision" }
+      responses:
+        "200":
+          description: The task after the decision.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewTask" }
+        "400":
+          description: >-
+            Malformed body, unknown decision, or the review cannot be decided
+            (`invalid_body`, `invalid_decision`, `review_failed`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFoundHtml" }
+
+  /ghsa/webhook/:
+    post:
+      tags: [GHSA webhook]
+      operationId: githubWebhook
+      summary: Receive a GitHub App webhook delivery
+      description: >-
+        CSRF-exempt, session-free receiver authenticated by an HMAC-SHA256
+        signature over the raw request body (`sha256=<hex>` in
+        `X-Hub-Signature-256`, keyed with the app's webhook secret, compared
+        in constant time before any body parsing). Deliveries are idempotent
+        on `X-GitHub-Delivery`; accepted events are processed asynchronously.
+      security: []
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^sha256=[0-9a-f]{64}$"
+          description: HMAC-SHA256 of the raw body, keyed with the webhook secret.
+        - name: X-GitHub-Event
+          in: header
+          required: true
+          schema: { type: string }
+          description: GitHub event name (e.g. `repository_advisory`).
+        - name: X-GitHub-Delivery
+          in: header
+          required: true
+          schema: { type: string }
+          description: Unique delivery id; replays are detected on this value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: GitHub webhook event payload (passed through as-is).
+      responses:
+        "202":
+          description: Signature valid; delivery queued for async processing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, delivery_id]
+                properties:
+                  status:
+                    type: string
+                    enum: [accepted]
+                  delivery_id:
+                    type: string
+        "200":
+          description: Replay of an already-processed delivery (no-op).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [already_processed]
+        "400":
+          description: Missing event/delivery headers, or malformed JSON body.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+                description: >-
+                  Note — not the shared Error shape: this endpoint emits
+                  `{"error": "<text>"}` with no `message` field.
+        "401":
+          description: Missing or invalid signature. Empty body.
+
+  /report/projects.json:
+    get:
+      tags: [Intake]
+      operationId: listProjectPicker
+      summary: Project picker entries for the public report form
+      description: >-
+        Unauthenticated autocomplete data source, capped at 200 entries.
+        Rate limited to 60 requests/minute per client IP.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match over slug and name.
+      responses:
+        "200":
+          description: Matching projects.
+          headers:
+            Cache-Control:
+              schema: { type: string }
+              description: "`public, max-age=300`"
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 200
+                items: { $ref: "#/components/schemas/ProjectPickerEntry" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /healthz:
+    get:
+      tags: [Health]
+      operationId: healthz
+      summary: Liveness probe
+      security: []
+      responses:
+        "200":
+          description: The process is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  /readyz:
+    get:
+      tags: [Health]
+      operationId: readyz
+      summary: Readiness probe
+      description: >-
+        Checks the database and cache, plus optionally the Celery broker
+        (`READYZ_INCLUDE_BROKER`) and the publication repository
+        (`READYZ_INCLUDE_PUB_REPO`).
+      security: []
+      responses:
+        "200":
+          description: All enabled checks passed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "503":
+          description: One or more checks failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, failures]
+                properties:
+                  status:
+                    type: string
+                    enum: [fail]
+                  failures:
+                    type: object
+                    additionalProperties: { type: string }
+                    description: >-
+                      Failing check name (`db`, `cache`, `broker`,
+                      `publication_repo`) to exception class name.
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-sessionid
+      description: >-
+        Django session established via the OIDC browser flow. Production uses
+        the `__Host-` prefixed cookie name; dev/test use plain `sessionid`.
+        There are no API tokens — this is an internal, same-origin API.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRFToken
+      description: >-
+        Django CSRF token (double-submit with the `__Host-csrftoken` cookie;
+        `csrftoken` in dev/test). Required alongside the session cookie on
+        every unsafe method of the /api/ namespace.
+
+  parameters:
+    AdvisoryId:
+      name: advisory_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^ECL(-[23456789cfghjmpqrvwx]{4}){3}$"
+      description: >-
+        AdvisoryHub identifier (e.g. `ECL-q2f7-38cm-9wrx`). Malformed ids
+        miss the URL pattern entirely and 404 at the resolver.
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema: { type: integer }
+
+  responses:
+    NotAuthenticated:
+      description: No authenticated session (`not_authenticated`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: The caller lacks the required permission (`forbidden`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFoundHtml:
+      description: >-
+        Unknown resource. Django's default error page — `text/html`, not
+        JSON.
+      content:
+        text/html:
+          schema: { type: string }
+    RateLimited:
+      description: Rate limit exceeded (`rate_limited`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Stable machine-readable code.
+        message:
+          type: string
+          description: Human-readable explanation.
+      additionalProperties: true
+      description: >-
+        Shared JSON error envelope. Some errors carry extra fields (e.g.
+        `step_up_url` on `step_up_required`).
+
+    AdvisoryState:
+      type: string
+      enum: [triage, draft, published, dismissed]
+      description: Advisory lifecycle state (INV-LIFECYCLE-1).
+
+    ReviewStatus:
+      type: string
+      enum: [none, submitted, changes_requested, approved]
+      description: Review sub-state, orthogonal to the lifecycle state.
+
+    ProjectRef:
+      type: object
+      required: [id, slug, name, is_mature_publisher]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        is_mature_publisher: { type: boolean }
+
+    AdvisorySummary:
+      type: object
+      description: Compact representation used by list endpoints.
+      required:
+        [advisory_id, project, state, review_status, summary, modified_at,
+         published_at, republish_required]
+      properties:
+        advisory_id:
+          type: string
+          pattern: "^ECL(-[23456789cfghjmpqrvwx]{4}){3}$"
+        project:
+          type: string
+          description: Project slug.
+        state: { $ref: "#/components/schemas/AdvisoryState" }
+        review_status: { $ref: "#/components/schemas/ReviewStatus" }
+        summary: { type: string }
+        modified_at: { type: string, format: date-time }
+        published_at: { type: string, format: date-time, nullable: true }
+        republish_required:
+          type: boolean
+          description: A content edit landed after the last publication.
+
+    Advisory:
+      type: object
+      required:
+        [advisory_id, project, state, review_status, summary, details,
+         aliases, references, affected, severity, cwe_ids, credits,
+         republish_required, withdrawn_reason, dismissed_reason, created_at,
+         modified_at, published_at, submitted_for_review_at, url]
+      properties:
+        advisory_id:
+          type: string
+          pattern: "^ECL(-[23456789cfghjmpqrvwx]{4}){3}$"
+        project: { $ref: "#/components/schemas/ProjectRef" }
+        state: { $ref: "#/components/schemas/AdvisoryState" }
+        review_status: { $ref: "#/components/schemas/ReviewStatus" }
+        summary: { type: string }
+        details: { type: string }
+        aliases:
+          type: array
+          items: { type: string }
+          description: External identifiers (CVE, GHSA, ...).
+        references:
+          type: array
+          items: { $ref: "#/components/schemas/Reference" }
+        affected:
+          type: array
+          items: { $ref: "#/components/schemas/AffectedEntry" }
+        severity:
+          type: array
+          items: { $ref: "#/components/schemas/SeverityEntry" }
+        cwe_ids:
+          type: array
+          items: { type: string }
+          description: CWE identifiers (e.g. `CWE-79`).
+        credits:
+          type: array
+          items: { $ref: "#/components/schemas/Credit" }
+        republish_required: { type: boolean }
+        withdrawn_reason:
+          type: string
+          description: Empty unless the advisory was withdrawn.
+        dismissed_reason:
+          type: string
+          description: Empty unless the advisory was dismissed.
+        created_at: { type: string, format: date-time }
+        modified_at: { type: string, format: date-time }
+        published_at: { type: string, format: date-time, nullable: true }
+        submitted_for_review_at:
+          { type: string, format: date-time, nullable: true }
+        url:
+          type: string
+          description: Relative URL of the advisory's HTML detail page.
+
+    Reference:
+      type: object
+      required: [type, url]
+      properties:
+        type:
+          type: string
+          enum:
+            [ADVISORY, ARTICLE, DETECTION, DISCUSSION, REPORT, FIX,
+             INTRODUCED, GIT, PACKAGE, EVIDENCE, WEB]
+        url:
+          type: string
+          format: uri
+          description: http/https/ftp/ftps only.
+      description: OSV-style reference.
+
+    AffectedEntry:
+      type: object
+      required: [package]
+      properties:
+        package:
+          type: object
+          required: [name, ecosystem]
+          properties:
+            name: { type: string }
+            ecosystem: { type: string }
+          additionalProperties: true
+        ranges:
+          type: array
+          items:
+            type: object
+            required: [type, events]
+            properties:
+              type: { type: string }
+              events:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  minProperties: 1
+                  maxProperties: 1
+                  properties:
+                    introduced: { type: string }
+                    fixed: { type: string }
+                    last_affected: { type: string }
+                    limit: { type: string }
+                  description: Exactly one event kind per object.
+            additionalProperties: true
+        versions:
+          type: array
+          items: { type: string }
+      additionalProperties: true
+      description: >-
+        OSV-style affected block; each entry needs at least one of `ranges`
+        or `versions`.
+
+    SeverityEntry:
+      type: object
+      required: [type, score]
+      properties:
+        type:
+          type: string
+          enum: [CVSS_V2, CVSS_V3, CVSS_V4, Ubuntu]
+        score:
+          type: string
+          description: >-
+            CVSS vector string, or one of negligible/low/medium/high/critical
+            for `Ubuntu`.
+
+    Credit:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        contact:
+          type: array
+          items: { type: string }
+        type:
+          type: string
+          enum:
+            [FINDER, REPORTER, ANALYST, COORDINATOR, REMEDIATION_DEVELOPER,
+             REMEDIATION_REVIEWER, REMEDIATION_VERIFIER, TOOL, SPONSOR,
+             OTHER]
+      additionalProperties: true
+      description: OSV-style credit.
+
+    AdvisoryListPage:
+      type: object
+      required: [results, total, page, page_size]
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/AdvisorySummary" }
+        total:
+          type: integer
+          description: Total matches across all pages.
+        page: { type: integer }
+        page_size: { type: integer }
+
+    Comment:
+      type: object
+      required:
+        [id, author, body, is_redacted, is_internal, created_at, edited_at]
+      properties:
+        id: { type: integer }
+        author:
+          type: string
+          nullable: true
+          description: >-
+            Author email, masked unless the caller may see user emails on
+            this advisory (INV-PRIVACY-4); null for authorless comments.
+        body:
+          type: string
+          description: Redaction-aware text (`is_redacted` replaces the body).
+        is_redacted: { type: boolean }
+        is_internal: { type: boolean }
+        created_at: { type: string, format: date-time }
+        edited_at: { type: string, format: date-time, nullable: true }
+
+    CommentCreate:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          description: Comment text; surrounding whitespace is stripped.
+        is_internal:
+          type: boolean
+          default: false
+          description: >-
+            When false (the default) the comment is visible to everyone with
+            access to the advisory; when true it is hidden from users without
+            internal-comment visibility. Either way the comment is never
+            published or disclosed externally. With a form-encoded body any
+            non-empty string is truthy — use JSON for reliable boolean
+            semantics.
+
+    Grant:
+      type: object
+      required:
+        [id, principal_type, principal_id, principal_label, permission,
+         created_at]
+      properties:
+        id: { type: integer }
+        principal_type:
+          type: string
+          enum: [user, group]
+        principal_id: { type: integer }
+        principal_label:
+          type: string
+          nullable: true
+          description: >-
+            User email (masked unless the caller may see user emails) or
+            group name; null when the principal no longer exists.
+        permission:
+          type: string
+          enum: [viewer, collaborator]
+        created_at: { type: string, format: date-time }
+
+    GrantCreate:
+      type: object
+      required: [principal, permission]
+      properties:
+        principal:
+          type: string
+          enum: [user, group]
+        permission:
+          type: string
+          enum: [viewer, collaborator]
+          description: "`owner` is rejected with `invalid_permission` (INV-AUTH-3)."
+        email:
+          type: string
+          format: email
+          description: Required when `principal=user`.
+        group:
+          type: string
+          description: Required when `principal=group` (exact group name).
+
+    Invitation:
+      type: object
+      required: [id, email, permission, expires_at, redeemed_at]
+      properties:
+        id: { type: integer }
+        email:
+          type: string
+          description: Masked unless the caller may see user emails.
+        permission:
+          type: string
+          enum: [viewer, collaborator]
+        expires_at: { type: string, format: date-time, nullable: true }
+        redeemed_at: { type: string, format: date-time, nullable: true }
+
+    PublicationTask:
+      type: object
+      required:
+        [id, advisory_id, status, attempts, commit_sha, last_error,
+         created_at, started_at, finished_at, artifacts]
+      properties:
+        id: { type: integer }
+        advisory_id: { type: string }
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        attempts: { type: integer }
+        commit_sha:
+          type: string
+          description: Empty until a push succeeded.
+        last_error:
+          type: string
+          description: Redacted failure summary; empty unless failed.
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        artifacts:
+          type: array
+          items:
+            type: object
+            required: [kind, path]
+            properties:
+              kind:
+                type: string
+                enum: [osv, csaf, cve]
+              path: { type: string }
+
+    CveTransition:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [queued, reserved, rejected, cancelled]
+        cve_id:
+          type: string
+          description: The reserved CVE id (with `status=reserved`).
+        notes: { type: string }
+
+    CveTask:
+      type: object
+      required:
+        [id, advisory_id, status, cve_id, assignee, requested_by, created_at,
+         finished_at]
+      properties:
+        id: { type: integer }
+        advisory_id: { type: string }
+        status:
+          type: string
+          enum: [queued, reserved, rejected, cancelled]
+        cve_id: { type: string, nullable: true }
+        assignee:
+          type: string
+          nullable: true
+          description: Email; masked for non-admin callers.
+        requested_by:
+          type: string
+          nullable: true
+          description: Email; masked for non-admin callers.
+        created_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }
+
+    ReviewDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, changes_requested]
+        notes: { type: string }
+
+    ReviewTask:
+      type: object
+      required:
+        [id, advisory_id, status, submitted_by, reviewer, decision_notes,
+         created_at, decided_at]
+      properties:
+        id: { type: integer }
+        advisory_id: { type: string }
+        status:
+          type: string
+          enum: [open, approved, changes_requested, withdrawn]
+        submitted_by:
+          type: string
+          nullable: true
+          description: Email; masked for non-admin callers.
+        reviewer:
+          type: string
+          nullable: true
+          description: Email; masked for non-admin callers.
+        decision_notes: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        decided_at: { type: string, format: date-time, nullable: true }
+
+    ProjectPickerEntry:
+      type: object
+      required: [slug, name]
+      properties:
+        slug: { type: string }
+        name: { type: string }

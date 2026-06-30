@@ -1,0 +1,4473 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/specification/architecture/">
+      
+      
+        <link rel="prev" href="../invariant/">
+      
+      
+        <link rel="next" href="../permissions/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Architecture - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#advisoryhub--architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../manual/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../manual/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/security-team/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manual/administrator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/running-in-production/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-technology-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Technology stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-application-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Application layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-architectural-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Architectural patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Architectural patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-services-as-the-only-write-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Services as the only write path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-permission-predicates-as-a-single-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Permission predicates as a single source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-audit-at-the-service-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Audit at the service boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-append-only-stores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Append-only stores
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-state-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 State machines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-oidc-group-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 OIDC group sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-step-up-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Step-up authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-atomicity-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Atomicity boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39-data-confidentiality-and-the-database-compromise-threat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 Data confidentiality and the database-compromise threat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#310-project-data-isolation-and-the-authorization-bug-threat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.10 Project data isolation and the authorization-bug threat
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-publication-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Publication pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Publication pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-enqueue-publicationservicespublish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Enqueue (publication.services.publish)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-worker-publicationtasksrun_publication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Worker (publication.tasks.run_publication)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-git-layer-publicationgit_servicepublish_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Git layer (publication.git_service.publish_files)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-atomic-finalisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Atomic finalisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-failure-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Failure handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-ghsa-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. GHSA integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. GHSA integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-authentication--installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Authentication &amp; installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-pmi-repo-mirror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 PMI repo mirror
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-ghsa-discovery--per-advisory-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 GHSA discovery &amp; per-advisory sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-ef-cve-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 EF-CVE push
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-webhook-ingest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Webhook ingest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-refresh-for-publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Refresh-for-publish
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-inbound-lifecycle-reactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 Inbound lifecycle reactions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#58-feature-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.8 Feature gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#59-admin-console-ghsa-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.9 Admin console GHSA operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#510-move-to-ghsa-outbound-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.10 Move to GHSA (outbound create)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-background-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Background jobs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Background jobs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-celery-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Celery configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-beat-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Beat schedule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-task-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Task inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-duplicate-detection-pipeline-similarity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Duplicate-detection pipeline (similarity)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-settings-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Settings modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-docker-compose-dev-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Docker-compose dev environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-environment-variable-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Environment variable inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-health-endpoints-commonhealth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Health endpoints (common.health)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-logging-commonlogging--commonmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Logging (common.logging + common.middleware)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-sentry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Sentry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#85-rate-limits-commonratelimit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.5 Rate limits (common.ratelimit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#86-audit-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.6 Audit hygiene
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#87-seed--demo-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.7 Seed / demo data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#88-metrics-scraping--alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.8 Metrics scraping &amp; alerting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#89-admin-stats-page-operator-slas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.9 Admin Stats page (operator SLAs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Testing strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Testing strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-test-settings-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Test settings overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-test-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Test layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-no-external-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 No external dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-lint--format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Lint &amp; format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-cross-reference-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Cross-reference index
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advisory-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-technology-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Technology stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-application-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Application layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-architectural-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Architectural patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Architectural patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-services-as-the-only-write-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Services as the only write path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-permission-predicates-as-a-single-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Permission predicates as a single source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-audit-at-the-service-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Audit at the service boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-append-only-stores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Append-only stores
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-state-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 State machines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-oidc-group-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 OIDC group sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-step-up-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Step-up authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-atomicity-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Atomicity boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39-data-confidentiality-and-the-database-compromise-threat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 Data confidentiality and the database-compromise threat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#310-project-data-isolation-and-the-authorization-bug-threat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.10 Project data isolation and the authorization-bug threat
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-publication-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Publication pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Publication pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-enqueue-publicationservicespublish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Enqueue (publication.services.publish)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-worker-publicationtasksrun_publication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Worker (publication.tasks.run_publication)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-git-layer-publicationgit_servicepublish_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Git layer (publication.git_service.publish_files)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-atomic-finalisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Atomic finalisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-failure-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Failure handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-ghsa-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. GHSA integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. GHSA integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-authentication--installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Authentication &amp; installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-pmi-repo-mirror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 PMI repo mirror
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-ghsa-discovery--per-advisory-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 GHSA discovery &amp; per-advisory sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-ef-cve-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 EF-CVE push
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-webhook-ingest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Webhook ingest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-refresh-for-publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Refresh-for-publish
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-inbound-lifecycle-reactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 Inbound lifecycle reactions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#58-feature-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.8 Feature gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#59-admin-console-ghsa-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.9 Admin console GHSA operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#510-move-to-ghsa-outbound-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.10 Move to GHSA (outbound create)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-background-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Background jobs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Background jobs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-celery-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Celery configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-beat-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Beat schedule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-task-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Task inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-duplicate-detection-pipeline-similarity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Duplicate-detection pipeline (similarity)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-settings-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Settings modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-docker-compose-dev-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Docker-compose dev environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-environment-variable-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Environment variable inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-health-endpoints-commonhealth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Health endpoints (common.health)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-logging-commonlogging--commonmiddleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Logging (common.logging + common.middleware)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-sentry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Sentry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#85-rate-limits-commonratelimit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.5 Rate limits (common.ratelimit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#86-audit-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.6 Audit hygiene
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#87-seed--demo-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.7 Seed / demo data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#88-metrics-scraping--alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.8 Metrics scraping &amp; alerting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#89-admin-stats-page-operator-slas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.9 Admin Stats page (operator SLAs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Testing strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Testing strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-test-settings-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Test settings overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-test-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Test layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-no-external-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 No external dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-lint--format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Lint &amp; format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-cross-reference-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Cross-reference index
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="advisoryhub--architecture">AdvisoryHub — Architecture<a class="headerlink" href="#advisoryhub--architecture" title="Permanent link">&para;</a></h1>
+<p>This document is the bottom-up implementation specification for
+AdvisoryHub. It covers the <strong>how</strong>: the technology stack, the
+application's internal structure, the architectural patterns it
+relies on, the publication and GHSA pipelines in concrete terms, the
+configuration surface, the operational story, and the testing
+strategy. It is paired with <a href="../requirements/"><code>requirements.md</code></a>,
+which describes the <strong>what</strong> — the actors, domain objects, and
+functional requirements.</p>
+<p>Per the scope chosen for the specification effort, this document
+deliberately does <strong>not</strong> restate:</p>
+<ul>
+<li>The full data model field list (already implicit in the source and
+  cited from <a href="../invariant/"><code>invariant.md</code></a> where load-bearing).</li>
+<li>The full URL / API endpoint inventory (already captured by
+  <a href="../permissions/#9-enforcement-surfaces"><code>permissions.md</code> §9</a> and
+  the URLconf files themselves).</li>
+</ul>
+<p>Cross-references point at the deep-dive documents in this folder.</p>
+<hr />
+<h2 id="1-technology-stack">1. Technology stack<a class="headerlink" href="#1-technology-stack" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Choice</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language</td>
+<td>Python 3.14</td>
+<td>Project pins <code>&gt;=3.14,&lt;3.15</code> (see <code>pyproject.toml</code> / <code>.python-version</code>).</td>
+</tr>
+<tr>
+<td>Web framework</td>
+<td>Django 5.2 LTS</td>
+<td>Server-rendered, HTMX-augmented. No SPA.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL</td>
+<td>The only supported backend — prod, dev, demo, and tests. Append-only audit triggers, the advisory no-delete trigger, <code>pg_trgm</code> indexes, and JSONB queries are Postgres-specific.</td>
+</tr>
+<tr>
+<td>Async broker</td>
+<td>Valkey (Redis-wire-compatible)</td>
+<td><code>redis://</code> URLs work unchanged.</td>
+</tr>
+<tr>
+<td>Async runtime</td>
+<td>Celery</td>
+<td>Workers + beat scheduler. JSON serialiser only.</td>
+</tr>
+<tr>
+<td>Authentication</td>
+<td><code>mozilla-django-oidc</code></td>
+<td>All authentication via OIDC. PKCE on by default.</td>
+</tr>
+<tr>
+<td>Templating</td>
+<td>Django templates + HTMX</td>
+<td><code>django_htmx</code> middleware; partial-update fragments on the admin console and advisory actions.</td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td><code>markdown-it-py</code> + <code>nh3</code></td>
+<td>Strict allowlist; rendered HTML never stored.</td>
+</tr>
+<tr>
+<td>Git client</td>
+<td><code>git</code> CLI via <code>subprocess</code></td>
+<td>Used by the publication pipeline; argument lists only, never <code>shell=True</code>.</td>
+</tr>
+<tr>
+<td>HTTP client (GHSA)</td>
+<td><code>requests</code> / <code>urllib3</code></td>
+<td>Through <code>ghsa.client</code>.</td>
+</tr>
+<tr>
+<td>Metrics</td>
+<td><code>django-prometheus</code></td>
+<td><code>PrometheusBeforeMiddleware</code> first, <code>PrometheusAfterMiddleware</code> last.</td>
+</tr>
+<tr>
+<td>Error reporting</td>
+<td>Sentry</td>
+<td>Optional, enabled when <code>SENTRY_DSN</code> is set.</td>
+</tr>
+<tr>
+<td>Lint / format</td>
+<td><code>ruff</code></td>
+<td>Config in <code>pyproject.toml</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The application is deliberately a server-rendered Django app: no
+front-end build step, no SPA bundle, no GraphQL. Interactive
+behaviour comes from HTMX partial updates against the same view
+functions that render full pages.</p>
+<hr />
+<h2 id="2-application-layout">2. Application layout<a class="headerlink" href="#2-application-layout" title="Permanent link">&para;</a></h2>
+<p>The Django project is split into focused apps; each owns a single
+bounded concern and exposes a <code>services.py</code> as the canonical write
+path. The agent-facing CLAUDE.md "App layout" diagram is the
+canonical layout reference; the summary below restates each app's
+responsibility in spec terms.</p>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config</code></td>
+<td>Django project: split settings (<code>base / dev / prod / test</code>), URL roots, Celery app.</td>
+</tr>
+<tr>
+<td><code>common</code></td>
+<td>Cross-cutting helpers: healthchecks, JSON logging, request-id middleware, rate-limit decorators, Sentry init, text diff utilities.</td>
+</tr>
+<tr>
+<td><code>accounts</code></td>
+<td>Custom <code>User</code> (email-as-username), the OIDC backend, group sync, step-up authentication, the global <code>NotificationPreference</code> model.</td>
+</tr>
+<tr>
+<td><code>projects</code></td>
+<td><code>Project</code>, <code>ProjectGitHubRepository</code>, the unsorted sentinel migration, and the PMI id validator.</td>
+</tr>
+<tr>
+<td><code>audit</code></td>
+<td>Append-only <code>AuditLogEntry</code>, the Postgres trigger migration, <code>redact_secrets</code>, the retention commands.</td>
+</tr>
+<tr>
+<td><code>advisories</code></td>
+<td><code>Advisory</code>, <code>AdvisoryVersion</code>, <code>AdvisoryIntakeMetadata</code>, validators, identifiers, permissions, services (triage flow + the version-append helper), edit views, triage views, the state-/severity-faceted HTMX list view, and the shared <code>severity</code> parsing helper (denormalised level/score).</td>
+</tr>
+<tr>
+<td><code>access</code></td>
+<td><code>AdvisoryAccessGrant</code>, <code>PendingInvitation</code>, grant / revoke / invite / redeem services, HTMX views.</td>
+</tr>
+<tr>
+<td><code>comments</code></td>
+<td><code>AdvisoryComment</code>, <code>CommentVersion</code>, markdown rendering + sanitisation, mention extraction, list view.</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td>Global preference + per-advisory override models, recipient resolver (<code>filter_for_event</code>), Celery email tasks (advisory events, triage events, comments, invitations).</td>
+</tr>
+<tr>
+<td><code>workflows</code></td>
+<td><code>CveRequestTask</code>, <code>ReviewTask</code>, <code>OrphanCve</code>, and the services that drive their state machines.</td>
+</tr>
+<tr>
+<td><code>publication</code></td>
+<td><code>PublicationTask</code>, <code>PublicationArtifact</code>, <code>PublicationRepositoryConfig</code>, OSV + CSAF builders + vendored schemas, the Git service, the Celery worker.</td>
+</tr>
+<tr>
+<td><code>admin_console</code></td>
+<td>The /admin/ sidebar shell and its section views (Inbox, CVEs, Publications, GHSA, Audit, Access log, Stats, Projects, Users, Groups, Invitations, Maintenance). Stats is the SLA-metrics page (<code>stats.py</code> computation + <code>views/stats.py</code>). The GHSA section (<code>views/ghsa.py</code>, feature-gated on <code>GHSA_FEATURE_ENABLED</code>) is the operations + observability dashboard described in §5.9. The Invitations section (<code>views/invitations.py</code>) lists outstanding (non-redeemed) <code>PendingInvitation</code> rows across all advisories with per-row re-send (refreshes the expiry window, INV-ACCESS-3) and cancel actions.</td>
+</tr>
+<tr>
+<td><code>api</code></td>
+<td>JSON API surface re-using the same <code>can_*</code> predicates as the web views.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td>GitHub App client + JWT handling, PMI mirror, GHSA discovery / per-advisory sync, EF-CVE push, webhook ingest.</td>
+</tr>
+<tr>
+<td><code>intake</code></td>
+<td>The public report form (<code>/report/</code>), <code>HoneypotSubmission</code>, rate-limited project picker JSON.</td>
+</tr>
+<tr>
+<td><code>similarity</code></td>
+<td>LLM-assisted duplicate detection: <code>SimilarityCheck</code> / <code>SimilarityCandidate</code> task rows, the <code>AdvisoryFingerprint</code> cache, the Postgres prefilter, provider-agnostic LLM adapters (Anthropic / OpenAI-compatible), the owner-only HTMX panel, <code>backfill_fingerprints</code>. Dormant unless <code>SIMILARITY_CHECK_ENABLED</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Custom user model is set via <code>AUTH_USER_MODEL = "accounts.User"</code>.</p>
+<hr />
+<h2 id="3-architectural-patterns">3. Architectural patterns<a class="headerlink" href="#3-architectural-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="31-services-as-the-only-write-path">3.1 Services as the only write path<a class="headerlink" href="#31-services-as-the-only-write-path" title="Permanent link">&para;</a></h3>
+<p>Every app exposes a <code>services.py</code> module whose functions are the
+canonical entry points for state-changing operations. Views and API
+handlers call into the service layer; they never write to models
+directly. This keeps:</p>
+<ul>
+<li>Authorisation checks and audit emissions co-located with the
+  mutation.</li>
+<li><code>transaction.atomic</code> blocks and <code>select_for_update</code> row locks
+  applied in exactly one place per concept.</li>
+<li>Side-effect ordering (e.g. "Celery enqueue on <code>transaction.on_commit</code>")
+  predictable across callers.</li>
+</ul>
+<p>Notable services modules: <code>advisories.services</code> (triage flow,
+<code>record_advisory_version</code>), <code>access.services</code> (grants, invitations,
+redemption), <code>comments.services</code> (markdown rendering, mention
+extraction, add/edit/redact), <code>workflows.services</code> (CVE and review
+state machines), <code>publication.services</code> (<code>publish</code>, <code>retry</code>,
+<code>mark_*</code>), <code>ghsa.services</code> (PMI sync, GHSA sync, refresh-for-publish,
+EF-CVE push), <code>intake.services</code> (<code>create_submission</code>),
+<code>audit.services</code> (<code>record</code>, <code>record_from_request</code>, <code>redact_secrets</code>).</p>
+<h3 id="32-permission-predicates-as-a-single-source">3.2 Permission predicates as a single source<a class="headerlink" href="#32-permission-predicates-as-a-single-source" title="Permanent link">&para;</a></h3>
+<p>All capability checks come from <code>advisories/permissions.py</code>. The
+file exposes <code>resolved_permission</code>, <code>can_view</code>, <code>can_edit</code>,
+<code>can_comment</code>, <code>can_see_internal_comment</code>, <code>can_publish</code>,
+<code>can_dismiss</code>, <code>can_request_cve</code>, <code>can_submit_for_review</code>,
+<code>can_review</code>, <code>can_grant_access</code>, <code>can_triage</code>,
+<code>can_flag_for_admin_routing</code>, <code>can_clear_admin_routing_flag</code>,
+<code>can_change_project</code>, <code>can_revoke_approval</code> (and friends). Web views,
+API endpoints, Celery tasks, and HTMX partials all import from the
+same module. Templates do not import permissions modules — they
+render decorated context the view computed. See
+<a href="../permissions/#9-enforcement-surfaces"><code>permissions.md</code> §9</a> for
+the per-surface enforcement map.</p>
+<h3 id="33-audit-at-the-service-boundary">3.3 Audit at the service boundary<a class="headerlink" href="#33-audit-at-the-service-boundary" title="Permanent link">&para;</a></h3>
+<p><code>audit.services.record</code> (programmatic) and
+<code>audit.services.record_from_request</code> (carrying IP + User-Agent) are
+the only writers of <code>AuditLogEntry</code>. Each service emits the
+appropriate <code>Action</code> immediately after the successful mutation;
+service code never builds an audit row by hand. All user/CI-supplied
+strings flow through <code>audit.services.redact_secrets</code> before being
+persisted (<a href="../invariant/#inv-audit-2">INV-AUDIT-2</a>). Git-token URLs
+also go through <code>publication.git_service._redact</code>, which strips the
+configured token in addition to whatever <code>redact_secrets</code> catches.</p>
+<h3 id="34-append-only-stores">3.4 Append-only stores<a class="headerlink" href="#34-append-only-stores" title="Permanent link">&para;</a></h3>
+<p>Three tables are append-only by design:</p>
+<ul>
+<li><code>AuditLogEntry</code> — application guard (<code>save</code> refuses
+  <code>pk is not None</code>, <code>delete</code> raises) plus a Postgres trigger
+  (<code>audit/migrations/0002_append_only_trigger.py</code>) that rejects
+  <code>UPDATE</code> and <code>DELETE</code> even via raw SQL through the Django
+  connection (<a href="../invariant/#inv-audit-1">INV-AUDIT-1</a>).</li>
+<li><code>AdvisoryVersion</code> — application guard only
+  (<a href="../invariant/#inv-impl-5">INV-IMPL-5</a>). Workflow tasks
+  (<code>ReviewTask.version</code>, <code>PublicationTask.version</code>) <code>PROTECT</code>-FK
+  into this table so even raw ORM cannot remove a pinned version.</li>
+<li><code>CommentVersion</code> — application guard only
+  (<a href="../invariant/#inv-impl-3">INV-IMPL-3</a>).</li>
+</ul>
+<p><code>Advisory</code> is non-deletable via a model-layer guard
+(<code>Advisory.delete</code> and <code>AdvisoryQuerySet.delete</code> raise) and a
+Postgres trigger
+(<code>advisories/migrations/0003_advisory_no_delete_trigger.py</code>).
+Dev-only seed-reset has an explicit
+<code>_unsafe_dev_reset_bypass()</code> context manager that lowers
+<code>session_replication_role</code> to <code>replica</code> for the transaction
+duration so the trigger is bypassed; production code paths must not
+call it.</p>
+<h3 id="35-state-machines">3.5 State machines<a class="headerlink" href="#35-state-machines" title="Permanent link">&para;</a></h3>
+<p>The four lifecycle states plus three orthogonal status machines
+(review, CVE, publication) are described in full in
+<a href="../advisory-lifecycle/"><code>advisory-lifecycle.md</code></a>. Key
+implementation notes:</p>
+<ul>
+<li>State is stored as a <code>TextChoices</code> enum field. Transitions are
+  encapsulated in services functions whose names match the
+  transition (<code>promote_triage_to_draft</code>, <code>dismiss_triage</code>,
+  <code>submit_for_review</code>, <code>approve_review</code>, <code>request_changes</code>,
+  <code>revoke_approval</code>, <code>withdraw_review</code>, <code>transition_cve_request</code>,
+  <code>unassign_cve</code>, <code>mark_orphan_rejected</code>, <code>publish</code>, <code>retry</code>).</li>
+<li>Edits append <code>AdvisoryVersion</code>; the service
+  <code>advisories.services.record_advisory_version</code> is the only path
+  for <code>v(n+1)</code> and takes a <code>select_for_update</code> row lock on the
+  advisory to serialise concurrent edits
+  (<a href="../invariant/#inv-concurrency-2">INV-CONCURRENCY-2</a>).</li>
+<li>Editing an <code>approved</code> draft by a non-admin resets <code>review_status</code>
+  (<a href="../invariant/#inv-review-4">INV-REVIEW-4</a>).</li>
+<li>Editing a <code>published</code> advisory sets <code>republish_required=True</code> and
+  is reachable from the dashboard as "Re-publish". Such advisories
+  also surface in the Admin Console under the Inbox "publish required"
+  category and the Publication page's "Awaiting re-publication"
+  section (GHSA-linked rows excluded — they auto-re-publish, INV-GHSA-3).</li>
+</ul>
+<h3 id="36-oidc-group-sync">3.6 OIDC group sync<a class="headerlink" href="#36-oidc-group-sync" title="Permanent link">&para;</a></h3>
+<p><code>accounts.auth.AdvisoryHubOIDCBackend.update_user</code> runs
+<code>sync_groups_from_claims</code> on every login, replacing
+<code>user.groups</code> with the set derived from the configured OIDC claim.
+Claim values that do not look like SPNs (no <code>@</code>) are filtered out so
+the Django <code>Group</code> table stays clean
+(<a href="../invariant/#inv-oidc-4">INV-OIDC-4</a>). <code>is_staff</code> and
+<code>is_superuser</code> are set equal to admin-group membership on every
+login (<a href="../invariant/#inv-oidc-3">INV-OIDC-3</a>); demotion in the IdP
+removes Django-admin access on the next login. The OIDC scopes
+requested are <code>openid email profile groups</code>.</p>
+<p>OIDC config knobs: <code>OIDC_RP_CLIENT_ID/_SECRET</code>,
+<code>OIDC_OP_*_ENDPOINT</code>, <code>OIDC_OP_LOGOUT_ENDPOINT</code>,
+<code>OIDC_RP_SIGN_ALGO</code> (default <code>RS256</code>), <code>OIDC_USE_PKCE</code> (default
+True, with <code>S256</code> challenge method), <code>OIDC_VERIFY_SSL</code> (True in
+prod), <code>OIDC_GROUP_CLAIM</code>, <code>OIDC_ADMIN_GROUP</code>,
+<code>OIDC_REQUIRE_EMAIL_VERIFIED</code> (default False — reject an <em>absent</em>
+<code>email_verified</code> claim too; INV-OIDC-6). RP-initiated logout
+uses <code>accounts.auth.provider_logout</code>; <code>OIDC_STORE_ID_TOKEN=True</code> so
+the logout request can include <code>id_token_hint</code>.</p>
+<h3 id="37-step-up-authentication">3.7 Step-up authentication<a class="headerlink" href="#37-step-up-authentication" title="Permanent link">&para;</a></h3>
+<p><code>accounts.step_up</code> implements a session-scoped freshness check
+(<code>request.session["step_up_auth_at"]</code> within
+<code>STEP_UP_MAX_AGE_SECONDS</code>, default 300 s). The gated views call
+<code>require_step_up_or_redirect(request, next_url=…)</code> — publish/withdraw,
+GitHub App configuration, org-wide GHSA operations, CVE-push retries, and
+the break-glass admin actions (forget user, ban/unban, maintenance toggle);
+the full list is in <a href="../permissions/#8-step-up-authentication"><code>permissions.md</code> §8</a>.
+If the timestamp is missing or stale, the user is bounced through a
+<code>prompt=login&amp;max_age=0</code> OIDC re-authentication via
+<code>StepUpAuthRequestView</code> and <code>record_step_up_on_login</code> stamps the
+fresh timestamp on the way back. An ordinary sign-in does not
+satisfy the check — the <code>step_up_pending</code> flag is only set inside
+the explicit step-up flow.</p>
+<p>Authentication events are audited to the access log
+(<a href="../invariant/#inv-audit-5">INV-AUDIT-5</a>): <code>record_step_up_on_login</code>
+(the sole <code>user_logged_in</code> receiver) writes <code>auth.login</code> for an ordinary
+sign-in and <code>auth.step_up_completed</code> for a step-up re-auth; a <code>user_logged_out</code>
+receiver in <code>accounts.signals</code> writes <code>auth.logout</code>; and
+<code>accounts.auth.AdvisoryHubOIDCCallbackView</code> — wired ahead of the
+<code>mozilla_django_oidc</code> include under the library's own callback URL name, so the
+registered <code>redirect_uri</code> is unchanged — records <code>auth.login_failed</code> from
+<code>login_failure()</code> (covering IdP-returned errors and rejected claims). All carry
+the source IP/user-agent and surface on the Admin Console's Access log page.</p>
+<h3 id="38-atomicity-boundaries">3.8 Atomicity boundaries<a class="headerlink" href="#38-atomicity-boundaries" title="Permanent link">&para;</a></h3>
+<p>The codebase uses three Django concurrency primitives:</p>
+<ul>
+<li><code>transaction.atomic</code> wraps any operation that mutates more than one
+  row or one table. Publication's final state flip, version append,
+  task finalisation, and audit emissions share a single block
+  (<a href="../invariant/#inv-pub-4">INV-PUB-4</a>).</li>
+<li><code>Advisory.objects.select_for_update</code> is held by
+  <code>record_advisory_version</code>, by <code>publish</code> (to serialise concurrent
+  publishers), and by the publication worker's final block (to
+  prevent the state flip from racing an edit).</li>
+<li><code>transaction.on_commit</code> schedules Celery enqueues so a rolled-back
+  caller transaction never leaves a queued task
+  (<a href="../invariant/#inv-pub-5">INV-PUB-5</a>).</li>
+</ul>
+<h3 id="39-data-confidentiality-and-the-database-compromise-threat">3.9 Data confidentiality and the database-compromise threat<a class="headerlink" href="#39-data-confidentiality-and-the-database-compromise-threat" title="Permanent link">&para;</a></h3>
+<p>Embargoed, pre-disclosure advisory content is the system's most sensitive
+data. The headline threat is <strong>an attacker who obtains the database
+credentials and connects directly</strong> (adjacent: a stolen backup/snapshot, a
+malicious DBA, or a compromised app process). AdvisoryHub's answer is
+<strong>defense-in-depth on the database access path, not application-layer
+encryption of content</strong> (<a href="../invariant/#inv-conf-1">INV-CONF-1</a>).</p>
+<p>Two distinct threats are routinely conflated under "encrypt the database":</p>
+<ul>
+<li><strong>Stolen media</strong> (disk, snapshot, logical backup) — mitigated by
+  encryption-at-rest (volume encryption or managed-DB TDE) and encrypted
+  backups. Transparent to the app; no feature cost.</li>
+<li><strong>Stolen credentials → direct connection</strong> (the headline threat) —
+  encryption-at-rest does <strong>nothing</strong>: a client holding a valid password is a
+  legitimate client, and the database decrypts for it.</li>
+</ul>
+<p>Application-layer column encryption is <strong>deliberately not used</strong>. It would
+defeat credential theft only if the key lived in a different trust domain than
+the credential (a KMS/HSM); in this deployment the DB password and any
+encryption key are injected into the same pod from the same secret store
+(<code>config/settings/base.py</code>, <code>charts/advisoryhub/templates/secret-env.yaml</code>),
+so both leak by the same path, and a compromised app process holds the key
+regardless. It would also break load-bearing functionality: advisory search
+(<code>summary</code>/<code>details</code>/<code>aliases</code> <code>__icontains</code> in <code>advisories/views.py</code> and
+<code>api/views_advisories.py</code>) and the duplicate-detection prefilter
+(<code>TrigramSimilarity</code> over <code>summary</code>/<code>details</code> plus JSONB <code>__contains</code> on
+<code>aliases</code>/<code>affected</code> in <code>similarity/prefilter.py</code>,
+<a href="../invariant/#inv-sim-4">INV-SIM-4</a>) both require plaintext, SQL-queryable
+columns. The full plaintext archive lives in the append-only
+<code>AdvisoryVersion.payload</code> (<a href="../invariant/#inv-impl-5">INV-IMPL-5</a>), so
+encrypting content would also mean encrypting an immutable, <code>PROTECT</code>-FK'd log
+where <strong>key loss is unrecoverable data loss</strong>.</p>
+<p>Confidentiality of content at rest is therefore a <strong>deployment-layer
+responsibility</strong>: restrict network reachability so only the app can reach
+Postgres, prefer short-lived/IAM credentials over a static password, require
+TLS (<code>sslmode=verify-full</code>), run the app under a least-privilege role, encrypt
+backups and volumes, and enable database-level audit (pgaudit /
+<code>log_connections</code>) — direct DB access bypasses the application audit log
+(<a href="../invariant/#inv-audit-1">INV-AUDIT-1</a>) entirely, so detection is the
+compensating control. The operator checklist is in
+<a href="../../operations/running-in-production/#7-database-hardening-checklist">running-in-production.md §7</a>.</p>
+<h3 id="310-project-data-isolation-and-the-authorization-bug-threat">3.10 Project data isolation and the authorization-bug threat<a class="headerlink" href="#310-project-data-isolation-and-the-authorization-bug-threat" title="Permanent link">&para;</a></h3>
+<p>§3.9 addresses a <em>stolen credential</em> reaching the database. A different threat is
+an <strong>application authorization bug</strong> — a new list view that forgets to call the
+visibility chokepoint, or a detail/edit handler that fetches by id without a
+permission check — leaking advisory content across the access boundary. That
+boundary is <code>per-advisory ∪ per-project</code>: a user sees an advisory if they are on
+its project's security team <strong>or</strong> hold an explicit <code>AdvisoryAccessGrant</code> (direct
+or via a group), and an authenticated triage reporter is auto-granted viewer on
+their own report.</p>
+<p><strong>Schema- or database-per-project tenancy is deliberately not used.</strong> It is a
+poor fit for this boundary and this data model:</p>
+<ul>
+<li>The boundary is per-advisory as well as per-project, so a project schema would
+  model only half of it — every cross-project grant would need cross-schema
+  access.</li>
+<li>It would only move the bug: per-schema isolation needs per-schema DB roles, and
+  <em>which roles a connection may assume</em> is decided by application code — the same
+  trust domain as the bug. (A shared role with <code>search_path</code> switching isolates
+  nothing.)</li>
+<li>It would fracture global infrastructure: the append-only audit timeline
+  (<a href="../invariant/#inv-audit-1">INV-AUDIT-1</a>), the month-partitioned access log
+  (<a href="../invariant/#inv-audit-5">INV-AUDIT-5</a>), <code>pg_trgm</code> search and the
+  similarity prefilter all query across advisories.</li>
+</ul>
+<p>The answer is <strong>layered enforcement in the single schema</strong>
+(<a href="../invariant/#inv-conf-2">INV-CONF-2</a>):</p>
+<ol>
+<li><strong>One chokepoint.</strong> <code>Advisory.objects.visible_to(user)</code> (wrapped by
+   <code>advisories.permissions.visible_advisories</code>) is the single source of list
+   visibility, shared by the HTML and JSON list endpoints.</li>
+<li><strong>A CI guard.</strong> <code>tests/test_authorization_matrix.py</code> enumerates every
+   advisory-scoped route × role and asserts non-members are denied — a new
+   endpoint that skips the check fails the suite by construction.</li>
+<li><strong>A fail-closed backstop.</strong> Postgres <strong>row-level security</strong> on
+   <code>advisories_advisory</code> (with predicate-free deferring policies on its child
+   tables) re-enforces <code>visible_to</code> on <em>every</em> query. This inverts the default
+   from opt-in / <strong>fail-open</strong> (a query leaks unless it remembers to filter) to
+   <strong>fail-closed</strong> (a query is filtered unless the principal is explicitly admin).</li>
+</ol>
+<p>RLS keys on a per-request principal in session GUCs — <code>advisoryhub.user_id</code> and
+<code>advisoryhub.is_admin</code> — set per request by <code>RowLevelSecurityMiddleware</code> (and
+reset, fail-closed, when the response is done) and per Celery task / management
+command by the <code>rls_principal</code> / <code>rls_system</code> context managers (<code>common/rls.py</code>).
+A superuser or <code>BYPASSRLS</code> role is never subject to RLS, so the dev/CI bootstrap
+role (a superuser) leaves it dormant — <strong>enforcement is a production posture</strong>
+under the non-superuser app role (§7), validated in tests via <code>SET ROLE</code>. The
+principal is trivially correct and lives apart from the permission logic it
+protects, so a bug in that logic cannot widen what the database returns; an unset
+principal matches no rows. The policy mirrors <code>visible_to</code> and is
+<strong>drift-tested</strong> against it — RLS backstops the forgot-to-filter / IDOR class,
+not a wrong predicate. The operator role model (single role +
+<code>FORCE ROW LEVEL SECURITY</code>, or running the app under a separate non-owner login
+role) is in
+<a href="../../operations/running-in-production/#7-database-hardening-checklist">running-in-production.md §7</a>.</p>
+<hr />
+<h2 id="4-publication-pipeline">4. Publication pipeline<a class="headerlink" href="#4-publication-pipeline" title="Permanent link">&para;</a></h2>
+<p>End-to-end implementation in
+<code>publication/services.py</code> and <code>publication/tasks.py</code>, with the Git
+layer in <code>publication/git_service.py</code>. The narrative below is the
+companion to
+<a href="../advisory-lifecycle/#8-publication-sequence-diagram"><code>advisory-lifecycle.md</code> §8</a>.</p>
+<h3 id="41-enqueue-publicationservicespublish">4.1 Enqueue (<code>publication.services.publish</code>)<a class="headerlink" href="#41-enqueue-publicationservicespublish" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Wrapped in <code>@transaction.atomic</code>. The caller's user must pass
+   <code>permissions.can_publish</code>; dismissed advisories are refused.</li>
+<li><code>Advisory.objects.select_for_update</code> locks the advisory row.</li>
+<li>The lock-and-check pattern refuses a new attempt if any
+   <code>PublicationTask(status ∈ {queued, running})</code> exists for the
+   same advisory, raising <code>PublicationInProgress</code>
+   (<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>).</li>
+<li>For GHSA-linked advisories, <code>ghsa.services.refresh_for_publish</code>
+   runs before pinning. The refresh may append a new
+   <code>AdvisoryVersion</code> if upstream returned changed fields.</li>
+<li>The current latest <code>AdvisoryVersion</code> is read via
+   <code>advisory_services.latest_version</code>. A <code>PublicationTask</code> row is
+   created with <code>status=queued</code> pinning that version.</li>
+<li><code>PUBLICATION_EXPORT_STARTED</code> is audited.</li>
+<li><code>transaction.on_commit</code> schedules
+   <code>publication.tasks.run_publication.delay(task.pk)</code>. A broker
+   outage is non-fatal — the task remains <code>queued</code> and the admin
+   console surfaces it so an operator can re-trigger after fixing
+   the broker.</li>
+</ol>
+<h3 id="42-worker-publicationtasksrun_publication">4.2 Worker (<code>publication.tasks.run_publication</code>)<a class="headerlink" href="#42-worker-publicationtasksrun_publication" title="Permanent link">&para;</a></h3>
+<p>Inside the Celery task body (no surrounding transaction — each step
+either succeeds or marks the task <code>failed</code> and returns):</p>
+<ol>
+<li>Load the task with <code>select_related("advisory", "version",
+   "advisory__project")</code>. Return early if it's no longer
+   queueable.</li>
+<li><code>services.mark_running(task)</code> flips status to <code>running</code>,
+   increments <code>attempts</code>, stamps <code>started_at</code>, records
+   <code>self.request.id</code> as <code>celery_task_id</code>.</li>
+<li>Read <code>active_config()</code> (the currently active
+   <code>PublicationRepositoryConfig</code>).</li>
+<li>Build OSV via <code>publication.osv.build_osv(task.version)</code> and
+   validate against the vendored schema; emit
+   <code>PUBLICATION_OSV_GENERATED</code>. Same for CSAF
+   (<code>publication.csaf.build_csaf</code> + <code>validate_csaf</code> +
+   <code>PUBLICATION_CSAF_GENERATED</code>). When the pinned version carries an
+   <code>assigned_cve_id</code>, additionally build a CVE Record
+   (<code>publication.cve.build_cve</code> + <code>validate_cve</code> +
+   <code>PUBLICATION_CVE_GENERATED</code>) — EF-assigned CVEs only, read from the
+   pinned payload, never live data (<a href="../invariant/#inv-version-3">INV-VERSION-3</a>).
+   On a <em>withdrawal</em> run (the pinned version carries <code>withdrawn_reason</code>) the
+   CVE Record is built by <code>publication.cve.build_rejected_cve</code> instead — a
+   <code>REJECTED</code> record whose <code>rejectedReasons</code> is the withdrawal reason — so the
+   repo mirrors the cve.org rejection rather than re-asserting <code>PUBLISHED</code>
+   (<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>).
+   Validation is schema-based against the JSON Schemas vendored in
+   <code>publication/schemas/</code> (<a href="../invariant/#inv-pub-6">INV-PUB-6</a>). Those schemas are
+   pinned to upstream tags in <code>publication/schemas/SCHEMAS.VERSION</code> (OSV carries a
+   local <code>ECL-</code> prefix patch), checksum-verified by <code>dev/check_vendored_assets.sh</code>,
+   and version-tracked by the scoped self-hosted Renovate workflow (re-vendored by
+   <code>dev/update_vendored_assets.py</code>; a schema bump auto-merges on green CI because
+   <code>publication/tests</code> + the OSV ecosystem drift guard would catch a breaking change).</li>
+<li>Persist <code>PublicationArtifact</code> rows for each kind (<code>osv</code>, <code>csaf</code>,
+   and <code>cve</code> when present) via <code>update_or_create</code> keyed on
+   <code>(task, kind)</code>, carrying the serialised path and the validated
+   JSON content. This is the source of truth for the admin-console
+   preview screens.</li>
+<li>Hand the serialised documents to
+   <code>publication.git_service.publish_files</code>.</li>
+</ol>
+<h3 id="43-git-layer-publicationgit_servicepublish_files">4.3 Git layer (<code>publication.git_service.publish_files</code>)<a class="headerlink" href="#43-git-layer-publicationgit_servicepublish_files" title="Permanent link">&para;</a></h3>
+<p>Every step shells out to the <code>git</code> binary with explicit argument
+lists (<code>subprocess.run</code>, never <code>shell=True</code>); there is no Python Git
+library. Each invocation carries a wall-clock timeout (300 s for
+clone/push, 60 s for local commands) — the only real hang protection,
+since Celery time limits are not enforced under the worker's threads
+pool. For each call:</p>
+<ol>
+<li><code>_git_env(config)</code> builds a per-call environment dict that
+   <em>extends</em> <code>os.environ</code> (it never mutates it — that would race
+   between concurrent publications under a threaded Celery pool;
+   extending rather than replacing matters so the container
+   entrypoint's nss_wrapper variables reach the git → ssh child
+   processes): <code>GIT_TERMINAL_PROMPT=0</code> and the
+   <code>GIT_AUTHOR_*</code>/<code>GIT_COMMITTER_*</code> identity from the config. When auth
+   mode is <code>ssh</code>, <code>GIT_SSH</code> is pointed at a per-call wrapper script
+   (generated into the scratch directory) that execs
+   <code>ssh -i &lt;key&gt; -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o BatchMode=yes</code> —
+   <code>GIT_SSH</code> is exec'd directly by git, whereas <code>GIT_SSH_COMMAND</code> is run
+   through <code>/bin/sh</code>, which the production image doesn't have
+   (<a href="../invariant/#inv-secret-2">INV-SECRET-2</a>).</li>
+<li>A fresh <code>tempfile.TemporaryDirectory(prefix="advisoryhub-pub-")</code>
+   (<a href="../invariant/#inv-pub-1">INV-PUB-1</a>).</li>
+<li><code>_embed_token(config)</code>: if auth mode is <code>token</code> and the URL is
+   HTTPS, rewrites it to
+   <code>https://x-access-token:$PUB_REPO_TOKEN@…</code>. The rewritten URL is
+   only used as a <code>git clone</code> argument; it is never persisted,
+   logged, or audited.</li>
+<li><code>git -c core.symlinks=false clone --depth 1 --single-branch --branch &lt;branch&gt;</code> —
+   shallow clone (<a href="../invariant/#inv-pub-3">INV-PUB-3</a>); <code>core.symlinks=false</code>
+   makes git materialise any symlink committed at the repo HEAD as a plain file,
+   so the write step below can never follow one out of tree
+   (<a href="../invariant/#inv-pub-8">INV-PUB-8</a>).</li>
+<li><code>_write_files(workdir, files)</code> writes each <code>WrittenFile</code> and
+   returns whether anything changed. It refuses any write whose resolved target
+   escapes the clone root (<a href="../invariant/#inv-pub-8">INV-PUB-8</a>). Idempotent on
+   content: if both the OSV and the CSAF are byte-identical to what is already on
+   the branch, no commit is created and the function returns
+   <code>PublishResult(commit_sha=HEAD, …)</code>.</li>
+<li>Otherwise <code>git add</code>, then
+   <code>git -c commit.gpgsign=false -c tag.gpgsign=false commit</code> with the
+   deterministic message <code>Publish advisory &lt;advisory_id&gt;</code> (the bot
+   must never sign commits — the deploy key/token is the trust
+   signal; a host-wide <code>commit.gpgsign=true</code> would otherwise abort
+   the commit), then <code>git push origin HEAD:&lt;branch&gt;</code>. A non-zero
+   exit from any step — including rejected pushes — raises
+   <code>GitPublicationError</code>.</li>
+<li>All raised error strings are built from the failing subcommand's
+   name and git's own output — never from the argument list, which
+   may embed the token — and flow through <code>_redact(str, config)</code>
+   which calls <code>audit.services.redact_secrets</code> and then explicitly
+   strips the configured token, so an error message that somehow
+   surfaces a URL with embedded credentials still leaves the
+   redacted form on the way out.</li>
+</ol>
+<h3 id="44-atomic-finalisation">4.4 Atomic finalisation<a class="headerlink" href="#44-atomic-finalisation" title="Permanent link">&para;</a></h3>
+<p>Back in the worker, on a clean <code>publish_files</code> return:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">with</span> <span class="n">transaction</span><span class="o">.</span><span class="n">atomic</span><span class="p">():</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">advisory</span> <span class="o">=</span> <span class="n">Advisory</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">select_for_update</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">advisory_id</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">advisory</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">State</span><span class="o">.</span><span class="n">PUBLISHED</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="k">if</span> <span class="n">advisory</span><span class="o">.</span><span class="n">published_at</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">advisory</span><span class="o">.</span><span class="n">published_at</span> <span class="o">=</span> <span class="n">timezone</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">advisory</span><span class="o">.</span><span class="n">republish_required</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">advisory</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">services</span><span class="o">.</span><span class="n">mark_succeeded</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">commit_sha</span><span class="o">=...</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">record</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="n">Action</span><span class="o">.</span><span class="n">ADVISORY_PUBLISHED</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">record</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLICATION_EXPORT_COMPLETED</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p><code>PUBLICATION_GIT_COMMIT</code> and <code>PUBLICATION_GIT_PUSH</code> are audited
+<em>before</em> the atomic block, immediately after the push returns
+clean. The state flip, task finalisation, and the two terminal
+audit rows live inside the atomic block
+(<a href="../invariant/#inv-pub-4">INV-PUB-4</a>). The post-commit
+<code>advisory_published</code> notification is enqueued best-effort.</p>
+<p><strong>Withdrawal mode.</strong> The pipeline doubles as the <em>withdrawal</em> path
+(<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>): a pinned version carrying
+<code>withdrawn_reason</code> exports OSV/CSAF <em>with</em> the withdrawn marker (OSV
+<code>withdrawn</code> timestamp; a CSAF withdrawal <code>revision_history</code> entry + document
+note), re-exports any assigned CVE record as a <code>REJECTED</code> record
+(<code>build_rejected_cve</code>, <code>rejectedReasons</code> = the withdrawal reason — mirroring
+cve.org), and the finalisation branch flips the advisory to <code>dismissed</code>
+(<code>dismissed_from_state=published</code>) instead of <code>published</code>, orphaning any
+assigned CVE — no new task type, the end state is keyed off the payload. The
+document is updated in place, never deleted; a failed withdrawal push leaves
+the advisory <code>published</code> with a retryable <code>PublicationTask</code>. The post-commit
+<code>advisory_published</code> notification is skipped for a withdrawal.</p>
+<h3 id="45-failure-handling">4.5 Failure handling<a class="headerlink" href="#45-failure-handling" title="Permanent link">&para;</a></h3>
+<p>Any of {<code>OsvValidationError</code>, <code>CsafValidationError</code>,
+<code>GitPublicationError</code>, unexpected <code>Exception</code>} routes through
+<code>_fail(task, error=..., action=...)</code>:</p>
+<ul>
+<li><code>services.mark_failed(task, error=…)</code> flips status to <code>failed</code>,
+  stamps <code>finished_at</code>, truncates the redacted error to 8000
+  characters into <code>last_error</code>.</li>
+<li>The appropriate audit <code>Action</code> is recorded; the redacted
+  <code>task.last_error</code> is passed in <code>metadata["error"]</code>.</li>
+<li>A best-effort <code>publication_export_status</code> notification is queued.</li>
+<li><code>Advisory.state</code> is <strong>unchanged</strong>
+  (<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>).</li>
+</ul>
+<p>A retry is a brand-new <code>PublicationTask</code> pinned to the current
+latest version, not a re-run of the failed row.</p>
+<p><strong>Stale-task reaper.</strong> The <code>_fail</code> path requires a live worker. Two loss
+modes never reach it: a worker hard-killed after the run started (hard
+<code>time_limit</code> SIGKILL, OOM kill, pod eviction) leaves the row <code>running</code> —
+the redelivered message no-ops against the QUEUED/FAILED entry guard —
+and a broker outage at enqueue time (<code>common.enqueue.safe_enqueue</code>
+swallows the error) leaves it <code>queued</code> with no Celery message at all.
+Either row wedges the in-flight guard
+(<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>) forever. The
+beat-scheduled reaper (<code>publication.reap_stale_publication_tasks</code>, §6.2)
+bounds both: it fails <code>running</code> rows older than
+<code>PUB_TASK_STALE_RUNNING_AFTER_SECONDS</code> (default 1800 s, comfortably past
+the 660 s hard <code>time_limit</code>) and <code>queued</code> rows older than
+<code>PUB_TASK_STALE_QUEUED_AFTER_SECONDS</code> (default 7200 s, past the 3600 s
+broker <code>visibility_timeout</code> so a delayed redelivery always wins first).
+Each reap is a per-row compare-and-set under
+<code>select_for_update(skip_locked=True)</code> — a row finalised concurrently
+falls out of the filter and is never clobbered — and routes through the
+same <code>mark_failed</code> / audit (<code>PUBLICATION_TASK_REAPED</code>) / best-effort
+notification surface as <code>_fail</code>, never touching <code>Advisory.state</code>
+(<a href="../invariant/#inv-pub-7">INV-PUB-7</a>).</p>
+<hr />
+<h2 id="5-ghsa-integration">5. GHSA integration<a class="headerlink" href="#5-ghsa-integration" title="Permanent link">&para;</a></h2>
+<p>The GHSA app makes AdvisoryHub a <em>bridge</em> over GitHub's Security
+Advisory product for a curated set of repos.</p>
+<h3 id="51-authentication--installation">5.1 Authentication &amp; installation<a class="headerlink" href="#51-authentication--installation" title="Permanent link">&para;</a></h3>
+<p>AdvisoryHub authenticates to GitHub as a registered <strong>GitHub App</strong>
+with <code>repository_security_advisories: read &amp; write</code> (plus the
+default <code>metadata: read</code>). The App is installed per-repo by
+Eclipse org admins. The single load-bearing secret is the App's
+private key, sourced from either <code>GITHUB_APP_PRIVATE_KEY_PATH</code>
+(a file on disk; preferred in prod) or <code>GITHUB_APP_PRIVATE_KEY</code>
+(inline; dev fallback). The key is never persisted to the DB and
+never logged; the audit redactor catches it if it ever surfaces.</p>
+<p>The <code>GitHubAppInstallation</code> table tracks each installation's
+<code>installation_id</code>, <code>account_login</code>, account type, suspended status,
+and the App slug it's installed as. It is populated via the
+<code>discover_github_installations</code> management command or the first
+inbound <code>installation.created</code> webhook.</p>
+<h3 id="52-pmi-repo-mirror">5.2 PMI repo mirror<a class="headerlink" href="#52-pmi-repo-mirror" title="Permanent link">&para;</a></h3>
+<p><code>projects.ProjectGitHubRepository</code> mirrors the <code>(owner, name)</code>
+pairs PMI declares for each Eclipse Foundation project. The mirror
+is refreshed by <code>ghsa.tasks.run_pmi_repo_sync</code>, scheduled by Celery
+beat every <code>PMI_SYNC_INTERVAL_HOURS</code> hours (default 6). The PMI
+sync is the only way new repos appear; repos that disappear from
+PMI are soft-removed (kept for audit) rather than deleted. Each
+sync emits a <code>PMI_PROJECT_REPOS_SYNCED</code> audit row. Each row also caches its
+GitHub private-vulnerability-reporting status (<code>pvr_enabled</code> / <code>pvr_checked_at</code>,
+refreshed by <code>refresh_pvr_status</code>), which gates the "Move to GHSA" action (§5.10).</p>
+<h3 id="53-ghsa-discovery--per-advisory-sync">5.3 GHSA discovery &amp; per-advisory sync<a class="headerlink" href="#53-ghsa-discovery--per-advisory-sync" title="Permanent link">&para;</a></h3>
+<p>GHSA discovery runs on demand — <code>ghsa.services.sync_ghsas_for_project</code>
+for one project or <code>sync_ghsas_for_all_projects</code> for the whole org;
+the admin console exposes both — <strong>and</strong> on a slow beat schedule
+(<code>run_scheduled_ghsa_discovery</code>, §6.2) as a backstop for missed
+<code>repository_advisory.reported</code> webhooks. Discovery walks each
+<code>(owner, name)</code> in the project's repo mirror, lists GHSAs (all upstream
+states: <code>draft,triage,published,closed,withdrawn</code>), and creates or updates
+<code>Advisory(kind=ghsa_linked)</code> rows whose <code>ghsa_id</code> is uniquely
+mapped (<a href="../invariant/#inv-id-2">INV-ID-2</a>). A newly-created row's <code>state</code>
+mirrors GitHub's <code>ghsa_state</code> — <code>triage</code> when the GHSA is still in triage
+upstream (a private report not yet accepted into a draft), else <code>draft</code>
+(<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). A run is recorded as
+a <code>GhsaSyncRun</code> with counts and last error.</p>
+<p>Both sync functions are <code>transaction.atomic</code>, and that atomicity is
+load-bearing for run-row truthfulness: the <code>running</code> row commits only
+together with its finalisation, so an interrupted sync (worker
+hard-kill or an escaping exception) rolls the row back instead of
+stranding a forever-"Running" entry in the run history. <code>GhsaSyncRun</code>
+therefore needs no stale-row reaper — unlike <code>GhsaCvePushTask</code>
+(§5.4, <a href="../invariant/#inv-ghsa-2">INV-GHSA-2</a>).</p>
+<p>Per-advisory sync (<code>sync_single_ghsa</code>) refreshes one advisory from
+GitHub. When upstream payload-visible fields change,
+<code>AdvisoryVersion</code> v(n+1) is appended and
+<code>GHSA_METADATA_FETCHED</code> is audited; heartbeat syncs (no changes)
+only refresh <code>ghsa_metadata_synced_at</code> and do not append a version
+(<a href="../invariant/#inv-version-1">INV-VERSION-1</a>).</p>
+<h3 id="54-ef-cve-push">5.4 EF-CVE push<a class="headerlink" href="#54-ef-cve-push" title="Permanent link">&para;</a></h3>
+<p>When an EF-assigned CVE is reserved on a GHSA-linked advisory,
+<code>ghsa.services.enqueue_cve_push</code> creates a <code>GhsaCvePushTask</code> that
+<code>ghsa.tasks.run_cve_push</code> executes: the task PATCHes the upstream
+GHSA's <code>cve_id</code> to the EF value. Outcomes are audited
+(<code>GHSA_CVE_PUSH_REQUESTED</code>, <code>GHSA_CVE_PUSH_SUCCEEDED</code>,
+<code>GHSA_CVE_PUSH_FAILED</code>). If a subsequent sync sees the GHSA already
+carrying a <em>different</em> CVE, AdvisoryHub never overwrites its own
+value; instead <code>GHSA_CVE_CONFLICT_DETECTED</code> is emitted and
+<code>ghsa_cve_conflict_*</code> columns are populated so an admin can
+reconcile manually.</p>
+<p><code>run_cve_push</code> has no <code>acks_late</code>, so a worker hard-killed mid-push
+leaves the task <code>running</code> with no redelivery — and the advisory's
+CVE-push badge stuck at "Pending". The beat-scheduled
+<code>ghsa-cve-push-reaper</code> (§6.2, <a href="../invariant/#inv-ghsa-2">INV-GHSA-2</a>)
+bounds both that and broker-stranded <code>queued</code> rows, flipping them to
+<code>failed</code> (audited as <code>GHSA_CVE_PUSH_REAPED</code>) and correcting the
+advisory badge — guarded so it never clobbers a status belonging to a
+newer push task.</p>
+<h3 id="55-webhook-ingest">5.5 Webhook ingest<a class="headerlink" href="#55-webhook-ingest" title="Permanent link">&para;</a></h3>
+<p>Inbound webhook deliveries are HMAC-verified against
+<code>GITHUB_APP_WEBHOOK_SECRET</code> and deduplicated by delivery id via
+the <code>WebhookDelivery</code> table. Recognised events route to handlers in
+<code>ghsa.webhooks</code>; unrecognised events are logged as
+<code>GHSA_WEBHOOK_REJECTED</code> and dropped. A <code>repository_advisory</code> event for an
+<em>existing</em> advisory always refreshes and reacts; for an <em>unknown</em> GHSA on a
+PMI-mirrored repo it auto-creates a row on
+<code>published</code>/<code>updated</code>/<code>edited</code>/<code>reopened</code>/<code>reported</code> — <code>reported</code> is GitHub's
+private-vulnerability-report event, so the new row mirrors GitHub's triage state
+(§5.3, <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). Installation lifecycle events
+(<code>installation.created</code>, <code>suspended</code>, <code>unsuspended</code>,
+<code>deleted</code>) update <code>GitHubAppInstallation</code> rows accordingly.</p>
+<h3 id="56-refresh-for-publish">5.6 Refresh-for-publish<a class="headerlink" href="#56-refresh-for-publish" title="Permanent link">&para;</a></h3>
+<p>Before publishing a GHSA-linked advisory,
+<code>publication.services.publish</code> calls
+<code>ghsa.services.refresh_for_publish</code>, which pulls the latest GHSA
+metadata. If the GHSA itself is not published, is missing upstream,
+or has an outstanding CVE conflict, the refresh raises
+<code>PermissionDenied</code> and publication is aborted with a 4xx response
+in the calling view. On success, any payload-visible drift is
+appended as a new <code>AdvisoryVersion</code> before the publication task
+pins the version.</p>
+<h3 id="57-inbound-lifecycle-reactions">5.7 Inbound lifecycle reactions<a class="headerlink" href="#57-inbound-lifecycle-reactions" title="Permanent link">&para;</a></h3>
+<p>GHSA-linked advisory lifecycle is <strong>inbound-only</strong>
+(<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>): AdvisoryHub mirrors GitHub and never
+writes lifecycle state back. After an <em>observing</em> sync — the webhook dispatcher,
+the manual single-sync, or a freshly-created advisory —
+<code>ghsa.services.react_to_ghsa_state</code> inspects the result and reacts.
+<code>refresh_for_publish</code> deliberately does <strong>not</strong> react, so
+<code>publish → refresh → sync → publish</code> cannot recurse.</p>
+<p><strong>Triage mirror.</strong> A GHSA-linked advisory created while the GHSA is in triage
+upstream lands in <code>state=triage</code> as a read-only mirror (§5.3) — no human
+promote/dismiss/flag (<code>can_triage</code> / <code>can_flag_for_admin_routing</code> return <code>False</code>;
+it is kept out of the admin-console Inbox). When GitHub accepts the report into a
+draft (<code>ghsa_state</code> <code>triage</code> → <code>draft</code>), the reaction flips the row <code>triage</code> →
+<code>draft</code> (forward-only state flip, no version appended) and the standard workflow
+takes over.</p>
+<p><strong>Auto-publish.</strong> When the linked GHSA is <code>published</code> and the AdvisoryHub
+advisory is in <code>draft</code> or <code>triage</code> (a GHSA published straight from triage
+upstream), the reaction enqueues <code>ghsa.tasks.run_ghsa_auto_publish</code>,
+which calls <code>publish(system=True)</code> — exporting OSV/CSAF/CVE through the normal
+pipeline, skipping only the human <code>can_publish</code> gate (the decision is GitHub's).
+It is idempotent (keyed off the current state; <code>publish()</code>'s in-flight lock
+dedupes a webhook-vs-reconcile double fire) and best-effort (a gating refusal —
+CVE conflict, missing upstream, concurrent run — is logged and skipped; a real
+export failure surfaces as a failed <code>PublicationTask</code>). Controlled by
+<code>GHSA_AUTO_PUBLISH_ENABLED</code> (default on).</p>
+<p><strong>Auto-dismiss / auto-withdraw.</strong> When the linked GHSA is closed, withdrawn, or
+deleted (404), the reaction mirrors it: a <code>draft</code>/<code>triage</code> advisory is dismissed
+(<code>dismiss_advisory</code>), and a <code>published</code> one is <strong>withdrawn</strong>
+(<code>withdraw_advisory</code>, <a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>) — the OSV/CSAF
+are re-exported marked withdrawn (the withdrawal <code>publish</code> skips
+<code>refresh_for_publish</code>, since the GHSA is gone). An advisory holding an EF CVE is
+left flagged for an admin instead — orphaning a CVE is a CNA action the system
+won't take. The periodic reconcile (§6.2) sweeps <code>draft</code>/<code>triage</code>/<code>published</code> so
+withdrawals/deletions GitHub doesn't webhook are still caught.</p>
+<h3 id="58-feature-gate">5.8 Feature gate<a class="headerlink" href="#58-feature-gate" title="Permanent link">&para;</a></h3>
+<p>The integration is fronted by the <code>GHSA_FEATURE_ENABLED</code> boolean
+flag. With the flag off, GHSA views and tasks short-circuit; the
+admin console hides the GHSA section (the sidebar link is gated by the
+<code>common.context_processors.ghsa_feature</code> context processor, and every
+GHSA action endpoint re-checks the flag server-side).</p>
+<h3 id="59-admin-console-ghsa-operations">5.9 Admin console GHSA operations<a class="headerlink" href="#59-admin-console-ghsa-operations" title="Permanent link">&para;</a></h3>
+<p>The Admin Console <strong>GHSA</strong> section (<code>/admin/ghsa/</code>, <code>admin_console/views/ghsa.py</code>,
+admin-only via <code>can_review</code>) is a read-only dashboard (<code>INV-AUTH-1</code> — it only
+displays) that surfaces the integration's bookkeeping tables and offers the
+maintenance actions that already live in <code>ghsa.views</code>. The actions POST to
+<code>ghsa:</code> endpoints which re-affirm authorization, step-up, rate limits, and the
+feature flag; the org-wide ones reuse the existing beat tasks / services and
+share their broker-offline inline fallback:</p>
+<ul>
+<li><strong>Sync all GHSAs</strong> (<code>ghsa:sync-all</code> → <code>run_ghsa_sync_all</code>), <strong>Run discovery now</strong>
+  (<code>ghsa:discover</code> → <code>run_scheduled_ghsa_discovery</code>), <strong>Reconcile now</strong>
+  (<code>ghsa:reconcile</code> → <code>reconcile_ghsa_linked_advisories</code>), <strong>Refresh all PMI repo
+  mirrors</strong> (<code>ghsa:sync-all-pmi</code> → <code>run_pmi_repo_sync</code>) — manual triggers for the
+  §6.2 backstops.</li>
+<li><strong>Retry all failed CVE pushes</strong> (<code>ghsa:retry-all-cve-pushes</code> →
+  <code>ghsa.services.retry_all_failed_cve_pushes</code>) — the bulk counterpart of the
+  per-row retry (<code>ghsa:retry-cve-push</code>): resets every <code>failed</code> <code>GhsaCvePushTask</code>
+  to <code>queued</code> and re-fans <code>run_cve_push</code>. No new audit action — each push records
+  its own <code>GHSA_CVE_PUSH_*</code> outcome, as the single retry already does.</li>
+<li><strong>Catch up now</strong> (<code>ghsa:catch-up-webhooks</code>) — webhook payload bodies are
+  deliberately not persisted (§5.5), so a failed <code>WebhookDelivery</code> cannot be
+  replayed directly; this re-runs reconcile + discovery, the documented poll
+  backstop for state GitHub failed to deliver.</li>
+<li><strong>Rescan installations</strong> (<code>ghsa:rescan-installations</code>) — surfaced from the
+  GitHub-App config page (<code>ghsa:connect</code>, linked from the section header).</li>
+</ul>
+<p>The observability tables show failed <code>GhsaCvePushTask</code> rows (with per-row + bulk
+retry), recent <code>GhsaSyncRun</code> history, recent <code>WebhookDelivery</code> history, and the
+registered <code>GitHubAppInstallation</code> rows. No new lifecycle write to GitHub is
+introduced — every operation is a pull/sync or the already-sanctioned CVE push
+(<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>).</p>
+<h3 id="510-move-to-ghsa-outbound-create">5.10 Move to GHSA (outbound create)<a class="headerlink" href="#510-move-to-ghsa-outbound-create" title="Permanent link">&para;</a></h3>
+<p>When a vulnerability is filed as a <strong>native</strong> AdvisoryHub report (<code>triage</code> or
+<code>draft</code>) that should have been a private vulnerability report on GitHub, an owner
+can <strong>move it to GHSA</strong> (<a href="../invariant/#inv-ghsa-4">INV-GHSA-4</a>). This is the one
+outbound <em>create</em> in the bridge (alongside the CVE push, the only other outbound
+write):</p>
+<ul>
+<li><strong>Client.</strong> <code>GitHubAppClient.create_repository_advisory</code> (<code>POST
+  /repos/{owner}/{repo}/security-advisories</code>, covered by
+  <code>repository_security_advisories: write</code>) and
+  <code>get_private_vulnerability_reporting</code> (<code>GET …/private-vulnerability-reporting</code>,
+  covered by <code>metadata: read</code>).</li>
+<li><strong>PVR cache.</strong> <code>ProjectGitHubRepository.pvr_enabled</code> / <code>pvr_checked_at</code> cache
+  each active repo's private-vulnerability-reporting status, refreshed by
+  <code>ghsa.services.refresh_pvr_status</code>. The cheap <code>can_move_to_ghsa</code> UI gate reads
+  the cache; the move picker (<code>advisory_move_to_ghsa_modal</code>) refreshes it live
+  before listing PVR-enabled repos.</li>
+<li><strong>Service.</strong> <code>ghsa.services.move_advisory_to_ghsa</code> (<code>@transaction.atomic</code>,
+  <code>select_for_update</code>) re-checks <code>can_move_to_ghsa</code>, validates the target repo is
+  an active repo of the advisory's <strong>own</strong> project (so the project never changes,
+  <a href="../invariant/#inv-ghsa-1">INV-GHSA-1</a>) with PVR enabled <em>right now</em>, builds the
+  create body from the report (<code>build_repository_advisory_payload</code> — <code>summary</code> +
+  <code>description</code> always, plus best-effort CWEs / CVSS vector / <code>vulnerabilities</code>
+  mapped from OSV <code>affected</code>, plus <code>cve_id</code> when one is assigned), calls the
+  client, then flips <code>kind</code> <code>native</code>→<code>ghsa_linked</code> in place, sets
+  <code>ghsa_id</code>/<code>ghsa_owner</code>/<code>ghsa_repo</code>, runs the initial <code>sync_single_ghsa</code> +
+  <code>react_to_ghsa_state</code> to mirror upstream content/state, appends one
+  <code>AdvisoryVersion</code>, clears any pending review/reassignment, and audits
+  <code>ADVISORY_MOVED_TO_GHSA</code>.</li>
+<li><strong>View.</strong> <code>advisories.views.advisory_move_to_ghsa</code> — a normal full-page POST
+  (so step-up's OIDC redirect works), rate-limited and step-up-gated; the modal is
+  HTMX-loaded for the live PVR picker.</li>
+</ul>
+<p>After the move the advisory is GHSA-linked and follows the inbound-only lifecycle
+(<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>).</p>
+<hr />
+<h2 id="6-background-jobs">6. Background jobs<a class="headerlink" href="#6-background-jobs" title="Permanent link">&para;</a></h2>
+<h3 id="61-celery-configuration">6.1 Celery configuration<a class="headerlink" href="#61-celery-configuration" title="Permanent link">&para;</a></h3>
+<p><code>config/celery.py</code> instantiates the Celery app with
+<code>config_from_object("django.conf:settings", namespace="CELERY")</code>
+and <code>autodiscover_tasks()</code>. Settings:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CELERY_BROKER_URL</code></td>
+<td><code>redis://localhost:6379/0</code></td>
+<td>Valkey or Redis.</td>
+</tr>
+<tr>
+<td><code>CELERY_RESULT_BACKEND</code></td>
+<td><code>redis://localhost:6379/1</code></td>
+<td>Separate DB index from the broker.</td>
+</tr>
+<tr>
+<td><code>CELERY_TASK_SERIALIZER</code></td>
+<td><code>json</code></td>
+<td>Hard requirement — no pickle.</td>
+</tr>
+<tr>
+<td><code>CELERY_RESULT_SERIALIZER</code></td>
+<td><code>json</code></td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>CELERY_ACCEPT_CONTENT</code></td>
+<td><code>["json"]</code></td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>CELERY_TIMEZONE</code></td>
+<td><code>TIME_ZONE</code> (default UTC)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>CELERY_TASK_ALWAYS_EAGER</code></td>
+<td>False</td>
+<td>Forced True in <code>config.settings.test</code>.</td>
+</tr>
+<tr>
+<td><code>CELERY_TASK_EAGER_PROPAGATES</code></td>
+<td>True</td>
+<td>Errors raised in tests, not swallowed.</td>
+</tr>
+<tr>
+<td><code>CELERY_TASK_IGNORE_RESULT</code></td>
+<td>True</td>
+<td>Results are never read (outcomes live on <code>PublicationTask</code>); keeps the result backend empty.</td>
+</tr>
+<tr>
+<td><code>CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP</code></td>
+<td>True</td>
+<td>Pins the resilient behaviour across the Celery 6 default flip.</td>
+</tr>
+<tr>
+<td><code>CELERY_BROKER_TRANSPORT_OPTIONS</code></td>
+<td><code>{"visibility_timeout": 3600}</code></td>
+<td>Redelivery window for the Redis/Valkey transport; must exceed the longest task. <code>PUB_TASK_STALE_QUEUED_AFTER_SECONDS</code> must in turn exceed this window (§6.2).</td>
+</tr>
+<tr>
+<td><code>run_publication</code> task</td>
+<td><code>acks_late</code>, <code>reject_on_worker_lost</code>, <code>soft_time_limit=600</code>, <code>time_limit=660</code></td>
+<td>At-least-once for the durable publication task; a hung git push fails-and-is-retryable rather than running until the visibility window. A worker lost <em>after</em> the run starts leaves the row <code>running</code>; the beat-scheduled reaper recovers it (§6.2, <a href="../invariant/#inv-pub-7">INV-PUB-7</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>Run a worker with <code>celery -A config worker -l info</code>. Run beat with
+<code>celery -A config beat</code>.</p>
+<p><strong>Ops:</strong> the broker (db0), result backend (db1) and cache (db2) share one Valkey
+instance. Run it with <code>--maxmemory-policy noeviction</code> (the default) so an eviction
+can never silently drop broker messages or rate-limit/maintenance keys, and in prod
+use <code>rediss://</code> (TLS) + AUTH. <code>/readyz</code> can probe the broker when
+<code>READYZ_INCLUDE_BROKER=True</code> (off by default — see §7.3).</p>
+<h3 id="62-beat-schedule">6.2 Beat schedule<a class="headerlink" href="#62-beat-schedule" title="Permanent link">&para;</a></h3>
+<p>Eight periodic jobs are registered in <code>config/settings/base.py</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">CELERY_BEAT_SCHEDULE</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s2">&quot;pmi-repo-mirror&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;ghsa.tasks.run_pmi_repo_sync&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">PMI_SYNC_INTERVAL_HOURS</span><span class="p">),</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="p">},</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s2">&quot;access-log-partition-maintenance&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;audit.tasks.maintain_access_log_partitions&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">},</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="s2">&quot;backlog-gauge-refresh&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;audit.tasks.refresh_backlog_gauges&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">),</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="p">},</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="s2">&quot;security-roster-sync&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;projects.tasks.run_roster_sync&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">PMI_ROSTER_SYNC_INTERVAL_HOURS</span><span class="p">),</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="p">},</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="s2">&quot;publication-task-reaper&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;publication.reap_stale_publication_tasks&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="p">},</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="s2">&quot;similarity-check-reaper&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;similarity.reap_stale_similarity_checks&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="p">},</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="s2">&quot;ghsa-cve-push-reaper&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;ghsa.tasks.reap_stale_cve_push_tasks&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="p">},</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    <span class="s2">&quot;ghsa-linked-reconcile&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;ghsa.tasks.reconcile_ghsa_linked_advisories&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">GHSA_SYNC_INTERVAL_HOURS</span><span class="p">),</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    <span class="p">},</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>    <span class="s2">&quot;ghsa-discovery&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;ghsa.tasks.run_scheduled_ghsa_discovery&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>        <span class="s2">&quot;schedule&quot;</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">GHSA_DISCOVERY_INTERVAL_HOURS</span><span class="p">),</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>    <span class="p">},</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="p">}</span>
+</code></pre></div>
+<p><code>backlog-gauge-refresh</code> re-reads the operator queue depths and <code>.set()</code>s the
+<code>advisoryhub_backlog</code> Prometheus gauge (see §8.3); it runs in the worker so the
+series lands on the worker's metrics exporter.</p>
+<p><code>access-log-partition-maintenance</code> creates the upcoming month's
+<code>AccessLogEntry</code> partition and drops months older than
+<code>AUDIT_ACCESS_LOG_RETENTION_DAYS</code> (default 90); it no-ops when
+<code>AUDIT_ACCESS_LOG_RETENTION_ENABLED</code> is False (see §8.6, <a href="../invariant/#inv-audit-5">INV-AUDIT-5</a>).</p>
+<p><code>security-roster-sync</code> mirrors each project's Eclipse security team into
+<code>SecurityTeamRosterEntry</code> rows and pre-provisions notification-only shadow
+users (<code>User.is_provisioned=True</code>) so <code>@team</code> mentions and team notifications
+reach members who have never logged in. It uses the <strong>authenticated</strong> Eclipse
+API (<code>projects/eclipse_api.py</code>, OAuth2 client-credentials) to resolve member
+emails the public PMI feed hides, and <strong>no-ops unless <code>PMI_ROSTER_SYNC_ENABLED</code>
+is set</strong> (default off). Shadow users hold no authorization (<a href="../invariant/#inv-oidc-5">INV-OIDC-5</a>); reach
+is notification-only (<a href="../invariant/#inv-roster-1">INV-ROSTER-1</a>).</p>
+<p><code>publication-task-reaper</code> fails <code>PublicationTask</code> rows orphaned in
+<code>running</code> (worker hard-killed mid-run: <code>time_limit</code> SIGKILL, OOM kill, pod
+eviction) or <code>queued</code> (enqueue swallowed by <code>safe_enqueue</code> during a broker
+outage), so the in-flight guard (<a href="../invariant/#inv-concurrency-1">INV-CONCURRENCY-1</a>) can never block
+publishing forever. Thresholds: <code>running</code> after
+<code>PUB_TASK_STALE_RUNNING_AFTER_SECONDS</code> (default 1800 s — past the 660 s
+hard <code>time_limit</code>, so the row cannot belong to a live execution) from
+<code>started_at</code>; <code>queued</code> after <code>PUB_TASK_STALE_QUEUED_AFTER_SECONDS</code>
+(default 7200 s — past the 3600 s broker <code>visibility_timeout</code>, so a
+delayed redelivery wins first) from <code>created_at</code>. It never touches
+<code>Advisory.state</code> (<a href="../invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>); see §4.5 and <a href="../invariant/#inv-pub-7">INV-PUB-7</a>.</p>
+<p><code>similarity-check-reaper</code> is the same janitor for <code>SimilarityCheck</code>
+rows, which otherwise wedge <code>request_check</code>'s in-flight guard and the
+panel's re-run button forever (the view swallows
+<code>SimilarityCheckInProgress</code>, so the panel just shows "pending"). Same
+mechanism as §4.5; thresholds
+<code>SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS</code> (default 1800 s — past
+the 360 s hard <code>time_limit</code>) and
+<code>SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS</code> (default 7200 s). Reaping
+is DB-only — no LLM egress (<a href="../invariant/#inv-sim-2">INV-SIM-2</a> unaffected) — so it runs even
+while <code>SIMILARITY_CHECK_ENABLED</code> is off; recovery after a reap is the
+panel's existing re-run button. See <a href="../invariant/#inv-sim-5">INV-SIM-5</a>.</p>
+<p><code>ghsa-cve-push-reaper</code> is the third janitor, for <code>GhsaCvePushTask</code>
+rows. Unlike the previous two it is display truth, not deadlock
+recovery: nothing blocks (there is no in-flight guard), but a worker
+hard-killed mid-push (<code>run_cve_push</code> has no <code>acks_late</code> → no
+redelivery) leaves the task <code>running</code> forever and the advisory's
+CVE-push badge stuck at "Pending". Thresholds:
+<code>GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS</code> (default 1800 s — a push
+is one GitHub API call bounded by the client's 10 s/30 s timeouts)
+from <code>started_at</code>, <code>GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS</code>
+(default 7200 s) from <code>created_at</code>. The advisory-badge flip is
+guarded against newer push tasks (§5.4). DB-only — no GitHub egress —
+so it runs even while <code>GHSA_FEATURE_ENABLED</code> is off. <code>GhsaSyncRun</code>
+needs no reaper (§5.3 — atomic create+finalise). See <a href="../invariant/#inv-ghsa-2">INV-GHSA-2</a>.</p>
+<p><code>ghsa-linked-reconcile</code> is the inbound-lifecycle poll backstop
+(<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>): every <code>GHSA_SYNC_INTERVAL_HOURS</code>
+(default 6) it re-syncs each non-terminal (draft/triage/published) GHSA-linked
+advisory <strong>that already exists</strong> via <code>sync_single_ghsa</code> and runs
+<code>react_to_ghsa_state</code>, mirroring the current GitHub state — promoting a now-
+accepted triage row to draft, auto-publishing a now-<code>published</code> draft/triage row,
+auto-dismissing a closed/withdrawn/deleted draft/triage row, and auto-<em>withdrawing</em>
+a published one (<a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>). It exists because
+GitHub does <strong>not</strong> reliably emit <code>repository_advisory</code> webhooks for
+withdrawal/closure/deletion (and never for deletion), so the webhook path alone
+would miss them. It does <strong>not</strong> discover new GHSAs. Per-advisory failures are
+logged and skipped; no-ops while <code>GHSA_FEATURE_ENABLED</code> is off.</p>
+<p><code>ghsa-discovery</code> is the <em>discovery</em> backstop: every
+<code>GHSA_DISCOVERY_INTERVAL_HOURS</code> (default 24 — heavier than reconcile, as it lists
+every repo) <code>run_scheduled_ghsa_discovery</code> runs <code>sync_ghsas_for_all_projects</code>,
+auto-creating rows for GHSAs not yet mirrored. It catches <code>repository_advisory.reported</code>
+webhooks GitHub may not deliver (a newly-reported GHSA enters triage upstream and
+is mirrored as a triage row). On-demand discovery from the admin console stays the
+primary path; each run is recorded as a <code>GhsaSyncRun</code>. No-ops while
+<code>GHSA_FEATURE_ENABLED</code> is off.</p>
+<h3 id="63-task-inventory">6.3 Task inventory<a class="headerlink" href="#63-task-inventory" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Task</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>publication</code></td>
+<td><code>run_publication</code></td>
+<td>Build → validate → push → flip state.</td>
+</tr>
+<tr>
+<td><code>publication</code></td>
+<td><code>reap_stale_publication_tasks</code></td>
+<td>Beat-scheduled janitor: fails <code>PublicationTask</code> rows orphaned in queued/running (<a href="../invariant/#inv-pub-7">INV-PUB-7</a>).</td>
+</tr>
+<tr>
+<td><code>similarity</code></td>
+<td><code>run_similarity_check</code></td>
+<td>Prefilter → fingerprint → LLM judge → persist top-5 potential duplicates. <code>rate_limit="6/m"</code> absorbs GHSA bulk-sync bursts.</td>
+</tr>
+<tr>
+<td><code>similarity</code></td>
+<td><code>reap_stale_similarity_checks</code></td>
+<td>Beat-scheduled janitor: fails <code>SimilarityCheck</code> rows orphaned in queued/running (<a href="../invariant/#inv-sim-5">INV-SIM-5</a>).</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td><code>send_advisory_event_email</code></td>
+<td>Lifecycle events (created, submitted for review, published, publication export status).</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td><code>send_comment_email</code></td>
+<td>Comment + mention notifications.</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td><code>send_comment_mention_email</code></td>
+<td>Delta @-mentions added by a comment <em>edit</em> (including newly-mentioned <code>@team</code> shadow roster members); visibility re-checked at send time.</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td><code>send_advisory_triage_event_email</code></td>
+<td>Triage-flow events to the project security team or admins.</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td><code>send_intake_event_email</code></td>
+<td>Legacy no-op to drain queues from before the triage refactor.</td>
+</tr>
+<tr>
+<td><code>notifications</code></td>
+<td><code>send_invitation_email</code></td>
+<td>Invitation delivery.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_pmi_repo_sync</code></td>
+<td>Beat-scheduled PMI mirror refresh.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_ghsa_sync_project</code></td>
+<td>On-demand GHSA discovery for one project.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_ghsa_sync_all</code></td>
+<td>On-demand GHSA discovery for the whole org.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_scheduled_ghsa_discovery</code></td>
+<td>Beat-scheduled GHSA discovery backstop (org-wide): auto-creates rows for GHSAs not yet mirrored, catching missed <code>repository_advisory.reported</code> webhooks (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>). No-op unless <code>GHSA_FEATURE_ENABLED</code>.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_single_ghsa_sync</code></td>
+<td>Per-advisory GHSA metadata refresh (advisory-page Sync button); reacts to the observed state (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>).</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_ghsa_auto_publish</code></td>
+<td>System-initiated <code>publish(system=True)</code> when GitHub publishes a GHSA-linked draft/triage row (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>).</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>reconcile_ghsa_linked_advisories</code></td>
+<td>Beat-scheduled poll backstop: re-syncs already-known draft/triage/published GHSA-linked advisories and mirrors GitHub state — triage→draft promotion / auto-publish / auto-dismiss / auto-withdraw (<a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>, <a href="../invariant/#inv-withdraw">INV-WITHDRAW</a>).</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>run_cve_push</code></td>
+<td>Push EF-assigned CVE to a linked GHSA.</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>reap_stale_cve_push_tasks</code></td>
+<td>Beat-scheduled janitor: fails <code>GhsaCvePushTask</code> rows orphaned in queued/running and corrects the advisory's CVE-push badge (<a href="../invariant/#inv-ghsa-2">INV-GHSA-2</a>).</td>
+</tr>
+<tr>
+<td><code>ghsa</code></td>
+<td><code>process_webhook</code></td>
+<td>Applies a signature-verified webhook delivery (per-advisory refresh or auto-create) off the request thread.</td>
+</tr>
+<tr>
+<td><code>audit</code></td>
+<td><code>maintain_access_log_partitions</code></td>
+<td>Beat-scheduled <code>AccessLogEntry</code> partition create-ahead + drop-expired.</td>
+</tr>
+<tr>
+<td><code>audit</code></td>
+<td><code>refresh_backlog_gauges</code></td>
+<td>Beat-scheduled refresh of the <code>advisoryhub_backlog</code> Prometheus gauge from live queue depths.</td>
+</tr>
+<tr>
+<td><code>projects</code></td>
+<td><code>run_roster_sync</code></td>
+<td>Beat-scheduled security-team roster sync (shadow-user provisioning); no-op unless <code>PMI_ROSTER_SYNC_ENABLED</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Idempotency story:</p>
+<ul>
+<li><code>run_publication</code> is short-circuited when the task is no longer
+  in a queueable state; success / failure is terminal per-row, and
+  the file write is idempotent on content.</li>
+<li><code>reap_stale_publication_tasks</code>, <code>reap_stale_similarity_checks</code>, and
+  <code>reap_stale_cve_push_tasks</code> are idempotent by construction: the
+  candidate predicate is status+staleness, reaped rows leave the set,
+  and each reap is a per-row compare-and-set — overlapping runs
+  <code>skip_locked</code> each other rather than double-reaping.</li>
+<li><code>run_similarity_check</code> uses the same queued/failed-only guard, and
+  the fingerprint cache is keyed on a content hash, so a re-delivered
+  task never duplicates LLM spend for unchanged content.</li>
+<li>GHSA per-advisory sync writes a new version only on payload
+  change.</li>
+<li>Notification tasks recompute recipients at send time, so an
+  enqueued-then-revoked grant produces no email.</li>
+</ul>
+<h3 id="64-duplicate-detection-pipeline-similarity">6.4 Duplicate-detection pipeline (<code>similarity</code>)<a class="headerlink" href="#64-duplicate-detection-pipeline-similarity" title="Permanent link">&para;</a></h3>
+<p>Trigger points — public intake (<code>submit_triage_report</code>), manual creation
+(<code>advisory_create</code>), GHSA import (<code>create_ghsa_linked_advisory</code>), and the
+owner-only re-run button — all call
+<code>similarity.services.request_check_safe</code>, which no-ops unless
+<code>SIMILARITY_CHECK_ENABLED</code> (<a href="../invariant/#inv-sim-2">INV-SIM-2</a>) and never fails the parent
+operation. <code>request_check</code> mirrors <code>publication.publish</code>: advisory row
+lock, queued/running in-flight guard, a <code>SimilarityCheck</code> row pinned
+(<code>PROTECT</code>) to the latest <code>AdvisoryVersion</code> (<a href="../invariant/#inv-sim-4">INV-SIM-4</a>), an audit
+record, then <code>transaction.on_commit</code> → <code>safe_enqueue</code>.</p>
+<p>The worker pipeline (<code>run_similarity_check</code>) spends at most <strong>two</strong> LLM
+calls per check, independent of corpus size:</p>
+<ol>
+<li>Empty pinned payload (no summary/details) → succeed with a note;
+   zero LLM calls.</li>
+<li>Postgres prefilter — same project only, all lifecycle states: exact
+   alias / CVE / GHSA-id intersection and affected-package-name overlap
+   are force-included, then trigram similarity over summary/details
+   (the existing <code>pg_trgm</code> GIN indexes) fills up to
+   <code>SIMILARITY_CANDIDATE_LIMIT</code> slots.</li>
+<li>Fingerprint call — a compact normalized digest of the new report,
+   cached in <code>AdvisoryFingerprint</code> keyed on a content hash of the
+   duplicate-relevant payload subset; skipped while the hash is fresh.</li>
+<li>Judge call — scores every candidate (cached fingerprints where
+   fresh, truncated raw excerpts otherwise; candidate fingerprints are
+   never generated inline). The reply is post-processed — hallucinated
+   ids dropped, duplicates deduped, confidence clamped to 0–100,
+   floored at <code>SIMILARITY_MIN_CONFIDENCE</code> — and the top 5 stored as
+   ranked <code>SimilarityCandidate</code> rows.</li>
+</ol>
+<p>Provider adapters (<code>similarity/llm/</code>) are raw-<code>requests</code> clients with no
+SDK dependencies: the Anthropic Messages API, and OpenAI Chat
+Completions covering both OpenAI and local OpenAI-compatible servers
+(Ollama/vLLM/LM Studio — the on-prem option for embargoed content).
+Failures are wrapped in <code>LlmError</code>, whose message passes through
+<code>redact_secrets</code> (<a href="../invariant/#inv-sim-3">INV-SIM-3</a>). Results render in an owner-only sidebar
+panel on the advisory detail page that polls over HTMX while a check is
+queued/running (<a href="../invariant/#inv-sim-1">INV-SIM-1</a>); <code>manage.py backfill_fingerprints</code> warms
+the fingerprint corpus for pre-existing advisories.</p>
+<p>Checks orphaned in <code>queued</code>/<code>running</code> (worker hard-killed mid-run, or an
+enqueue swallowed during a broker outage) are bounded by the
+beat-scheduled <code>similarity-check-reaper</code> (§6.2, <a href="../invariant/#inv-sim-5">INV-SIM-5</a>) — after a
+reap the panel's re-run button works again.</p>
+<hr />
+<h2 id="7-configuration">7. Configuration<a class="headerlink" href="#7-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="71-settings-modules">7.1 Settings modules<a class="headerlink" href="#71-settings-modules" title="Permanent link">&para;</a></h3>
+<p><code>config.settings</code> is a Python package; <code>base.py</code> contains every
+env-driven setting and the canonical defaults. The other modules
+import via <code>from .base import *</code> and apply environment-specific
+overrides:</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base.py</code></td>
+<td>Authoritative env-var schema (via <code>django-environ</code>); INSTALLED_APPS; MIDDLEWARE; logging; security defaults; OIDC; Celery; publication repo defaults; GHSA + PMI; rate limits; Celery beat.</td>
+</tr>
+<tr>
+<td><code>dev.py</code></td>
+<td>DEBUG-on convenience for the docker-compose dev environment.</td>
+</tr>
+<tr>
+<td><code>prod.py</code></td>
+<td>Production hardening (no DEBUG, secure cookies enforced).</td>
+</tr>
+<tr>
+<td><code>test.py</code></td>
+<td>Points <code>DATABASE_URL</code> at the local Postgres (override host/port via <code>TEST_DATABASE_URL</code>); drops <code>mozilla_django_oidc</code> middleware; sets <code>CELERY_TASK_ALWAYS_EAGER=True</code>; sets <code>RATELIMIT_ENABLE=False</code>; sets <code>STEP_UP_REQUIRED=False</code>; uses <code>MD5PasswordHasher</code> for speed; in-memory email backend.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-docker-compose-dev-environment">7.2 Docker-compose dev environment<a class="headerlink" href="#72-docker-compose-dev-environment" title="Permanent link">&para;</a></h3>
+<p>The dev environment is <strong>docker-compose-driven</strong> and self-contained.
+The canonical configuration lives in <code>docker-compose.yml</code>'s
+<code>x-django-env</code> anchor, which is reused by the <code>web</code> and <code>worker</code>
+services. <strong><code>.env</code> files are not loaded by docker-compose</strong> in dev
+— <code>.env.example</code> is the reference document for production
+operators, not a config source. The single file compose does load
+is <code>dev/kanidm/.env.kanidm</code>, which carries the OIDC client secret
+minted by <code>dev/kanidm/setup.sh</code> on first run.</p>
+<p>First-time bring-up:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>kanidm
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>bash<span class="w"> </span>dev/kanidm/setup.sh
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>up
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>web<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>migrate
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>web<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>seed_demo<span class="w"> </span>--with-publish-repo<span class="w"> </span>/tmp/advisoryhub-pub.git
+</code></pre></div>
+<p>Demo login: <code>alice@example.org</code> / <code>correcthorsebatterystaple</code>
+(created by <code>dev/kanidm/setup.sh</code> to match <code>seed_demo</code>).</p>
+<h3 id="73-environment-variable-inventory">7.3 Environment variable inventory<a class="headerlink" href="#73-environment-variable-inventory" title="Permanent link">&para;</a></h3>
+<p>Grouped by concern. See <code>config/settings/base.py</code> for defaults and
+types.</p>
+<p><strong>Django core.</strong> <code>DJANGO_DEBUG</code>, <code>DJANGO_ALLOWED_HOSTS</code>,
+<code>DJANGO_SECRET_KEY</code>, <code>DJANGO_TIME_ZONE</code>, <code>DATABASE_URL</code>,
+<code>CACHE_URL</code> (optional — falls back to LocMem), <code>LOG_FORMAT</code>
+(<code>json</code>/<code>plain</code>), <code>LOG_LEVEL</code>, <code>CSRF_TRUSTED_ORIGINS</code>.</p>
+<p><strong>Reverse proxy / edge TLS.</strong> <code>USE_X_FORWARDED_PROTO</code> (default False —
+trust the edge's <code>X-Forwarded-Proto</code> so <code>request.is_secure()</code> works
+behind TLS termination) and <code>TRUSTED_PROXY_COUNT</code> (default 0 — number
+of trusted reverse-proxy hops <code>common.net</code> strips from
+<code>X-Forwarded-For</code> when resolving the client IP recorded in audit
+entries).</p>
+<p><strong>OIDC.</strong> <code>OIDC_RP_CLIENT_ID</code>, <code>OIDC_RP_CLIENT_SECRET</code>,
+<code>OIDC_OP_AUTHORIZATION_ENDPOINT</code>, <code>OIDC_OP_TOKEN_ENDPOINT</code>,
+<code>OIDC_OP_USER_ENDPOINT</code>, <code>OIDC_OP_JWKS_ENDPOINT</code>,
+<code>OIDC_OP_LOGOUT_ENDPOINT</code>, <code>OIDC_RP_SIGN_ALGO</code> (default <code>RS256</code>),
+<code>OIDC_VERIFY_SSL</code> (default True), <code>OIDC_USE_PKCE</code> (default True),
+<code>OIDC_GROUP_CLAIM</code> (default <code>groups</code>), <code>OIDC_ADMIN_GROUP</code> (default
+<code>advisoryhub-security</code>), <code>OIDC_REQUIRE_EMAIL_VERIFIED</code> (default
+False; INV-OIDC-6).</p>
+<p><strong>Step-up.</strong> <code>STEP_UP_REQUIRED</code> (default True),
+<code>STEP_UP_MAX_AGE_SECONDS</code> (default 300).</p>
+<p><strong>Celery / Valkey.</strong> <code>CELERY_BROKER_URL</code>, <code>CELERY_RESULT_BACKEND</code>,
+<code>CELERY_TASK_ALWAYS_EAGER</code>. Prod: prefer <code>rediss://</code> (TLS) + AUTH; run Valkey
+with <code>maxmemory-policy noeviction</code> (see §6.1).</p>
+<p><strong>Security headers / CSP.</strong> <code>CSP_REPORT_ONLY</code> (default False — the CSP is
+enforced; set True to fall back to Report-Only while diagnosing a new violation)
+and optional <code>CSP_REPORT_URI</code> (collector for the <code>report-uri</code> directive). The
+nonce-based <code>script-src 'strict-dynamic'</code> policy (plus <code>style-src 'self'</code> with no
+<code>'unsafe-inline'</code>, so no inline styles — htmx's indicator-<code>&lt;style&gt;</code> injection is
+disabled via <code>htmx.config.includeIndicatorStyles = false</code>) and a fixed
+<code>Permissions-Policy</code> are emitted by django-csp +
+<code>common.middleware.PermissionsPolicyMiddleware</code> (not env-tunable).</p>
+<p><strong>Readiness probes.</strong> <code>READYZ_INCLUDE_PUB_REPO</code> (default False — <code>git ls-remote</code>
+the pub repo) and <code>READYZ_INCLUDE_BROKER</code> (default False — probe the Celery broker)
+add optional dependency checks to <code>/readyz</code>.</p>
+<p><strong>Email.</strong> <code>EMAIL_BACKEND</code> (default console),
+<code>DEFAULT_FROM_EMAIL</code>, optional <code>ADVISORYHUB_BASE_URL</code> used to
+construct absolute URLs in notification bodies; SMTP transport:
+<code>EMAIL_HOST</code>, <code>EMAIL_PORT</code>, <code>EMAIL_HOST_USER</code>,
+<code>EMAIL_HOST_PASSWORD</code> (secret), <code>EMAIL_USE_TLS</code>, <code>EMAIL_USE_SSL</code>.</p>
+<p><strong>Footer help links.</strong> <code>ADVISORYHUB_REPO_URL</code> (default
+<code>https://github.com/mbarbero/advisoryhub</code>) is the base GitHub repo for
+AdvisoryHub itself; the footer's "Report an issue" (<code>/issues/new</code>) and "Report a
+vulnerability in AdvisoryHub" (<code>/security/advisories/new</code>, GitHub private
+vulnerability reporting) links are derived from it, so a repo move is a single
+env change. <code>ADVISORYHUB_DISCUSSIONS_URL</code> (default
+<code>https://github.com/orgs/eclipse-csi/discussions</code>) backs the "Ask a question"
+link. Blank disables the corresponding link. Resolved by
+<code>common.context_processors.support_links</code>; the footer also shows the running app
+version (<code>importlib.metadata.version("advisoryhub")</code> via
+<code>common.context_processors.app_version</code>) but only to global admins — display-only
+gating in <code>base.html</code>, <a href="../invariant/#inv-auth-1">INV-AUTH-1</a>.</p>
+<p><strong>Publication Git repo.</strong> <code>PUB_REPO_URL</code>, <code>PUB_REPO_BRANCH</code>
+(default <code>main</code>), <code>PUB_REPO_AUTH</code> (<code>ssh</code>|<code>token</code>),
+<code>PUB_REPO_SSH_KEY_PATH</code>, <code>PUB_REPO_TOKEN</code>,
+<code>PUB_COMMIT_AUTHOR_NAME</code>, <code>PUB_COMMIT_AUTHOR_EMAIL</code>,
+<code>PUB_OSV_PATH_TEMPLATE</code> (default <code>osv/{year}/{advisory_id}.json</code>),
+<code>PUB_CSAF_PATH_TEMPLATE</code> (default <code>csaf/{year}/{advisory_id}.json</code>)
+— bucketed by the advisory's publication year (<code>{year}</code> = year of first
+publication; the advisory id carries no year of its own). CVE Records:
+<code>PUB_CVE_PATH_TEMPLATE</code> (default <code>cves/{year}/{bucket}/{cve_id}.json</code> —
+cvelistV5 layout, <code>{year}</code>/<code>{bucket}</code> derived from the CVE id, e.g.
+<code>CVE-2026-12345</code> → <code>2026/12xxx</code>), <code>PUB_CVE_ASSIGNER_ORG_ID</code> and
+<code>PUB_CVE_ASSIGNER_SHORT_NAME</code> (default <code>eclipse</code>) — the CNA identity
+stamped into generated CVE Records.</p>
+<p><strong>Publication task reaper.</strong> <code>PUB_TASK_STALE_RUNNING_AFTER_SECONDS</code>
+(default 1800 — must comfortably exceed <code>run_publication</code>'s 660 s hard
+<code>time_limit</code>) and <code>PUB_TASK_STALE_QUEUED_AFTER_SECONDS</code> (default 7200 —
+must exceed the broker's 3600 s <code>visibility_timeout</code>): staleness
+thresholds for the beat-scheduled reaper (§6.2, <a href="../invariant/#inv-pub-7">INV-PUB-7</a>).</p>
+<p><strong>GHSA / GitHub App / PMI.</strong> <code>GHSA_FEATURE_ENABLED</code> (default False),
+<code>GHSA_AUTO_PUBLISH_ENABLED</code> (default True — auto-publish a GHSA-linked advisory
+when GitHub publishes it, <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>),
+<code>GITHUB_APP_ID</code>, <code>GITHUB_APP_PRIVATE_KEY_PATH</code> (preferred in prod),
+<code>GITHUB_APP_PRIVATE_KEY</code> (inline fallback for dev),
+<code>GITHUB_APP_WEBHOOK_SECRET</code> (HMAC key — secret),
+<code>GITHUB_APP_API_BASE_URL</code> (default <code>https://api.github.com</code>),
+<code>GHSA_CVE_PUSH_STALE_RUNNING_AFTER_SECONDS</code> (default 1800) and
+<code>GHSA_CVE_PUSH_STALE_QUEUED_AFTER_SECONDS</code> (default 7200 — must exceed
+the 3600 s broker <code>visibility_timeout</code>): staleness thresholds for the
+beat-scheduled CVE-push reaper (§6.2, <a href="../invariant/#inv-ghsa-2">INV-GHSA-2</a>), which runs even
+while the GHSA feature is disabled (DB-only, no GitHub egress),
+<code>GHSA_SYNC_INTERVAL_HOURS</code> (default 6 — cadence of the inbound-lifecycle
+reconcile poll, §6.2 / <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>),
+<code>GHSA_DISCOVERY_INTERVAL_HOURS</code> (default 24 — cadence of the org-wide discovery
+backstop sweep, §6.2 / <a href="../invariant/#inv-ghsa-3">INV-GHSA-3</a>),
+<code>PMI_API_BASE_URL</code>, <code>PMI_API_TOKEN</code> (PMI is public; blank by
+default), <code>PMI_SYNC_INTERVAL_HOURS</code> (default 6).</p>
+<p><strong>Security-team roster sync (authenticated Eclipse API).</strong>
+<code>PMI_ROSTER_SYNC_ENABLED</code> (default False — gates the beat task and the
+Admin Console button), <code>PMI_ROSTER_SYNC_INTERVAL_HOURS</code> (default 24),
+<code>ECLIPSE_API_BASE_URL</code> (default <code>https://api.eclipse.org</code>),
+<code>ECLIPSE_API_TOKEN_URL</code> (OAuth2 client-credentials token endpoint),
+<code>ECLIPSE_API_CLIENT_ID</code> / <code>ECLIPSE_API_CLIENT_SECRET</code> (secret),
+<code>ECLIPSE_API_SCOPE</code> (optional). The token and client secret are cached and
+never logged; errors run through <code>redact_secrets</code> (INV-SECRET-*).</p>
+<p><strong>Intake.</strong> <code>ALTCHA_HMAC_KEY</code> (set to enable the self-hosted ALTCHA
+proof-of-work captcha for anonymous reporters; empty = no captcha),
+<code>RATELIMIT_INTAKE_ANON</code> (default <code>5/h</code>),
+<code>RATELIMIT_INTAKE_USER</code> (default <code>20/h</code>),
+<code>INTAKE_REPORT_RETENTION_DAYS</code> (default 365),
+<code>INTAKE_DISABLED</code> (kill switch).</p>
+<p><strong>Duplicate detection (similarity).</strong> <code>SIMILARITY_CHECK_ENABLED</code>
+(default False — the explicit consent gate for sending advisory content
+to the LLM provider, <a href="../invariant/#inv-sim-2">INV-SIM-2</a>), <code>SIMILARITY_LLM_PROVIDER</code>
+(<code>anthropic</code> | <code>openai</code>), <code>SIMILARITY_LLM_MODEL</code> (default
+<code>claude-opus-4-8</code>), <code>SIMILARITY_LLM_API_KEY</code> (secret; blank for
+keyless local servers), <code>SIMILARITY_LLM_BASE_URL</code> (empty = provider
+default; set for OpenAI-compatible/local servers),
+<code>SIMILARITY_LLM_TIMEOUT</code> (default 120 s read),
+<code>SIMILARITY_CANDIDATE_LIMIT</code> (default 60),
+<code>SIMILARITY_MIN_CONFIDENCE</code> (default 20),
+<code>SIMILARITY_CHECK_STALE_RUNNING_AFTER_SECONDS</code> (default 1800 — must
+comfortably exceed the 360 s hard <code>time_limit</code>) and
+<code>SIMILARITY_CHECK_STALE_QUEUED_AFTER_SECONDS</code> (default 7200 — must
+exceed the 3600 s broker <code>visibility_timeout</code>): staleness thresholds
+for the beat-scheduled reaper (§6.2, <a href="../invariant/#inv-sim-5">INV-SIM-5</a>), which runs even while
+the feature is disabled (DB-only, no LLM egress).</p>
+<p><strong>Rate-limit master switch.</strong> <code>RATELIMIT_ENABLE</code> (default True;
+forced False in <code>test</code>).</p>
+<p><strong>Access-log retention.</strong> <code>AUDIT_ACCESS_LOG_RETENTION_ENABLED</code> (default
+True), <code>AUDIT_ACCESS_LOG_RETENTION_DAYS</code> (default 90) — drive the
+beat-scheduled <code>AccessLogEntry</code> partition maintenance (§6.2, §8.6,
+<a href="../invariant/#inv-audit-5">INV-AUDIT-5</a>).</p>
+<p><strong>Observability.</strong> <code>SENTRY_DSN</code> (optional — enables Sentry via
+<code>common.sentry.init_from_env</code>). <code>PROMETHEUS_WORKER_METRICS_PORT</code>
+(default 0/disabled — the Celery worker's own metrics exporter port;
+docker-compose sets 9808). <code>PROMETHEUS_MULTIPROC_DIR</code> (read straight
+from the OS env by <code>django_prometheus</code>; set in prod to a writable
+tmpfs so <code>/metrics</code> aggregates across gunicorn workers — see §8.8).</p>
+<hr />
+<h2 id="8-operations">8. Operations<a class="headerlink" href="#8-operations" title="Permanent link">&para;</a></h2>
+<h3 id="81-health-endpoints-commonhealth">8.1 Health endpoints (<code>common.health</code>)<a class="headerlink" href="#81-health-endpoints-commonhealth" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>/healthz</code> — cheap liveness check; returns 200 unconditionally
+  when the process can answer. Suitable for k8s liveness probes.</li>
+<li><code>/readyz</code> — readiness check; pings the database, the cache, and
+  (when <code>PUB_REPO_URL</code> is set and <code>READYZ_INCLUDE_PUB_REPO=True</code>)
+  the publication remote via <code>git ls-remote --exit-code --heads</code>.
+  Returns 200 only if every check passes; otherwise 503 with a
+  JSON body <code>{"status": "fail", "failures": {&lt;name&gt;: &lt;ExcType&gt;}}</code>.
+  Each check is wrapped so a failure logs the full trace
+  server-side but the client gets only a short type name.</li>
+</ul>
+<h3 id="82-logging-commonlogging--commonmiddleware">8.2 Logging (<code>common.logging</code> + <code>common.middleware</code>)<a class="headerlink" href="#82-logging-commonlogging--commonmiddleware" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>RequestIDMiddleware</code> (first non-Prometheus middleware) generates
+  or honours an incoming <code>X-Request-ID</code> header and binds it to a
+  thread-local for the request lifetime.</li>
+<li><code>RequestIDFilter</code> is registered as a logging filter so every log
+  record carries <code>record.request_id</code>.</li>
+<li>Two formatters are configured: <code>json</code> (single-line JSON to
+  stderr, suitable for log shippers) and <code>plain</code> (human-readable).
+  <code>LOG_FORMAT</code> selects between them; <code>LOG_LEVEL</code> sets the root
+  level.</li>
+<li><code>django.request</code> and <code>django.server</code> are pinned to <code>WARNING</code> and
+  <code>propagate=False</code> so Django's per-request access lines do not
+  drown out application logs.</li>
+</ul>
+<h3 id="83-metrics">8.3 Metrics<a class="headerlink" href="#83-metrics" title="Permanent link">&para;</a></h3>
+<p><code>django_prometheus</code> is installed; <code>PrometheusBeforeMiddleware</code> is
+first and <code>PrometheusAfterMiddleware</code> is last in <code>MIDDLEWARE</code>, so
+the in-flight timer covers the entire request lifecycle. The
+<code>/metrics</code> endpoint is wired <strong>unconditionally</strong> (<code>config/urls.py</code>,
+via the <code>django_prometheus.urls</code> include); it carries no auth and
+must be kept off the public ingress (private port / network policy /
+reverse-proxy auth header).</p>
+<p>On top of django-prometheus's defaults (request counts, response
+status, the request-latency histogram, DB and cache series) the app
+exports custom business series defined in <code>common.metrics</code>:</p>
+<ul>
+<li><code>advisoryhub_publication_total{status}</code> — publication runs by
+  status (<code>started</code>/<code>succeeded</code>/<code>failed</code>), with
+  <code>advisoryhub_publication_stage_total{stage}</code> and the
+  <code>advisoryhub_publication_duration_seconds</code> histogram (instrumented
+  in <code>publication/services.py</code> + <code>publication/tasks.py</code>).</li>
+<li><code>advisoryhub_celery_task_total{task,status}</code> and
+  <code>advisoryhub_celery_task_duration_seconds{task}</code> — set from Celery
+  signal handlers in <code>common.celery_metrics</code>.</li>
+<li><code>advisoryhub_backlog{queue}</code> — operator queue depths, refreshed
+  every 60s by the <code>audit.tasks.refresh_backlog_gauges</code> beat task
+  (queries mirror the Admin Console inbox strip). The <code>pub_failed</code>
+  series stays per-source (failed <code>PublicationTask</code>s only) for
+  dashboard continuity; the inbox's "publish required" chip combines
+  it with republish-required advisories, so the chip count can exceed
+  the <code>pub_failed</code> gauge.</li>
+</ul>
+<p>These custom series are produced in the <strong>worker</strong> process, which
+serves no HTTP, so the worker runs its own exporter
+(<code>prometheus_client.start_http_server</code> on
+<code>PROMETHEUS_WORKER_METRICS_PORT</code>, default 0/disabled) as a <em>second</em>
+scrape target. The worker uses the <strong>threads</strong> pool
+(<code>--pool=threads</code>): all tasks run in one process, so the single
+exporter (started on <code>worker_ready</code>) sees every worker thread's
+counts and <code>--concurrency</code> can be raised freely. The default
+<strong>prefork</strong> pool would fork separate-memory child processes whose
+counts a MainProcess exporter can't see — switching to it requires
+<code>prometheus_client</code> multiprocess mode (a per-container
+<code>PROMETHEUS_MULTIPROC_DIR</code>), the same mechanism as the gunicorn web
+path (§8.8). The <code>advisoryhub_backlog</code> gauge uses
+<code>multiprocess_mode="mostrecent"</code> so it reports correctly under
+gunicorn multiprocess too.</p>
+<h3 id="84-sentry">8.4 Sentry<a class="headerlink" href="#84-sentry" title="Permanent link">&para;</a></h3>
+<p><code>common.sentry.init_from_env()</code> is called at the bottom of
+<code>base.py</code>. It initialises Sentry only when <code>SENTRY_DSN</code> is set and
+is otherwise a no-op.</p>
+<h3 id="85-rate-limits-commonratelimit">8.5 Rate limits (<code>common.ratelimit</code>)<a class="headerlink" href="#85-rate-limits-commonratelimit" title="Permanent link">&para;</a></h3>
+<p><code>django-ratelimit</code> is the underlying engine. Two helpers wrap it:</p>
+<ul>
+<li><code>html_ratelimit(*, rate, key=per_user_or_ip)</code> — for HTML / HTMX
+  views; returns a 429 with a short human message on hit.</li>
+<li><code>json_ratelimit(*, rate, key=per_user_or_ip)</code> — for the JSON API;
+  returns
+  <code>{"error": "rate_limited", "message": ..., "retry_after": ...}</code>.</li>
+</ul>
+<p><code>per_user_or_ip</code> keys on the authenticated user when present and
+falls back to the source IP (honouring <code>X-Forwarded-For</code> for proxied
+deployments). Public intake uses two separate rate strings —
+<code>RATELIMIT_INTAKE_ANON</code> (per IP) and <code>RATELIMIT_INTAKE_USER</code> (per
+user) — picked dynamically in <code>intake.views</code>.</p>
+<p>Both helpers (and the inline intake check in <code>_handle_post</code>) evaluate the limit
+<em>before</em> dispatching, via <code>django_ratelimit.core.is_ratelimited(..., increment=True)</code>:
+on a hit the <code>429</code> is returned and the wrapped view never runs, so no DB write,
+email, LLM call, or Git push happens on the throttled path
+(<a href="../invariant/#inv-ratelimit-1">INV-RATELIMIT-1</a>). Checking after the view ran
+would make the limit cosmetic.</p>
+<h3 id="86-audit-hygiene">8.6 Audit hygiene<a class="headerlink" href="#86-audit-hygiene" title="Permanent link">&para;</a></h3>
+<p>The audit log is split into two tables (see <a href="../invariant/#inv-audit-5">INV-AUDIT-5</a>). The durable,
+append-only <strong>ledger</strong> <code>AuditLogEntry</code> holds governance/timeline events. The
+high-volume, retention-managed <strong>access log</strong> <code>AccessLogEntry</code> holds the actions
+in <code>audit.models.EPHEMERAL_ACTIONS</code> (advisory views, GHSA/PMI chatter,
+authentication events — login/logout/failed-login/step-up — and per-recipient
+notification deliveries); <code>audit.services.record()</code> routes by action. The access log is monthly
+range-partitioned on <code>created_at</code>, so retention is a <code>DROP PARTITION</code> (O(1), no
+per-row DELETE) rather than a sweep — handled by the daily
+<code>maintain_access_log_partitions</code> task (§6.2) and the matching command.</p>
+<p><strong>First-view compliance receipt</strong> (<a href="../invariant/#inv-audit-6">INV-AUDIT-6</a>).
+<code>advisory.viewed</code> is ephemeral (every open, pruned at 90 days), but the <em>first</em>
+open of an advisory by a given user also emits a durable <code>advisory.first_seen</code>
+<code>AuditLogEntry</code> — an implicit "acknowledgment of receipt" proving the user was
+made aware, retained indefinitely on the ledger. <code>advisories.views.advisory_detail</code> reuses the
+<code>AdvisoryVisit.update_or_create</code> <code>created</code> flag as the once-per-(user, advisory)
+signal and writes the receipt via <code>audit.services.record</code> <strong>without</strong> IP/UA, so
+the never-pruned row carries no PII beyond the actor FK (erasure-clean — see
+<code>forget_user</code> below). <code>advisory.first_seen</code> stays out of <code>EPHEMERAL_ACTIONS</code> and
+out of the timeline tiers (admin-queryable, not per-event timeline noise).</p>
+<p><strong>Companion suppression on the timeline.</strong> Two structured ledger actions are
+likewise durable but kept off the activity timeline because a descriptive
+companion already narrates the same change: <code>advisory.review_status_changed</code>
+(<code>REVIEW_TASK_STATUS_CHANGED</code>) is always paired with an <code>ADVISORY_REVIEW_*</code> row,
+and <code>advisory.state_changed</code> is paired with <code>ADVISORY_DISMISSED</code> /
+<code>ADVISORY_TRIAGE_PROMOTED</code> (the redundant write is tagged <code>metadata.narrated=true</code>
+and dropped at the DB layer in <code>advisories.timeline.events_for_advisory</code>). State
+changes that are the sole narration of their event — reopen, the GHSA
+accepted-to-draft flip, and the <code>reopen_review</code> <code>review_status</code> flip — are left
+untagged and stay. See advisory-lifecycle.md §3.1.</p>
+<p>Management commands in <code>audit/management/commands/</code>:</p>
+<ul>
+<li><code>prune_audit</code> — deletes <strong>ledger</strong> rows older than a configurable
+  retention horizon, using the trigger bypass. Production retention is
+  conservative and the command is intended for explicit operator invocation,
+  not automated cron. Now rarely needed: the high-volume events live in the
+  access log, which prunes itself by partition drop. Each non-dry-run
+  invocation records an <code>AUDIT_PRUNED</code> entry on the ledger itself (horizon,
+  exact cutoff, deleted row count, optional operator reason), so the act of
+  pruning is part of the immutable history. The <em>retention floor</em> — the most
+  aggressive cutoff ever recorded across surviving <code>AUDIT_PRUNED</code> entries
+  (<code>audit.services.pruned_history_floor</code>) — is surfaced to readers: a marker at
+  the oldest end of any affected advisory's activity timeline (an advisory whose
+  <code>created_at</code> predates the floor) and a footer note on the Admin Console's
+  Audit-logs page, so a pruned history reads as deliberately truncated rather
+  than simply short.</li>
+<li><code>maintain_access_log_partitions</code> — manual equivalent of the beat task:
+  create the upcoming <code>AccessLogEntry</code> partition, drop months past the horizon
+  (<code>--dry-run</code> reports what would drop).</li>
+<li><code>forget_user</code> — scrubs identifying fields on <code>AuditLogEntry</code>,
+  <code>AdvisoryIntakeMetadata</code>, and other PII-bearing rows for a
+  named user, and <strong>deletes</strong> the user's <code>AccessLogEntry</code> rows outright (the
+  access log is retention-bounded, not a compliance ledger). Advisories and
+  other governance objects survive; only the identifying columns are nullified
+  or cleared.</li>
+</ul>
+<h3 id="87-seed--demo-data">8.7 Seed / demo data<a class="headerlink" href="#87-seed--demo-data" title="Permanent link">&para;</a></h3>
+<p><code>python manage.py seed_demo --with-publish-repo /tmp/pub.git</code>
+populates the dev environment with projects, users, advisories in
+each lifecycle state, sample comments, and an initialised bare Git
+publication repository. The command uses the dev-only
+<code>_unsafe_dev_reset_bypass()</code> context manager when invoked with
+<code>--reset</code>.</p>
+<h3 id="88-metrics-scraping--alerting">8.8 Metrics scraping &amp; alerting<a class="headerlink" href="#88-metrics-scraping--alerting" title="Permanent link">&para;</a></h3>
+<p>A dev/demo Prometheus + Grafana stack lives under <code>dev/observability/</code>
+and is gated behind the <code>observability</code> docker-compose profile, so it
+is opt-in (<code>docker compose --profile observability up prometheus
+grafana</code>, or <code>mise run obs-up</code>). It is <strong>not</strong> for production — prod is
+scraped by the operator's own Prometheus.</p>
+<ul>
+<li><strong>Scrape targets</strong> (<code>dev/observability/prometheus.yml</code>): the web
+  <code>/metrics</code> (django-prometheus series), the worker exporter
+  <code>worker:9808</code> (the <code>advisoryhub_*</code> series), and Prometheus itself.</li>
+<li><strong>Alert rules</strong> (<code>dev/observability/rules/advisoryhub.rules.yml</code>),
+  in three groups: <em>availability</em> (target down, 5xx ratio, p95 latency
+  burn), <em>pipeline</em> (publication failure rate, stuck failed-publication
+  backlog, Celery failure spike), and <em>readiness</em> (work queued but no
+  Celery progress — the visible proxy for a down broker, since
+  <code>safe_enqueue</code> swallows broker outages; cf. <code>READYZ_INCLUDE_BROKER</code>).</li>
+<li><strong>Grafana</strong> auto-provisions the Prometheus datasource and two
+  dashboards (request rate/errors/latency; publication outcomes &amp;
+  duration, Celery throughput, backlog).</li>
+</ul>
+<p><strong>Proposed SLOs</strong> (defaults — tune to operations):</p>
+<table>
+<thead>
+<tr>
+<th>SLO</th>
+<th>Target</th>
+<th>Window</th>
+<th>Backing alert</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web availability (non-5xx)</td>
+<td>≥ 99.5%</td>
+<td>30d</td>
+<td><code>AdvisoryHubHigh5xxRate</code></td>
+</tr>
+<tr>
+<td>p95 request latency</td>
+<td>&lt; 1s</td>
+<td>5m rolling</td>
+<td><code>AdvisoryHubLatencySLOBurn</code></td>
+</tr>
+<tr>
+<td>Publication success</td>
+<td>≥ 90%</td>
+<td>24h</td>
+<td><code>AdvisoryHubPublicationFailureRate</code></td>
+</tr>
+<tr>
+<td>Scrape targets reachable</td>
+<td>99.9%</td>
+<td>30d</td>
+<td><code>AdvisoryHubTargetDown</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Production note.</strong> <code>/metrics</code> must stay on a private port. Under
+multiple gunicorn workers the custom counters only aggregate when
+<code>prometheus_client</code> multiprocess mode is on: set
+<code>PROMETHEUS_MULTIPROC_DIR</code> to a writable, empty-at-boot tmpfs and run
+<code>gunicorn config.wsgi -c gunicorn.conf.py</code> (its <code>child_exit</code> hook reaps
+dead workers' mmap files). The Celery worker exports its own series on
+<code>PROMETHEUS_WORKER_METRICS_PORT</code>; scrape both targets.</p>
+<h3 id="89-admin-stats-page-operator-slas">8.9 Admin Stats page (operator SLAs)<a class="headerlink" href="#89-admin-stats-page-operator-slas" title="Permanent link">&para;</a></h3>
+<p>Distinct from the Prometheus series (§8.3), the Admin Console <strong>Stats</strong>
+page (<code>/admin/stats/</code>, admin-only via <code>can_review</code>) reports two
+human-facing SLAs computed on demand from the database by
+<code>admin_console/stats.py</code>:</p>
+<ul>
+<li><strong>Time to first response (TTFR)</strong> — intake/triage-sourced advisories
+  only: <code>AdvisoryIntakeMetadata.submitted_at</code> → the <em>earliest</em>
+  <code>AuditLogEntry</code> in <code>FIRST_RESPONSE_ACTIONS</code>
+  (<code>advisory.triage_promoted</code>, <code>advisory.dismissed</code>,
+  <code>advisory.flagged_for_routing</code>). <code>FIRST_RESPONSE_ACTIONS</code> is the
+  single authoritative definition (see advisory-lifecycle §10).</li>
+<li><strong>Time to publish (TTP)</strong> — <code>Advisory.created_at</code> →
+  <code>Advisory.published_at</code>.</li>
+</ul>
+<p>Each is reported as mean + <strong>p95</strong> (the single SLA percentile — p95 is the
+industry standard and matches the sparkline; p90/p99 were dropped as noise
+at this small per-period sample size) over <strong>trailing windows</strong> (last week,
+month, 3/6/12 months, all time) plus an optional custom range <strong>and a
+per-project filter</strong> (<code>?project=&lt;slug&gt;</code>, scoping tables + sparklines + the
+reverted tally to one project), with a <strong>period-over-period</strong> trend chip vs
+the immediately-preceding equal-length window (lower is better). Samples are
+<strong>completion-anchored</strong> (bucketed by the window their end event lands in) so
+a window reports the work that <em>completed</em> in it. A separate <strong>reverted</strong>
+tally counts intake reports promoted to draft and later dismissed (anchored
+on the dismissal); such reports still contribute a TTFR sample anchored on
+the promotion.
+Percentiles are computed in Python (linear interpolation) — the data is
+low-volume and this keeps the engine unit-testable without a DB
+(<code>admin_console/test_stats.py</code>). TTFR is bounded by the audit-retention
+window (old first-response rows may be pruned); TTP reads only <code>Advisory</code>
+columns and is immune. The demo seed (<code>seed_demo._seed_stats_demo</code>)
+backdates published + intake advisories across every window so the page is
+demonstrable.</p>
+<p>Each metric section also carries a compact <strong>trend sparkline</strong> — a
+server-rendered inline <code>&lt;svg&gt;</code> line of mean + p95 over the last 12 months in
+twelve 30-day buckets (<code>bucket_series</code> + <code>build_sparkline</code>), with value
+(max / mid / 0) and month axes and a "now: mean … · p95 …" current-value
+readout. It is CSP-clean: the SVG holds only data geometry (attributes), the
+axis labels are HTML and the gridlines are CSS, all colour in
+<code>static/advisoryhub.css</code> classes (no JS, no chart library), mirroring the
+existing inline-SVG icon set.</p>
+<hr />
+<h2 id="9-testing-strategy">9. Testing strategy<a class="headerlink" href="#9-testing-strategy" title="Permanent link">&para;</a></h2>
+<h3 id="91-database">9.1 Database<a class="headerlink" href="#91-database" title="Permanent link">&para;</a></h3>
+<p>Tests run against PostgreSQL — the same engine as prod, dev, and demo —
+so the append-only audit triggers, the advisory non-deletion trigger,
+the <code>pg_trgm</code> indexes, and the JSONB query paths are all exercised.
+<code>config.settings.test</code> defaults <code>DATABASE_URL</code> to the local compose
+Postgres; set <code>TEST_DATABASE_URL</code> to target a different host/port (CI
+points it at its service container). Start Postgres before running the
+suite (<code>docker compose up -d postgres</code> or <code>mise run up</code>). <code>--reuse-db</code>
+(in pytest <code>addopts</code>) keeps the test database between runs; pass
+<code>--create-db</code> after changing a migration.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>postgres
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nv">DJANGO_SETTINGS_MODULE</span><span class="o">=</span>config.settings.test<span class="w"> </span>pytest
+</code></pre></div>
+<h3 id="92-test-settings-overrides">9.2 Test settings overrides<a class="headerlink" href="#92-test-settings-overrides" title="Permanent link">&para;</a></h3>
+<p><code>config.settings.test</code> removes complications that hurt unit-test
+ergonomics:</p>
+<ul>
+<li><strong>OIDC middleware stripped.</strong> <code>mozilla_django_oidc.middleware.SessionRefresh</code>
+  is filtered out of <code>MIDDLEWARE</code>. Tests use <code>client.force_login</code>
+  to set the session; without the strip, every request would
+  redirect to the IdP.</li>
+<li><strong><code>CELERY_TASK_ALWAYS_EAGER=True</code>.</strong> Celery <code>.delay()</code> runs
+  synchronously in-process; combined with
+  <code>CELERY_TASK_EAGER_PROPAGATES=True</code> (from <code>base.py</code>), failures
+  in tasks raise into the test.</li>
+<li><strong><code>RATELIMIT_ENABLE=False</code>.</strong> No per-IP / per-user throttling
+  for the duration of tests. The dedicated rate-limit tests
+  re-enable it via <code>@override_settings(RATELIMIT_ENABLE=True)</code>
+  (and adjust the rate strings as needed).</li>
+<li><strong><code>STEP_UP_REQUIRED=False</code>.</strong> Publish actions don't need a
+  step-up re-auth; the dedicated step-up tests re-enable it via
+  <code>@override_settings(STEP_UP_REQUIRED=True)</code>.</li>
+<li><strong><code>MD5PasswordHasher</code>.</strong> Faster than PBKDF2 for the rare test
+  that creates a real password.</li>
+<li><strong><code>locmem</code> email backend.</strong> <code>django.core.mail.outbox</code> captures
+  notifications for assertion.</li>
+<li><strong>Insecure cookies.</strong> <code>SESSION_COOKIE_SECURE=False</code>,
+  <code>CSRF_COOKIE_SECURE=False</code> so the test client (no TLS) can
+  exercise them.</li>
+</ul>
+<h3 id="93-test-layout">9.3 Test layout<a class="headerlink" href="#93-test-layout" title="Permanent link">&para;</a></h3>
+<p>Tests live next to the code they exercise: each app has either a
+<code>tests.py</code> (small suites) or a <code>tests/</code> package (large suites).
+Pytest is the runner; the project ships a top-level <code>conftest.py</code>
+that wires up the Django test plumbing.</p>
+<p>Tested concerns include but are not limited to:</p>
+<ul>
+<li>Authorisation predicates for every state and role combination.</li>
+<li>Append-only guards (model layer for all three append-only
+  tables, plus the Postgres triggers under the Postgres CI run).</li>
+<li>Triage flow (submit, promote, dismiss, reassign, flag, unflag).</li>
+<li>Comment threading, mentions, comment visibility (internal vs. everyone with access).</li>
+<li>Notification recipient resolution across grant changes and
+  per-advisory overrides.</li>
+<li>Publication pipeline including push success, push failure
+  branches, retry, OSV/CSAF schema validation, and the redacted
+  <code>last_error</code> shape.</li>
+<li>OIDC group sync (<code>sync_groups_from_claims</code>) and step-up
+  freshness.</li>
+<li>Rate limits (per-IP intake anonymous and per-user intake
+  authenticated).</li>
+<li>GHSA discovery, per-advisory sync, refresh-for-publish, EF-CVE
+  push, webhook HMAC verification, installation lifecycle.</li>
+</ul>
+<h3 id="94-no-external-dependencies">9.4 No external dependencies<a class="headerlink" href="#94-no-external-dependencies" title="Permanent link">&para;</a></h3>
+<p>Tests do not require a real OIDC provider, real email delivery, or
+a real Git remote:</p>
+<ul>
+<li>OIDC is bypassed via <code>force_login</code> thanks to the middleware
+  strip.</li>
+<li>Email lands in <code>mail.outbox</code> via the locmem backend.</li>
+<li>Publication tests use a <strong>local bare repository</strong> created in a
+  <code>tempfile.TemporaryDirectory()</code>; the <code>PUB_REPO_URL</code> setting
+  is pointed at the bare repo's path so the real <code>git</code> subprocess
+  calls exercise the actual flow. Tests skip themselves when
+  <code>git</code> is not on <code>PATH</code>.</li>
+</ul>
+<h3 id="95-lint--format">9.5 Lint &amp; format<a class="headerlink" href="#95-lint--format" title="Permanent link">&para;</a></h3>
+<p><code>ruff check .</code> and <code>ruff format --check .</code> run as part of CI.
+Configuration is in <code>pyproject.toml</code> (<code>E,F,W,I,B,UP,DJ</code>; line
+length 100; <code>E501</code> ignored). Migrations and tests have relaxed
+rules; <code>advisories/models.py</code> ignores <code>DJ012</code> (intentional <code>Meta</code>
+override in <code>AdvisoryQuerySet</code>).</p>
+<p>CI also runs <code>python manage.py makemigrations --check --dry-run</code>
+and <code>python manage.py check --deploy --fail-level WARNING</code>.</p>
+<hr />
+<h2 id="10-cross-reference-index">10. Cross-reference index<a class="headerlink" href="#10-cross-reference-index" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../invariant/"><code>invariant.md</code></a> — load-bearing rules with stable
+  <code>INV-XYZ-N</code> IDs, the deep-dive for the rules referenced above.</li>
+<li><a href="../advisory-lifecycle/"><code>advisory-lifecycle.md</code></a> — state
+  diagrams, transition tables, the publication sequence diagram.</li>
+<li><a href="../permissions/"><code>permissions.md</code></a> — actors, roles, capability
+  matrix, full enforcement surface table (web / API / admin /
+  Celery / intake / comment-read filter).</li>
+<li><a href="../requirements/"><code>requirements.md</code></a> — top-down functional
+  specification (actors, domain concepts, use cases).</li>
+<li><a href="https://github.com/mbarbero/advisoryhub/blob/main/CLAUDE.md"><code>../../CLAUDE.md</code></a> — agent-facing operational
+  notes (app layout, common commands, network policy, persistence
+  rules).</li>
+<li><a href="https://github.com/mbarbero/advisoryhub/blob/main/README.md"><code>../../README.md</code></a> — setup instructions.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

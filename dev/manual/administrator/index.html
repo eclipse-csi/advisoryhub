@@ -1,0 +1,1935 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Eclipse Foundation security advisory authoring, review, and publication system">
+      
+      
+      
+        <link rel="canonical" href="https://mbarbero.github.io/advisoryhub/latest/manual/administrator/">
+      
+      
+        <link rel="prev" href="../security-team/">
+      
+      
+        <link rel="next" href="../../operations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Administrator - AdvisoryHub</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/neoteroi-mkdocs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#administrator--reviewer-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AdvisoryHub" class="md-header__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AdvisoryHub
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Administrator
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User manual
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specification/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specification
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AdvisoryHub" class="md-nav__button md-logo" aria-label="AdvisoryHub" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AdvisoryHub
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mbarbero/advisoryhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mbarbero/advisoryhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User manual
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User manual
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collaborator-and-viewer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collaborator & viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-team/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security team
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-who-this-guide-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Who this guide is for
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-admin-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Admin Console
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-reviewing-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Reviewing advisories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-managing-cves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Managing CVEs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-publication-oversight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Publication oversight
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-re-homing-misrouted-triage-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Re-homing misrouted triage reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Projects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-users-and-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Users and groups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-maintenance-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Maintenance mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-audit-and-access-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Audit and access logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-github-ghsa-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. GitHub (GHSA) integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-no-django-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. No Django admin
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-step-up-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Step-up authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/running-in-production/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running in production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/deploy-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../specification/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/invariant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Invariants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/advisory-lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advisory lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../contributing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/releasing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-who-this-guide-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Who this guide is for
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-admin-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Admin Console
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-reviewing-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Reviewing advisories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-managing-cves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Managing CVEs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-publication-oversight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Publication oversight
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-re-homing-misrouted-triage-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Re-homing misrouted triage reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Projects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-users-and-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Users and groups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-maintenance-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Maintenance mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-audit-and-access-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Audit and access logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-github-ghsa-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. GitHub (GHSA) integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-no-django-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. No Django admin
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-step-up-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Step-up authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="administrator--reviewer-guide">Administrator &amp; Reviewer Guide<a class="headerlink" href="#administrator--reviewer-guide" title="Permanent link">&para;</a></h1>
+<p><strong>Audience:</strong> global administrators — members of the AdvisoryHub admin group in
+the identity provider. You are an <strong>owner on every advisory</strong>, the <strong>only people
+who review advisories</strong>, and the operators of the <strong>Admin Console</strong>. You also
+hold the CVE/CNA-side and integration controls.</p>
+<p>Because you are an owner everywhere, the whole
+<a href="../security-team/">Security-Team Guide</a> applies to you too (creating, editing,
+publishing). <strong>This guide covers the powers that are yours alone.</strong> For shared
+concepts, see the <a href="../">manual index</a>.</p>
+<hr />
+<h2 id="1-who-this-guide-is-for">1. Who this guide is for<a class="headerlink" href="#1-who-this-guide-is-for" title="Permanent link">&para;</a></h2>
+<p>You become an administrator by being in the admin group in the Eclipse Foundation
+identity provider; membership is mirrored on every login (<a href="../../specification/invariant/#inv-oidc-3">INV-OIDC-3</a>). As with
+all roles, you cannot grant admin from inside AdvisoryHub — it is managed in the
+identity provider.</p>
+<p>What only administrators can do (everything else is shared with owners):</p>
+<ul>
+<li>Review advisories — approve, request changes, revoke an approval.</li>
+<li>Reserve/reject CVEs and reconcile unassigned ("orphan") CVEs.</li>
+<li>Oversee publication failures across every project (owners can re-publish
+  their own from the advisory page; only you see them all in one place).</li>
+<li>Re-home misrouted triage reports.</li>
+<li>Manage projects (including the mature-publisher flag) and sync rosters.</li>
+<li>Manage the GitHub App integration — org-wide GHSA syncs, CVE-push retries.</li>
+<li>Redact anyone's comment (authors can redact only their own).</li>
+<li>Ban/unban users and run GDPR "forget user".</li>
+<li>Turn maintenance mode on and off.</li>
+<li>Read the audit and access logs.</li>
+</ul>
+<hr />
+<h2 id="2-the-admin-console">2. The Admin Console<a class="headerlink" href="#2-the-admin-console" title="Permanent link">&para;</a></h2>
+<p>The Admin Console lives at <strong><code>/admin/</code></strong> and is the only admin surface — Django's
+built-in admin site is not enabled (see §12). Its landing page is the <strong>Inbox</strong>: a
+single, unified work queue that gathers everything waiting on an administrator:</p>
+<ul>
+<li>triage reports needing a decision (and the subset flagged as misrouted),</li>
+<li>advisories submitted for review,</li>
+<li>queued CVE requests,</li>
+<li>failed publication tasks,</li>
+<li>orphan CVEs awaiting reconciliation, and their reassignment tasks.</li>
+</ul>
+<p>Use the category filter to focus on one kind of work. The Console's left nav also
+links directly to the <strong>Projects</strong>, <strong>Users</strong>, <strong>Groups</strong>, <strong>CVE Assignment</strong>,
+<strong>Publication</strong>, <strong>Audit logs</strong>, <strong>Access log</strong>, and <strong>Maintenance</strong> sections
+described below.</p>
+<hr />
+<h2 id="3-reviewing-advisories">3. Reviewing advisories<a class="headerlink" href="#3-reviewing-advisories" title="Permanent link">&para;</a></h2>
+<p>When an owner submits a draft for review, it appears in your Inbox. Open the
+advisory; the <strong>Review</strong> card in the sidebar gives you the decision buttons:</p>
+<ul>
+<li><strong>Approve</strong> — the advisory becomes approved and its team can publish it.</li>
+<li><strong>Request changes</strong> — sends it back to the owner to revise and resubmit.</li>
+</ul>
+<p>You can also <strong>Revoke approval</strong> from the <strong>Review</strong> card if something needs
+another look before it goes out — this re-blocks publishing.</p>
+<p>Two rules to remember:</p>
+<ul>
+<li><strong>Administrators are the only reviewers</strong>, and <strong>you cannot submit or withdraw
+  a submission yourself</strong> — that would be self-review (<a href="../../specification/invariant/#inv-review-3">INV-REVIEW-3</a>). Owners
+  submit; you decide.</li>
+<li><strong>No one can publish while a review is still submitted</strong> — it must be decided
+  or withdrawn first.</li>
+</ul>
+<p>See the owner's side of this in the
+<a href="../security-team/#7-review">Security-Team Guide §7</a>.</p>
+<hr />
+<h2 id="4-managing-cves">4. Managing CVEs<a class="headerlink" href="#4-managing-cves" title="Permanent link">&para;</a></h2>
+<p>The <strong>CVE Assignment</strong> page (<code>/admin/cves/</code>) is the internal CVE queue. (AdvisoryHub does
+<strong>not</strong> call MITRE; this is an internal workflow — the actual reservation at
+cve.org is something you do out-of-band and then record here.)</p>
+<p><strong>Acting on a CVE request.</strong> On the <strong>CVE Assignment</strong> page, each queued request
+is a row with an inline action:</p>
+<ul>
+<li><strong>Reserve</strong> — type the CVE identifier (<code>CVE-YYYY-NNNN</code>) into the row and click
+  <strong>Assign</strong>; it is attached to the advisory. If the advisory is already published,
+  this marks it as needing re-publication so the CVE shows up publicly.</li>
+<li><strong>Reject</strong> — click <strong>Reject…</strong> to give a reason; optionally <strong>ban future CVE
+  requests</strong> for that advisory if it should never get one.</li>
+</ul>
+<p><strong>Unassigning and orphan CVEs.</strong> Only an administrator can <strong>unassign</strong> a CVE from
+an advisory — the trash icon beside the assigned CVE on the advisory page opens a
+"Remove CVE assignment" dialog — for example before dismissing an advisory that
+holds one. Unassigning produces an <strong>orphan CVE</strong>: a CVE that was reserved but no
+longer belongs to a live advisory and must be reconciled at cve.org.</p>
+<ul>
+<li><strong>Mark an orphan rejected</strong> — the orphan's row on the <strong>CVE Assignment</strong> page has
+  a <strong>Mark rejected at cve.org</strong> button to record that you've done so.</li>
+<li><strong>Resolve a reassignment task</strong> — the reassignment task's row on the <strong>CVE
+  Assignment</strong> page has a <strong>Resolve</strong> button. The task is created when a dismissed
+  advisory whose orphan CVE you had already <strong>marked rejected</strong> is <strong>reopened</strong>:
+  you decide whether to <strong>reassign</strong> that CVE back to it or <strong>replace</strong> it with a
+  new one. (A CVE that was still merely orphaned at reopen time is re-attached
+  automatically — no task appears.)</li>
+</ul>
+<p>On a <strong>GHSA-linked</strong> advisory, reserving a CVE also pushes the id to the GHSA on
+GitHub. The advisory's GHSA panel shows the push status; failed pushes can be
+retried with the <strong>Retry</strong> button in the <strong>Failed CVE pushes</strong> table on the
+<strong>GHSA</strong> page, and if upstream already carries a <em>different</em> CVE id, publication is
+blocked until you reconcile (§11).</p>
+<p>The full CVE-request and orphan state machines are in
+<a href="../../specification/advisory-lifecycle/"><code>advisory-lifecycle.md</code></a>.</p>
+<hr />
+<h2 id="5-publication-oversight">5. Publication oversight<a class="headerlink" href="#5-publication-oversight" title="Permanent link">&para;</a></h2>
+<p>The <strong>Publication</strong> page (<code>/admin/publications/</code>) lists publication attempts —
+in particular the <strong>failed</strong> ones. For each failed row you can:</p>
+<ul>
+<li>read the (secret-redacted) error message — tokens and credentials never appear
+  here (<a href="../../specification/invariant/#inv-secret-1">INV-SECRET-1</a>);</li>
+<li><strong>Retry</strong> the publication (the button on the row), which is the right move for a
+  transient failure such as a network blip or a momentary push rejection (owners
+  can equally re-publish from the advisory page — this page is where <em>every</em>
+  project's failures gather);</li>
+<li>preview or download the generated <strong>OSV</strong>, <strong>CSAF</strong>, and — when a CVE is
+  assigned — <strong>CVE</strong> artifacts via the links on the row.</li>
+</ul>
+<p>Remember an advisory flips to <em>published</em> only after a successful Git push
+(<a href="../../specification/invariant/#inv-lifecycle-3">INV-LIFECYCLE-3</a>); a failed task leaves the state untouched, so retrying is
+safe.</p>
+<hr />
+<h2 id="6-re-homing-misrouted-triage-reports">6. Re-homing misrouted triage reports<a class="headerlink" href="#6-re-homing-misrouted-triage-reports" title="Permanent link">&para;</a></h2>
+<p>Reports submitted with <strong>"I don't know"</strong> as the project, or flagged by an owner
+as misrouted, land in your Inbox for routing. Open such a report and <strong>promote</strong>
+it — because it isn't yet on a real project, promotion requires you to <strong>choose
+the destination project</strong>. Only administrators can route these reports — while
+flagged, they are locked to you (<a href="../../specification/invariant/#inv-intake-4">INV-INTAKE-4</a>). The flag itself is not a
+one-way door, though: the owner who raised it can retract it to take the report
+back, and you can clear it without promoting if it was raised in error.</p>
+<hr />
+<h2 id="7-projects">7. Projects<a class="headerlink" href="#7-projects" title="Permanent link">&para;</a></h2>
+<p>The <strong>Projects</strong> page (<code>/admin/projects/</code>) lists every project. You can:</p>
+<ul>
+<li><strong>Create</strong> a project (<code>/admin/projects/new/</code>) and <strong>edit</strong> one — click a project
+  in the list to open its edit page (name, security team, and settings).</li>
+<li><strong>Toggle the mature-publisher flag.</strong> When set, that project's security team can
+  publish drafts <strong>without</strong> a per-advisory approval (<a href="../../specification/invariant/#inv-perm-2">INV-PERM-2</a>). This flag
+  lives on the project (not in the identity provider), precisely so you can change
+  it here and have the change audited.</li>
+<li><strong>Sync the security-team roster</strong> — the project's edit page has a <strong>Sync
+  security team</strong> button (under "Security-team roster") that pre-provisions
+  notification-only ("shadow") accounts for Eclipse roster members who haven't
+  signed in yet, so <code>@team</code> mentions and alerts reach them. It confers no in-app
+  access (<a href="../../specification/invariant/#inv-oidc-5">INV-OIDC-5</a>), and the button appears only on deployments that
+  enable roster sync.</li>
+</ul>
+<hr />
+<h2 id="8-users-and-groups">8. Users and groups<a class="headerlink" href="#8-users-and-groups" title="Permanent link">&para;</a></h2>
+<p>The <strong>Users</strong> page (<code>/admin/users/</code>) lets you search and filter the directory
+(including by <strong>ban status</strong>). Click a user to open their detail page — their
+groups, their advisory grants and invitations, and their notification settings.
+From there you can:</p>
+<ul>
+<li><strong>Ban / unban</strong> — the <strong>Ban this account…</strong> button (or <strong>Unban account</strong> for a
+  banned user) under "Account access". Banning is the one app-side override of
+  identity-provider authority: it denies login and drops the user's live session
+  immediately, rather than waiting for an identity-provider change to propagate
+  (<a href="../../specification/invariant/#inv-auth-8">INV-AUTH-8</a>). It is reversible and audited at both ends.</li>
+<li><strong>Forget user (GDPR)</strong> — the <strong>Forget this account…</strong> button under "Right to be
+  forgotten (GDPR)" erases a user's personal data across the system. This is
+  irreversible; use it only for genuine data-subject erasure requests.</li>
+</ul>
+<p>The <strong>Groups</strong> page (<code>/admin/groups/</code>) is <strong>read-only</strong>: groups and their
+membership are owned by the identity provider, which AdvisoryHub only mirrors
+(<a href="../../specification/invariant/#inv-oidc-2">INV-OIDC-2</a>). Click a group to open its read-only detail page. To change
+who is in a group, change it in the identity provider.</p>
+<hr />
+<h2 id="9-maintenance-mode">9. Maintenance mode<a class="headerlink" href="#9-maintenance-mode" title="Permanent link">&para;</a></h2>
+<p>The <strong>Maintenance</strong> page (<code>/admin/maintenance/</code>) toggles maintenance mode. While
+it is <strong>on</strong>, only global administrators may make changes — every other user's
+writes are paused server-side, while reads continue (<a href="../../specification/invariant/#inv-maint-1">INV-MAINT-1</a>). Use it for
+deployments or data work where you need a stable, write-quiet system. Turn it off
+to restore normal operation.</p>
+<hr />
+<h2 id="10-audit-and-access-logs">10. Audit and access logs<a class="headerlink" href="#10-audit-and-access-logs" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Audit log</strong> (<code>/admin/audit/</code>) — the append-only record of every governance
+  action (create, edit, grant, review, publish, ban, …). It cannot be altered or
+  deleted, in either the application or the database (<a href="../../specification/invariant/#inv-audit-1">INV-AUDIT-1</a>). Use it to
+  answer "who did what, when".</li>
+<li><strong>Access log</strong> (<code>/admin/access-log/</code>) — who viewed or accessed which advisory.</li>
+</ul>
+<hr />
+<h2 id="11-github-ghsa-integration">11. GitHub (GHSA) integration<a class="headerlink" href="#11-github-ghsa-integration" title="Permanent link">&para;</a></h2>
+<p>On deployments that enable the GHSA integration, projects using GitHub's
+private vulnerability reporting get <strong>GHSA-linked</strong> advisories whose content
+syncs from GitHub (the team-facing side is in the
+<a href="../security-team/#10-ghsa-linked-advisories">Security-Team Guide §10</a>). The
+integration-admin controls are yours alone:</p>
+<ul>
+<li><strong>Connect the GitHub App</strong> at <code>/ghsa/connect/</code> — reached from the <strong>GHSA</strong> page's
+  <strong>Configure GitHub App →</strong> link (or by going to <code>/ghsa/connect/</code> directly). The
+  page shows the installation state, lets you <strong>rescan installations</strong>, and
+  displays the webhook URL to configure on GitHub.</li>
+<li><strong>Org-wide GHSA sync</strong> — the <strong>Sync all GHSAs</strong> button under <strong>Operations</strong> on
+  the <strong>GHSA</strong> page refreshes every GHSA-linked advisory across all projects in one
+  go. (Per-advisory refresh is available to the teams themselves on the advisory
+  page.)</li>
+<li><strong>Retry a failed CVE push</strong> — the <strong>Retry</strong> button in the <strong>Failed CVE pushes</strong>
+  table on the <strong>GHSA</strong> page. When a CVE is reserved on a GHSA-linked advisory,
+  AdvisoryHub pushes the id to GitHub; a failed push surfaces here for retry, and a
+  conflicting upstream CVE id blocks publication until you reconcile it (§4).</li>
+</ul>
+<p>Connecting, rescanning, org-wide syncs, and CVE-push retries all require
+step-up authentication (§13).</p>
+<hr />
+<h2 id="12-no-django-admin">12. No Django admin<a class="headerlink" href="#12-no-django-admin" title="Permanent link">&para;</a></h2>
+<p>AdvisoryHub does <strong>not</strong> enable Django's built-in admin site — there is no
+<code>/django-admin/</code>. It was removed deliberately: its low-level, direct model editing
+bypassed the guard rails and the audit log that the rest of the app enforces, so it
+was a way to change data without leaving an audit trail. The Admin Console (§2) is
+the only administrative surface; for genuine break-glass database access, an
+operator with shell access uses <code>manage.py shell</code> / <code>dbshell</code>.</p>
+<hr />
+<h2 id="13-step-up-authentication">13. Step-up authentication<a class="headerlink" href="#13-step-up-authentication" title="Permanent link">&para;</a></h2>
+<p>Some sensitive actions require a <strong>recent re-login</strong> even though you're
+already signed in (<a href="../../specification/permissions/">permissions.md §8</a>):</p>
+<ul>
+<li><strong>Publishing</strong> an advisory (including re-publishing and retrying a failed
+  publication).</li>
+<li><strong>Connecting the GitHub App</strong> or rescanning its installations.</li>
+<li><strong>Org-wide GHSA syncs</strong> and <strong>CVE-push retries</strong> (project- and
+  advisory-scoped syncs are not gated).</li>
+</ul>
+<p>If prompted, complete the quick re-authentication and the action proceeds.</p>
+<hr />
+<h2 id="related-guides">Related guides<a class="headerlink" href="#related-guides" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../">Manual index</a> — concepts, lifecycle, glossary.</li>
+<li><a href="../security-team/">Security-Team Guide</a> — the authoring/triage/publish
+  lifecycle that you, as an owner everywhere, can also perform.</li>
+<li><a href="../collaborator-and-viewer/">Collaborator &amp; Viewer Guide</a> — the per-advisory
+  roles you grant to non-team members.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

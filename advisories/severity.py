@@ -16,6 +16,7 @@ from ``models.save()``, data migrations, and the
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from cvss import CVSS2, CVSS3, CVSS4
@@ -60,6 +61,19 @@ def level_from_score(value: float) -> str:
     return "none"
 
 
+def _base_score(value: Decimal | float | None) -> float:
+    """A successfully parsed CVSS vector always has a computed base score.
+
+    The ``cvss`` library types ``base_score`` as Optional (it is ``None`` only
+    before the constructor's ``compute_base_score`` runs). Raising on the
+    can't-happen ``None`` lands in :func:`analyze_entry`'s ``except`` fallback,
+    which yields the ``none`` level for the entry.
+    """
+    if value is None:
+        raise ValueError("CVSS vector has no base score")
+    return float(value)
+
+
 def analyze_entry(entry: Any) -> dict[str, Any] | None:
     """Authoritative per-entry severity view, or ``None`` for an empty/non-dict
     entry.
@@ -90,14 +104,14 @@ def analyze_entry(entry: Any) -> dict[str, Any] | None:
         }
     try:
         if stype == "CVSS_V2":
-            value = float(CVSS2(vector).base_score)
+            value = _base_score(CVSS2(vector).base_score)
             version = "CVSS 2.0"
         elif stype == "CVSS_V3":
             c3 = CVSS3(vector)
-            value = float(c3.base_score)
+            value = _base_score(c3.base_score)
             version = "CVSS 3.0" if c3.as_json().get("version") == "3.0" else "CVSS 3.1"
         elif stype == "CVSS_V4":
-            value = float(CVSS4(vector).base_score)
+            value = _base_score(CVSS4(vector).base_score)
             version = "CVSS 4.0"
         else:
             return {"version": stype, "score": "", "level": "none", "vector": vector, "value": None}

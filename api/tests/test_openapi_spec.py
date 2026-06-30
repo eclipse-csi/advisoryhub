@@ -4,22 +4,23 @@ The spec is hand-written (no DRF/ninja to generate it from), so these tests
 keep it honest: the document must validate as OpenAPI 3.0, every /api/ route
 must appear in the spec (and vice versa) with exactly the methods the view
 declares, the out-of-namespace endpoints it documents must still exist, and
-``info.version`` must track the application version (bumped by
-dev/release.sh).
+``info.version`` must track the application version in pyproject.toml (bumped
+by dev/release.sh).
 
 No database needed — these only resolve the URLconf and parse YAML.
 """
 
 from __future__ import annotations
 
-import importlib.metadata
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
 import yaml
 
 SPEC_PATH = Path(__file__).resolve().parents[2] / "docs" / "specification" / "openapi.yaml"
+PYPROJECT_PATH = Path(__file__).resolve().parents[2] / "pyproject.toml"
 
 HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 # OpenAPI path-item keys that are not operations.
@@ -126,6 +127,9 @@ def test_out_of_namespace_endpoints_present(spec):
 
 
 def test_spec_version_matches_package(spec):
-    # dev/release.sh bumps info.version in lockstep with pyproject.toml;
-    # dev/check_release_versions.sh gates it at release time, this gates it in CI.
-    assert spec["info"]["version"] == importlib.metadata.version("advisoryhub")
+    # The deployable image is a uv *virtual* project (uv sync --no-install-project), so there is
+    # no installed distribution to read — pyproject.toml's [project] version is the canonical
+    # source dev/release.sh bumps in lockstep (dev/check_release_versions.sh gates it at release
+    # time, this gates it in CI). Mirrors common.context_processors._app_version.
+    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
+    assert spec["info"]["version"] == pyproject["project"]["version"]

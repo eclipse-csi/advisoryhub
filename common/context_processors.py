@@ -77,11 +77,13 @@ def support_links(request: HttpRequest) -> dict:
 
 @functools.cache
 def _app_version() -> str:
-    # Installed-distribution metadata is the canonical source (matches the
-    # api/tests/test_openapi_spec.py drift guard), but the deployable image is a
-    # uv *virtual* project (`uv sync --no-install-project`), so at runtime there
-    # is no distribution to read — fall back to pyproject.toml, which is copied
-    # into the image and is the single value dev/release.sh bumps.
+    # pyproject.toml's [project] version is the canonical source dev/release.sh
+    # bumps (matches the api/tests/test_openapi_spec.py drift guard and
+    # dev/check_release_versions.sh). Installed-distribution metadata would be
+    # authoritative when present, but the deployable image is a uv *virtual*
+    # project (`uv sync --no-install-project`), so at runtime there is no
+    # distribution to read — fall back to pyproject.toml, which is copied into
+    # the image.
     try:
         return importlib.metadata.version("advisoryhub")
     except importlib.metadata.PackageNotFoundError:

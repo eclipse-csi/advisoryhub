@@ -166,6 +166,11 @@ exclude = [
     "**/test_*.py",
     "**/*_test.py",
     "conftest.py",
+    # dev/ holds build/maintenance scripts (e.g. the docs-build hook
+    # mkdocs_oad_hook.py, which imports essentials-openapi from the docs-only
+    # extra, absent from the dev type-check venv) — outside the type-checked
+    # surface, matching mypy's app-only files allowlist.
+    "dev/**",
 ]
 
 [tool.ty.rules]

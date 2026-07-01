@@ -386,11 +386,7 @@ def advisory_detail(request, advisory_id: str):
             advisory=advisory,
         )
 
-    last_publication_task = None
-    try:
-        last_publication_task = advisory.publication_tasks.prefetch_related("artifacts").first()
-    except Exception:
-        pass
+    last_publication_task = advisory.publication_tasks.prefetch_related("artifacts").first()
 
     # A withdrawal is "in progress" while its publication task is queued/running
     # (mirrors publish()'s own in-flight guard, order-independent). When the

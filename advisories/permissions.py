@@ -20,7 +20,7 @@ project-security-team membership. The grant model deliberately excludes
 from __future__ import annotations
 
 from functools import wraps
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -33,16 +33,54 @@ Permission = Literal["viewer", "collaborator", "owner"]
 _RANK = {"viewer": 1, "collaborator": 2, "owner": 3}
 
 
+class _GroupState(NamedTuple):
+    """Immutable snapshot of a user's group membership for one request."""
+
+    pks: frozenset[int]
+    is_admin: bool
+
+
+def _group_state(user) -> _GroupState:
+    """Return ``user``'s group snapshot, cached on the user instance.
+
+    A single advisory-detail render fans out into ~27 permission predicates
+    for the same ``request.user``, each of which used to re-query the groups
+    M2M (``is_global_admin``/``is_security_team_member`` via ``.filter().exists()``,
+    ``_explicit_grant_rank`` via ``.values_list``). ``.filter().exists()``
+    bypasses any prefetch cache, so those lookups ran ~O(predicates) times.
+
+    Group membership is stable within a single HTTP request — it only changes
+    in the OIDC login backend (``accounts.auth.AdvisoryHubOIDCBackend``), which
+    runs before the view, and ``request.user`` is a fresh instance per request.
+    So caching the snapshot on the user instance is naturally request-scoped:
+    the same stale-until-refetched tradeoff Django's ``ModelBackend`` documents
+    for ``user._perm_cache``. Anonymous/absent users never query and never get
+    the attribute written.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return _GroupState(frozenset(), False)
+    cached = getattr(user, "_advisoryhub_group_state", None)
+    if cached is not None:
+        return cached
+    rows = list(user.groups.values("pk", "name"))
+    state = _GroupState(
+        pks=frozenset(row["pk"] for row in rows),
+        is_admin=any(row["name"] == settings.OIDC_ADMIN_GROUP for row in rows),
+    )
+    user._advisoryhub_group_state = state
+    return state
+
+
 def is_global_admin(user) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    return user.groups.filter(name=settings.OIDC_ADMIN_GROUP).exists()
+    return _group_state(user).is_admin
 
 
 def is_security_team_member(user, project) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    return user.groups.filter(pk=project.security_team_id).exists()
+    return project.security_team_id in _group_state(user).pks
 
 
 def is_mature_publisher_member(user, project) -> bool:
@@ -68,7 +106,7 @@ def _explicit_grant_rank(user, advisory: Advisory) -> int:
     """Highest grant rank for ``user`` (direct or via group membership)."""
     from access.models import AdvisoryAccessGrant
 
-    user_group_ids = list(user.groups.values_list("pk", flat=True))
+    user_group_ids = list(_group_state(user).pks)
     grants = AdvisoryAccessGrant.objects.filter(advisory=advisory).filter(
         models_user_or_group_filter(user.pk, user_group_ids)
     )

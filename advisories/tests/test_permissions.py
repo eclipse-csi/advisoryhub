@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
+from access.models import Permission
+from access.services import grant_to_user, revoke
 from advisories import permissions as perms
 from advisories.models import Advisory, Kind, ReviewStatus, State
 
@@ -687,3 +692,50 @@ def test_triage_native_advisory_can_be_moved(world, settings):
     world["advisory"].state = State.TRIAGE
     world["advisory"].save(update_fields=["state"])
     assert perms.can_move_to_ghsa(world["member"], world["advisory"])
+
+
+# ---- Per-request group-state memoization -----------------------------------
+
+
+@pytest.mark.django_db
+class TestPermissionQueryCount:
+    """Guards the N+1 fix in ``permissions._group_state``.
+
+    An advisory-detail render fans out into ~27 predicate checks for the same
+    ``(request.user, advisory)``; the group membership must be read from the DB
+    once, not once per predicate.
+    """
+
+    def test_group_lookups_memoized_per_user_instance(self, world):
+        """A burst of predicate checks for one (user, advisory) hits the group
+        through-table at most once, regardless of how many predicates run."""
+        user = world["member"]  # non-admin security-team member: exercises both
+        advisory = world["advisory"]  # the is_admin flag and the pk-membership set
+        group_table = get_user_model()._meta.get_field("groups").remote_field.through._meta.db_table
+        with CaptureQueriesContext(connection) as ctx:
+            perms.can_edit(user, advisory)
+            perms.can_dismiss(user, advisory)
+            perms.can_publish(user, advisory)
+            perms.can_reopen(user, advisory)
+            perms.can_withdraw_published(user, advisory)
+            perms.can_grant_access(user, advisory)
+            perms.can_review(user)
+            perms.can_sync_ghsa(user, advisory)
+            perms.can_request_reassignment(user, advisory)
+            perms.can_lock_comments(user, advisory)
+            perms.resolved_permission(user, advisory)
+        group_queries = [q for q in ctx.captured_queries if group_table in q["sql"]]
+        assert len(group_queries) == 1, [q["sql"] for q in group_queries]
+
+    def test_grant_change_visible_on_same_instances(self, world, make_user):
+        """resolved_permission must NOT be memoized on the advisory instance:
+        a grant added then revoked on the *same* user + advisory instances must
+        be observed immediately (INV-AUTH-1). The group snapshot is cached; the
+        per-advisory grant query stays live."""
+        user = make_user(email="grantee@example.org")
+        advisory = world["advisory"]
+        assert perms.resolved_permission(user, advisory) is None
+        grant = grant_to_user(advisory, user, Permission.VIEWER, by=world["member"])
+        assert perms.resolved_permission(user, advisory) == "viewer"
+        revoke(grant, by=world["member"])
+        assert perms.resolved_permission(user, advisory) is None

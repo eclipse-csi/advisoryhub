@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import logging
 import time
-from urllib.parse import urlencode
 
 import jwt
 from django.conf import settings
@@ -190,8 +189,3 @@ def record_step_up_on_login(sender, request, user, **kwargs):  # noqa: ARG001
         action=Action.AUTH_STEP_UP_COMPLETED if was_step_up else Action.AUTH_LOGIN,
         actor=user,
     )
-
-
-def step_up_age_query(now: float | None = None) -> str:
-    """Helper for templates: query string to force a step-up re-prompt."""
-    return urlencode({"step_up": "1", "ts": int(now or time.time())})

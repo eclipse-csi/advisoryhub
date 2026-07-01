@@ -218,6 +218,21 @@ def _reassign_ghsa_advisories_following_pmi(
 # ---------------------------------------------------------------------------
 
 
+def record_ghsa_sync_error(advisory: Advisory, exc: Exception) -> None:
+    """Persist a redacted GHSA sync failure onto the advisory.
+
+    Called from the *callers* of :func:`sync_single_ghsa` — never from inside
+    it, since that function is ``@transaction.atomic`` and a failing fetch
+    rolls its transaction back, so an error write there would be discarded.
+    The ``update_fields`` guard scopes the write to the one column we own here,
+    leaving any other (possibly dirty) in-memory fields untouched. Redacted
+    per INV-SECRET-*; cleared to ``""`` by the next successful
+    :func:`sync_single_ghsa`.
+    """
+    advisory.ghsa_sync_error = redact_secrets(str(exc))[:8000]
+    advisory.save(update_fields=["ghsa_sync_error", "modified_at"])
+
+
 @transaction.atomic
 def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
     """Re-fetch the linked GHSA and project its content onto the advisory.
@@ -241,11 +256,15 @@ def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
         advisory.ghsa_state = GhsaState.CLOSED
         advisory.ghsa_metadata = {"missing_upstream": True}
         advisory.ghsa_metadata_synced_at = timezone.now()
+        # Reaching GitHub succeeded (the advisory is simply gone upstream), so
+        # clear any stale sync error from a previous failed attempt.
+        advisory.ghsa_sync_error = ""
         advisory.save(
             update_fields=[
                 "ghsa_state",
                 "ghsa_metadata",
                 "ghsa_metadata_synced_at",
+                "ghsa_sync_error",
                 "modified_at",
             ]
         )
@@ -291,6 +310,8 @@ def sync_single_ghsa(advisory: Advisory, *, by) -> dict:
     if result.changed_field_names and advisory.state == State.PUBLISHED:
         advisory.republish_required = True
 
+    # A successful sync clears any stale error from a previous failed attempt.
+    advisory.ghsa_sync_error = ""
     advisory.save()
 
     # Append a new AdvisoryVersion when synced GHSA content moved an
@@ -469,6 +490,7 @@ def reconcile_ghsa_linked_advisories(*, by=None) -> dict:
             checked += 1
         except GitHubApiError as exc:
             errors += 1
+            record_ghsa_sync_error(advisory, exc)
             logger.warning(
                 "reconcile sync failed for %s: %s",
                 advisory.advisory_id,
@@ -521,11 +543,10 @@ def create_ghsa_linked_advisory(
     try:
         summary = sync_single_ghsa(advisory, by=by)
     except GitHubApiError as exc:
-        # We've created the row but couldn't sync. Leave the metadata
-        # blank and let the dashboard surface a "sync failed" status;
-        # the row itself is still useful (admins can retry).
-        advisory.ghsa_metadata = {"sync_error": redact_secrets(str(exc))}
-        advisory.save(update_fields=["ghsa_metadata", "modified_at"])
+        # We've created the row but couldn't sync. Record the redacted error
+        # on ``ghsa_sync_error`` so the GHSA panel surfaces a "Last sync
+        # failed" banner; the row itself is still useful (admins can retry).
+        record_ghsa_sync_error(advisory, exc)
         summary = None
     # A brand-new advisory that GitHub has already published auto-publishes
     # (inbound-only lifecycle). Skipped when the initial sync failed.
@@ -781,12 +802,12 @@ def move_advisory_to_ghsa(advisory: Advisory, *, owner: str, repo: str, by) -> A
 
     # Pull GitHub's representation back so content + state mirror upstream. A
     # GitHub create failure here is non-fatal (the row is already linked); the
-    # dashboard surfaces the sync error and a refresh/reconcile retries.
+    # GHSA panel surfaces the recorded ``ghsa_sync_error`` and a
+    # refresh/reconcile retries (clearing it on success).
     try:
         summary = sync_single_ghsa(locked, by=by)
     except GitHubApiError as exc:
-        locked.ghsa_metadata = {"sync_error": redact_secrets(str(exc))}
-        locked.save(update_fields=["ghsa_metadata", "modified_at"])
+        record_ghsa_sync_error(locked, exc)
         summary = None
     if summary is not None:
         # Mirror GitHub's pre-publication state exactly as

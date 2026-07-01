@@ -16,6 +16,7 @@ from django.core.exceptions import PermissionDenied
 from advisories.models import Advisory, GhsaCvePushStatus, GhsaState, Kind, ReviewStatus, State
 from audit.models import Action, AuditLogEntry
 from ghsa import services
+from ghsa.client import GitHubApiError
 from ghsa.models import GhsaCvePushTaskStatus
 from projects.models import ProjectGitHubRepository
 
@@ -320,3 +321,65 @@ def test_sync_project_repos_soft_removes_dropped(make_project, ghsa_settings):
     drop = ProjectGitHubRepository.objects.get(project=project, name="x-drop")
     assert keep.soft_removed_at is None
     assert drop.soft_removed_at is not None
+
+
+@pytest.mark.django_db
+def test_create_ghsa_linked_advisory_records_sync_error_on_fetch_failure(
+    project_with_repo, ghsa_settings
+):
+    """A GitHub fetch failure during the initial sync is recorded (redacted)
+    on ``ghsa_sync_error`` so the GHSA panel can surface it; the row is still
+    created and retryable."""
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.side_effect = GitHubApiError("boom: rate limited")
+        advisory = services.create_ghsa_linked_advisory(
+            project=project_with_repo,
+            ghsa_id="GHSA-abcd-1234-efgh",
+            owner="eclipse",
+            repo="example",
+            by=None,
+        )
+    advisory.refresh_from_db()
+    assert advisory.kind == Kind.GHSA_LINKED
+    assert "boom: rate limited" in advisory.ghsa_sync_error
+
+
+@pytest.mark.django_db
+def test_sync_single_ghsa_clears_stale_sync_error_on_success(
+    project_with_repo, ghsa_payload, ghsa_settings
+):
+    """A successful sync clears any error left by a previous failed attempt."""
+    advisory = Advisory.objects.create(
+        project=project_with_repo,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-abcd-1234-efgh",
+        ghsa_owner="eclipse",
+        ghsa_repo="example",
+        ghsa_sync_error="previous failure",
+    )
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = ghsa_payload
+        services.sync_single_ghsa(advisory, by=None)
+    advisory.refresh_from_db()
+    assert advisory.ghsa_sync_error == ""
+
+
+@pytest.mark.django_db
+def test_sync_single_ghsa_clears_sync_error_on_upstream_deletion(project_with_repo, ghsa_settings):
+    """Reaching GitHub succeeds even when the GHSA is gone upstream, so a
+    stale sync error is cleared alongside the state flip to closed."""
+    advisory = Advisory.objects.create(
+        project=project_with_repo,
+        kind=Kind.GHSA_LINKED,
+        ghsa_id="GHSA-deleted-aaaa-bbbb",
+        ghsa_owner="eclipse",
+        ghsa_repo="example",
+        ghsa_state=GhsaState.PUBLISHED,
+        ghsa_sync_error="previous failure",
+    )
+    with patch("ghsa.services.get_client") as mock_get:
+        mock_get.return_value.get_advisory.return_value = None
+        services.sync_single_ghsa(advisory, by=None)
+    advisory.refresh_from_db()
+    assert advisory.ghsa_state == GhsaState.CLOSED
+    assert advisory.ghsa_sync_error == ""

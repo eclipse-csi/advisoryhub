@@ -316,9 +316,12 @@ Advisory content fields are modeled after the OSV schema:
 GHSA-linked advisories additionally carry `ghsa_id` (unique-when-set
 [INV-ID-2](./invariant.md#inv-id-2)), `ghsa_owner`, `ghsa_repo`,
 `ghsa_metadata` (raw payload), `ghsa_state`, `ghsa_metadata_synced_at`,
-and the `ghsa_cve_push_*` fields that track our outbound push of an
-EF-assigned CVE to GHSA. For these advisories the OSV-content fields
-are populated from GHSA and read-only in the AdvisoryHub edit form.
+`ghsa_sync_error` (redacted last-sync failure — surfaced on the GHSA panel
+and cleared on the next successful sync; excluded from the version payload,
+so it is never versioned), and the `ghsa_cve_push_*` fields that track our
+outbound push of an EF-assigned CVE to GHSA. For these advisories the
+OSV-content fields are populated from GHSA and read-only in the AdvisoryHub
+edit form.
 
 Field-level validators live in `advisories.validators`. The advisory
 id format is also enforced at the URL converter and at the model layer.

@@ -35,6 +35,13 @@ Caller passes:
     {% endif %}
   </dl>
 
+  {% if advisory.ghsa_sync_error %}
+    <div class="banner banner-warning" role="alert">
+      <strong>Last sync failed.</strong> {{ advisory.ghsa_sync_error }}
+      {% if can_sync_ghsa %} Use “Refresh from GHSA” to retry.{% endif %}
+    </div>
+  {% endif %}
+
   {% if advisory.ghsa_cve_conflict_detected_at %}
     <div class="banner banner-warning" role="alert">
       <strong>CVE id conflict.</strong>

@@ -337,6 +337,12 @@ class Advisory(models.Model):
     ghsa_repo = models.CharField(max_length=200, blank=True)
     ghsa_metadata = models.JSONField(null=True, blank=True)
     ghsa_metadata_synced_at = models.DateTimeField(null=True, blank=True)
+    # Last GHSA sync failure, redacted (INV-SECRET-*), surfaced on the GHSA
+    # panel and cleared on the next successful sync. Mirrors
+    # ``Project.last_pmi_sync_error``. Operational state — deliberately absent
+    # from ``to_payload`` so a transient sync failure is not versioned
+    # (INV-VERSION-1).
+    ghsa_sync_error = models.TextField(blank=True)
     ghsa_state = models.CharField(
         max_length=16, choices=GhsaState.choices, default=GhsaState.UNKNOWN, blank=True
     )

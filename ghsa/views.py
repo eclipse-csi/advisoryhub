@@ -318,6 +318,10 @@ def refresh_advisory_ghsa(request, advisory_id: str):
         else:
             messages.info(request, "No changes from GHSA.")
     except GitHubApiError as exc:
+        # Persist the redacted error so the GHSA panel keeps surfacing it after
+        # the redirect (the flash message only shows once); cleared on the next
+        # successful sync.
+        services.record_ghsa_sync_error(advisory, exc)
         messages.error(request, f"GitHub fetch failed: {exc}")
     return redirect("advisories:detail", advisory_id=advisory.advisory_id)
 

@@ -2899,9 +2899,12 @@ re-digested.</p>
 <p>GHSA-linked advisories additionally carry <code>ghsa_id</code> (unique-when-set
 <a href="../invariant/#inv-id-2">INV-ID-2</a>), <code>ghsa_owner</code>, <code>ghsa_repo</code>,
 <code>ghsa_metadata</code> (raw payload), <code>ghsa_state</code>, <code>ghsa_metadata_synced_at</code>,
-and the <code>ghsa_cve_push_*</code> fields that track our outbound push of an
-EF-assigned CVE to GHSA. For these advisories the OSV-content fields
-are populated from GHSA and read-only in the AdvisoryHub edit form.</p>
+<code>ghsa_sync_error</code> (redacted last-sync failure — surfaced on the GHSA panel
+and cleared on the next successful sync; excluded from the version payload,
+so it is never versioned), and the <code>ghsa_cve_push_*</code> fields that track our
+outbound push of an EF-assigned CVE to GHSA. For these advisories the
+OSV-content fields are populated from GHSA and read-only in the AdvisoryHub
+edit form.</p>
 <p>Field-level validators live in <code>advisories.validators</code>. The advisory
 id format is also enforced at the URL converter and at the model layer.</p>
 <h3 id="42-advisory-lifecycle">4.2 Advisory lifecycle<a class="headerlink" href="#42-advisory-lifecycle" title="Permanent link">&para;</a></h3>

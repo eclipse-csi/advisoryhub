@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,11 @@ def _format_ts(dt) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S") + f".{dt.microsecond // 1000:03d}Z"
 
 
+@lru_cache(maxsize=1)
 def _validator() -> Validator:
+    # The schema file is immutable at runtime, so build the validator once per
+    # process rather than re-reading and re-compiling it on every publication
+    # (mirrors publication.cve._validator).
     schema = json.loads(_SCHEMA_PATH.read_text())
     return Draft202012Validator(schema)
 

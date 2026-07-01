@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +24,11 @@ OSV_SCHEMA_VERSION = "1.6.0"
 _SCHEMA_PATH = Path(__file__).parent / "schemas" / "osv.upstream.json"
 
 
+@lru_cache(maxsize=1)
 def _validator() -> Validator:
+    # The schema file is immutable at runtime, so build the validator once per
+    # process rather than re-reading and re-compiling it on every publication
+    # (mirrors publication.cve._validator).
     schema = json.loads(_SCHEMA_PATH.read_text())
     return Draft202012Validator(schema)
 

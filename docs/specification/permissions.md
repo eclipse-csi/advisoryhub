@@ -419,7 +419,11 @@ addition to passing the matrix check. `accounts.step_up.is_step_up_fresh`
 gates them against `session["step_up_auth_at"]`; if the timestamp is
 missing or older than `STEP_UP_MAX_AGE_SECONDS` (default 300 s), the
 view redirects through `require_step_up_or_redirect` for a forced
-re-prompt.
+re-prompt. That helper stashes the originating path under
+`session["step_up_next"]`; after a completed re-auth the OIDC callback's
+`success_url` (`accounts.auth.AdvisoryHubOIDCCallbackView`) returns the user
+there — same-host-validated to bar open redirects — instead of dropping them
+on `LOGIN_REDIRECT_URL`.
 
 The `step_up_auth_at` timestamp is written by the sole `user_logged_in`
 receiver (`accounts.step_up.record_step_up_on_login`) only when **both** a

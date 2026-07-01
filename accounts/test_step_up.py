@@ -387,6 +387,48 @@ def test_login_reauthed_recently(rf, session, expected):
     assert _login_reauthed_recently(request) is expected
 
 
+# ---- post-step-up return redirect ---------------------------------------
+#
+# require_step_up_or_redirect stashes the originating path under
+# STEP_UP_NEXT_KEY; the OIDC callback's success_url returns the user there
+# after a completed re-auth, instead of dropping them on LOGIN_REDIRECT_URL.
+
+
+def _callback_success_url(rf, session):
+    from accounts.auth import AdvisoryHubOIDCCallbackView
+
+    view = AdvisoryHubOIDCCallbackView()
+    request = rf.get("/oidc/callback/")
+    request.session = session
+    view.request = request
+    return view.success_url
+
+
+def test_callback_returns_to_stashed_step_up_next(rf):
+    from accounts.step_up import STEP_UP_NEXT_KEY
+
+    target = "/advisories/ECL-2026-0001/"
+    session = {STEP_UP_NEXT_KEY: target}
+    assert _callback_success_url(rf, session) == target
+    assert STEP_UP_NEXT_KEY not in session  # consumed
+
+
+@override_settings(LOGIN_REDIRECT_URL="/advisories/")
+def test_callback_falls_back_to_default_without_step_up_next(rf):
+    # An ordinary sign-in (no stashed next) lands on LOGIN_REDIRECT_URL.
+    assert _callback_success_url(rf, {}) == "/advisories/"
+
+
+@override_settings(LOGIN_REDIRECT_URL="/advisories/")
+def test_callback_rejects_offhost_step_up_next(rf):
+    from accounts.step_up import STEP_UP_NEXT_KEY
+
+    # A tampered off-host absolute URL must not become an open redirect.
+    session = {STEP_UP_NEXT_KEY: "https://evil.example/phish"}
+    assert _callback_success_url(rf, session) == "/advisories/"
+    assert STEP_UP_NEXT_KEY not in session  # still consumed (discarded)
+
+
 # ---- helpers -------------------------------------------------------------
 
 

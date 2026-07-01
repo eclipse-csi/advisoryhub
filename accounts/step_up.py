@@ -12,8 +12,9 @@ session has been alive. The flow:
    request view that adds ``prompt=login&max_age=0`` so the IdP forces
    re-entry of credentials.
 4. On successful OIDC callback, the ``user_logged_in`` signal handler
-   records the timestamp and clears the pending flag, then we redirect
-   the user back to ``next``.
+   records the timestamp and clears the pending flag; the callback view's
+   ``success_url`` then returns the user to ``next`` (the page that
+   required step-up).
 
 Why a session-scoped timestamp and not ``user.last_login``: a normal
 sign-in updates ``last_login``, so basing step-up on it would let a
@@ -104,9 +105,18 @@ class StepUpAuthRequestView(OIDCAuthenticationRequestView):
         return params
 
 
-def step_up_callback_redirect(request) -> str:
-    """After step-up, send the user back to the page they tried to publish from."""
-    return request.session.pop(STEP_UP_NEXT_KEY, "/") or "/"
+def step_up_callback_redirect(request) -> str | None:
+    """The local path to return to after a step-up flow, or ``None`` if this
+    login was not one.
+
+    ``require_step_up_or_redirect`` stashes the originating URL under
+    ``STEP_UP_NEXT_KEY`` before the IdP round-trip; the OIDC callback's
+    ``success_url`` (:class:`accounts.auth.AdvisoryHubOIDCCallbackView`) pops it
+    here and validates it is same-host before redirecting. Returning ``None``
+    rather than a default path lets an ordinary sign-in fall through to
+    ``LOGIN_REDIRECT_URL``.
+    """
+    return request.session.pop(STEP_UP_NEXT_KEY, None)
 
 
 def _login_reauthed_recently(request) -> bool:

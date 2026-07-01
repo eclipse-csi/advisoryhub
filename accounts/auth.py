@@ -16,11 +16,13 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import SuspiciousOperation
 from django.http import HttpRequest
 from django.shortcuts import resolve_url
+from django.utils.http import url_has_allowed_host_and_scheme
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from mozilla_django_oidc.utils import absolutify
 from mozilla_django_oidc.views import OIDCAuthenticationCallbackView
 
 from .models import User
+from .step_up import step_up_callback_redirect
 
 log = logging.getLogger(__name__)
 
@@ -277,3 +279,25 @@ class AdvisoryHubOIDCCallbackView(OIDCAuthenticationCallbackView):
             },
         )
         return super().login_failure()
+
+    @property
+    def success_url(self):
+        """Return the user to the page that required step-up, else the default.
+
+        ``require_step_up_or_redirect`` stashes the originating path under
+        ``STEP_UP_NEXT_KEY`` before the IdP round-trip; this is the single OIDC
+        callback, so it is consumed here (the ``user_logged_in`` receiver runs
+        earlier and only handles the freshness stamp). The stashed value is a
+        server-produced local path, but it is re-validated as same-host to keep
+        the redirect closed to open-redirect regressions. Ordinary sign-ins
+        never set the key and fall through to the library default
+        (``LOGIN_REDIRECT_URL``).
+        """
+        next_url = step_up_callback_redirect(self.request)
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            return next_url
+        return super().success_url

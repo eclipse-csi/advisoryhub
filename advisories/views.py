@@ -763,33 +763,18 @@ def advisory_edit(request, advisory_id: str):
             updated: Advisory = form.save(commit=False)
             apply_json_fields(updated, formsets, event_formsets)
             if attach_validation_errors(form, updated):
-                # If editing after publish, mark for re-publication
-                if updated.state == State.PUBLISHED:
-                    updated.republish_required = True
-                # Any non-admin edit on an APPROVED advisory voids the
-                # approval — what was approved no longer matches what
-                # exists. Mature publishers retain publish capability via
-                # the project-flag branch of can_publish; the badge just
-                # stops claiming "Approved".
-                invalidated_approval = (
-                    updated.review_status == ReviewStatus.APPROVED
-                    and not perms.is_global_admin(request.user)
+                # The edit-time domain rules (republish flag, approval
+                # invalidation, access-review request) plus save + version
+                # append live in the service. The request-bound audit entries
+                # below stay here so they keep their ip / user-agent context.
+                edit_result = services.apply_advisory_edit(
+                    updated,
+                    editor=user,
+                    project_changed=project_changed,
+                    is_triage=is_triage,
                 )
-                if invalidated_approval:
-                    updated.review_status = ReviewStatus.NONE
-                # When the project actually changed on a non-triage row,
-                # prompt writers to review who still needs access — the old
-                # project's security team silently loses implicit write, and
-                # the new team gains it. Skipped in TRIAGE: no grants exist
-                # to audit pre-draft.
-                if project_changed and not is_triage:
-                    updated.access_review_required_at = timezone.now()
-                updated.save()
-                # if_changed: a save that alters no payload-visible field must
-                # not mint a duplicate version row (INV-VERSION-1).
-                new_version = services.record_advisory_version(
-                    updated, editor=user, if_changed=True
-                )
+                new_version = edit_result.version
+                invalidated_approval = edit_result.approval_invalidated
                 new_value = {
                     "summary": updated.summary,
                     "project": updated.project.slug,

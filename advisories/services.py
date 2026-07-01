@@ -15,6 +15,7 @@ checks at the view boundary.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import partial
 
 from django.core.exceptions import PermissionDenied
@@ -27,7 +28,7 @@ from common.enqueue import safe_enqueue
 from common.net import client_ip
 from common.users import actor_or_none
 
-from .models import Advisory, AdvisoryIntakeMetadata, AdvisoryVersion, State
+from .models import Advisory, AdvisoryIntakeMetadata, AdvisoryVersion, ReviewStatus, State
 from .permissions import (
     UNSORTED_PROJECT_SLUG,
     can_cancel_withdrawal_request,
@@ -1219,6 +1220,69 @@ def record_advisory_version(
         payload=new_payload,
         editor=actor_or_none(editor),
     )
+
+
+@dataclass(frozen=True)
+class AdvisoryEditResult:
+    """Outcome of :func:`apply_advisory_edit`, for the caller's audit trail.
+
+    ``version`` is the freshly appended :class:`AdvisoryVersion`, or ``None``
+    when the edit moved no payload-visible field (``if_changed`` no-op).
+    ``approval_invalidated`` flags that a prior APPROVED review was voided so
+    the view can emit the matching ``ADVISORY_REVIEW_APPROVAL_INVALIDATED``
+    audit entry.
+    """
+
+    version: AdvisoryVersion | None
+    approval_invalidated: bool
+
+
+def apply_advisory_edit(
+    advisory: Advisory,
+    *,
+    editor,
+    project_changed: bool,
+    is_triage: bool,
+) -> AdvisoryEditResult:
+    """Persist an in-progress advisory edit and its lifecycle side-effects.
+
+    ``advisory`` is the form-populated but unsaved instance — the caller has
+    already run ``form.save(commit=False)`` and applied its JSON fields. This
+    owns the three edit-time domain rules that used to sit inline in the
+    ``advisory_edit`` view:
+
+    * editing a PUBLISHED advisory flags it for re-publication
+      (``republish_required``);
+    * a non-admin edit of an APPROVED advisory voids the approval
+      (``review_status`` → ``NONE``) — what was approved no longer matches
+      what exists. Mature publishers keep publish capability via the
+      project-flag branch of ``can_publish``; only the "Approved" badge drops;
+    * a project change on a non-triage row requests an access review
+      (``access_review_required_at``) — the old team silently loses implicit
+      write and the new team gains it. Skipped in triage: no grants exist yet.
+
+    Then saves and appends an ``AdvisoryVersion`` (``if_changed`` so a
+    payload-neutral save doesn't mint a duplicate row — INV-VERSION-1).
+
+    Audit logging stays with the caller: the ``ADVISORY_EDITED`` /
+    ``ADVISORY_REVIEW_APPROVAL_INVALIDATED`` entries are request-bound
+    (ip/user-agent), so the view records them from the returned result.
+    """
+    if advisory.state == State.PUBLISHED:
+        advisory.republish_required = True
+
+    approval_invalidated = advisory.review_status == ReviewStatus.APPROVED and not is_global_admin(
+        editor
+    )
+    if approval_invalidated:
+        advisory.review_status = ReviewStatus.NONE
+
+    if project_changed and not is_triage:
+        advisory.access_review_required_at = timezone.now()
+
+    advisory.save()
+    version = record_advisory_version(advisory, editor=editor, if_changed=True)
+    return AdvisoryEditResult(version=version, approval_invalidated=approval_invalidated)
 
 
 def history_for_advisory(advisory: Advisory, *, viewer) -> list[AdvisoryVersion]:

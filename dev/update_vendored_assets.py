@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # --------------------------------------------------------------------------- #
 def _get(url: str) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "advisoryhub-vendor-updater"})
-    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (trusted upstreams)
+    with urllib.request.urlopen(req, timeout=60) as resp:  # trusted upstreams
         if resp.status != 200:
             raise RuntimeError(f"GET {url} -> HTTP {resp.status}")
         return resp.read()

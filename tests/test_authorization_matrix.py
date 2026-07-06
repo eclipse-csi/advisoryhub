@@ -77,7 +77,7 @@ def test_advisory_get_routes_deny_outsider_and_anonymous(client, matrix_world):
     for name in _advisory_id_only_routes():
         try:
             url = reverse(name, kwargs={"advisory_id": advisory.advisory_id})
-        except Exception:  # noqa: BLE001 — surfaced via the assertion below
+        except Exception:  # surfaced via the assertion below
             unreversible.append(name)
             continue
         client.logout()

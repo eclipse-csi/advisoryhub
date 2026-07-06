@@ -22,7 +22,7 @@ os.environ.setdefault("OIDC_OP_USER_ENDPOINT", "https://oidc.test/userinfo")
 os.environ.setdefault("OIDC_OP_JWKS_ENDPOINT", "https://oidc.test/jwks")
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-secret-key")
 
-from .base import *  # noqa: E402, F401, F403
+from .base import *  # noqa: F403
 
 DEBUG = False
 SESSION_COOKIE_SECURE = False

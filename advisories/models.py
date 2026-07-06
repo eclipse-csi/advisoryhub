@@ -99,7 +99,7 @@ class AdvisoryQuerySet(models.QuerySet):
     has its own explicit escape via :func:`_unsafe_dev_reset_bypass`.
     """
 
-    def delete(self):  # noqa: DJ012 — intentional override
+    def delete(self):
         raise PermissionError(
             "Advisory rows are non-deletable; "
             "use advisories.models._unsafe_dev_reset_bypass() in seed scripts only."
@@ -536,7 +536,7 @@ class AdvisoryVersion(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:  # noqa: DJ012
+    class Meta:
         ordering = ["advisory", "version"]
         unique_together = [("advisory", "version")]
         indexes = [models.Index(fields=["advisory", "version"])]

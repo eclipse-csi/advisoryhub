@@ -91,7 +91,7 @@ class CommentVersion(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:  # noqa: DJ012
+    class Meta:
         ordering = ["comment", "version"]
         unique_together = [("comment", "version")]
         indexes = [models.Index(fields=["comment", "version"])]

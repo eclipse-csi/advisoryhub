@@ -1,4 +1,4 @@
-from .base import *  # noqa: F401, F403
+from .base import *  # noqa: F403
 
 DEBUG = False
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365

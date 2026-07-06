@@ -13,7 +13,7 @@ from django.dispatch import receiver
 
 
 @receiver(user_logged_out)
-def record_logout(sender, request, user, **kwargs):  # noqa: ARG001
+def record_logout(sender, request, user, **kwargs):
     """Record a sign-out in the ephemeral access log.
 
     Fires from mozilla-django-oidc's ``OIDCLogoutView`` (which calls

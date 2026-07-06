@@ -141,7 +141,7 @@ def _login_reauthed_recently(request) -> bool:
         return False
     try:
         claims = jwt.decode(id_token, options={"verify_signature": False})
-    except Exception:  # noqa: BLE001 — a malformed token must never satisfy step-up
+    except Exception:  # a malformed token must never satisfy step-up
         return False
     auth_time = claims.get("auth_time")
     if not isinstance(auth_time, (int, float)) or isinstance(auth_time, bool):
@@ -150,7 +150,7 @@ def _login_reauthed_recently(request) -> bool:
 
 
 @receiver(user_logged_in)
-def record_step_up_on_login(sender, request, user, **kwargs):  # noqa: ARG001
+def record_step_up_on_login(sender, request, user, **kwargs):
     """When OIDC login completes, audit it and (if a real step-up flow) stamp the session.
 
     A step-up is recorded only when BOTH the ``step_up_pending`` flag was set

@@ -844,7 +844,7 @@ def test_reassign_orphan_cve_blocked_when_cve_held_elsewhere(setup, make_user, m
         wf.reassign_orphan_cve(orphan, by=setup["admin"], advisory=setup["advisory"])
     # And sanity-check: no audit row written when we refuse.
     assert not AuditLogEntry.objects.filter(action=Action.CVE_REASSIGNED_FROM_ORPHAN).exists()
-    other_advisory.refresh_from_db()  # exists  # noqa: F841
+    other_advisory.refresh_from_db()  # exists
 
 
 @pytest.mark.django_db

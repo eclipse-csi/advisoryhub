@@ -4934,12 +4934,21 @@ publication flows still apply on the way back out. Keeping reopen owner-gated
 preserves the audit story: reopen creates an <code>ADVISORY_REOPENED</code> row, and the
 prior <code>ADVISORY_DISMISSED</code> plus <code>dismissed_reason</code> stay visible as historical
 context.</p>
-<p>Dismiss also tears down any pending review state at dismissal time
-(<code>workflows.services.cancel_pending_review</code> runs from both dismiss paths),
-so a reopened advisory always re-enters the pipeline with
-<code>review_status=NONE</code> and no <code>OPEN</code> <code>ReviewTask</code>. This closes the
-"surviving APPROVED" loophole that would otherwise let an owner publish
-on a reopened advisory without a fresh review (<a href="#inv-perm-3">INV-PERM-3</a>).</p>
+<p>The two dismiss <em>services</em> also tear down any pending review state at
+dismissal time (<code>workflows.services.cancel_pending_review</code> runs from both
+<code>dismiss_triage</code> and <code>dismiss_advisory</code>), so an advisory dismissed from
+<code>triage</code> or <code>draft</code> reopens with <code>review_status=NONE</code> and no <code>OPEN</code>
+<code>ReviewTask</code>. This closes the "surviving APPROVED" loophole that would
+otherwise let an owner publish on a reopened advisory without a fresh
+review (<a href="#inv-perm-3">INV-PERM-3</a>). A <strong>withdrawal</strong> is the deliberate
+exception: the withdrawal branch of <code>publication.tasks.run_publication</code>
+flips the row to <code>dismissed</code> without running the teardown, so a withdrawn
+advisory <em>retains</em> the <code>review_status</code> it held at publication (typically
+<code>approved</code>; never <code>submitted</code> — <code>can_submit_for_review</code> requires <code>draft</code>).
+That is safe because the only route out of a withdrawal is un-withdraw →
+re-publication through the pipeline (never an editable working state) —
+but it means <code>dismissed</code> does <strong>not</strong> blanket-imply <code>review_status=none</code>:
+a DB constraint of that shape would break every withdrawal.</p>
 <p><strong>Enforced in.</strong>
 - <code>advisories/permissions.py</code> — <code>can_reopen</code> requires <code>state=dismissed</code> and
   owner rank. <code>can_publish</code>, <code>can_submit_for_review</code>, <code>can_request_cve</code>, and
@@ -4948,10 +4957,13 @@ on a reopened advisory without a fresh review (<a href="#inv-perm-3">INV-PERM-3<
   row, and flips state to <code>Advisory.dismissed_from_state</code>. CVE side-effects
   (orphan reattachment, cancelled-request restoration) are orchestrated
   through <code>workflows.services</code>; see <a href="#inv-cve-3">INV-CVE-3</a>.
-- <code>advisories/services.py::dismiss_triage</code> and the draft-dismiss block in
-  <code>advisories/views.py::advisory_dismiss</code> — call
-  <code>workflows.services.cancel_pending_review</code> so dismissed advisories
-  always carry <code>review_status=NONE</code> and no <code>OPEN</code> <code>ReviewTask</code>.</p>
+- <code>advisories/services.py::dismiss_triage</code> and
+  <code>advisories/services.py::dismiss_advisory</code> (the reusable core behind the
+  <code>advisory_dismiss</code> view and the GHSA auto-dismiss) — call
+  <code>workflows.services.cancel_pending_review</code> so advisories dismissed from
+  <code>triage</code>/<code>draft</code> carry <code>review_status=NONE</code> and no <code>OPEN</code> <code>ReviewTask</code>.
+  The withdrawal branch of <code>publication/tasks.py::run_publication</code>
+  intentionally does not run the teardown (see Rationale).</p>
 <p><strong>Violation impact.</strong> Without <code>can_reopen</code> gating, a non-owner could revive
 suppressed content. Without re-checking state in <code>reopen_advisory</code>, a stale
 form could push a non-dismissed advisory into an unexpected target state.</p>
@@ -4959,7 +4971,10 @@ form could push a non-dismissed advisory into an unexpected target state.</p>
 - <code>advisories/tests/test_reopen.py</code> — service, permission, view, and orphan
   dispositions.
 - <code>advisories/tests/test_permissions.py</code> — <code>can_publish</code> / <code>can_edit</code> still
-  reject dismissed.</p>
+  reject dismissed.
+- <code>publication/tests/test_pipeline.py</code> — <code>test_withdrawal_retains_review_status</code>
+  pins the withdrawal exception (approval retained; <code>dismissed</code> does not
+  blanket-imply <code>review_status=none</code>).</p>
 <p><strong>Related.</strong> <a href="#inv-lifecycle-1">INV-LIFECYCLE-1</a>, <a href="#inv-auth-1">INV-AUTH-1</a>,
 <a href="#inv-withdraw">INV-WITHDRAW</a>.</p>
 <hr />

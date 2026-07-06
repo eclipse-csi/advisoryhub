@@ -9,6 +9,22 @@ from django.urls import reverse
 
 
 @pytest.fixture
+def frozen_ratelimit_window(monkeypatch):
+    """Pin django-ratelimit's fixed-window clock so every request in a test
+    falls in ONE window. Without this, 35 requests straddling the 60s window
+    boundary reset the counter mid-run and no 429 ever fires (a wall-clock
+    flake under full-suite load, not a real regression)."""
+    import django_ratelimit.core as rl_core
+
+    class _FrozenClock:
+        @staticmethod
+        def time():
+            return 1_000_000.0
+
+    monkeypatch.setattr(rl_core, "time", _FrozenClock)
+
+
+@pytest.fixture
 def setup(make_user, make_project, settings):
     settings.OIDC_ADMIN_GROUP = "advisoryhub-security"
     member = make_user(email="m@example.org")
@@ -21,15 +37,12 @@ def setup(make_user, make_project, settings):
 
 @pytest.mark.django_db
 @override_settings(RATELIMIT_ENABLE=True)
-def test_html_comment_post_rate_limit_kicks_in(client, setup):
+def test_html_comment_post_rate_limit_kicks_in(client, setup, frozen_ratelimit_window):
     """The HTML comment-create endpoint enforces a per-user rate limit.
 
-    The configured rate is 30/min. To keep the test under that ceiling
-    fast, we set a dedicated low cap via the cache directly: not all
-    rate-limit knobs are easy to override at test time, so we just hit
-    the endpoint enough times to exceed the realistic-but-low default
-    (30/m) by sending 35 quick requests, accept that the test is slightly
-    slow (sub-second), and verify the last few are 429.
+    The configured rate is 30/m. ``frozen_ratelimit_window`` pins the
+    fixed-window clock so all 35 requests count into one window; requests
+    31-35 deterministically exceed the cap and return 429.
     """
     client.force_login(setup["member"])
     url = reverse("comments:create", args=[setup["advisory"].advisory_id])
@@ -42,7 +55,7 @@ def test_html_comment_post_rate_limit_kicks_in(client, setup):
 
 @pytest.mark.django_db
 @override_settings(RATELIMIT_ENABLE=True)
-def test_json_comment_post_rate_limit_kicks_in(client, setup):
+def test_json_comment_post_rate_limit_kicks_in(client, setup, frozen_ratelimit_window):
     client.force_login(setup["member"])
     url = reverse("api:comments", args=[setup["advisory"].advisory_id])
     statuses = []

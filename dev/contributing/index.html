@@ -1455,8 +1455,10 @@ have to remember the individual commands:</p>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>mise<span class="w"> </span>run<span class="w"> </span>migrate<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mise<span class="w"> </span>run<span class="w"> </span>seed
 </code></pre></div>
 <p><code>mise tasks</code> lists them all (<code>test</code>, <code>lint</code>, <code>fix</code>, <code>typecheck</code>, <code>ty</code>,
-<code>check</code>, <code>build</code>, <code>reset</code>, <code>docs-build</code>, <code>docs-serve</code>, …). mise is a convenience wrapper only: tool versions live in
-<code>uv.lock</code>, the Python version in <code>.python-version</code>, and CI runs these same tasks —
+<code>check</code>, <code>build</code>, <code>reset</code>, <code>docs-build</code>, <code>docs-serve</code>, …). mise is a convenience wrapper only: dev-tool versions live in
+<code>uv.lock</code>, the Python version in <code>.python-version</code>, the bootstrap/chart/release
+binaries (<code>uv</code>, <code>prek</code>, <code>helm</code>, <code>kubeconform</code>, <code>git-cliff</code>, <code>trivy</code>) are exact-pinned
+in <code>mise.toml</code>, and CI runs these same tasks —
 the raw <code>uv</code> / <code>docker compose</code> commands above stay canonical.</p>
 <h2 id="4-configuration">4. Configuration<a class="headerlink" href="#4-configuration" title="Permanent link">&para;</a></h2>
 <p><code>docker-compose.yml</code>'s <code>x-django-env</code> anchor is the canonical dev
@@ -1514,11 +1516,12 @@ OSV/CSAF/CVE/CVSS JSON schemas (<code>publication/schemas/</code>) — are each 
 <code>mise run verify-vendor</code> (a commit-stage hook + CI) fails if a committed file drifts
 from its pinned hash.</p>
 <p>Updates are automated by a <strong>scoped, self-hosted Renovate</strong> workflow
-(<code>.github/workflows/renovate.yml</code>) that tracks only those <code>.VERSION</code> files —
-Dependabot still owns Python/Actions/Docker, so the two never collide. On a new
-upstream release Renovate bumps the version and runs <code>dev/update_vendored_assets.py</code>
-(<code>mise run update-vendor</code>) to re-download, rehash, and re-apply the OSV <code>ECL-</code> patch,
-then opens a PR.</p>
+(<code>.github/workflows/renovate.yml</code>) that tracks those <code>.VERSION</code> files plus the
+<code>mise.toml</code> <code>[tools]</code> pins — Dependabot still owns Python/Actions/Docker/compose, so
+the two never collide. On a new upstream release Renovate bumps the version and, for a
+<code>.VERSION</code> bump, runs <code>dev/update_vendored_assets.py</code> (<code>mise run update-vendor</code>) to
+re-download, rehash, and re-apply the OSV <code>ECL-</code> patch, then opens a PR.
+mise-toolchain bumps arrive as one grouped, review-only PR.</p>
 <p><strong>Auto-merge policy:</strong> the JSON schemas are payload-validated by the publication test
 suite (plus the OSV ecosystem drift guard), so a breaking change fails CI — their PRs
 <strong>auto-merge on green</strong>. The frontend assets (htmx / ALTCHA / Inter / neoteroi) have

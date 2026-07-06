@@ -1515,7 +1515,8 @@ schemas) are version-tracked by a scoped, self-hosted <strong>Renovate</strong> 
 installed on the repo: set repo <strong>variable</strong> <code>RENOVATE_APP_ID</code> and <strong>secret</strong>
 <code>RENOVATE_APP_PRIVATE_KEY</code> (App permissions: contents, pull-requests, issues — all
 write). Schema PRs auto-merge on green CI; frontend-asset PRs are review-only (manual
-smoke). Trigger an on-demand or <code>dryRun</code> pass from the Actions tab; re-vendor locally
+smoke). The same workflow also bumps the <code>mise.toml</code> tool pins (grouped, review-only).
+Trigger an on-demand or <code>dryRun</code> pass from the Actions tab; re-vendor locally
 with <code>mise run update-vendor</code>. See
 <a href="../../contributing/#6-code-quality">contributing §6</a>.</p>
 <p>Cutting a <strong>release</strong> (version-lockstep bump, signed tag, container image to

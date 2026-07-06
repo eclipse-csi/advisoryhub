@@ -1543,7 +1543,7 @@ every <code>uv sync --locked</code>. (<code>mise run release</code> does all of 
 <li>Push rights to <code>main</code>, and your SSH <strong>signing</strong> key loaded (<code>ssh-add -l</code>) —
   the release commit and tag are signed (<code>-S</code>) per the commit policy.</li>
 <li>A clean tree on <code>main</code> (untracked files like <code>TODO.md</code> are fine).</li>
-<li>The toolchain: <code>mise install</code> (git-cliff, trivy, helm ride <code>mise.toml</code>).</li>
+<li>The toolchain: <code>mise install</code> (git-cliff, trivy, helm are exact-pinned in <code>mise.toml</code>).</li>
 </ul>
 <h2 id="cutting-a-release">Cutting a release<a class="headerlink" href="#cutting-a-release" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mise<span class="w"> </span>run<span class="w"> </span>release<span class="w"> </span>--<span class="w"> </span>X.Y.Z

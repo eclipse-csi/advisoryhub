@@ -60,6 +60,9 @@ env = environ.Env(
     EMAIL_HOST_PASSWORD=(str, ""),  # SECRET
     EMAIL_USE_TLS=(bool, False),
     EMAIL_USE_SSL=(bool, False),
+    # Django's smtp backend defaults to timeout=None (block forever); an
+    # unreachable/hung SMTP server would wedge a worker slot indefinitely.
+    EMAIL_TIMEOUT=(int, 30),
     # Publication Git repository
     PUB_REPO_URL=(str, ""),
     PUB_REPO_BRANCH=(str, "main"),
@@ -463,6 +466,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = env("EMAIL_USE_TLS")
 EMAIL_USE_SSL = env("EMAIL_USE_SSL")
+EMAIL_TIMEOUT = env("EMAIL_TIMEOUT")
 # Base URL for absolute links in outbound email (see notifications.recipients).
 ADVISORYHUB_BASE_URL = env("ADVISORYHUB_BASE_URL")
 # Footer help links (see common.context_processors.support_links). The issues

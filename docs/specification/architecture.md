@@ -1131,7 +1131,10 @@ add optional dependency checks to `/readyz`.
 `DEFAULT_FROM_EMAIL`, optional `ADVISORYHUB_BASE_URL` used to
 construct absolute URLs in notification bodies; SMTP transport:
 `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`,
-`EMAIL_HOST_PASSWORD` (secret), `EMAIL_USE_TLS`, `EMAIL_USE_SSL`.
+`EMAIL_HOST_PASSWORD` (secret), `EMAIL_USE_TLS`, `EMAIL_USE_SSL`,
+`EMAIL_TIMEOUT` (default 30 s — bounds every SMTP socket operation; Django's
+own default is no timeout, which would let a hung mail server block a Celery
+worker slot indefinitely).
 
 **Footer help links.** `ADVISORYHUB_REPO_URL` (default
 `https://github.com/eclipse-csi/advisoryhub`) is the base GitHub repo for

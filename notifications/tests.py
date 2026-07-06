@@ -1067,3 +1067,23 @@ def test_footer_reason_mention_overrides_access(setup):
     assert ctx["footer_reason"] == "mentioned in a comment on this advisory"
     assert ctx["footer_governance"] == "always"
     assert ctx["footer_advisory_url"] == ""
+
+
+# ---- SMTP transport safety -------------------------------------------------
+
+
+def test_smtp_backend_gets_bounded_timeout(settings):
+    """The smtp backend must inherit a finite EMAIL_TIMEOUT.
+
+    Django's global default is ``EMAIL_TIMEOUT = None`` (block forever), so a
+    hung mail server would wedge the worker slot running ``_send_one`` for the
+    length of the broker visibility timeout. Guard the wiring end-to-end: if
+    the setting is dropped from ``config.settings.base`` the backend silently
+    falls back to ``None`` — ``isinstance`` catches that, not the equality.
+    """
+    from django.core.mail.backends.smtp import EmailBackend
+
+    backend = EmailBackend()
+    assert backend.timeout == settings.EMAIL_TIMEOUT
+    assert isinstance(backend.timeout, int)
+    assert backend.timeout > 0

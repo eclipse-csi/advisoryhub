@@ -2,94 +2,94 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/contributing/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/contributing/releasing/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/manual/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/manual/administrator/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/manual/collaborator-and-viewer/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/manual/reporter/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/manual/security-team/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/configuration/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/deploy-kubernetes/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/installation/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/integrations/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/maintenance/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/observability/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/operations/running-in-production/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/advisory-lifecycle/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/api/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/architecture/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/invariant/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/permissions/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
     <url>
          <loc>https://eclipse-csi.github.io/advisoryhub/latest/specification/requirements/</loc>
-         <lastmod>2026-07-01</lastmod>
+         <lastmod>2026-07-06</lastmod>
     </url>
 </urlset>

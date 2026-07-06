@@ -126,6 +126,50 @@ def test_healthz_returns_200_unauthenticated(client):
 
 
 @pytest.mark.django_db
+def test_liveness_probe_survives_dead_db(client, monkeypatch):
+    """The probes must not require the RLS principal round-trip (INV-CONF-2).
+
+    Regression: ``RowLevelSecurityMiddleware`` used to run ``set_principal`` — a
+    DB cursor — on *every* request, so a DB outage 500'd the liveness probe (the
+    release-image smoke test starts the container with no database). Simulate a
+    dead DB at the principal layer; the exempt probe paths must still answer
+    without ever touching it.
+    """
+    from django.db.utils import OperationalError
+
+    from common import rls
+
+    def dead_db(_user):
+        raise OperationalError("connection refused")
+
+    monkeypatch.setattr(rls, "set_principal_for_user", dead_db)
+
+    # /healthz is process-up only: exempt, so the dead principal layer is skipped.
+    assert client.get(reverse("healthz")).status_code == 200
+    # /readyz is exempt too, so it reaches its own handler (the real test DB is
+    # up → 200) rather than crashing with a 500 in the middleware.
+    assert client.get(reverse("readyz")).status_code == 200
+
+
+@pytest.mark.django_db
+def test_rls_principal_skipped_for_probes_but_set_for_app_paths(client, monkeypatch):
+    """The exemption is NARROW: only probes/assets skip the principal (INV-CONF-2)."""
+    from common import rls
+
+    calls: list = []
+    real = rls.set_principal_for_user
+    monkeypatch.setattr(
+        rls, "set_principal_for_user", lambda user: calls.append(user) or real(user)
+    )
+
+    client.get(reverse("healthz"))
+    assert calls == []  # exempt path never sets the principal
+
+    client.get(reverse("home"))  # anonymous landing, an ordinary app path
+    assert calls, "RLS principal must still be set for non-exempt paths"
+
+
+@pytest.mark.django_db
 def test_readyz_succeeds_when_db_and_cache_are_up(client):
     r = client.get(reverse("readyz"))
     assert r.status_code == 200

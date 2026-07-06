@@ -193,6 +193,16 @@ class HtmxMessagesMiddleware:
         return any(header in response for header in self._FULL_RELOAD_HEADERS)
 
 
+# Paths that never query RLS-protected tables, so they must not pay the
+# per-request principal round-trip (which opens a DB cursor). Deliberately a
+# NARROWER set than ``_EXEMPT_PREFIXES``: ``/oidc/`` (account create/link) and
+# ``/ghsa/webhook/`` (row writes) DO touch RLS-scoped data and must keep the
+# fail-closed principal. Skipping these keeps ``/healthz`` a true DB-free
+# liveness probe (a DB outage must not 500 it — that would CrashLoop pods) and
+# lets ``/readyz`` return its own graceful 503 instead of a middleware 500.
+_RLS_EXEMPT_PREFIXES = ("/healthz", "/readyz", "/metrics", "/static/")
+
+
 class RowLevelSecurityMiddleware:
     """Set the per-request row-level-security principal (``INV-CONF-2``).
 
@@ -203,11 +213,17 @@ class RowLevelSecurityMiddleware:
     this has no enforcement effect there; under the production non-superuser role
     it is what scopes every query to the authenticated principal. See
     :mod:`common.rls`.
+
+    Operational probes/assets (``_RLS_EXEMPT_PREFIXES``) skip the principal
+    entirely — they query no RLS-protected table, and forcing the cursor there
+    would make liveness/metrics depend on the DB.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        if any(request.path.startswith(p) for p in _RLS_EXEMPT_PREFIXES):
+            return self.get_response(request)
         with rls_principal(getattr(request, "user", None)):
             return self.get_response(request)

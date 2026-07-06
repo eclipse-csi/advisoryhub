@@ -3054,7 +3054,12 @@ wrong, which is why the policy is **drift-tested** to return the same id set as
   policies on the `advisory_id` child tables.
 - `common/middleware.py` — `RowLevelSecurityMiddleware` sets the principal GUCs
   for a request; the `rls_principal` / `rls_system` context managers in `common`
-  set them for Celery tasks and management commands.
+  set them for Celery tasks and management commands. Operational probes/static
+  assets (`_RLS_EXEMPT_PREFIXES`: `/healthz`, `/readyz`, `/metrics`, `/static/`)
+  are exempt — they query no RLS-protected table, so skipping the principal keeps
+  `/healthz` a DB-free liveness probe (and lets `/readyz` degrade to its own 503
+  on a DB outage rather than a middleware 500); the fail-closed default is
+  unweakened since a reused connection is always left at the empty principal.
 - Operator role model (single role + `FORCE`, or app-as-non-owner-role) in
   [running-in-production.md §7](../operations/running-in-production.md#7-database-hardening-checklist).
 

@@ -10,12 +10,14 @@ from pathlib import Path
 
 import environ
 
+from ._guards import INSECURE_SECRET_KEY_DEFAULT
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
     DJANGO_ALLOWED_HOSTS=(list, ["*"]),
-    DJANGO_SECRET_KEY=(str, "insecure-change-me"),
+    DJANGO_SECRET_KEY=(str, INSECURE_SECRET_KEY_DEFAULT),
     DJANGO_TIME_ZONE=(str, "UTC"),
     # Reverse proxy / edge TLS. USE_X_FORWARDED_PROTO makes Django trust the
     # X-Forwarded-Proto header set by a TLS-terminating proxy (ingress/Route);

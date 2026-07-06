@@ -1,6 +1,13 @@
+from ._guards import require_production_secret_key
 from .base import *  # noqa: F403
 
 DEBUG = False
+
+# Fail closed rather than booting with the well-known development secret key
+# (forgeable sessions/CSRF/signed tokens). SECRET_KEY comes in via the star
+# import above.
+require_production_secret_key(SECRET_KEY)  # noqa: F405
+
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

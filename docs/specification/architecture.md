@@ -1087,7 +1087,10 @@ Grouped by concern. See `config/settings/base.py` for defaults and
 types.
 
 **Django core.** `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`,
-`DJANGO_SECRET_KEY`, `DJANGO_TIME_ZONE`, `DATABASE_URL`,
+`DJANGO_SECRET_KEY` (mandatory in prod — `config.settings.prod` calls
+`config.settings._guards.require_production_secret_key` at import time,
+so a deploy that leaves it on the development default fails to boot),
+`DJANGO_TIME_ZONE`, `DATABASE_URL`,
 `CACHE_URL` (optional — falls back to LocMem), `LOG_FORMAT`
 (`json`/`plain`), `LOG_LEVEL`, `CSRF_TRUSTED_ORIGINS`.
 

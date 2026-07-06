@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":dependencyDashboard"],
-  "description": "Scoped to (1) the hand-vendored asset .VERSION files and (2) the mise.toml [tools] pins — both custom.regex with `# renovate:` annotations; Dependabot still owns Python/uv, GitHub Actions and Docker (.github/dependabot.yml), so the two never touch the same files. Only .VERSION bumps run the allow-listed dev/update_vendored_assets.py postUpgradeTask (packageRule-scoped); mise bumps are plain version edits.",
+  "description": "Scoped to (1) the hand-vendored asset .VERSION files and (2) the mise.toml [tools] pins — both custom.regex with `# renovate:` annotations; Dependabot still owns Python/uv, GitHub Actions, Docker and docker-compose (.github/dependabot.yml), so the two never touch the same files. Only .VERSION bumps run the allow-listed dev/update_vendored_assets.py postUpgradeTask (packageRule-scoped); mise bumps are plain version edits.",
   "enabledManagers": ["custom.regex"],
   "customManagers": [
     {

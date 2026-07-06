@@ -1,4 +1,4 @@
-# Dependabot keeps our pinned dependencies fresh across three ecosystems. The
+# Dependabot keeps our pinned dependencies fresh across four ecosystems. The
 # CI security gates remain the source of truth — Dependabot only proposes PRs:
 #   * github-actions — rewrites the SHA pin and trailing `# vX.Y.Z` comment on
 #     every `uses:` reference in .github/workflows/.
@@ -13,6 +13,9 @@
 #     names must exist there too). Until those exist, dhi.io updates error in
 #     the Dependabot logs while the public ghcr.io/astral-sh/uv base still
 #     updates fine.
+#   * docker-compose — dev-stack image bumps in docker-compose.yml (kanidm,
+#     prometheus, grafana; postgres/valkey ride major-only tags on purpose —
+#     the Postgres major is a deliberate, migration-planned upgrade).
 version: 2
 registries:
   dhi-io:
@@ -56,6 +59,17 @@ updates:
     groups:
       docker:
         patterns: ["*"]
+    commit-message:
+      prefix: "build"
+      include: scope
+
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      docker-compose:
+        patterns: ["*"] # one grouped PR for the dev-stack images
     commit-message:
       prefix: "build"
       include: scope

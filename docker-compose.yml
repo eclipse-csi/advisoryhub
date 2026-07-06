@@ -157,7 +157,9 @@ services:
   # generate the TLS cert, recover admin, and seed users + OAuth2 client.
   # ------------------------------------------------------------------
   kanidm:
-    image: kanidm/server:latest
+    # Pinned (not :latest) so Dependabot's docker-compose ecosystem can propose
+    # bumps; dev/kanidm/setup.sh targets kanidmd 1.10.x.
+    image: kanidm/server:1.10.4
     ports:
       - "8443:8443"
     volumes:

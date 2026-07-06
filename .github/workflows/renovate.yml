@@ -2,7 +2,8 @@ name: Renovate (vendored assets + mise toolchain)
 
 # Self-hosted Renovate — a scheduled GitHub Actions cron (no standalone server),
 # scoped via .github/renovate.json to the hand-vendored asset .VERSION files and
-# the mise.toml [tools] pins (Dependabot still owns Python/uv, Actions and Docker).
+# the mise.toml [tools] pins (Dependabot still owns Python/uv, Actions, Docker and
+# docker-compose).
 # On a .VERSION bump Renovate then runs dev/update_vendored_assets.py as a tightly
 # allow-listed postUpgradeTask to re-download + rehash (and re-apply the OSV ECL-
 # patch); mise-toolchain bumps are plain version edits (grouped weekly PR,

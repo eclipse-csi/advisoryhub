@@ -155,8 +155,8 @@ from its pinned hash.
 
 Updates are automated by a **scoped, self-hosted Renovate** workflow
 (`.github/workflows/renovate.yml`) that tracks those `.VERSION` files plus the
-`mise.toml` `[tools]` pins — Dependabot still owns Python/Actions/Docker, so the two
-never collide. On a new upstream release Renovate bumps the version and, for a
+`mise.toml` `[tools]` pins — Dependabot still owns Python/Actions/Docker/compose, so
+the two never collide. On a new upstream release Renovate bumps the version and, for a
 `.VERSION` bump, runs `dev/update_vendored_assets.py` (`mise run update-vendor`) to
 re-download, rehash, and re-apply the OSV `ECL-` patch, then opens a PR.
 mise-toolchain bumps arrive as one grouped, review-only PR.

@@ -396,6 +396,7 @@ def test_lifecycle_send_records_notification_sent_per_recipient(setup):
     # Ephemeral by design — never the durable ledger.
     assert not AuditLogEntry.objects.filter(action=Action.NOTIFICATION_SENT).exists()
     sample = rows.first()
+    assert sample is not None
     assert sample.metadata["kind"] == "advisory_published"
     assert "recipient_email" in sample.metadata
     assert sample.advisory_id == setup["advisory"].pk
@@ -495,8 +496,11 @@ def test_preferences_page_renders_comments_segmented_toggle(client, setup):
     # carries the ``checked`` attribute.
     import re
 
-    all_input = re.search(r'<input[^>]*value="all"[^>]*>', body).group(0)
-    mentioned_input = re.search(r'<input[^>]*value="mentioned"[^>]*>', body).group(0)
+    all_match = re.search(r'<input[^>]*value="all"[^>]*>', body)
+    mentioned_match = re.search(r'<input[^>]*value="mentioned"[^>]*>', body)
+    assert all_match is not None and mentioned_match is not None
+    all_input = all_match.group(0)
+    mentioned_input = mentioned_match.group(0)
     assert "checked" in all_input
     assert "checked" not in mentioned_input
 

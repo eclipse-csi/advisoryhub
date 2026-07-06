@@ -128,11 +128,12 @@ files = [
     "comments", "common", "config", "ghsa", "intake", "notifications",
     "projects", "publication", "similarity", "workflows",
 ]
-# Pragmatic baseline: resolve Django ORM dynamics via django-stubs, but don't
-# force annotations on every function or chase third-party stub gaps. Tighten
-# over time.
+# Pragmatic baseline: resolve Django ORM dynamics via django-stubs and check
+# the bodies of unannotated functions (check_untyped_defs), but don't force
+# annotations on every function or chase third-party stub gaps. Tighten over
+# time (next candidate: disallow_untyped_defs).
 ignore_missing_imports = true
-check_untyped_defs = false
+check_untyped_defs = true
 warn_unused_ignores = true
 warn_return_any = false
 exclude = '(/migrations/|/tests/|conftest\.py|test_.*\.py|_test\.py)'

@@ -171,9 +171,12 @@ def test_rls_principal_skipped_for_probes_but_set_for_app_paths(client, monkeypa
 
     calls: list = []
     real = rls.set_principal_for_user
-    monkeypatch.setattr(
-        rls, "set_principal_for_user", lambda user: calls.append(user) or real(user)
-    )
+
+    def spy(user):
+        calls.append(user)
+        return real(user)
+
+    monkeypatch.setattr(rls, "set_principal_for_user", spy)
 
     client.get(reverse("healthz"))
     assert calls == []  # exempt path never sets the principal
@@ -483,9 +486,11 @@ def test_backlog_gauge_refresh_sets_live_counts(client, make_user, make_project)
     # Two failed publications.
     for _ in range(2):
         adv = Advisory.objects.create(project=project, summary="s", created_by=member)
+        version = latest_version(adv)
+        assert version is not None  # v1 is auto-created by the Advisory post_save signal
         PublicationTask.objects.create(
             advisory=adv,
-            version=latest_version(adv),
+            version=version,
             status=PublicationTaskStatus.FAILED,
         )
     # Three advisories sitting in triage.

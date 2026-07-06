@@ -811,4 +811,6 @@ class AdvisoryPermissionMixin:
             raise PermissionDenied(
                 f"You need {self.required_permission!r} permission on this advisory."
             )
-        return super().dispatch(request, *args, **kwargs)
+        # ``dispatch`` is supplied by the ``View`` this mixin is combined with
+        # (like ``kwargs`` above); mypy can't see it on the bare mixin.
+        return super().dispatch(request, *args, **kwargs)  # type: ignore[misc]

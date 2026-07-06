@@ -191,7 +191,8 @@ def test_apply_claims_does_not_grant_admin_flags_for_non_admin_groups(settings):
 )
 def test_provider_logout_builds_end_session_url_with_id_token_hint():
     request = RequestFactory().post("/oidc/logout/", HTTP_HOST="advisoryhub.example")
-    request.session = {"oidc_id_token": "eyJ.fake.token"}
+    # RequestFactory has no session middleware; provider_logout only needs .get().
+    request.session = {"oidc_id_token": "eyJ.fake.token"}  # type: ignore[assignment]
 
     url = provider_logout(request)
 
@@ -208,7 +209,7 @@ def test_provider_logout_builds_end_session_url_with_id_token_hint():
 )
 def test_provider_logout_omits_id_token_hint_when_session_lacks_it():
     request = RequestFactory().post("/oidc/logout/", HTTP_HOST="advisoryhub.example")
-    request.session = {}
+    request.session = {}  # type: ignore[assignment]
 
     url = provider_logout(request)
 
@@ -220,7 +221,7 @@ def test_provider_logout_omits_id_token_hint_when_session_lacks_it():
 @override_settings(OIDC_OP_LOGOUT_ENDPOINT="", LOGOUT_REDIRECT_URL="/accounts/signed-out/")
 def test_provider_logout_falls_back_to_local_redirect_when_op_endpoint_unset():
     request = RequestFactory().post("/oidc/logout/")
-    request.session = {"oidc_id_token": "eyJ.fake.token"}
+    request.session = {"oidc_id_token": "eyJ.fake.token"}  # type: ignore[assignment]
 
     assert provider_logout(request) == "/accounts/signed-out/"
 

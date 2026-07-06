@@ -773,6 +773,7 @@ def test_audit_records_is_internal(internal_setup):
         internal=True,
     )
     entry = AuditLogEntry.objects.get(action=Action.COMMENT_CREATED, comment_id=c.pk)
+    assert entry.new_value is not None
     assert entry.new_value["is_internal"] is True
 
 

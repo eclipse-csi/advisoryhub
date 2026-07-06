@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 
 from django.contrib.messages import get_messages
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django_htmx.http import trigger_client_event
 
@@ -131,6 +131,7 @@ class MaintenanceModeMiddleware:
 
     def _blocked_response(self, request):
         detail = "AdvisoryHub is in maintenance mode. Actions are temporarily paused."
+        response: HttpResponse
         if request.path.startswith("/api/"):
             response = JsonResponse({"detail": detail}, status=503)
         else:

@@ -1,22 +1,26 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":dependencyDashboard"],
-  "description": "Scoped to the hand-vendored asset .VERSION files ONLY (custom.regex); Dependabot still owns Python/uv, GitHub Actions and Docker (.github/dependabot.yml), so the two never touch the same files. Each .VERSION carries a `# renovate:` annotation; on a bump the postUpgradeTask re-downloads + rehashes (and re-applies the OSV ECL- patch) via the allow-listed dev/update_vendored_assets.py.",
+  "description": "Scoped to (1) the hand-vendored asset .VERSION files and (2) the mise.toml [tools] pins — both custom.regex with `# renovate:` annotations; Dependabot still owns Python/uv, GitHub Actions and Docker (.github/dependabot.yml), so the two never touch the same files. Only .VERSION bumps run the allow-listed dev/update_vendored_assets.py postUpgradeTask (packageRule-scoped); mise bumps are plain version edits.",
   "enabledManagers": ["custom.regex"],
   "customManagers": [
     {
       "customType": "regex",
+      "description": "Vendored-asset pins in *.VERSION files.",
       "managerFilePatterns": ["/(^|/)[^/]*\\.VERSION$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*?v?(?<currentValue>\\d+(?:\\.\\d+)+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "mise.toml [tools] exact pins (uv, prek, helm, kubeconform, git-cliff, trivy). Regex, not the native mise manager: Renovate v46 has no short-name mapping for prek/kubeconform/git-cliff and would silently skip them.",
+      "managerFilePatterns": ["/(^|/)mise\\.toml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n[\\w-]+\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ]
     }
   ],
-  "postUpgradeTasks": {
-    "commands": ["python3 dev/update_vendored_assets.py"],
-    "fileFilters": ["static/**", "publication/schemas/**", "docs/assets/css/**", "**/*.VERSION"],
-    "executionMode": "branch"
-  },
   "packageRules": [
     {
       "description": "Vendored JSON schemas are payload-validated by the publication test suite + the OSV ecosystem drift guard, so a breaking change fails CI — safe to auto-merge on green.",
@@ -27,6 +31,21 @@
     {
       "description": "Frontend assets (htmx, ALTCHA widget, Inter, neoteroi CSS) have no behavioral tests — PR for manual smoke, never auto-merge.",
       "matchDepNames": ["htmx.org", "altcha", "rsms/inter", "Neoteroi/mkdocs-plugins"],
+      "automerge": false
+    },
+    {
+      "description": "Re-vendor ONLY on .VERSION bumps — mise toolchain bumps must not re-download vendored assets. (matchManagers can't discriminate here: both managers are custom.regex.)",
+      "matchFileNames": ["**/*.VERSION"],
+      "postUpgradeTasks": {
+        "commands": ["python3 dev/update_vendored_assets.py"],
+        "fileFilters": ["static/**", "publication/schemas/**", "docs/assets/css/**", "**/*.VERSION"],
+        "executionMode": "branch"
+      }
+    },
+    {
+      "description": "mise toolchain: one grouped weekly PR, never auto-merge — helm/kubeconform are CI-exercised, but git-cliff/trivy only run at release time, so green CI can't vouch for them.",
+      "matchFileNames": ["mise.toml"],
+      "groupName": "mise toolchain",
       "automerge": false
     }
   ]

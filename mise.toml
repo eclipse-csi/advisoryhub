@@ -16,15 +16,25 @@
 # `mise exec` still load tools + env.
 
 [tools]
-uv = "latest"   # resolves to aqua:astral-sh/uv
-prek = "latest" # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wires git hooks
+# Exact pins, Renovate-tracked via the `# renovate:` annotations below (same grammar
+# as the vendored-asset .VERSION files; grouped weekly "mise toolchain" PR, review-only).
+# mise resolves a full x.y.z exact-match-first, and the aqua backend checksum-verifies
+# every download against the aqua registry — reproducible CI, no unpinned upstream window.
+# renovate: datasource=github-releases depName=astral-sh/uv
+uv = "0.11.26"   # resolves to aqua:astral-sh/uv
+# renovate: datasource=github-releases depName=j178/prek extractVersion=^v(?<version>.+)$
+prek = "0.4.8" # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wires git hooks
 # Helm-chart toolchain (charts/advisoryhub) — bootstrap binaries like uv/prek,
 # not Python tools, so they belong here rather than in uv.lock.
-helm = "latest"        # aqua:helm/helm
-kubeconform = "latest" # aqua:yannh/kubeconform
+# renovate: datasource=github-releases depName=helm/helm extractVersion=^v(?<version>.+)$
+helm = "4.2.2"        # aqua:helm/helm
+# renovate: datasource=github-releases depName=yannh/kubeconform extractVersion=^v(?<version>.+)$
+kubeconform = "0.8.0" # aqua:yannh/kubeconform
 # Release toolchain (docs/contributing/releasing.md) — bootstrap binaries, same rationale.
-git-cliff = "latest" # aqua:orhun/git-cliff — release notes from conventional commits
-trivy = "latest"     # aqua:aquasecurity/trivy — dependency SBOM (CycloneDX) for releases
+# renovate: datasource=github-releases depName=orhun/git-cliff extractVersion=^v(?<version>.+)$
+git-cliff = "2.13.1" # aqua:orhun/git-cliff — release notes from conventional commits
+# renovate: datasource=github-releases depName=aquasecurity/trivy extractVersion=^v(?<version>.+)$
+trivy = "0.72.0"     # aqua:aquasecurity/trivy — dependency SBOM (CycloneDX) for releases
 # NO python here  -> .python-version + uv own the interpreter.
 # NO ruff/mypy/pytest/ty here -> they live in uv.lock, run via `uv run`.
 

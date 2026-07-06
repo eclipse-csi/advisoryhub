@@ -10,8 +10,9 @@ permissions:
 
 # Toolchain + commands are defined once in mise.toml and invoked here via
 # `mise run <task>`, so dev and CI run identical command bodies. jdx/mise-action
-# installs the [tools] (uv + prek), trusts the config, and caches the tool
-# binaries; actions/cache covers uv's wheel cache and the CPython it downloads.
+# installs the exact-pinned [tools] (uv + prek), trusts the config, and caches the
+# tool binaries (cache key = mise.toml hash, so every Renovate pin bump refreshes
+# it); actions/cache covers uv's wheel cache and the CPython it downloads.
 # Python comes from .python-version — dev = CI = prod, no UV_PYTHON.
 #
 # All `uses:` are pinned to full commit SHAs (with a `# vX.Y.Z` comment that

@@ -28,7 +28,7 @@ every `uv sync --locked`. (`mise run release` does all of this for you.)
 - Push rights to `main`, and your SSH **signing** key loaded (`ssh-add -l`) —
   the release commit and tag are signed (`-S`) per the commit policy.
 - A clean tree on `main` (untracked files like `TODO.md` are fine).
-- The toolchain: `mise install` (git-cliff, trivy, helm ride `mise.toml`).
+- The toolchain: `mise install` (git-cliff, trivy, helm are exact-pinned in `mise.toml`).
 
 ## Cutting a release
 

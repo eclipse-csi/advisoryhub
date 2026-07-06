@@ -1,12 +1,13 @@
-name: Renovate (vendored assets)
+name: Renovate (vendored assets + mise toolchain)
 
 # Self-hosted Renovate — a scheduled GitHub Actions cron (no standalone server),
-# scoped via .github/renovate.json to the hand-vendored asset .VERSION files ONLY
-# (Dependabot still owns Python/uv, Actions and Docker). Renovate bumps the pinned
-# version, then runs dev/update_vendored_assets.py as a tightly allow-listed
-# postUpgradeTask to re-download + rehash (and re-apply the OSV ECL- patch). The
-# `.VERSION` discovery + re-vendor needs postUpgradeTasks, which the hosted Mend app
-# forbids — hence self-hosted here.
+# scoped via .github/renovate.json to the hand-vendored asset .VERSION files and
+# the mise.toml [tools] pins (Dependabot still owns Python/uv, Actions and Docker).
+# On a .VERSION bump Renovate then runs dev/update_vendored_assets.py as a tightly
+# allow-listed postUpgradeTask to re-download + rehash (and re-apply the OSV ECL-
+# patch); mise-toolchain bumps are plain version edits (grouped weekly PR,
+# review-only). The `.VERSION` discovery + re-vendor needs postUpgradeTasks, which
+# the hosted Mend app forbids — hence self-hosted here.
 #
 # Auth is a dedicated GitHub App token (NOT the default GITHUB_TOKEN) so the PRs it
 # opens TRIGGER CI (GITHUB_TOKEN-authored PRs don't). Set repo variable

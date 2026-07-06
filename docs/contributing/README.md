@@ -76,8 +76,10 @@ mise run migrate && mise run seed
 ```
 
 `mise tasks` lists them all (`test`, `lint`, `fix`, `typecheck`, `ty`,
-`check`, `build`, `reset`, `docs-build`, `docs-serve`, …). mise is a convenience wrapper only: tool versions live in
-`uv.lock`, the Python version in `.python-version`, and CI runs these same tasks —
+`check`, `build`, `reset`, `docs-build`, `docs-serve`, …). mise is a convenience wrapper only: dev-tool versions live in
+`uv.lock`, the Python version in `.python-version`, the bootstrap/chart/release
+binaries (`uv`, `prek`, `helm`, `kubeconform`, `git-cliff`, `trivy`) are exact-pinned
+in `mise.toml`, and CI runs these same tasks —
 the raw `uv` / `docker compose` commands above stay canonical.
 
 ## 4. Configuration
@@ -152,11 +154,12 @@ OSV/CSAF/CVE/CVSS JSON schemas (`publication/schemas/`) — are each pinned in a
 from its pinned hash.
 
 Updates are automated by a **scoped, self-hosted Renovate** workflow
-(`.github/workflows/renovate.yml`) that tracks only those `.VERSION` files —
-Dependabot still owns Python/Actions/Docker, so the two never collide. On a new
-upstream release Renovate bumps the version and runs `dev/update_vendored_assets.py`
-(`mise run update-vendor`) to re-download, rehash, and re-apply the OSV `ECL-` patch,
-then opens a PR.
+(`.github/workflows/renovate.yml`) that tracks those `.VERSION` files plus the
+`mise.toml` `[tools]` pins — Dependabot still owns Python/Actions/Docker, so the two
+never collide. On a new upstream release Renovate bumps the version and, for a
+`.VERSION` bump, runs `dev/update_vendored_assets.py` (`mise run update-vendor`) to
+re-download, rehash, and re-apply the OSV `ECL-` patch, then opens a PR.
+mise-toolchain bumps arrive as one grouped, review-only PR.
 
 **Auto-merge policy:** the JSON schemas are payload-validated by the publication test
 suite (plus the OSV ecosystem drift guard), so a breaking change fails CI — their PRs

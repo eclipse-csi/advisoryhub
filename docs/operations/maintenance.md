@@ -61,7 +61,8 @@ schemas) are version-tracked by a scoped, self-hosted **Renovate** workflow
 installed on the repo: set repo **variable** `RENOVATE_APP_ID` and **secret**
 `RENOVATE_APP_PRIVATE_KEY` (App permissions: contents, pull-requests, issues — all
 write). Schema PRs auto-merge on green CI; frontend-asset PRs are review-only (manual
-smoke). Trigger an on-demand or `dryRun` pass from the Actions tab; re-vendor locally
+smoke). The same workflow also bumps the `mise.toml` tool pins (grouped, review-only).
+Trigger an on-demand or `dryRun` pass from the Actions tab; re-vendor locally
 with `mise run update-vendor`. See
 [contributing §6](../contributing/README.md#6-code-quality).
 

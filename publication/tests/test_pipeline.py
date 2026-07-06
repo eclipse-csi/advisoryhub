@@ -386,6 +386,33 @@ def test_withdraw_published_advisory(setup):
 
 
 @pytest.mark.django_db
+def test_withdrawal_retains_review_status(setup):
+    """A withdrawal flips to dismissed WITHOUT the review teardown the dismiss
+    services run — the advisory keeps the review_status it held at publication
+    (INV-LIFECYCLE-4). Safe because the only route out of a withdrawal is
+    un-withdraw → re-publication, never an editable draft; pinned here so a
+    blanket ``dismissed ⇒ review_status=none`` constraint fails fast."""
+    from advisories import services as adv_services
+
+    advisory = setup["advisory"]
+    advisory.review_status = ReviewStatus.APPROVED
+    advisory.save(update_fields=["review_status"])
+
+    task = pub_services.publish(advisory, by=setup["admin"])
+    pub_tasks.run_publication(task.pk)
+    advisory.refresh_from_db()
+    assert advisory.state == State.PUBLISHED
+
+    wtask = adv_services.withdraw_advisory(advisory, by=setup["admin"], reason="withdrawn")
+    pub_tasks.run_publication(wtask.pk)
+
+    advisory.refresh_from_db()
+    assert advisory.state == State.DISMISSED
+    assert advisory.dismissed_from_state == State.PUBLISHED
+    assert advisory.review_status == ReviewStatus.APPROVED  # retained, not torn down
+
+
+@pytest.mark.django_db
 def test_unwithdraw_reopens_to_published(setup):
     """Reopening a withdrawn advisory re-publishes it without the withdrawn
     marker, restores the CVE, and returns it to published (INV-WITHDRAW)."""

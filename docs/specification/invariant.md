@@ -242,12 +242,21 @@ preserves the audit story: reopen creates an `ADVISORY_REOPENED` row, and the
 prior `ADVISORY_DISMISSED` plus `dismissed_reason` stay visible as historical
 context.
 
-Dismiss also tears down any pending review state at dismissal time
-(`workflows.services.cancel_pending_review` runs from both dismiss paths),
-so a reopened advisory always re-enters the pipeline with
-`review_status=NONE` and no `OPEN` `ReviewTask`. This closes the
-"surviving APPROVED" loophole that would otherwise let an owner publish
-on a reopened advisory without a fresh review ([INV-PERM-3](#inv-perm-3)).
+The two dismiss *services* also tear down any pending review state at
+dismissal time (`workflows.services.cancel_pending_review` runs from both
+`dismiss_triage` and `dismiss_advisory`), so an advisory dismissed from
+`triage` or `draft` reopens with `review_status=NONE` and no `OPEN`
+`ReviewTask`. This closes the "surviving APPROVED" loophole that would
+otherwise let an owner publish on a reopened advisory without a fresh
+review ([INV-PERM-3](#inv-perm-3)). A **withdrawal** is the deliberate
+exception: the withdrawal branch of `publication.tasks.run_publication`
+flips the row to `dismissed` without running the teardown, so a withdrawn
+advisory *retains* the `review_status` it held at publication (typically
+`approved`; never `submitted` — `can_submit_for_review` requires `draft`).
+That is safe because the only route out of a withdrawal is un-withdraw →
+re-publication through the pipeline (never an editable working state) —
+but it means `dismissed` does **not** blanket-imply `review_status=none`:
+a DB constraint of that shape would break every withdrawal.
 
 **Enforced in.**
 - `advisories/permissions.py` — `can_reopen` requires `state=dismissed` and
@@ -257,10 +266,13 @@ on a reopened advisory without a fresh review ([INV-PERM-3](#inv-perm-3)).
   row, and flips state to `Advisory.dismissed_from_state`. CVE side-effects
   (orphan reattachment, cancelled-request restoration) are orchestrated
   through `workflows.services`; see [INV-CVE-3](#inv-cve-3).
-- `advisories/services.py::dismiss_triage` and the draft-dismiss block in
-  `advisories/views.py::advisory_dismiss` — call
-  `workflows.services.cancel_pending_review` so dismissed advisories
-  always carry `review_status=NONE` and no `OPEN` `ReviewTask`.
+- `advisories/services.py::dismiss_triage` and
+  `advisories/services.py::dismiss_advisory` (the reusable core behind the
+  `advisory_dismiss` view and the GHSA auto-dismiss) — call
+  `workflows.services.cancel_pending_review` so advisories dismissed from
+  `triage`/`draft` carry `review_status=NONE` and no `OPEN` `ReviewTask`.
+  The withdrawal branch of `publication/tasks.py::run_publication`
+  intentionally does not run the teardown (see Rationale).
 
 **Violation impact.** Without `can_reopen` gating, a non-owner could revive
 suppressed content. Without re-checking state in `reopen_advisory`, a stale
@@ -271,6 +283,9 @@ form could push a non-dismissed advisory into an unexpected target state.
   dispositions.
 - `advisories/tests/test_permissions.py` — `can_publish` / `can_edit` still
   reject dismissed.
+- `publication/tests/test_pipeline.py` — `test_withdrawal_retains_review_status`
+  pins the withdrawal exception (approval retained; `dismissed` does not
+  blanket-imply `review_status=none`).
 
 **Related.** [INV-LIFECYCLE-1](#inv-lifecycle-1), [INV-AUTH-1](#inv-auth-1),
 [INV-WITHDRAW](#inv-withdraw).

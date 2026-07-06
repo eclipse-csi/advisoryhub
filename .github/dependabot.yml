@@ -7,17 +7,19 @@
 #     runtime dep, so security never rides on bot cadence.
 #   * docker — base-image bumps for the Dockerfile; the Trivy gate still fails
 #     the build on a vulnerable base. The dhi.io bases sit behind a credentialed
-#     registry, so the `dhi-io` registry below needs DEPENDABOT secrets (repo
-#     Settings → Secrets and variables → Dependabot — NOT Actions secrets).
-#     Until those exist, dhi.io updates error in the Dependabot logs while the
-#     public ghcr.io/astral-sh/uv base still updates fine.
+#     registry, so the `dhi-io` registry below needs DOCKER_HUB_USERNAME /
+#     DOCKER_HUB_TOKEN as DEPENDABOT secrets (repo Settings → Secrets and
+#     variables → Dependabot — a scope SEPARATE from Actions secrets; the same
+#     names must exist there too). Until those exist, dhi.io updates error in
+#     the Dependabot logs while the public ghcr.io/astral-sh/uv base still
+#     updates fine.
 version: 2
 registries:
   dhi-io:
     type: docker-registry
     url: dhi.io
-    username: ${{secrets.DHI_REGISTRY_USERNAME}}
-    password: ${{secrets.DHI_REGISTRY_TOKEN}}
+    username: ${{secrets.DOCKER_HUB_USERNAME}}
+    password: ${{secrets.DOCKER_HUB_TOKEN}}
 updates:
   - package-ecosystem: github-actions
     directory: "/"

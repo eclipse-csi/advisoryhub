@@ -6,8 +6,9 @@ name: Release image
 # a keyless cosign signature.
 #
 # Required repository secrets:
-#   DHI_REGISTRY_USERNAME / DHI_REGISTRY_TOKEN — Docker ID + PAT for dhi.io
-#   (the hardened base image registry; anonymous pulls are refused). Needed on
+#   DOCKER_HUB_USERNAME / DOCKER_HUB_TOKEN — Docker ID + PAT for dhi.io (the
+#   hardened base image registry; anonymous pulls are refused). A Docker Hub PAT
+#   authenticates against dhi.io — it's the same Docker account. Needed on
 #   pull_request builds too — fork PRs don't receive secrets and will fail at
 #   the base pull, which is acceptable for this private repo.
 
@@ -59,8 +60,8 @@ jobs:
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: dhi.io
-          username: ${{ secrets.DHI_REGISTRY_USERNAME }}
-          password: ${{ secrets.DHI_REGISTRY_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Log in to ghcr.io
         if: github.event_name != 'pull_request'

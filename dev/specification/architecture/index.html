@@ -3911,7 +3911,10 @@ minted by <code>dev/kanidm/setup.sh</code> on first run.</p>
 <p>Grouped by concern. See <code>config/settings/base.py</code> for defaults and
 types.</p>
 <p><strong>Django core.</strong> <code>DJANGO_DEBUG</code>, <code>DJANGO_ALLOWED_HOSTS</code>,
-<code>DJANGO_SECRET_KEY</code>, <code>DJANGO_TIME_ZONE</code>, <code>DATABASE_URL</code>,
+<code>DJANGO_SECRET_KEY</code> (mandatory in prod — <code>config.settings.prod</code> calls
+<code>config.settings._guards.require_production_secret_key</code> at import time,
+so a deploy that leaves it on the development default fails to boot),
+<code>DJANGO_TIME_ZONE</code>, <code>DATABASE_URL</code>,
 <code>CACHE_URL</code> (optional — falls back to LocMem), <code>LOG_FORMAT</code>
 (<code>json</code>/<code>plain</code>), <code>LOG_LEVEL</code>, <code>CSRF_TRUSTED_ORIGINS</code>.</p>
 <p><strong>Reverse proxy / edge TLS.</strong> <code>USE_X_FORWARDED_PROTO</code> (default False —

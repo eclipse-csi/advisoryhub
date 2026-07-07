@@ -4040,7 +4040,12 @@ True), <code>AUDIT_ACCESS_LOG_RETENTION_DAYS</code> (default 90) — drive the
 beat-scheduled <code>AccessLogEntry</code> partition maintenance (§6.2, §8.6,
 <a href="../invariant/#inv-audit-5">INV-AUDIT-5</a>).</p>
 <p><strong>Observability.</strong> <code>SENTRY_DSN</code> (optional — enables Sentry via
-<code>common.sentry.init_from_env</code>). <code>PROMETHEUS_WORKER_METRICS_PORT</code>
+<code>common.sentry.init_from_env</code>); its companions <code>SENTRY_ENVIRONMENT</code>
+(default <code>production</code>), <code>SENTRY_TRACES_SAMPLE_RATE</code> (default <code>0</code> —
+errors only) and <code>SENTRY_RELEASE</code> (optional release tag on events,
+unset by default) are read straight from the OS env by the same
+initialiser, not the <code>environ.Env</code> schema (§8.4).
+<code>PROMETHEUS_WORKER_METRICS_PORT</code>
 (default 0/disabled — the Celery worker's own metrics exporter port;
 docker-compose sets 9808). <code>PROMETHEUS_MULTIPROC_DIR</code> (read straight
 from the OS env by <code>django_prometheus</code>; set in prod to a writable

@@ -19,6 +19,7 @@ from advisories.models import Advisory, State
 from audit.models import Action
 from audit.services import record
 from common import metrics
+from common.enqueue import safe_enqueue
 
 from . import csaf as csaf_builder
 from . import cve as cve_builder
@@ -277,12 +278,9 @@ def run_publication(self, task_id: int) -> str:
 
         # 5. Notify (best-effort) — a withdrawal is not a "published" event.
         if not is_withdrawal:
-            try:
-                from notifications.tasks import send_advisory_event_email
+            from notifications.tasks import send_advisory_event_email
 
-                send_advisory_event_email.delay(advisory.pk, "advisory_published")
-            except Exception:  # pragma: no cover
-                log.exception("Failed to enqueue advisory_published notification")
+            safe_enqueue(send_advisory_event_email, advisory.pk, "advisory_published")
 
         return PublicationTaskStatus.SUCCEEDED
 
@@ -312,12 +310,9 @@ def _fail(task: PublicationTask, *, error: str, action: str) -> str:
         metadata={"task_id": task.pk, "error": task.last_error},
     )
     # Best-effort notification of watchers about the failure.
-    try:
-        from notifications.tasks import send_advisory_event_email
+    from notifications.tasks import send_advisory_event_email
 
-        send_advisory_event_email.delay(task.advisory_id, "publication_export_status")
-    except Exception:  # pragma: no cover
-        pass
+    safe_enqueue(send_advisory_event_email, task.advisory_id, "publication_export_status")
     return PublicationTaskStatus.FAILED
 
 

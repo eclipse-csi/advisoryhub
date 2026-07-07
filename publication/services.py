@@ -257,12 +257,9 @@ def reap_stale_tasks(*, now: datetime | None = None) -> dict:
         # Best-effort failure notification, outside the reap transaction —
         # mirrors _fail in publication.tasks. The e-mail announces the event
         # only and embeds no error text (INV-SECRET-3).
-        try:
-            from notifications.tasks import send_advisory_event_email
+        from notifications.tasks import send_advisory_event_email
 
-            send_advisory_event_email.delay(task.advisory_id, "publication_export_status")
-        except Exception:  # pragma: no cover
-            pass
+        safe_enqueue(send_advisory_event_email, task.advisory_id, "publication_export_status")
     result = {
         "reaped_running": reaped[PublicationTaskStatus.RUNNING.value],
         "reaped_queued": reaped[PublicationTaskStatus.QUEUED.value],

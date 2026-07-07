@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 
 from django.db.models import Q
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 from advisories import permissions as perms
@@ -96,7 +95,4 @@ def _visible_qs(user):
 
 
 def _get_or_404(advisory_id: str) -> Advisory:
-    try:
-        return get_object_or_404(Advisory, advisory_id=advisory_id)
-    except Http404:
-        raise
+    return get_object_or_404(Advisory, advisory_id=advisory_id)

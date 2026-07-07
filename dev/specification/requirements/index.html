@@ -3107,6 +3107,9 @@ catalogue of recordable actions is the <code>Action</code> enum in
   completed.</li>
 <li>Notification delivery: one <code>notification.sent</code> row per recipient.</li>
 <li>User governance: account banned / unbanned.</li>
+<li>Project governance: project created / updated (metadata and the
+  security-team OIDC group binding — authorization-affecting, since the
+  bound group confers owner rank).</li>
 </ul>
 <p>Each row carries the actor (nullable for system actions), the action
 type, the affected advisory (when applicable), an optional
@@ -3391,7 +3394,10 @@ Sidebar sections:</p>
   advisories are excluded from the republish listing (they
   auto-re-publish, INV-GHSA-3).</li>
 <li><strong>Projects</strong> (<code>/admin/projects/</code>) — CRUD on <code>Project</code> rows
-  (security team, mature-publisher flag, PMI sync status).</li>
+  (security team, mature-publisher flag, PMI sync status). Create and
+  edit go through <code>projects.services.create_project</code> /
+  <code>update_project</code> and emit <code>project.created</code> / <code>project.updated</code>
+  audit rows (<a href="../invariant/#inv-audit-3">INV-AUDIT-3</a>).</li>
 <li><strong>Groups</strong> (<code>/admin/groups/</code>) — read-only directory of the
   mirrored OIDC groups: members, projects secured, and per-advisory
   group grants.</li>

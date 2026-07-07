@@ -2776,7 +2776,7 @@ responsibility in spec terms.</p>
 </tr>
 <tr>
 <td><code>projects</code></td>
-<td><code>Project</code>, <code>ProjectGitHubRepository</code>, the unsorted sentinel migration, and the PMI id validator.</td>
+<td><code>Project</code>, <code>ProjectGitHubRepository</code>, the unsorted sentinel migration, the PMI id validator, and the audited project create/update + roster-sync services.</td>
 </tr>
 <tr>
 <td><code>audit</code></td>
@@ -2829,6 +2829,11 @@ responsibility in spec terms.</p>
 </tbody>
 </table>
 <p>Custom user model is set via <code>AUTH_USER_MODEL = "accounts.User"</code>.</p>
+<p>Import direction between the two workflow-coupled apps is one-way:
+<code>workflows</code> depends on <code>advisories</code> at module level, never the reverse.
+The few <code>advisories</code> → <code>workflows</code> back-edges are function-local and
+frozen to a known allowlist by <code>dev/check_import_direction.py</code> (run by
+prek and CI); adding or removing one is a deliberate, guarded change.</p>
 <hr />
 <h2 id="3-architectural-patterns">3. Architectural patterns<a class="headerlink" href="#3-architectural-patterns" title="Permanent link">&para;</a></h2>
 <h3 id="31-services-as-the-only-write-path">3.1 Services as the only write path<a class="headerlink" href="#31-services-as-the-only-write-path" title="Permanent link">&para;</a></h3>
@@ -2851,6 +2856,8 @@ extraction, add/edit/redact), <code>workflows.services</code> (CVE and review
 state machines), <code>publication.services</code> (<code>publish</code>, <code>retry</code>,
 <code>mark_*</code>), <code>ghsa.services</code> (PMI sync, GHSA sync, refresh-for-publish,
 EF-CVE push), <code>intake.services</code> (<code>create_submission</code>),
+<code>projects.services</code> (<code>create_project</code>, <code>update_project</code>,
+<code>sync_security_team_roster</code>),
 <code>audit.services</code> (<code>record</code>, <code>record_from_request</code>, <code>redact_secrets</code>).</p>
 <h3 id="32-permission-predicates-as-a-single-source">3.2 Permission predicates as a single source<a class="headerlink" href="#32-permission-predicates-as-a-single-source" title="Permanent link">&para;</a></h3>
 <p>All capability checks come from <code>advisories/permissions.py</code>. The

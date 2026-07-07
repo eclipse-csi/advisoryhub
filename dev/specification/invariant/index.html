@@ -5415,7 +5415,8 @@ downstream surface that an operator might inspect or that might be forwarded.</p
 advisory state changes, access grant / revoke / invitation events, comment
 create / edit / redact, CVE-request transitions, review decisions, publication
 attempts (success and failure), OIDC group sync changes, intake transitions,
-site-wide maintenance toggles, and the first-view compliance receipt
+site-wide maintenance toggles, project create / edit (the security-team group
+binding confers owner rank), and the first-view compliance receipt
 (<code>advisory.first_seen</code>, emitted once per user per advisory — see
 <a href="#inv-audit-6">INV-AUDIT-6</a>).</p>
 <p><strong>Rationale.</strong> Compliance and forensics rely on a complete record. Missing entries
@@ -5423,7 +5424,7 @@ make incident investigation guesswork.</p>
 <p><strong>Enforced in.</strong>
 - <code>audit/models.py</code> — <code>Action</code> enum enumerates every recordable action.
 - Each service module emits its corresponding <code>Action</code> (advisories, access,
-  comments, workflows, publication, intake, accounts).</p>
+  comments, workflows, publication, intake, accounts, projects).</p>
 <p><strong>Violation impact.</strong> Silent governance changes; "who did this and when?" cannot
 be answered.</p>
 <p><strong>Tests.</strong> Per-module tests; <code>audit/tests.py</code> covers the audit machinery itself.</p>

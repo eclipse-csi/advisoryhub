@@ -1233,7 +1233,12 @@ beat-scheduled `AccessLogEntry` partition maintenance (§6.2, §8.6,
 [INV-AUDIT-5](./invariant.md#inv-audit-5)).
 
 **Observability.** `SENTRY_DSN` (optional — enables Sentry via
-`common.sentry.init_from_env`). `PROMETHEUS_WORKER_METRICS_PORT`
+`common.sentry.init_from_env`); its companions `SENTRY_ENVIRONMENT`
+(default `production`), `SENTRY_TRACES_SAMPLE_RATE` (default `0` —
+errors only) and `SENTRY_RELEASE` (optional release tag on events,
+unset by default) are read straight from the OS env by the same
+initialiser, not the `environ.Env` schema (§8.4).
+`PROMETHEUS_WORKER_METRICS_PORT`
 (default 0/disabled — the Celery worker's own metrics exporter port;
 docker-compose sets 9808). `PROMETHEUS_MULTIPROC_DIR` (read straight
 from the OS env by `django_prometheus`; set in prod to a writable

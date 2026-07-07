@@ -109,6 +109,7 @@ Error reporting initialises only when `SENTRY_DSN` is set:
 - **`SENTRY_DSN`** — the project DSN (a secret); empty disables Sentry entirely.
 - **`SENTRY_ENVIRONMENT`** — environment tag (e.g. `production`).
 - **`SENTRY_TRACES_SAMPLE_RATE`** — performance-trace sample rate (`0`–`1.0`).
+- **`SENTRY_RELEASE`** — optional release tag attached to events (e.g. the deployed image tag); unset omits it.
 
 ---
 

@@ -95,6 +95,13 @@ repos:
         pass_filenames: false
         files: '\.(html|txt)$'
 
+      - id: import-direction
+        name: no new advisories → workflows imports (workflows sits above advisories)
+        entry: dev/check_import_direction.py
+        language: system
+        pass_filenames: false
+        files: '^(advisories/.*\.py|dev/check_import_direction\.py)$'
+
       - id: zizmor
         name: zizmor (GitHub Actions workflow security audit)
         # Same uv.lock-pinned zizmor + .github/zizmor.yml config as CI's

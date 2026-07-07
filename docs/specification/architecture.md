@@ -76,6 +76,12 @@ responsibility in spec terms.
 
 Custom user model is set via `AUTH_USER_MODEL = "accounts.User"`.
 
+Import direction between the two workflow-coupled apps is one-way:
+`workflows` depends on `advisories` at module level, never the reverse.
+The few `advisories` → `workflows` back-edges are function-local and
+frozen to a known allowlist by `dev/check_import_direction.py` (run by
+prek and CI); adding or removing one is a deliberate, guarded change.
+
 ---
 
 ## 3. Architectural patterns

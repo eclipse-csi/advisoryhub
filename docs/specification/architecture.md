@@ -60,7 +60,7 @@ responsibility in spec terms.
 | `config` | Django project: split settings (`base / dev / prod / test`), URL roots, Celery app. |
 | `common` | Cross-cutting helpers: healthchecks, JSON logging, request-id middleware, rate-limit decorators, Sentry init, text diff utilities. |
 | `accounts` | Custom `User` (email-as-username), the OIDC backend, group sync, step-up authentication, the global `NotificationPreference` model. |
-| `projects` | `Project`, `ProjectGitHubRepository`, the unsorted sentinel migration, and the PMI id validator. |
+| `projects` | `Project`, `ProjectGitHubRepository`, the unsorted sentinel migration, the PMI id validator, and the audited project create/update + roster-sync services. |
 | `audit` | Append-only `AuditLogEntry`, the Postgres trigger migration, `redact_secrets`, the retention commands. |
 | `advisories` | `Advisory`, `AdvisoryVersion`, `AdvisoryIntakeMetadata`, validators, identifiers, permissions, services (triage flow + the version-append helper), edit views, triage views, the state-/severity-faceted HTMX list view, and the shared `severity` parsing helper (denormalised level/score). |
 | `access` | `AdvisoryAccessGrant`, `PendingInvitation`, grant / revoke / invite / redeem services, HTMX views. |
@@ -107,6 +107,8 @@ extraction, add/edit/redact), `workflows.services` (CVE and review
 state machines), `publication.services` (`publish`, `retry`,
 `mark_*`), `ghsa.services` (PMI sync, GHSA sync, refresh-for-publish,
 EF-CVE push), `intake.services` (`create_submission`),
+`projects.services` (`create_project`, `update_project`,
+`sync_security_team_roster`),
 `audit.services` (`record`, `record_from_request`, `redact_secrets`).
 
 ### 3.2 Permission predicates as a single source

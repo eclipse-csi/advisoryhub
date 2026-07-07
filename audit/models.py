@@ -123,6 +123,12 @@ class Action(models.TextChoices):
     # low-volume, security-relevant governance events. See INV-AUTH-8.
     USER_BANNED = "user.banned"
     USER_UNBANNED = "user.unbanned"
+    # Admin-console project governance: creating a project or editing its
+    # metadata / security-team group binding. The bound group confers owner
+    # rank on all of the project's advisories (INV-AUTH-3), so these are
+    # authorization-affecting events. Durable — low-volume governance rows.
+    PROJECT_CREATED = "project.created"
+    PROJECT_UPDATED = "project.updated"
     # GDPR right-to-be-forgotten erasure (admin console or `manage.py
     # forget_user`). Durable governance event: the actor is the requesting
     # operator (null on the CLI path), the forgotten subject's pk + the per-

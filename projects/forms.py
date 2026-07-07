@@ -7,12 +7,15 @@ on login, a user's ``user.groups`` is rebuilt to match the claim list,
 auto-creating unknown groups by name. So binding a project to a group
 *by name* is exactly the OIDC mapping: enrolling a user in the OIDC
 group on the IdP side puts them on the project's security team.
+
+The form validates and renders only; the writes (group resolution, save,
+audit entry) live in ``projects.services.create_project`` /
+``update_project`` (INV-AUDIT-3).
 """
 
 from __future__ import annotations
 
 from django import forms
-from django.contrib.auth.models import Group
 
 from .models import Project
 
@@ -50,8 +53,3 @@ class ProjectAdminForm(forms.ModelForm):
         if not name:
             raise forms.ValidationError("Required.")
         return name
-
-    def save(self, commit: bool = True) -> Project:
-        group, _ = Group.objects.get_or_create(name=self.cleaned_data["security_team_group_name"])
-        self.instance.security_team = group
-        return super().save(commit=commit)

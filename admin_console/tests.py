@@ -459,6 +459,60 @@ def test_project_edit_remaps_oidc_group(client, setup):
 
 
 @pytest.mark.django_db
+def test_project_create_writes_audit_entry(client, setup):
+    from audit.models import Action, AuditLogEntry
+
+    client.force_login(setup["admin"])
+    response = client.post(
+        reverse("admin_console:project_create"),
+        data={
+            "slug": "eclipse-audited",
+            "name": "Eclipse Audited",
+            "description": "",
+            "homepage_url": "",
+            "security_team_group_name": "eclipse-audited-security",
+            "is_mature_publisher": "",
+        },
+    )
+    assert response.status_code == 302
+    entry = AuditLogEntry.objects.get(action=Action.PROJECT_CREATED)
+    assert entry.actor == setup["admin"]
+    assert entry.new_value is not None
+    assert entry.new_value["slug"] == "eclipse-audited"
+    assert entry.new_value["security_team"] == "eclipse-audited-security"
+    assert entry.metadata["security_team_group_created"] is True
+
+
+@pytest.mark.django_db
+def test_project_edit_audits_security_team_change(client, setup):
+    from audit.models import Action, AuditLogEntry
+    from projects.models import Project
+
+    project = Project.objects.get(pk=setup["advisory"].project_id)
+    old_group = project.security_team.name
+    client.force_login(setup["admin"])
+    response = client.post(
+        reverse("admin_console:project_edit", args=[project.id]),
+        data={
+            "slug": project.slug,
+            "name": project.name,
+            "description": project.description,
+            "homepage_url": project.homepage_url,
+            "security_team_group_name": "remapped-group",
+            "is_mature_publisher": "on" if project.is_mature_publisher else "",
+        },
+    )
+    assert response.status_code == 302
+    entry = AuditLogEntry.objects.get(action=Action.PROJECT_UPDATED)
+    assert entry.actor == setup["admin"]
+    assert entry.previous_value is not None
+    assert entry.new_value is not None
+    assert entry.previous_value["security_team"] == old_group
+    assert entry.new_value["security_team"] == "remapped-group"
+    assert "security_team" in entry.metadata["changed"]
+
+
+@pytest.mark.django_db
 def test_project_create_form_renders(client, setup):
     client.force_login(setup["admin"])
     response = client.get(reverse("admin_console:project_create"))

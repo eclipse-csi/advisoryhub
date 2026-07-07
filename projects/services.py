@@ -1,6 +1,11 @@
-"""Service-layer orchestration for the security-team roster sync.
+"""Service layer for projects: audited CRUD + the security-team roster sync.
 
-Mirrors the shape of ``ghsa.services``: side-effect-bearing logic lives here,
+Project create/update lives here so the admin console never writes the model
+directly — the ``security_team`` group binding confers owner rank on all of a
+project's advisories (INV-AUTH-3), so both mutations land in the durable audit
+ledger (INV-AUDIT-3).
+
+The roster sync mirrors the shape of ``ghsa.services``: side-effect-bearing logic lives here,
 the Celery wrapper in ``tasks.py`` stays thin, and ``eclipse_api.py`` only
 fetches (no DB writes). Every external-system call funnels its error through
 ``audit.services.redact_secrets`` so a leaked OAuth token never lands in the
@@ -19,6 +24,7 @@ from __future__ import annotations
 
 import logging
 
+from django.contrib.auth.models import Group
 from django.db import transaction
 from django.utils import timezone
 
@@ -30,6 +36,108 @@ from .eclipse_api import EclipseApiError, fetch_account_email, fetch_project_mem
 from .models import Project, SecurityTeamRosterEntry
 
 logger = logging.getLogger(__name__)
+
+
+def _project_snapshot(project: Project, security_team_name: str | None) -> dict:
+    """The audited field set — everything but the free-text description body."""
+    return {
+        "slug": project.slug,
+        "name": project.name,
+        "security_team": security_team_name,
+        "homepage_url": project.homepage_url,
+        "is_mature_publisher": project.is_mature_publisher,
+    }
+
+
+@transaction.atomic
+def create_project(
+    *,
+    slug: str,
+    name: str,
+    description: str = "",
+    homepage_url: str = "",
+    is_mature_publisher: bool = False,
+    security_team_group_name: str,
+    by: User | None,
+) -> Project:
+    """Create a project and bind its security-team OIDC group (audited).
+
+    The group is resolved by name and created if absent — binding by name IS
+    the OIDC mapping (see ``projects.forms``). Emits ``PROJECT_CREATED``.
+    """
+    group, group_created = Group.objects.get_or_create(name=security_team_group_name)
+    project = Project.objects.create(
+        slug=slug,
+        name=name,
+        description=description,
+        homepage_url=homepage_url,
+        is_mature_publisher=is_mature_publisher,
+        security_team=group,
+    )
+    record(
+        action=Action.PROJECT_CREATED,
+        actor=by,
+        new_value=_project_snapshot(project, group.name),
+        metadata={
+            "project_id": str(project.pk),
+            "security_team_group_created": group_created,
+        },
+    )
+    return project
+
+
+@transaction.atomic
+def update_project(
+    project: Project,
+    *,
+    slug: str,
+    name: str,
+    description: str,
+    homepage_url: str,
+    is_mature_publisher: bool,
+    security_team_group_name: str,
+    by: User | None,
+) -> Project:
+    """Update a project's metadata / security-team binding (audited old→new).
+
+    The previous snapshot is read back from the database, not from
+    ``project`` — a bound ``ModelForm`` has already copied the new values
+    onto the in-memory instance by the time ``is_valid()`` returns.
+    ``description`` is recorded as a changed-fields flag only, keeping free
+    text out of the ledger.
+    """
+    stored = Project.objects.select_related("security_team").get(pk=project.pk)
+    previous = _project_snapshot(
+        stored, stored.security_team.name if stored.security_team_id else None
+    )
+    description_changed = stored.description != description
+
+    group, group_created = Group.objects.get_or_create(name=security_team_group_name)
+    project.slug = slug
+    project.name = name
+    project.description = description
+    project.homepage_url = homepage_url
+    project.is_mature_publisher = is_mature_publisher
+    project.security_team = group
+    project.save()
+
+    new = _project_snapshot(project, group.name)
+    changed = sorted(key for key in new if new[key] != previous[key])
+    if description_changed:
+        changed.append("description")
+    record(
+        action=Action.PROJECT_UPDATED,
+        actor=by,
+        previous_value=previous,
+        new_value=new,
+        metadata={
+            "project_id": str(project.pk),
+            "changed": changed,
+            "security_team_group_created": group_created,
+        },
+    )
+    return project
+
 
 # The sentinel project for unrouted triage advisories is not a real PMI
 # project (its ``security_team`` is the admin group), so it has no roster to

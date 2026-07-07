@@ -880,7 +880,8 @@ downstream surface that an operator might inspect or that might be forwarded.
 advisory state changes, access grant / revoke / invitation events, comment
 create / edit / redact, CVE-request transitions, review decisions, publication
 attempts (success and failure), OIDC group sync changes, intake transitions,
-site-wide maintenance toggles, and the first-view compliance receipt
+site-wide maintenance toggles, project create / edit (the security-team group
+binding confers owner rank), and the first-view compliance receipt
 (`advisory.first_seen`, emitted once per user per advisory — see
 [INV-AUDIT-6](#inv-audit-6)).
 
@@ -890,7 +891,7 @@ make incident investigation guesswork.
 **Enforced in.**
 - `audit/models.py` — `Action` enum enumerates every recordable action.
 - Each service module emits its corresponding `Action` (advisories, access,
-  comments, workflows, publication, intake, accounts).
+  comments, workflows, publication, intake, accounts, projects).
 
 **Violation impact.** Silent governance changes; "who did this and when?" cannot
 be answered.

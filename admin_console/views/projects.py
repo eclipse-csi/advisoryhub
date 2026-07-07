@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from common.ratelimit import html_ratelimit
+from projects import services as project_services
 from projects.forms import ProjectAdminForm
 from projects.models import Project
 
@@ -35,7 +36,7 @@ def project_create(request):
     if request.method == "POST":
         form = ProjectAdminForm(request.POST)
         if form.is_valid():
-            project = form.save()
+            project = project_services.create_project(by=request.user, **form.cleaned_data)
             messages.success(request, f"Project {project.slug} created.")
             return redirect(reverse("admin_console:project_list"))
     else:
@@ -53,7 +54,7 @@ def project_edit(request, project_id):
     if request.method == "POST":
         form = ProjectAdminForm(request.POST, instance=project)
         if form.is_valid():
-            form.save()
+            project_services.update_project(project, by=request.user, **form.cleaned_data)
             messages.success(request, f"Project {project.slug} updated.")
             return redirect(reverse("admin_console:project_list"))
     else:

@@ -57,7 +57,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: renovatebot/github-action@b50d2ba2bd928235abdcc14d06dfafc217f1c565 # v46.1.18
+      - uses: renovatebot/github-action@22e0a16091fc706b04affe6ae53d5e3358ac4023 # v46.1.19
         env:
           # Renovate authenticates with the App token (not GITHUB_TOKEN) so its PRs
           # trigger CI. Scope the run to this repo; config lives in .github/renovate.json.

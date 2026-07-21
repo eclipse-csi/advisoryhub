@@ -121,7 +121,7 @@ x-django-env: &django-env
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     environment:
       POSTGRES_USER: advisoryhub
       POSTGRES_PASSWORD: advisoryhub
@@ -137,7 +137,7 @@ services:
       retries: 5
 
   valkey:
-    image: valkey/valkey:8
+    image: valkey/valkey:9
     # One instance backs the Celery broker (db0), result backend (db1) and cache
     # (db2). Pin noeviction (the default) explicitly so an eviction can never
     # silently drop broker messages or rate-limit/maintenance keys; in prod set
@@ -258,7 +258,7 @@ services:
   # their own Prometheus. See dev/observability/README.md.
   # ------------------------------------------------------------------
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v3.13.1
     profiles: ["observability"]
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -277,7 +277,7 @@ services:
       retries: 6
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:13.1.1
     profiles: ["observability"]
     environment:
       GF_SECURITY_ADMIN_USER: admin

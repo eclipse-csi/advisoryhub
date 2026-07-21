@@ -22,7 +22,7 @@ dependencies = [
     "cvss>=3.0",
     "django-environ>=0.14.0",
     "django-ratelimit>=4.1",
-    "sentry-sdk[django]>=2.65.0",
+    "sentry-sdk[django]>=2.66.0",
     "django-prometheus>=2.5.0",
     "requests>=2.34.2",
     "PyJWT[crypto]>=2.8",
@@ -58,7 +58,7 @@ dev = [
     "pytest-django>=4.8",
     "pytest-cov>=5.0",
     "responses>=0.26.2",
-    "ruff>=0.15.21",
+    "ruff>=0.15.22",
     "django-stubs[compatible-mypy]>=6.0.7",
     "zizmor>=1.27.0",
     # docs/specification/openapi.yaml drift guards (api/tests/test_openapi_spec.py)
@@ -70,7 +70,7 @@ dev = [
 # outside the enforced pip-audit scope (which audits the runtime set).
 docs = [
     "mkdocs>=1.6",
-    "mkdocs-material>=9.6",
+    "mkdocs-material>=9.7.7",
     "mike>=2.1",
     "essentials-openapi>=1.4", # renders openapi.yaml via dev/mkdocs_oad_hook.py (OAD tag in api.md)
     # essentials-openapi's openapidocs.mk renderer imports these at module load, yet only

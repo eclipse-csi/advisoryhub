@@ -39,7 +39,7 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 
@@ -83,7 +83,7 @@ jobs:
     name: Django checks
     runs-on: ubuntu-latest
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 
@@ -113,7 +113,7 @@ jobs:
     name: Type check (mypy + django-stubs)
     runs-on: ubuntu-latest
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 
@@ -138,7 +138,7 @@ jobs:
     # categories it catches (config + rule tuning in pyproject).
     continue-on-error: true
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 
@@ -161,7 +161,7 @@ jobs:
     name: Helm chart (lint + render + kubeconform)
     runs-on: ubuntu-latest
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 
@@ -178,7 +178,7 @@ jobs:
     name: Dependency audit (pip-audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 

@@ -35,7 +35,7 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository }}
       CHART: ghcr.io/${{ github.repository_owner }}/charts/advisoryhub
     steps:
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # rc
         with:
           egress-policy: audit
 

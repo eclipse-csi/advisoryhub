@@ -4,7 +4,9 @@
 #     every `uses:` reference in .github/workflows/.
 #   * uv — lockfile bumps for pyproject.toml + uv.lock, grouped into runtime
 #     deps vs dev/docs tooling. pip-audit still FAILS CI on any known-vulnerable
-#     runtime dep, so security never rides on bot cadence.
+#     runtime dep, so security never rides on bot cadence. Django is
+#     major/minor-ignored below: its LTS cap would otherwise hide 5.2.x patch
+#     releases from the bot entirely (see the comment on the rule).
 #   * docker — base-image bumps for the Dockerfile; the Trivy gate still fails
 #     the build on a vulnerable base. The dhi.io bases sit behind a credentialed
 #     registry, so the `dhi-io` registry below needs DOCKER_HUB_USERNAME /
@@ -39,6 +41,18 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # Django rides the 5.2 LTS line (pyproject.toml `Django>=5.2,<5.3`).
+      # Without this, the newest Django on PyPI sits outside that range and
+      # Dependabot reports NO update at all instead of the newest permitted
+      # one — 5.2.16 (2026-07-07) was silently skipped by both the 2026-07-14
+      # and 2026-07-28 runs. Capping the update types here makes 5.2.x the
+      # newest version it considers. The `<5.3` cap stays in pyproject.toml as
+      # defense-in-depth for hand-run `uv lock`.
+      - dependency-name: "Django"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
     groups:
       python-prod:
         dependency-type: production

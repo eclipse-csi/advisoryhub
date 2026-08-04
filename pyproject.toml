@@ -10,7 +10,7 @@ dependencies = [
     "Django>=5.2,<5.3",
     "psycopg[binary]>=3.3.4",
     "mozilla-django-oidc>=4.0",
-    "django-htmx>=1.28.0",
+    "django>=5.2.16,<5.3",
     "celery[redis]>=5.6.3",
     # redis-py is also used directly by Django's RedisCache (CACHE_URL), so keep it
     # explicit — but its upper bound is inherited from kombu via celery[redis]
@@ -58,7 +58,7 @@ dev = [
     "pytest-django>=4.8",
     "pytest-cov>=5.0",
     "responses>=0.26.2",
-    "ruff>=0.16.0",
+    "ruff>=0.16.1",
     "django-stubs[compatible-mypy]>=6.0.7",
     "zizmor>=1.28.0",
     # docs/specification/openapi.yaml drift guards (api/tests/test_openapi_spec.py)

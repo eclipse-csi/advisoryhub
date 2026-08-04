@@ -66,6 +66,20 @@ Trigger an on-demand or `dryRun` pass from the Actions tab; re-vendor locally
 with `mise run update-vendor`. See
 [contributing §6](../contributing/README.md#6-code-quality).
 
+**Dependency updates** are proposed by **Dependabot** (`.github/dependabot.yml`) across
+four ecosystems. Its *version* updates cover only dependencies declared in
+`pyproject.toml` — by design, so indirect deps don't generate weekly churn. Indirect deps
+are covered by **Dependabot alerts + security updates** instead, whose default scope is
+every dependency in the lock file; both must be enabled in repo **Settings → Code
+security**. That is what raises a PR for a vulnerable transitive such as `cryptography`
+(reached via `mozilla-django-oidc` and `pyjwt[crypto]`, so it ships in the production
+image). No dependency-submission workflow is needed: `uv.lock` is not parsed natively by
+the dependency graph, but Dependabot submits the resolved graph itself — the *Configured
+Graph Update: uv in /.* job. Note that `allow` in `dependabot.yml` filters **both** update
+types, so adding an explicit `dependency-type: direct` there would switch the indirect
+security path off. `pip-audit` stays the enforcing gate either way: CI's `security` job and
+the prek pre-push hook fail on any known-vulnerable dependency regardless of bot cadence.
+
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
 [`docs/contributing/releasing.md`](../contributing/releasing.md).

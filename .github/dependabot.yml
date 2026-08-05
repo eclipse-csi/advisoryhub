@@ -12,11 +12,14 @@
 #   * docker — base-image bumps for the Dockerfile; the Trivy gate still fails
 #     the build on a vulnerable base. The dhi.io bases sit behind a credentialed
 #     registry, so the `dhi-io` registry below needs DOCKER_HUB_USERNAME /
-#     DOCKER_HUB_TOKEN as DEPENDABOT secrets (repo Settings → Secrets and
-#     variables → Dependabot — a scope SEPARATE from Actions secrets; the same
-#     names must exist there too). Until those exist, dhi.io updates error in
-#     the Dependabot logs while the public ghcr.io/astral-sh/uv base still
-#     updates fine.
+#     DOCKER_HUB_TOKEN as DEPENDABOT secrets (org- or repo-level Settings →
+#     Secrets and variables → Dependabot — a scope SEPARATE from Actions secrets;
+#     the same names must exist there too). Those same Dependabot secrets ALSO
+#     back the release-image.yml PR re-run: docker AND uv PRs re-trigger that
+#     workflow under the Dependabot scope, where its dhi.io login reads them (see
+#     that file's header). Until they exist, dhi.io updates error in the
+#     Dependabot logs and the release-image.yml check fails on those PRs, while
+#     the public ghcr.io/astral-sh/uv base still updates fine.
 #   * docker-compose — dev-stack image bumps in docker-compose.yml (kanidm,
 #     prometheus, grafana; postgres/valkey ride major-only tags on purpose —
 #     the Postgres major is a deliberate, migration-planned upgrade).

@@ -80,6 +80,13 @@ types, so adding an explicit `dependency-type: direct` there would switch the in
 security path off. `pip-audit` stays the enforcing gate either way: CI's `security` job and
 the prek pre-push hook fail on any known-vulnerable dependency regardless of bot cadence.
 
+Both the `docker` ecosystem's `dhi.io` registry resolution and the `release-image.yml` PR
+build that Dependabot's `docker`/`uv` PRs re-trigger read `DOCKER_HUB_USERNAME` /
+`DOCKER_HUB_TOKEN` from the **Dependabot** secrets scope (org-level, mirroring the Actions
+secrets of the same name). Dependabot-triggered runs never see Actions secrets, so these
+credentials must exist in **both** scopes — otherwise the `dhi.io` login fails and the
+`release-image.yml` check goes red on every Dependabot base-image or dependency PR.
+
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
 [`docs/contributing/releasing.md`](../contributing/releasing.md).

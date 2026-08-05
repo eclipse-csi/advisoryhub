@@ -1,9 +1,10 @@
 name: Release image
 
 # Builds the production container image, smoke-tests it under an
-# OpenShift-style arbitrary UID, gates on a Trivy scan, then (on main/tag
-# pushes) publishes to ghcr.io with an SBOM + SLSA provenance attestations and
-# a keyless cosign signature.
+# OpenShift-style arbitrary UID, reports a full-severity Trivy SARIF to code
+# scanning and gates on fixable HIGH/CRITICAL findings (two Trivy passes, on
+# purpose — see the steps), then (on main/tag pushes) publishes to ghcr.io with
+# an SBOM + SLSA provenance attestations and a keyless cosign signature.
 #
 # Required secrets — in BOTH the Actions AND the Dependabot scope:
 #   DOCKER_HUB_USERNAME / DOCKER_HUB_TOKEN — Docker ID + PAT for dhi.io (the
@@ -133,21 +134,42 @@ jobs:
           [ "$code" = "200" ] || { docker logs smoke; exit 1; }
           docker rm -f smoke
 
-      - name: Trivy scan (gate on fixable HIGH/CRITICAL)
+      # Two Trivy passes, deliberately: trivy-action `unset`s TRIVY_SEVERITY
+      # whenever format is sarif (unless limit-severities-for-sarif is set), so
+      # one step cannot both feed code scanning every severity AND gate on
+      # HIGH/CRITICAL — its exit code would follow the *unfiltered* set. A
+      # single sarif step with `severity: HIGH,CRITICAL` + `exit-code: 1`
+      # therefore fails the build on any fixable LOW/MEDIUM. Do NOT collapse
+      # these back into one step.
+      - name: Trivy scan (SARIF report for code scanning)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: advisoryhub:smoke
           format: sarif
           output: trivy.sarif
-          severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          # Reporting only — never fails the job; the gate below decides.
+          exit-code: "0"
 
       - name: Upload Trivy SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
         with:
           sarif_file: trivy.sarif
+
+      # The actual gate. `format: table` keeps the offending CVEs in the job log
+      # — a sarif/json gate writes to a file and prints nothing on failure.
+      # trivy is already installed and its DB already cached in `cache-dir` by
+      # the reporting pass, so this is a warm re-scan of a local image (~10s).
+      - name: Trivy gate (fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: advisoryhub:smoke
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          skip-setup-trivy: true
 
       - name: Push (with SBOM + provenance attestations)
         id: push

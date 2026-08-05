@@ -18,7 +18,9 @@ dependencies = [
     "celery[redis]>=5.6.3",
     # redis-py is also used directly by Django's RedisCache (CACHE_URL), so keep it
     # explicit — but its upper bound is inherited from kombu via celery[redis]
-    # (currently redis<6.5), so the ceiling tracks kombu instead of a hand-pinned number.
+    # (currently redis<6.5), so the ceiling tracks kombu instead of a hand-pinned
+    # number. Dependabot can't see that transitive cap, so a `redis` ignore in
+    # .github/dependabot.yml blocks it from proposing 6.5+ (kept in lockstep there).
     "redis>=5.0",
     "markdown-it-py>=3.0",
     "nh3>=0.3.6",

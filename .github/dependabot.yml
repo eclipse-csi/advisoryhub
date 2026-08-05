@@ -69,6 +69,14 @@ updates:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # redis is a direct dep (Django's RedisCache loads redis-py via CACHE_URL),
+      # but celery[redis] -> kombu[redis] hard-caps redis<6.5. Dependabot can't see
+      # that transitive cap, so it proposes the latest release (redis 8.1.0), which
+      # can never resolve against kombu and errors the whole uv update. Block 6.5+ so
+      # redis stays on the newest kombu-compatible line (6.4.x). Loosen when kombu
+      # raises its redis cap; the floor redis>=5.0 stays in pyproject.toml.
+      - dependency-name: "redis"
+        versions: [">= 6.5"]
     groups:
       python-prod:
         dependency-type: production

@@ -77,8 +77,11 @@ image). No dependency-submission workflow is needed: `uv.lock` is not parsed nat
 the dependency graph, but Dependabot submits the resolved graph itself — the *Configured
 Graph Update: uv in /.* job. Note that `allow` in `dependabot.yml` filters **both** update
 types, so adding an explicit `dependency-type: direct` there would switch the indirect
-security path off. `pip-audit` stays the enforcing gate either way: CI's `security` job and
-the prek pre-push hook fail on any known-vulnerable dependency regardless of bot cadence.
+security path off. `redis` is `ignore`d above `6.5` there because `celery[redis]`/`kombu`
+hard-caps `redis<6.5` — a cap Dependabot can't see, so without the ignore it proposes the
+latest release and errors the whole `uv` resolution. `pip-audit` stays the enforcing gate
+either way: CI's `security` job and the prek pre-push hook fail on any known-vulnerable
+dependency regardless of bot cadence.
 
 Both the `docker` ecosystem's `dhi.io` registry resolution and the `release-image.yml` PR
 build that Dependabot's `docker`/`uv` PRs re-trigger read `DOCKER_HUB_USERNAME` /

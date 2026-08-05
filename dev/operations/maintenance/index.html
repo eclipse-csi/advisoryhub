@@ -1519,6 +1519,28 @@ smoke). The same workflow also bumps the <code>mise.toml</code> tool pins (group
 Trigger an on-demand or <code>dryRun</code> pass from the Actions tab; re-vendor locally
 with <code>mise run update-vendor</code>. See
 <a href="../../contributing/#6-code-quality">contributing §6</a>.</p>
+<p><strong>Dependency updates</strong> are proposed by <strong>Dependabot</strong> (<code>.github/dependabot.yml</code>) across
+four ecosystems. Its <em>version</em> updates cover only dependencies declared in
+<code>pyproject.toml</code> — by design, so indirect deps don't generate weekly churn. Indirect deps
+are covered by <strong>Dependabot alerts + security updates</strong> instead, whose default scope is
+every dependency in the lock file; both must be enabled in repo <strong>Settings → Code
+security</strong>. That is what raises a PR for a vulnerable transitive such as <code>cryptography</code>
+(reached via <code>mozilla-django-oidc</code> and <code>pyjwt[crypto]</code>, so it ships in the production
+image). No dependency-submission workflow is needed: <code>uv.lock</code> is not parsed natively by
+the dependency graph, but Dependabot submits the resolved graph itself — the <em>Configured
+Graph Update: uv in /.</em> job. Note that <code>allow</code> in <code>dependabot.yml</code> filters <strong>both</strong> update
+types, so adding an explicit <code>dependency-type: direct</code> there would switch the indirect
+security path off. <code>redis</code> is <code>ignore</code>d above <code>6.5</code> there because <code>celery[redis]</code>/<code>kombu</code>
+hard-caps <code>redis&lt;6.5</code> — a cap Dependabot can't see, so without the ignore it proposes the
+latest release and errors the whole <code>uv</code> resolution. <code>pip-audit</code> stays the enforcing gate
+either way: CI's <code>security</code> job and the prek pre-push hook fail on any known-vulnerable
+dependency regardless of bot cadence.</p>
+<p>Both the <code>docker</code> ecosystem's <code>dhi.io</code> registry resolution and the <code>release-image.yml</code> PR
+build that Dependabot's <code>docker</code>/<code>uv</code> PRs re-trigger read <code>DOCKER_HUB_USERNAME</code> /
+<code>DOCKER_HUB_TOKEN</code> from the <strong>Dependabot</strong> secrets scope (org-level, mirroring the Actions
+secrets of the same name). Dependabot-triggered runs never see Actions secrets, so these
+credentials must exist in <strong>both</strong> scopes — otherwise the <code>dhi.io</code> login fails and the
+<code>release-image.yml</code> check goes red on every Dependabot base-image or dependency PR.</p>
 <p>Cutting a <strong>release</strong> (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
 <a href="../../contributing/releasing/"><code>docs/contributing/releasing.md</code></a>.</p>

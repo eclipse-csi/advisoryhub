@@ -66,7 +66,7 @@ dev = [
     "responses>=0.26.2",
     "ruff>=0.16.1",
     "django-stubs[compatible-mypy]>=6.0.7",
-    "zizmor>=1.28.0",
+    "zizmor>=1.29.0",
     # docs/specification/openapi.yaml drift guards (api/tests/test_openapi_spec.py)
     "openapi-spec-validator>=0.7",
     "pyyaml>=6.0",

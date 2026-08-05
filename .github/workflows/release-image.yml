@@ -5,12 +5,16 @@ name: Release image
 # pushes) publishes to ghcr.io with an SBOM + SLSA provenance attestations and
 # a keyless cosign signature.
 #
-# Required repository secrets:
+# Required secrets — in BOTH the Actions AND the Dependabot scope:
 #   DOCKER_HUB_USERNAME / DOCKER_HUB_TOKEN — Docker ID + PAT for dhi.io (the
 #   hardened base image registry; anonymous pulls are refused). A Docker Hub PAT
-#   authenticates against dhi.io — it's the same Docker account. Needed on
-#   pull_request builds too — fork PRs don't receive secrets and will fail at
-#   the base pull, which is acceptable for this private repo.
+#   authenticates against dhi.io — it's the same Docker account. The dhi.io login
+#   runs on pull_request builds too, so these must exist as BOTH Actions secrets
+#   (normal pushes/PRs) AND Dependabot secrets (Settings → Secrets and variables →
+#   Dependabot — a SEPARATE scope): Dependabot's own docker/uv PRs re-trigger this
+#   workflow under the Dependabot scope, where Actions secrets are invisible, so
+#   without the mirror the base pull fails. Fork PRs receive no secrets in either
+#   scope and will fail at the base pull — acceptable for this private repo.
 
 on:
   push:

@@ -80,6 +80,7 @@ jobs:
           persist-credentials: false
 
       # Defaults: poutine analyze_local $GITHUB_WORKSPACE --format sarif > results.sarif
+      # Auto-discovers .github/poutine.yml (trusted-but-unverified-action skips).
       - name: poutine scan
         uses: boostsecurityio/poutine-action@e240ebd3eff8b2db5a8e5f6b28f58739d7db2247 # v1.1.4
 

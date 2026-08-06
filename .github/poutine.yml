@@ -1,0 +1,18 @@
+# poutine (https://github.com/boostsecurityio/poutine) configuration — the
+# advisory pipeline scanner run by CI's workflow-security job. poutine v1.1.4
+# (bundled in poutine-action) auto-discovers this file at .github/poutine.yml,
+# so no --config flag or workflow change is needed.
+#
+# Skip findings whose properties match any rule below.
+skip:
+  # github_action_from_unverified_creator_used: poutine flags actions whose
+  # creator isn't a GitHub-verified creator. We trust these two despite that —
+  # both are pinned to a full commit SHA (the Dependabot-maintained convention)
+  # and are load-bearing CI tooling with no verified-creator equivalent:
+  #   * renovatebot/github-action — the self-hosted Renovate runner
+  #     (.github/workflows/renovate.yml).
+  #   * jdx/mise-action — the mise task runner used by every CI job.
+  - rule: github_action_from_unverified_creator_used
+    purl:
+      - pkg:githubactions/renovatebot/github-action
+      - pkg:githubactions/jdx/mise-action

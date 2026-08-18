@@ -121,7 +121,7 @@ x-django-env: &django-env
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     environment:
       POSTGRES_USER: advisoryhub
       POSTGRES_PASSWORD: advisoryhub
@@ -159,7 +159,7 @@ services:
   kanidm:
     # Pinned (not :latest) so Dependabot's docker-compose ecosystem can propose
     # bumps; dev/kanidm/setup.sh targets kanidmd 1.10.x.
-    image: kanidm/server:1.10.5
+    image: kanidm/server:1.11.0
     ports:
       - "8443:8443"
     volumes:
@@ -277,7 +277,7 @@ services:
       retries: 6
 
   grafana:
-    image: grafana/grafana:13.1.1
+    image: grafana/grafana:13.1.4
     profiles: ["observability"]
     environment:
       GF_SECURITY_ADMIN_USER: admin

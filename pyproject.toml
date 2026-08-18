@@ -28,7 +28,7 @@ dependencies = [
     "cvss>=3.0",
     "django-environ>=0.14.0",
     "django-ratelimit>=4.1",
-    "sentry-sdk[django]>=2.66.1",
+    "sentry-sdk[django]>=2.68.0",
     "django-prometheus>=2.5.0",
     "requests>=2.34.2",
     "pyjwt[crypto]>=2.13.0",
@@ -61,11 +61,11 @@ packages = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1",
-    "pytest-django>=4.13.0",
+    "pytest-django>=4.14.0",
     "pytest-cov>=5.0",
     "responses>=0.26.2",
-    "ruff>=0.16.2",
-    "django-stubs[compatible-mypy]>=6.0.9",
+    "ruff>=0.16.3",
+    "django-stubs[compatible-mypy]>=6.1.0",
     "zizmor>=1.29.0",
     # docs/specification/openapi.yaml drift guards (api/tests/test_openapi_spec.py)
     "openapi-spec-validator>=0.7",

@@ -159,7 +159,7 @@ services:
   kanidm:
     # Pinned (not :latest) so Dependabot's docker-compose ecosystem can propose
     # bumps; dev/kanidm/setup.sh targets kanidmd 1.10.x.
-    image: kanidm/server:1.11.0
+    image: kanidm/server:1.11.1
     ports:
       - "8443:8443"
     volumes:
@@ -258,7 +258,7 @@ services:
   # their own Prometheus. See dev/observability/README.md.
   # ------------------------------------------------------------------
   prometheus:
-    image: prom/prometheus:v3.13.2
+    image: prom/prometheus:v3.14.0
     profiles: ["observability"]
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -277,7 +277,7 @@ services:
       retries: 6
 
   grafana:
-    image: grafana/grafana:13.1.4
+    image: grafana/grafana:13.2.0
     profiles: ["observability"]
     environment:
       GF_SECURITY_ADMIN_USER: admin

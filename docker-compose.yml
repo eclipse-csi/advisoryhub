@@ -277,7 +277,7 @@ services:
       retries: 6
 
   grafana:
-    image: grafana/grafana:13.2.0
+    image: grafana/grafana:13.2.1
     profiles: ["observability"]
     environment:
       GF_SECURITY_ADMIN_USER: admin

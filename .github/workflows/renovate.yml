@@ -44,7 +44,7 @@ jobs:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
-          app-id: ${{ vars.RENOVATE_APP_ID }}
+          client-id: ${{ vars.RENOVATE_APP_ID }}
           private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
           # Scope the minted token to exactly what Renovate needs (not the App's
           # blanket installation perms): push branches, open PRs, maintain the

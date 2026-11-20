@@ -12,3 +12,9 @@ extensions/*/local-config.yml
 # Execution consent is stored separately in the user's local trust registry.
 integrations/packages/
 integrations/packages.json
+
+# Extension catalog download cache (`specify extension add/search`).
+extensions/.cache/
+
+# Browser-automation debris shipped inside upstream extension packages.
+extensions/*/.playwright-mcp/

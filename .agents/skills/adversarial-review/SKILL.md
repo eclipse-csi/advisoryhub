@@ -17,7 +17,9 @@ the verdict is `blocked`.
 - **Try to disprove the assumptions of the change.** For everything the change takes for granted (the caller is
   authorized, the advisory is in a given state, the request comes from the UI, a Celery task runs once and in order,
   the push succeeds, an external API answers completely, the input is well formed, a feature flag is on), look for the
-  role, the state, the input or the sequence of requests where it does not hold. Zero findings is a valid outcome: do
+  role, the state, the input or the sequence of requests where it does not hold. When the change relies on how an
+  external tool behaves (Dependabot, Renovate, BuildKit, GitHub Actions, a library), check that behaviour in the
+  tool's documentation or source instead of trusting the comment that states it. Zero findings is a valid outcome: do
   not manufacture any.
 - **Read-only by default.** The review changes no file of the checkout. Fix the confirmed bugs only when the user asks
   for a fix pass (step 5). A `blocked` verdict stands even if the review changed nothing.
@@ -49,6 +51,11 @@ the verdict is `blocked`.
 
 `<base>` is the branch the pull request will target, usually `main` of `eclipse-csi/advisoryhub`, kept up to date.
 
+When the branch under review is not the one checked out, do not switch the checkout: review it in a temporary
+worktree, `git worktree add --detach <tmp-dir> <branch>`, run the commands below and the checks there (it can also
+serve as the worktree at `HEAD` of the ground rules), and remove it at the end. It has no local changes, and the
+checkout's own local changes are not part of the review.
+
 ```shell
 git status --short                         # staged, unstaged and untracked files
 git diff <base>...HEAD --stat              # the commits of the branch: what the pull request will contain
@@ -72,8 +79,9 @@ git ls-files --others --exclude-standard   # untracked files, which no git diff 
 
 ## 2. Attack the change
 
-Answer each question that applies to the files touched. A "no" or an "I don't know" is a lead to verify, not a
-finding.
+Answer each question that applies to the files touched, and say in the report which ones did not apply, in a few
+words (for example "no application code: questions 1 to 6 and 8 do not apply"). A "no" or an "I don't know" is a
+lead to verify, not a finding.
 
 1. **Who can reach it, and is it checked on the server?** (`INV-AUTH-1`.) For every new or changed view, HTMX
    endpoint, API handler, form, Celery task and management command, find the predicate of `advisories/permissions.py`
@@ -173,6 +181,9 @@ finding.
      documented in the chart README, never in the ConfigMap), `docs/operations/configuration.md`, and the
      `x-django-env` anchor of `docker-compose.yml` when dev needs it.
    - Personal data in a new model or field: `forget_user` and the retention pruning reach it.
+   - A new guard, hook or CI gate: every procedure a contributor or an operator follows still passes it (the upgrade
+     steps of `docs/operations/maintenance.md`, the release runbook, `CLAUDE.md`), and the commands that list the
+     guards (`CLAUDE.md`, `mise.toml`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`) name it.
    - Vendored assets change only through `dev/update_vendored_assets.py`; the generated `.claude/skills/speckit-*/`
      and `.specify/` files only through the Specify CLI.
 10. **Does every existing deployment upgrade cleanly?** A migration runs on a production database with rows: a new
@@ -200,8 +211,10 @@ finding.
     code its own test database (`test_advisoryhub_base`), built from the old migrations, and `--create-db` overrides
     the `--reuse-db` of `addopts`; the `test_advisoryhub` database of the checkout is not touched. Postgres must be up
     (`docker compose up -d postgres`). The test must fail on the assertion that targets the regression, not on an
-    import error, a missing migration or a missing fixture. When it cannot run against the old code, say exactly why
-    in the report.
+    import error, a missing migration or a missing fixture. When the test exercises a module or a tool that the change
+    adds (a new guard, helper or service), copy it into the worktree too: what must fail is the check of the old tree
+    (for example the new guard run on the old `Dockerfile`), while the self-tests of the new tool cannot fail without
+    it; say which tests are which. When a test cannot run against the old code, say exactly why in the report.
     Check also that the tests cover the denied roles, the other states and the failure paths above, not only the
     expected path, that they run on PostgreSQL, and that they reach no network, real OIDC provider, mail server or
     Git remote.
@@ -215,7 +228,9 @@ finding.
 
 ## 3. Classify the findings
 
-- **Confirmed**: traced through the code or reproduced by a test, on the state reviewed.
+- **Confirmed**: traced through the code or reproduced by a test, on the state reviewed. Each one is either
+  **blocking** (wrong behaviour, a broken invariant, a failing required check, a security gap) or **minor** (nothing
+  breaks: a documentation gap, an unclear message, an optional hardening).
 - **Open hypothesis**: credible but not reproduced. Say what is missing to settle it.
 - **Dismissed**: the lead did not hold.
 
@@ -223,18 +238,20 @@ finding.
 
 The verdict comes first, with its reason:
 
-- **`ready`**: no confirmed finding against the change, and the checks it needs ran and passed, including the Spec
-  Kit reviews the constitution makes mandatory for it.
-- **`blocked`**: at least one confirmed bug, or a required check fails. The pull request is not opened until it is
-  fixed.
+- **`ready`**: no confirmed blocking finding against the change, and the checks it needs ran and passed, including
+  the Spec Kit reviews the constitution makes mandatory for it. Minor findings do not change the verdict: list them,
+  so that they are fixed in the pull request.
+- **`blocked`**: at least one confirmed blocking finding, or a required check fails. The pull request is not opened
+  until it is fixed.
 - **`inconclusive`**: a point that decides could not be settled (a check could not run, a scenario could not be
   reproduced, the scope is unclear). Say what is missing, and let the user decide.
 
 Then:
 
 - the state reviewed: the commit, and the local changes included;
-- the confirmed findings, first: `file:line`, failure scenario, evidence (test or trace), the `INV-*` ID and tier
-  when one is broken, and whether the finding concerns only local changes;
+- the confirmed findings, blocking first, then minor: `file:line`, failure scenario, evidence (test or trace), the
+  `INV-*` ID and tier when one is broken, and whether the finding concerns only local changes;
+- the questions that did not apply, with the reason;
 - the open hypotheses, only if they change the decision to open the pull request;
 - the dismissed leads only when their explanation helps the reviewer of the pull request;
 - the checks that ran and their results, and the checks that were skipped, with the reason;
@@ -244,10 +261,12 @@ Then:
 
 ## 5. Fix pass, on request
 
-When the user asks for the confirmed bugs to be fixed:
+When the user asks for the confirmed findings to be fixed:
 
-1. Fix them and add a regression test for each one, checked as in question 11. When the fix changes behaviour,
-   update the canonical spec in the same change.
+1. Fix them and add a regression test for each blocking one, checked as in question 11. When the fix changes
+   behaviour, update the canonical spec in the same change. When the branch is not the one checked out, fix it in a
+   worktree of that branch, `git worktree add <tmp-dir> <branch>` (not detached, so that a commit lands on it), and
+   remove the worktree at the end.
 2. Leave design and behaviour choices to the user: describe the options instead of choosing one silently. A fix
    never works around an invariant or deviates from the spec: when the right fix would, stop and raise it, since that
    needs maintainer confirmation first (Principles I and II).

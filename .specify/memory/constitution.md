@@ -61,6 +61,16 @@ report on record, with every finding dispositioned, before `/speckit-plan` proce
 maintainer-approved waiver recorded in `plan.md` with its justification (e.g. a false positive);
 it MUST NOT be skipped silently.
 
+### IX. Security Review of Security-Sensitive Changes
+A change planned with Spec Kit that touches an area governed by a Critical-tier invariant in
+`docs/specification/invariant.md` (e.g. authorization, OIDC, audit, secrets, intake, publication,
+versioning, LLM similarity) MUST run `/speckit-security-review-plan` after `/speckit-plan` and
+`/speckit-security-review-branch` after `/speckit-implement`. Every finding MUST be fixed or
+dispositioned in the PR; accepting a risk requires maintainer approval recorded with its
+justification. Reviews MUST evaluate changes against `invariant.md` and `permissions.md`, which
+hold the project's security rules: no separate `security_constitution.md` is maintained, and
+`/speckit-security-review-init` MUST NOT create one.
+
 ## Technical & Security Constraints
 
 - Stack: Python 3.14, Django 5.2 LTS, PostgreSQL, Celery + Valkey, mozilla-django-oidc, HTMX.
@@ -82,10 +92,11 @@ it MUST NOT be skipped silently.
   `makemigrations --check`, the template-comment and import-direction guards, vendored-asset
   verification, and the full pytest suite. The prek hooks run a local subset of these; CI is
   authoritative.
-- Changes planned with Spec Kit follow: specify → (red team gate) → plan → tasks → implement,
-  with optional security and staff reviews after plan, tasks, and implement. Small fixes and
-  documentation-only or refactoring changes may skip Spec Kit but remain bound by Principle I's
-  PR-level obligations.
+- Changes planned with Spec Kit follow: specify → (red team gate) → plan → tasks → implement.
+  The security reviews after plan and implement are mandatory for changes covered by
+  Principle IX and optional otherwise; the task-level security review and the staff review
+  after implement are optional. Small fixes and documentation-only or refactoring changes may
+  skip Spec Kit but remain bound by Principle I's PR-level obligations.
 - Releases are tag-driven via `mise run release`, keeping all recorded versions in lockstep.
 
 ## Governance

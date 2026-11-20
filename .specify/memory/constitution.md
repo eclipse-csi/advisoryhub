@@ -90,19 +90,15 @@ hold the project's security rules: no separate `security_constitution.md` is mai
 
 ## Development Workflow & Quality Gates
 
-- Commits MUST be signed (`-S`) and signed-off (`-s`), follow Conventional Commits, and MUST NOT
-  carry a `Co-Authored-By` trailer. AI-generated commits MUST include
-  `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>` in the footer.
-- Before merge, the CI gates MUST pass: lint and format (`ruff`), `mypy`, Django checks and
-  `makemigrations --check`, the template-comment and import-direction guards, vendored-asset
-  verification, the Helm chart checks (`helm-lint`, `helm-validate`), and the full pytest suite.
-  The prek hooks run a local subset of these; CI is authoritative.
+- The commit policy, local hooks and release process are defined in `CLAUDE.md` ("Commit
+  policy", "Sanity checks", "Releases") and bind every PR.
+- Before merge, every blocking job of the CI workflows in `.github/workflows/` MUST pass. CI is
+  authoritative; the prek hooks run a local subset.
 - Changes planned with Spec Kit follow: specify → (red team gate) → plan → tasks → implement.
   The security reviews after plan and implement are mandatory for changes covered by
   Principle IX and optional otherwise; the task-level security review and the staff review
   after implement are optional. Small fixes and documentation-only or refactoring changes may
   skip Spec Kit but remain bound by Principle I's PR-level obligations.
-- Releases are tag-driven via `mise run release`, keeping all recorded versions in lockstep.
 
 ## Governance
 

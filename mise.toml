@@ -112,6 +112,11 @@ description = "Fail on new advisories → workflows imports (module-level, or fu
 # Pure-stdlib script — system python3, same rationale as check-templates.
 run = "python3 dev/check_import_direction.py"
 
+[tasks.check-dockerfile]
+description = "Dockerfile bases: literal digest-pinned FROM lines (Dependabot-visible) + DHI Python == .python-version"
+# Pure-stdlib script — system python3, same rationale as check-templates.
+run = "python3 dev/check_dockerfile_bases.py"
+
 [tasks.zizmor]
 description = "Security-audit the GitHub Actions workflows (mirrors CI's workflow-security job)"
 # Offline: the online audits need a GitHub token and would make local != CI;

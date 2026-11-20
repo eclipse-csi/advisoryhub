@@ -38,7 +38,9 @@ is ever lost there, re-publishing regenerates and re-pushes the current advisori
 
 1. **Dependencies / Python.** Bump `.python-version` and/or `uv.lock` and **rebuild
    the image** (`down -v` keeps cached images, so rebuild explicitly after a
-   `Dockerfile`/lockfile change).
+   `Dockerfile`/lockfile change). A `.python-version` bump goes with the same Python
+   patch on both `dhi.io/python` tags of the `Dockerfile`, and their re-resolved
+   digests: `mise run check-dockerfile` (prek + CI) fails while they differ.
 2. **Pre-deploy gates** — run these (the CI pipeline runs the same; mirror them in
    your release pipeline):
    ```sh

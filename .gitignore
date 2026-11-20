@@ -19,3 +19,4 @@ site/
 # Local agent/session state and personal scratch notes (never tracked)
 .claude/
 TODO.md
+.vscode

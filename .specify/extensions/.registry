@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "red-team": {
+      "version": "1.0.3",
+      "source": "local",
+      "manifest_hash": "sha256:845ee12a6cb59c3eaaef0622023401428183b1bdb0223a514583f9412f554efd",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.red-team.run",
+          "speckit.red-team.gate"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T14:16:32.312584+00:00"
+    },
+    "staff-review": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:320fa967c40ae943e37ceb0a1fb0f8dda42eb22b07be8428674ce72532e28e1e",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.staff-review.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T14:28:06.229712+00:00"
+    },
+    "security-review": {
+      "version": "2.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:5b7d812cb62bc4a35ce68b5aec7c297487c92b086bd9a18beccdf3538abc3b6f",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.security-review.audit",
+          "speckit.security-review.staged",
+          "speckit.security-review.branch",
+          "speckit.security-review.plan",
+          "speckit.security-review.tasks",
+          "speckit.security-review.followup",
+          "speckit.security-review.apply",
+          "speckit.security-review.export",
+          "speckit.security-review.verify",
+          "speckit.security-review.init"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T14:31:34.108807+00:00"
+    }
+  }
+}

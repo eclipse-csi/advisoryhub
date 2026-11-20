@@ -17,24 +17,24 @@ tests, whatever the workflow. Reviewers MUST verify that the implementation and 
 specification agree. Rationale: the spec is verified against the code; silent drift breaks the
 security and publication contracts.
 
-### II. Invariants Are Not Worked Around
+### II. Invariants Are Not Worked Around (NON-NEGOTIABLE)
 `docs/specification/invariant.md` is the authoritative catalog of load-bearing rules; this
 constitution does not restate them. Code conflicting with an invariant MUST NOT be written; the
 conflict MUST be raised so the invariant can be deliberately revisited. Invariant IDs are never
 renumbered or reused. Principles III–V below name areas only; the `INV-*` entries hold the rules.
 
-### III. Server-Side Authorization and Auditability
+### III. Server-Side Authorization and Auditability (NON-NEGOTIABLE)
 Authorization MUST be enforced server-side, never in templates or from client-submitted data
 (`INV-AUTH-*`, `INV-OIDC-*`). Audit-relevant changes MUST go through the audited service layer,
 and the audit log MUST remain append-only (`INV-AUDIT-*`, `INV-ACCESS-5`). The exact scope of
 audited mutations is defined by those invariants and `permissions.md`.
 
-### IV. Immutable Versioning and Publication Integrity
+### IV. Immutable Versioning and Publication Integrity (NON-NEGOTIABLE)
 Advisory versions are append-only and publication artifacts derive from the pinned immutable
 version; a failed publication MUST NOT change the advisory's state (`INV-VERSION-*`,
 `INV-LIFECYCLE-3`, `INV-WITHDRAW`).
 
-### V. Secrets and Untrusted Input Never Leak
+### V. Secrets and Untrusted Input Never Leak (NON-NEGOTIABLE)
 User- or CI-supplied strings MUST be redacted before reaching logs, audit metadata, task errors,
 artifacts, or notifications (`INV-AUDIT-2`, `INV-SECRET-*`). Public intake is untrusted
 (`INV-INTAKE-*`). LLM-assisted features stay dormant unless explicitly enabled (`INV-SIM-2`).

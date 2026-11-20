@@ -43,3 +43,16 @@ hooks:
       tasks?
     description: ''
     condition: null
+  # Wired by hand (constitution Principle VIII): the red-team manifest declares
+  # this hook under `provides.hooks`, which the Specify CLI ignores, and
+  # `specify extension add/update red-team` purges it again. Re-add after either.
+  before_plan:
+  - extension: red-team
+    command: speckit.red-team.gate
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Running red team gate check on the current feature spec...
+    description: Red Team Gate (Principle VIII) — blocks /speckit.plan if the spec
+      triggers a red team category and no findings report exists.
+    condition: null

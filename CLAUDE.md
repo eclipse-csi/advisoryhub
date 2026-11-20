@@ -29,7 +29,7 @@ The specification set in `docs/specification/` is the **single source of truth**
 
 Non-trivial changes are planned with [Spec Kit](https://github.com/github/spec-kit) (`.specify/`, Claude integration): `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. Small fixes, documentation-only and refactoring changes may skip it, but still update the canonical spec (Principle I). Installed extensions:
 
-- **red-team** (Principle VIII) — run `/speckit-red-team-gate` before `/speckit-plan`; a spec matching a red-team trigger criterion needs a findings report from `/speckit-red-team-run` with every finding dispositioned, or a maintainer-approved waiver recorded in `plan.md`.
+- **red-team** (Principle VIII) — `/speckit-plan` runs `/speckit-red-team-gate` as a mandatory `before_plan` hook; a spec matching a red-team trigger criterion needs a findings report from `/speckit-red-team-run` with every finding dispositioned, or a maintainer-approved waiver recorded in `plan.md`. The hook is wired by hand in `.specify/extensions.yml` (the upstream manifest declares it under `provides.hooks`, which the Specify CLI ignores), so re-add it after any `specify extension add/update red-team`.
 - **security-review** (Principle IX) — `/speckit-security-review-plan` after plan and `/speckit-security-review-branch` after implement are mandatory when a change touches an area governed by a Critical-tier invariant. Reviews judge against `invariant.md` and `permissions.md`; do not run `/speckit-security-review-init` — no separate `security_constitution.md` is kept.
 - **staff-review** — optional `/speckit-staff-review-run` after implement.
 

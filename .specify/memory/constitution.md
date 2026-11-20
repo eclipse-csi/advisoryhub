@@ -17,13 +17,13 @@ tests, whatever the workflow. Reviewers MUST verify that the implementation and 
 specification agree. Rationale: the spec is verified against the code; silent drift breaks the
 security and publication contracts.
 
-### II. Invariants Are Not Worked Around (NON-NEGOTIABLE)
+### II. Invariants Are Not Worked Around
 `docs/specification/invariant.md` is the authoritative catalog of load-bearing rules; this
 constitution does not restate them. Code conflicting with an invariant MUST NOT be written; the
 conflict MUST be raised so the invariant can be deliberately revisited. Invariant IDs are never
 renumbered or reused. Principles III–V below name areas only; the `INV-*` entries hold the rules.
 
-### III. Server-Side Authorization and Auditability (NON-NEGOTIABLE)
+### III. Server-Side Authorization and Auditability
 Authorization MUST be enforced server-side, never in templates or from client-submitted data
 (`INV-AUTH-*`, `INV-OIDC-*`). Audit-relevant changes MUST go through the audited service layer,
 and the audit log MUST remain append-only (`INV-AUDIT-*`, `INV-ACCESS-5`). The exact scope of

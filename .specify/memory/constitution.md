@@ -107,8 +107,11 @@ This constitution supersedes other practices for this repository; it complements
 documenting the change and rationale, maintainer approval, and updates to any dependent artifacts
 in the same PR. Versioning follows semantic versioning: MAJOR for backward-incompatible principle
 removal or redefinition, MINOR for a new principle/section or materially expanded guidance, PATCH
-for clarifications. Every PR and review MUST verify compliance with this constitution; any
-complexity or deviation MUST be justified in writing. Runtime development guidance lives in
+for clarifications. Every PR and review MUST verify compliance with this constitution.
+Principles marked NON-NEGOTIABLE admit no exception or waiver: a conflicting change is not made
+until the principle, or the invariant it points to, has been amended through the process above.
+Other principles admit a deviation only when it is justified in writing and approved by a
+maintainer, recorded in `plan.md` or the PR description. Runtime development guidance lives in
 `CLAUDE.md` and `CONTRIBUTING.md`.
 
 **Version**: 1.0.0 | **Ratified**: 2026-11-19 | **Last Amended**: 2026-11-19

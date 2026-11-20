@@ -80,8 +80,13 @@ hold the project's security rules: no separate `security_constitution.md` is mai
 - While maintenance mode is on, only global admins may mutate state (`INV-MAINT-1`).
 - GitHub Actions workflows MUST pin `uses:` to full SHAs, start with harden-runner, set
   `persist-credentials: false`, and pass step outputs via `env:` (zizmor-gated).
-- Production configuration knobs are documented in `.env.example`; dev config lives in the
-  `docker-compose.yml` `x-django-env` anchor.
+- Configuration is environment-driven; `config/settings/base.py` is the schema. A new or changed
+  knob MUST be reflected in the same PR on every surface that exposes it: `.env.example`
+  (production reference), the Helm chart, `docs/operations/configuration.md`, and the dev
+  `docker-compose.yml` `x-django-env` anchor when dev needs it. In the chart, non-secret knobs go
+  through `values.yaml`, `values.schema.json` and the `advisoryhub.envMap` ConfigMap mapping;
+  secret material is added only as an expected key of the env Secret (documented in the chart
+  README), never to the ConfigMap.
 
 ## Development Workflow & Quality Gates
 
@@ -90,8 +95,8 @@ hold the project's security rules: no separate `security_constitution.md` is mai
   `Assisted-by: <AGENT_NAME>:<MODEL_VERSION>` in the footer.
 - Before merge, the CI gates MUST pass: lint and format (`ruff`), `mypy`, Django checks and
   `makemigrations --check`, the template-comment and import-direction guards, vendored-asset
-  verification, and the full pytest suite. The prek hooks run a local subset of these; CI is
-  authoritative.
+  verification, the Helm chart checks (`helm-lint`, `helm-validate`), and the full pytest suite.
+  The prek hooks run a local subset of these; CI is authoritative.
 - Changes planned with Spec Kit follow: specify → (red team gate) → plan → tasks → implement.
   The security reviews after plan and implement are mandatory for changes covered by
   Principle IX and optional otherwise; the task-level security review and the staff review

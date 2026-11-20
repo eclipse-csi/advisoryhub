@@ -25,8 +25,9 @@ default_install_hook_types: [pre-commit, pre-push]
 # Vendored / upstream-verbatim assets stay byte-identical to upstream, so no
 # hook (least of all the whitespace fixers) may rewrite them. That includes the
 # Spec Kit files the Specify CLI installs and checksums under .specify/ (minus
-# our own red-team lens catalog, which stays checked).
-exclude: '^(static/htmx\.min\.js|static/htmx\.VERSION|static/fonts/.*\.woff2|static/fonts/Inter\.VERSION|static/altcha/.*|publication/schemas/.*\.upstream\.json|publication/schemas/cvss/.*\.json|publication/schemas/SCHEMAS\.VERSION|docs/assets/css/neoteroi-mkdocs\.(css|VERSION)|\.specify/(extensions/(?!red-team/red-team-lenses\.yml$)|integrations/|scripts/|templates/|workflows/).*)$'
+# our own red-team lens catalog, which stays checked) and the /speckit-* skills
+# it generates under .claude/skills/.
+exclude: '^(static/htmx\.min\.js|static/htmx\.VERSION|static/fonts/.*\.woff2|static/fonts/Inter\.VERSION|static/altcha/.*|publication/schemas/.*\.upstream\.json|publication/schemas/cvss/.*\.json|publication/schemas/SCHEMAS\.VERSION|docs/assets/css/neoteroi-mkdocs\.(css|VERSION)|\.specify/(extensions/(?!red-team/red-team-lenses\.yml$)|integrations/|scripts/|templates/|workflows/).*|\.claude/skills/speckit-[^/]+/.*)$'
 
 repos:
   # ---- Generic file hygiene (fast; every commit) ----------------------------

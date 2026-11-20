@@ -41,7 +41,7 @@ class UserManager(BaseUserManager["User"]):
 
 
 class User(AbstractUser):
-    username = None  # type: ignore[assignment]  # email is the unique identifier
+    username = None  # type: ignore[assignment]  # ty: ignore[invalid-assignment]  # email is the unique identifier
     email = models.EmailField("email address", unique=True)
     display_name = models.CharField(max_length=200, blank=True)
     oidc_subject = models.CharField(max_length=255, blank=True, db_index=True)
@@ -81,8 +81,8 @@ class User(AbstractUser):
     # django-stubs types AbstractUser.objects as its own UserManager[User]; our
     # email-only manager is a deliberate BaseUserManager subclass that can't match
     # that signature. The ClassVar annotation silences the class-variable override;
-    # the type:ignore covers the unavoidable manager-class mismatch.
-    objects: ClassVar[UserManager] = UserManager()  # type: ignore[assignment]
+    # the type:ignore (mypy) / ty:ignore (ty) cover the unavoidable manager-class mismatch.
+    objects: ClassVar[UserManager] = UserManager()  # type: ignore[assignment]  # ty: ignore[incompatible-attribute-override]
 
     def __str__(self) -> str:
         return self.email

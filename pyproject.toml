@@ -159,9 +159,10 @@ fail_under = 80
 # ty runs as an *advisory* (non-blocking) CI check alongside the enforced
 # mypy gate — it's faster and catches some categories mypy doesn't. ty has
 # no Django plugin yet and cannot consume django-stubs, so its ORM
-# "unresolved-attribute" reports (Model.objects, reverse relations, …) are
-# false positives; silence that rule so the remaining categories stay
-# actionable. Revisit (and consider promoting to blocking) as ty matures.
+# "missing-attribute" reports (Model.objects, reverse relations, …; the rule
+# was formerly named "unresolved-attribute") are false positives;
+# silence that rule so the remaining categories stay actionable. Revisit
+# (and consider promoting to blocking) as ty matures.
 [tool.ty.environment]
 python-version = "3.14"
 
@@ -181,4 +182,4 @@ exclude = [
 ]
 
 [tool.ty.rules]
-unresolved-attribute = "ignore"
+missing-attribute = "ignore"

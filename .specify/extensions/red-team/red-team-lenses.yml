@@ -1,0 +1,86 @@
+# Red Team Lens Catalog — AdvisoryHub
+#
+# Project configuration for `speckit.red-team.run` (constitution Principle VIII),
+# derived from the extension's config-template.yml and calibrated on
+# docs/specification/invariant.md. This file is ours, not upstream: keep it in
+# git and restore it after `specify extension add/update red-team`, which
+# replaces the extension directory and only preserves `*-config.yml` files.
+#
+# Schema and trigger categories: see config-template.yml next to this file.
+#
+# COVERAGE: the union of every lens's `trigger_match` MUST cover all six
+# categories (money_path, regulatory_path, ai_llm, immutability_audit,
+# multi_party, contracts), or the run refuses to load the catalog. AdvisoryHub
+# has no monetary flows: a `money_path` keyword hit is usually incidental and is
+# routed to the Disclosure & Regulatory lens.
+
+version: "v1"
+
+defaults:
+  finding_bound: 5
+  severity_weight: 5
+
+lenses:
+
+  - name: "Disclosure & Regulatory Adversary"
+    description: "Attacks the spec as a coordinated-disclosure auditor and a data-protection examiner would: premature disclosure of embargoed details, reporter privacy, and decisions that leave no defensible evidence."
+    core_questions:
+      - "Which path could expose embargoed vulnerability details before publication: notifications, exports, logs, previews, LLM egress, or the publication repo itself?"
+      - "Does the spec collect, keep, or expose reporter or user personal data beyond what it needs, and can it be erased without breaking the audit trail (INV-INTAKE-2, INV-PRIVACY-*)?"
+      - "If the CVE program, an Eclipse project, or a data-protection authority questioned a decision this spec automates, which evidence would be missing?"
+      - "Where does the spec assume a CVE ID, a publication, or a withdrawal can be quietly undone after downstream consumers have ingested it (INV-CVE-2, INV-WITHDRAW)?"
+    trigger_match: [regulatory_path, money_path]
+    severity_weight: 8
+
+  - name: "Authorization & Trust-Boundary Adversary"
+    description: "Attacks role and trust assumptions: privilege escalation across owner/collaborator/viewer, admin-only and state-conditioned paths, client-trusted data, and checks missing outside views."
+    core_questions:
+      - "Which new view, HTMX endpoint, API, Celery task, or management command acts on an advisory without a server-side permission check (INV-AUTH-1)?"
+      - "Can any actor obtain owner rights other than by derivation: a grant, an invitation, an API payload, a group name (INV-AUTH-3, INV-ACCESS-4)?"
+      - "Which decision trusts client-submitted or claim-derived data (groups, project, reporter name, hidden fields) instead of the DB mirror (INV-OIDC-1, INV-OIDC-2, INV-PRIVACY-3)?"
+      - "Do the state-conditioned overrides still hold: triage owner-only, admin-routing flag, review submitted, maintenance mode, banned accounts (INV-AUTH-5, INV-AUTH-6, INV-AUTH-8, INV-PERM-3, INV-MAINT-1)?"
+      - "Who receives notifications, and is reach re-checked at send time so revoked grantees and shadow roster users learn nothing they may not see (INV-PRIVACY-2, INV-OIDC-5, INV-ROSTER-1)?"
+    trigger_match: [multi_party, contracts]
+    severity_weight: 9
+
+  - name: "Publication Integrity Adversary"
+    description: "Attacks the publication pipeline and its contract with the consumer Git repo: drift between AdvisoryHub state and what was pushed, exports built from live data, invalid or partial payloads, races and retries."
+    core_questions:
+      - "Can `state` read `published` while the push failed, partially succeeded, or is still running, or the reverse (INV-LIFECYCLE-3, INV-PUB-4)?"
+      - "Is every OSV/CSAF field built from the pinned AdvisoryVersion and validated against the vendored schemas, never from live rows or form data (INV-VERSION-3, INV-PUB-6)?"
+      - "What happens on a concurrent publish, a Celery retry, a worker crash, or a reaper run: duplicate commits, lost republish flags, stuck tasks (INV-CONCURRENCY-1, INV-PUB-5, INV-PUB-7)?"
+      - "Does the change alter the files, paths, IDs, or JSON shape that the consumer repo's CI and the public website depend on, and how would a consumer notice?"
+      - "Can a crafted advisory field (ID, alias, path) write outside the clone or overwrite another advisory's file (INV-PUB-1, INV-PUB-8)?"
+    trigger_match: [contracts, immutability_audit]
+    severity_weight: 8
+
+  - name: "Audit & Immutability Adversary"
+    description: "Attacks append-only and audit guarantees: mutation paths that bypass the service layer, retroactive edits, and governance actions that leave no trace."
+    core_questions:
+      - "Which path can update or delete an AdvisoryVersion, a review snapshot, or an audit entry: queryset.update(), bulk operations, migrations, management commands, the admin console (INV-AUDIT-1, INV-VERSION-1, INV-REVIEW-2)?"
+      - "Does every governance action the spec introduces emit an audit entry, including failure, admin, and Celery paths (INV-AUDIT-3, INV-ACCESS-5)?"
+      - "Does a content edit append a new version and reset review and republish flags, while a state-only flip appends none (INV-VERSION-1, INV-REVIEW-4)?"
+      - "Does a retention or pruning change remove anything the timeline or a first-view receipt must keep (INV-AUDIT-5, INV-AUDIT-6)?"
+    trigger_match: [immutability_audit]
+    severity_weight: 8
+
+  - name: "Secrets & Untrusted Input Adversary"
+    description: "Attacks the redaction boundary and untrusted inputs: tokens, keys and user strings leaking into persisted or outbound surfaces, and public or webhook input treated as trusted."
+    core_questions:
+      - "Which new string (user input, CI output, git stderr, provider error, exception text) can reach logs, audit metadata, task errors, artifacts, or notifications without redact_secrets (INV-AUDIT-2, INV-SECRET-1, INV-SECRET-3)?"
+      - "Can a token-bearing URL, SSH key, webhook secret, or API key be persisted, logged, or rendered anywhere (INV-SECRET-2, INV-SIM-3)?"
+      - "Can anonymous intake or a forged webhook create, modify, or link an advisory it should not: honeypot bypass, re-association of anonymous reports, unverified email (INV-INTAKE-1, INV-INTAKE-2, INV-OIDC-6)?"
+      - "Can attacker-controlled text inject markup or script into templates, emails, OSV/CSAF output, or the public website rendered from it?"
+    trigger_match: [contracts, immutability_audit]
+    severity_weight: 9
+
+  - name: "AI/LLM Adversary"
+    description: "Attacks LLM-assisted duplicate detection: egress of embargoed content, prompt injection through public reports, and model output treated as authoritative."
+    core_questions:
+      - "Can any advisory content reach the LLM provider while SIMILARITY_CHECK_ENABLED is off, or can content the requesting owner may not see reach the prompt (INV-SIM-2, INV-SIM-4)?"
+      - "Untrusted intake text reaches the judge prompt: what happens when it carries instructions to declare itself unique or a duplicate, or to echo other advisories?"
+      - "Which decision treats a similarity verdict as fact (dismissal, merge, notification) instead of a suggestion an owner confirms?"
+      - "When the provider times out, errors, or returns garbage, what is persisted and who sees it (INV-SIM-3, INV-SIM-5)?"
+      - "Are similarity results visible only to owners, enforced server-side (INV-SIM-1)?"
+    trigger_match: [ai_llm]
+    severity_weight: 7

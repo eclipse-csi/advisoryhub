@@ -1,0 +1,211 @@
+# Security Review Document Field Summaries
+# Machine-readable schema for YAML frontmatter fields used in security review documents.
+# Source of truth: docs/field-registry.md
+# Purpose: LLM reads this schema before reading any document body, enabling header-first decisions.
+
+version: "1.0"
+
+document_fields:
+  document_type:
+    type: string
+    enum: [security-review]
+    description: "Always 'security-review'. Allows indexers to skip non-review documents."
+    index: false
+
+  review_type:
+    type: string
+    enum: [audit, branch, staged, plan, tasks, followup, export]
+    description: "Which command generated this document. Determines expected sections and scope."
+    index: true
+
+  assessment_date:
+    type: string
+    format: "YYYY-MM-DD"
+    description: "ISO 8601 date the review was performed."
+    index: true
+
+  codebase_analyzed:
+    type: string
+    description: "Name or path of the repository or component reviewed."
+    index: false
+
+  total_files_analyzed:
+    type: integer
+    minimum: 0
+    description: "Number of files the agent analyzed. Provides signal on review depth."
+    index: false
+
+  total_findings:
+    type: integer
+    minimum: 0
+    description: "Total count of all findings across all severities."
+    index: false
+
+  assessment_kind:
+    type: string
+    enum: [whitebox-review, report-synthesis]
+    description: "Export-only provenance: whether the report directly reviewed source or synthesized prior reports."
+    index: false
+
+  source_artifacts:
+    type: array
+    items:
+      type: string
+    description: "Export-only list of source reports or artifact identifiers used for synthesis."
+    index: false
+
+  commit_or_branch:
+    type: string
+    description: "Export-only commit or branch reviewed, or 'unknown' when source was not directly accessed."
+    index: false
+
+risk_fields:
+  overall_risk:
+    type: string
+    enum: [CRITICAL, HIGH, MEDIUM, LOW, INFORMATIONAL, NONE]
+    description: "Highest severity tier with active findings, or NONE when no active findings exist. Primary routing signal for INDEX.md filtering."
+    index: true
+
+  critical_count:
+    type: integer
+    minimum: 0
+    description: "Number of Critical findings (CVSS 9.0-10.0)."
+    index: true
+    index_compact: "C:{value}"
+
+  high_count:
+    type: integer
+    minimum: 0
+    description: "Number of High findings (CVSS 7.0-8.9)."
+    index: true
+    index_compact: "H:{value}"
+
+  medium_count:
+    type: integer
+    minimum: 0
+    description: "Number of Medium findings (CVSS 4.0-6.9)."
+    index: true
+    index_compact: "M:{value}"
+
+  low_count:
+    type: integer
+    minimum: 0
+    description: "Number of Low findings (CVSS 0.1-3.9)."
+    index: true
+    index_compact: "L:{value}"
+
+  informational_count:
+    type: integer
+    minimum: 0
+    description: "Number of Informational findings."
+    index: false
+
+classification_fields:
+  owasp_categories:
+    type: array
+    items:
+      type: string
+      pattern: "^A(0[1-9]|10)$"
+    description: "OWASP Top 10 2025 categories (A01-A10) with at least one finding. Enables topic-based filtering."
+    index: true
+    index_format: "comma-separated codes only, e.g. A01,A05,A07"
+
+  cwe_ids:
+    type: array
+    items:
+      type: string
+      pattern: "^CWE-[0-9]+"
+    description: "CWE identifiers referenced in the document."
+    index: false
+
+  asvs_requirements:
+    type: array
+    items:
+      type: string
+    description: "Verified OWASP ASVS requirements referenced by findings."
+    index: false
+
+  mitre_techniques:
+    type: array
+    items:
+      type: string
+    description: "Verified MITRE ATT&CK techniques applicable to findings."
+    index: false
+
+finding_level_fields:
+  finding_id:
+    type: string
+    pattern: "^SEC-[0-9]{3}$"
+    description: "Unique finding identifier (SEC-NNN). Used for cross-referencing and Spec-Kit task linkage."
+
+  location:
+    type: string
+    format: "path/to/artifact:line"
+    description: "Artifact or code path and line number supporting the finding."
+
+  evidence_provenance:
+    type: string
+    enum: [tested, statically-reviewed, source-reported, unverified, not-assessed]
+    description: "How the evidence for this finding was obtained; export reports must not imply direct source review for source-reported evidence."
+
+  owasp_category:
+    type: string
+    pattern: "^A(0[1-9]|10):2025-.+"
+    description: "OWASP Top 10 2025 category. Format: AXX:2025-CategoryName."
+
+  cwe:
+    type: string
+    pattern: "^CWE-[0-9]+: .+"
+    description: "Common Weakness Enumeration identifier with short name."
+
+  cvss_score:
+    type: string
+    format: "N.N (Severity)"
+    description: "CVSS v3.1 base score. 9.0-10.0=Critical, 7.0-8.9=High, 4.0-6.9=Medium, 0.1-3.9=Low."
+
+  security_task:
+    type: string
+    pattern: "^TASK-SEC-[0-9]{3}$"
+    description: "Security task ID for backlog tracking and remediation follow-up (supports legacy spec_kit_task as alias)."
+
+  spec_kit_task:
+    type: string
+    pattern: "^TASK-SEC-[0-9]{3}$"
+    description: "Legacy Spec-Kit task ID alias."
+
+index_md_row:
+  description: "Compact routing row for docs/memory/INDEX.md. Enables LLM to filter documents without loading bodies."
+  format: "| {doc_path} | {review_type} | {assessment_date} | {overall_risk} | C:{critical} H:{high} M:{medium} L:{low} | {owasp_codes} |"
+  example: "| docs/security-reviews/2026-05-07-auth.md | audit | 2026-05-07 | HIGH | C:2 H:4 M:6 L:4 | A01,A05,A07 |"
+
+sqlite_phase1_schema:
+  description: "Future SQL schema when flash-mem SQLite Phase 1 or the compatibility memory-hub optimizer is implemented. No rework needed — values come directly from frontmatter."
+  table: security_reviews
+  columns:
+    - name: doc_path
+      sql_type: TEXT PRIMARY KEY
+      source: frontmatter.document_fields.codebase_analyzed + path
+    - name: review_type
+      sql_type: TEXT
+      source: frontmatter.document_fields.review_type
+    - name: assessment_date
+      sql_type: TEXT
+      source: frontmatter.document_fields.assessment_date
+    - name: overall_risk
+      sql_type: TEXT
+      source: frontmatter.risk_fields.overall_risk
+    - name: critical_count
+      sql_type: INTEGER
+      source: frontmatter.risk_fields.critical_count
+    - name: high_count
+      sql_type: INTEGER
+      source: frontmatter.risk_fields.high_count
+    - name: medium_count
+      sql_type: INTEGER
+      source: frontmatter.risk_fields.medium_count
+    - name: low_count
+      sql_type: INTEGER
+      source: frontmatter.risk_fields.low_count
+    - name: owasp_categories
+      sql_type: TEXT
+      source: frontmatter.classification_fields.owasp_categories (comma-joined)

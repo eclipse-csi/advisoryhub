@@ -1,0 +1,58 @@
+installed:
+- red-team
+- security-review
+- staff-review
+settings:
+  auto_execute_hooks: true
+hooks:
+  after_implement:
+  - extension: staff-review
+    command: speckit.staff-review.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run staff-level code review?
+    description: Reviews implementation changes against spec for correctness, security,
+      and quality
+    condition: null
+  - extension: security-review
+    command: speckit.security-review.branch
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Would you like to scan the new implementation for security vulnerabilities?
+    description: ''
+    condition: null
+  after_plan:
+  - extension: security-review
+    command: speckit.security-review.plan
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Would you like to perform a security review on the proposed technical
+      plan?
+    description: ''
+    condition: null
+  after_tasks:
+  - extension: security-review
+    command: speckit.security-review.tasks
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Would you like to verify that security boundaries are represented in the
+      tasks?
+    description: ''
+    condition: null
+  # Wired by hand (constitution Principle VIII): the red-team manifest declares
+  # this hook under `provides.hooks`, which the Specify CLI ignores, and
+  # `specify extension add/update red-team` purges it again. Re-add after either.
+  before_plan:
+  - extension: red-team
+    command: speckit.red-team.gate
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Running red team gate check on the current feature spec...
+    description: Red Team Gate (Principle VIII) — blocks /speckit.plan if the spec
+      triggers a red team category and no findings report exists.
+    condition: null

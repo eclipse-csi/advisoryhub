@@ -1,0 +1,65 @@
+schema_version: "1.0"
+extension:
+  id: "security-review"
+  name: "Security Review"
+  version: "2.0.0"
+  description: "Full-project secure-by-design security audits plus staged, branch/PR, plan, task, follow-up, and apply reviews"
+  author: "DyanGalih"
+  repository: "https://github.com/DyanGalih/security-review"
+  license: "MIT"
+  homepage: "https://github.com/DyanGalih/security-review"
+requires:
+  speckit_version: ">=0.1.0"
+hooks:
+  after_plan:
+    command: "speckit.security-review.plan"
+    optional: true
+    prompt: "Would you like to perform a security review on the proposed technical plan?"
+  after_tasks:
+    command: "speckit.security-review.tasks"
+    optional: true
+    prompt: "Would you like to verify that security boundaries are represented in the tasks?"
+  after_implement:
+    command: "speckit.security-review.branch"
+    optional: true
+    prompt: "Would you like to scan the new implementation for security vulnerabilities?"
+provides:
+  commands:
+    - name: "speckit.security-review.audit"
+      file: "commands/security-audit.md"
+      description: "Performs broader or full-system security review across the codebase. Recommended for milestone reviews, release reviews, or major architecture validation."
+    - name: "speckit.security-review.staged"
+      file: "commands/security-review-staged.md"
+      description: "Security review of staged changes only (git diff --cached)"
+    - name: "speckit.security-review.branch"
+      file: "commands/security-review-branch.md"
+      description: "Reviews security risks introduced by the current branch or implementation changes. Recommended for normal feature development workflows."
+    - name: "speckit.security-review.plan"
+      file: "commands/security-review-plan.md"
+      description: "Security review of Spec-Kit plan artifacts and supporting design docs"
+    - name: "speckit.security-review.tasks"
+      file: "commands/security-review-tasks.md"
+      description: "Security review of Spec-Kit task artifacts and implementation sequencing"
+    - name: "speckit.security-review.followup"
+      file: "commands/security-review-followup.md"
+      description: "Create remediation plans or technical-debt tasks from security review findings"
+    - name: "speckit.security-review.apply"
+      file: "commands/security-review-apply.md"
+      description: "Apply approved security follow-up items into tasks.md and plan.md"
+    - name: "speckit.security-review.export"
+      file: "commands/security-review-export.md"
+      description: "Export security review findings as a formal Executive and Technical Pentest Report."
+    - name: "speckit.security-review.verify"
+      file: "commands/security-verify.md"
+      description: "Re-verify security findings against source code, classify exploitability, and generate safe Proof-of-Concept (PoC) reproductions."
+    - name: "speckit.security-review.init"
+      file: "commands/init.md"
+      description: "Initialize or update the Project Security Constitution."
+tags:
+  - "security"
+  - "devsecops"
+  - "audit"
+  - "owasp"
+  - "compliance"
+  - "governance"
+  - "spec-kit"

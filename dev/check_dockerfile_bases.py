@@ -30,8 +30,33 @@ FROM_RE = re.compile(
     r"^\s*FROM\s+(?:--platform=\S+\s+)?(?P<image>\S+)(?:\s+AS\s+(?P<alias>\S+))?\s*$",
     re.IGNORECASE,
 )
-PINNED_RE = re.compile(r"^[^\s:@]+(?::[\w][\w.-]{0,127})@sha256:[0-9a-f]{64}$")
+PINNED_RE = re.compile(r"^[^\s:@]+:\w[\w.-]{0,127}@sha256:[0-9a-f]{64}$")
 DHI_PYTHON_RE = re.compile(r"^dhi\.io/python:(?P<version>\d+\.\d+\.\d+)-")
+
+
+def _image_errors(image: str, where: str, aliases: set[str], python_version: str) -> list[str]:
+    """Violations for the image of one FROM line (empty list = OK)."""
+    if "$" in image:
+        return [
+            f"{where}: `FROM {image}` takes its image from a variable; Dependabot "
+            "cannot see it. Pin the image on a literal `FROM image:tag@sha256:… AS "
+            "<alias>` line and build `FROM <alias>` instead."
+        ]
+    if image.lower() in aliases:
+        return []  # builds on an earlier stage; the pin lives on that stage's line
+    if not PINNED_RE.match(image):
+        return [
+            f"{where}: `{image}` must be pinned as `image:tag@sha256:<digest>` "
+            "(tag for Dependabot version bumps, digest for reproducibility)."
+        ]
+    dhi = DHI_PYTHON_RE.match(image)
+    if dhi and dhi["version"] != python_version:
+        return [
+            f"{where}: DHI Python {dhi['version']} != .python-version "
+            f"{python_version}. Bump both together (and mise.toml's uv if it "
+            "cannot download that CPython yet)."
+        ]
+    return []
 
 
 def check(dockerfile: str, python_version: str) -> list[str]:
@@ -44,30 +69,9 @@ def check(dockerfile: str, python_version: str) -> list[str]:
         if not match:
             continue
         image, alias = match["image"], match["alias"]
-        where = f"Dockerfile:{lineno}"
-        if "$" in image:
-            errors.append(
-                f"{where}: `FROM {image}` takes its image from a variable; Dependabot "
-                "cannot see it. Pin the image on a literal `FROM image:tag@sha256:… AS "
-                "<alias>` line and build `FROM <alias>` instead."
-            )
-        elif image.lower() in aliases:
-            pass  # builds on an earlier stage; the pin lives on that stage's line
-        elif not PINNED_RE.match(image):
-            errors.append(
-                f"{where}: `{image}` must be pinned as `image:tag@sha256:<digest>` "
-                "(tag for Dependabot version bumps, digest for reproducibility)."
-            )
-        else:
-            dhi = DHI_PYTHON_RE.match(image)
-            if dhi:
-                dhi_seen = True
-                if dhi["version"] != python_version:
-                    errors.append(
-                        f"{where}: DHI Python {dhi['version']} != .python-version "
-                        f"{python_version}. Bump both together (and mise.toml's uv if it "
-                        "cannot download that CPython yet)."
-                    )
+        errors += _image_errors(image, f"Dockerfile:{lineno}", aliases, python_version)
+        if PINNED_RE.match(image) and DHI_PYTHON_RE.match(image):
+            dhi_seen = True
         if alias:
             aliases.add(alias.lower())
     if not dhi_seen:

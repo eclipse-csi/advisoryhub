@@ -22,12 +22,12 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a
 # the deployed image except files explicitly COPY'd into `production`.
 # Patch version matches .python-version; bump both together. Digests pin the
 # multi-arch *index* (amd64 CI + arm64 local), not a platform manifest.
-ARG DHI_DEV_IMAGE=dhi.io/python:3.14.5-debian13-dev@sha256:37be3fa9f01d355e5e3b51a866c711ec3731999e6f537ebe97d41facc85a58b9
+ARG DHI_DEV_IMAGE=dhi.io/python:3.14.10-debian13-dev@sha256:331fffd6ff7fcf9bf5f7dbde8d48fad634375baa739d1db23f65e0ec83bcd198
 # DHI runtime variant: what actually deploys. git/ssh/libnss_wrapper come
 # from the runtime-deps stage (same Debian 13 release line, so any
 # overwritten library is byte-identical). Digest re-resolvable with
-# dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.5-debian13
-ARG DHI_RUNTIME_IMAGE=dhi.io/python:3.14.5-debian13@sha256:7b74640b7f36f4e32dccaddc497182f90f476f889323ab5626b7cffd67ba3c8a
+# dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.10-debian13
+ARG DHI_RUNTIME_IMAGE=dhi.io/python:3.14.10-debian13@sha256:d20d953b545c83acd9e1b6b6b6d27cf14de38e6a39689334f71454c33cf41893
 
 FROM ${UV_IMAGE} AS uv-dist
 

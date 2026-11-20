@@ -21,7 +21,7 @@
 # mise resolves a full x.y.z exact-match-first, and the aqua backend checksum-verifies
 # every download against the aqua registry — reproducible CI, no unpinned upstream window.
 # renovate: datasource=github-releases depName=astral-sh/uv
-uv = "0.11.26"   # resolves to aqua:astral-sh/uv
+uv = "0.13.9"    # resolves to aqua:astral-sh/uv
 # renovate: datasource=github-releases depName=j178/prek extractVersion=^v(?<version>.+)$
 prek = "0.4.8" # fast Rust pre-commit (aqua:j178/prek); `mise run setup` wires git hooks
 # Helm-chart toolchain (charts/advisoryhub) — bootstrap binaries like uv/prek,

@@ -622,6 +622,10 @@ def _cvss_metric(sev: dict[str, Any]) -> dict[str, Any] | None:
             }
         if stype == "CVSS_V4":
             c4 = CVSS4(vector)
+            # CVSS4.__init__ always computes severity, but the library leaves the
+            # attribute typed Optional; narrow it (a None falls to the except below).
+            if c4.severity is None:
+                raise ValueError("CVSS4 severity not computed")
             return {
                 "cvssV4_0": {
                     "version": "4.0",

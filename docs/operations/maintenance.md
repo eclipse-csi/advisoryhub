@@ -38,7 +38,9 @@ is ever lost there, re-publishing regenerates and re-pushes the current advisori
 
 1. **Dependencies / Python.** Bump `.python-version` and/or `uv.lock` and **rebuild
    the image** (`down -v` keeps cached images, so rebuild explicitly after a
-   `Dockerfile`/lockfile change).
+   `Dockerfile`/lockfile change). A `.python-version` bump goes with the same Python
+   patch on both `dhi.io/python` tags of the `Dockerfile`, and their re-resolved
+   digests: `mise run check-dockerfile` (prek + CI) fails while they differ.
 2. **Pre-deploy gates** — run these (the CI pipeline runs the same; mirror them in
    your release pipeline):
    ```sh
@@ -89,6 +91,19 @@ build that Dependabot's `docker`/`uv` PRs re-trigger read `DOCKER_HUB_USERNAME` 
 secrets of the same name). Dependabot-triggered runs never see Actions secrets, so these
 credentials must exist in **both** scopes — otherwise the `dhi.io` login fails and the
 `release-image.yml` check goes red on every Dependabot base-image or dependency PR.
+
+Dependabot's Dockerfile parser only sees base images written on a **literal**
+`FROM image:tag@sha256:… AS <alias>` line. An image held in an `ARG` and used as
+`FROM ${VAR}` is silently skipped: from 2026-06 to 2026-11 the `docker` job found zero
+dependencies, the `dhi.io/python:3.14.5` base froze, and the Trivy gate eventually
+failed on its unpatched Debian packages (DHI stops rebuilding a Python patch tag once
+a newer one ships). The Dockerfile therefore pins each base once, on an alias stage,
+and every other stage builds `FROM <alias>`. `dev/check_dockerfile_bases.py`
+(`mise run check-dockerfile`, a commit-stage hook + CI) enforces that, and also that
+the Python patch in the DHI tags equals `.python-version`. Dependabot bumps only the
+tag, so a DHI base-image PR **fails CI until you push a matching `.python-version`
+bump** to it, plus a newer `uv` pin in `mise.toml` if the current one can't download
+that CPython yet (`uv python list --only-downloads`).
 
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in

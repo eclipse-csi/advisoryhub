@@ -27,7 +27,7 @@
 
 # uv as a static binary copied from its (digest-pinned) distroless image —
 # no pip bootstrap, identical mechanism in every stage.
-FROM ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6 AS uv-dist
+FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv-dist
 
 # DHI "dev" variant (hardened Debian 13 + bash/apt, runs as root): base of
 # the compose dev stage and of every build stage — uv sync, collectstatic,
@@ -36,12 +36,12 @@ FROM ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebc
 # The Python patch in the tag MUST equal .python-version (guarded): a
 # Dependabot tag bump fails CI until .python-version (and, if its CPython
 # list lags, mise's uv pin) is bumped on the same PR.
-FROM dhi.io/python:3.14.10-debian13-dev@sha256:331fffd6ff7fcf9bf5f7dbde8d48fad634375baa739d1db23f65e0ec83bcd198 AS dhi-dev
+FROM dhi.io/python:3.15.2-6-debian13-dev@sha256:62b23e314538117109e233d95cd00fce62112fb53ba740524cbabe233cdd489c AS dhi-dev
 
 # DHI runtime variant: what actually deploys. git/ssh/libnss_wrapper come
 # from the runtime-deps stage (same Debian 13 release line, so any
 # overwritten library is byte-identical). Same Python-patch rule as above.
-FROM dhi.io/python:3.14.10-debian13@sha256:d20d953b545c83acd9e1b6b6b6d27cf14de38e6a39689334f71454c33cf41893 AS dhi-runtime
+FROM dhi.io/python:3.15.2-debian13@sha256:81cd77fe80b9027b62631ee13e66a98de96655853d1411f7c9bb964af147f856 AS dhi-runtime
 
 # ---------------------------------------------------------------------------
 # dev — used by docker-compose (build target: dev)

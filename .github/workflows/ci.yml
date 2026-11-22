@@ -108,6 +108,9 @@ jobs:
       - run: mise run check-templates
       # Fail on new advisories → workflows imports (workflows sits above advisories).
       - run: mise run check-imports
+      # Fail on ARG-held base images (invisible to Dependabot) or a DHI Python
+      # patch that differs from .python-version (Dependabot bumps only the tag).
+      - run: mise run check-dockerfile
 
   typecheck:
     name: Type check (mypy + django-stubs)

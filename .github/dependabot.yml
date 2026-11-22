@@ -10,8 +10,14 @@
 #     Django is major/minor-ignored below: its LTS cap would otherwise hide 5.2.x
 #     patch releases from the bot entirely (see the comment on the rule).
 #   * docker — base-image bumps for the Dockerfile; the Trivy gate still fails
-#     the build on a vulnerable base. The dhi.io bases sit behind a credentialed
-#     registry, so the `dhi-io` registry below needs DOCKER_HUB_USERNAME /
+#     the build on a vulnerable base. Dependabot only parses LITERAL
+#     `FROM image:tag@sha256:…` lines — an ARG-held `FROM ${VAR}` image is
+#     silently skipped (it was, 2026-06 → 2026-11: zero docker deps found), so
+#     the Dockerfile pins each base once on an alias stage, enforced by
+#     dev/check_dockerfile_bases.py. That guard also fails a DHI tag bump until
+#     .python-version is bumped to match on the same PR (Dependabot can't).
+#     The dhi.io bases sit behind a credentialed registry, so the `dhi-io`
+#     registry below needs DOCKER_HUB_USERNAME /
 #     DOCKER_HUB_TOKEN as DEPENDABOT secrets (org- or repo-level Settings →
 #     Secrets and variables → Dependabot — a scope SEPARATE from Actions secrets;
 #     the same names must exist there too). Those same Dependabot secrets ALSO

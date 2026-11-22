@@ -13,28 +13,40 @@
 # zero RUN instructions: everything it needs (venv, app, git/ssh) is COPY'd
 # from earlier stages.
 
+# Base images are pinned ONLY on the literal `FROM image:tag@sha256:… AS name`
+# lines below; every other stage builds `FROM <that alias>`. Never move a pin
+# into an `ARG` + `FROM ${…}`: Dependabot's Dockerfile parser reads literal
+# FROM lines only, so an ARG-held image silently drops out of its updates
+# (it did, 2026-06 → 2026-11, freezing the DHI base until the Trivy gate
+# failed). dev/check_dockerfile_bases.py enforces both rules in this comment
+# block (prek + CI).
+#
+# Digests pin the multi-arch *index* (amd64 CI + arm64 local), not a platform
+# manifest; re-resolve with dhi.io credentials:
+#   docker buildx imagetools inspect dhi.io/python:<tag>
+
 # uv as a static binary copied from its (digest-pinned) distroless image —
 # no pip bootstrap, identical mechanism in every stage.
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6
+FROM ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6 AS uv-dist
+
 # DHI "dev" variant (hardened Debian 13 + bash/apt, runs as root): base of
 # the compose dev stage and of every build stage — uv sync, collectstatic,
 # and the runtime-deps harvest all need a shell. Nothing from it ships in
 # the deployed image except files explicitly COPY'd into `production`.
-# Patch version matches .python-version; bump both together. Digests pin the
-# multi-arch *index* (amd64 CI + arm64 local), not a platform manifest.
-ARG DHI_DEV_IMAGE=dhi.io/python:3.14.10-debian13-dev@sha256:331fffd6ff7fcf9bf5f7dbde8d48fad634375baa739d1db23f65e0ec83bcd198
+# The Python patch in the tag MUST equal .python-version (guarded): a
+# Dependabot tag bump fails CI until .python-version (and, if its CPython
+# list lags, mise's uv pin) is bumped on the same PR.
+FROM dhi.io/python:3.14.10-debian13-dev@sha256:331fffd6ff7fcf9bf5f7dbde8d48fad634375baa739d1db23f65e0ec83bcd198 AS dhi-dev
+
 # DHI runtime variant: what actually deploys. git/ssh/libnss_wrapper come
 # from the runtime-deps stage (same Debian 13 release line, so any
-# overwritten library is byte-identical). Digest re-resolvable with
-# dhi.io credentials: docker buildx imagetools inspect dhi.io/python:3.14.10-debian13
-ARG DHI_RUNTIME_IMAGE=dhi.io/python:3.14.10-debian13@sha256:d20d953b545c83acd9e1b6b6b6d27cf14de38e6a39689334f71454c33cf41893
-
-FROM ${UV_IMAGE} AS uv-dist
+# overwritten library is byte-identical). Same Python-patch rule as above.
+FROM dhi.io/python:3.14.10-debian13@sha256:d20d953b545c83acd9e1b6b6b6d27cf14de38e6a39689334f71454c33cf41893 AS dhi-runtime
 
 # ---------------------------------------------------------------------------
 # dev — used by docker-compose (build target: dev)
 # ---------------------------------------------------------------------------
-FROM ${DHI_DEV_IMAGE} AS dev
+FROM dhi-dev AS dev
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -76,7 +88,7 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 # ---------------------------------------------------------------------------
 # prod-base — shared build base for the production stages
 # ---------------------------------------------------------------------------
-FROM ${DHI_DEV_IMAGE} AS prod-base
+FROM dhi-dev AS prod-base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -130,7 +142,7 @@ RUN mkdir -p /home/advisoryhub/.ssh \
 # ---------------------------------------------------------------------------
 # runtime-deps — harvest git/ssh/nss_wrapper for the shell-less final stage
 # ---------------------------------------------------------------------------
-FROM ${DHI_DEV_IMAGE} AS runtime-deps
+FROM dhi-dev AS runtime-deps
 
 # git + ssh are runtime requirements (publication pushes shell out to them);
 # libnss-wrapper backs the arbitrary-UID registration in docker/entrypoint.py.
@@ -146,7 +158,7 @@ RUN bash /tmp/collect-runtime-deps.sh /staging
 # ---------------------------------------------------------------------------
 # production — the deployable image (default target; zero RUN instructions)
 # ---------------------------------------------------------------------------
-FROM ${DHI_RUNTIME_IMAGE} AS production
+FROM dhi-runtime AS production
 
 # revision/version/created are stamped by CI (docker/metadata-action).
 LABEL org.opencontainers.image.title="AdvisoryHub" \

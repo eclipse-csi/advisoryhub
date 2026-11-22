@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1494,7 +1494,9 @@ is ever lost there, re-publishing regenerates and re-pushes the current advisori
 <ol>
 <li><strong>Dependencies / Python.</strong> Bump <code>.python-version</code> and/or <code>uv.lock</code> and <strong>rebuild
    the image</strong> (<code>down -v</code> keeps cached images, so rebuild explicitly after a
-   <code>Dockerfile</code>/lockfile change).</li>
+   <code>Dockerfile</code>/lockfile change). A <code>.python-version</code> bump goes with the same Python
+   patch on both <code>dhi.io/python</code> tags of the <code>Dockerfile</code>, and their re-resolved
+   digests: <code>mise run check-dockerfile</code> (prek + CI) fails while they differ.</li>
 <li><strong>Pre-deploy gates</strong> — run these (the CI pipeline runs the same; mirror them in
    your release pipeline):
    <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>manage.py<span class="w"> </span>makemigrations<span class="w"> </span>--check<span class="w"> </span>--dry-run<span class="w">     </span><span class="c1"># fail if a migration is missing</span>
@@ -1541,6 +1543,18 @@ build that Dependabot's <code>docker</code>/<code>uv</code> PRs re-trigger read 
 secrets of the same name). Dependabot-triggered runs never see Actions secrets, so these
 credentials must exist in <strong>both</strong> scopes — otherwise the <code>dhi.io</code> login fails and the
 <code>release-image.yml</code> check goes red on every Dependabot base-image or dependency PR.</p>
+<p>Dependabot's Dockerfile parser only sees base images written on a <strong>literal</strong>
+<code>FROM image:tag@sha256:… AS &lt;alias&gt;</code> line. An image held in an <code>ARG</code> and used as
+<code>FROM ${VAR}</code> is silently skipped: from 2026-06 to 2026-11 the <code>docker</code> job found zero
+dependencies, the <code>dhi.io/python:3.14.5</code> base froze, and the Trivy gate eventually
+failed on its unpatched Debian packages (DHI stops rebuilding a Python patch tag once
+a newer one ships). The Dockerfile therefore pins each base once, on an alias stage,
+and every other stage builds <code>FROM &lt;alias&gt;</code>. <code>dev/check_dockerfile_bases.py</code>
+(<code>mise run check-dockerfile</code>, a commit-stage hook + CI) enforces that, and also that
+the Python patch in the DHI tags equals <code>.python-version</code>. Dependabot bumps only the
+tag, so a DHI base-image PR <strong>fails CI until you push a matching <code>.python-version</code>
+bump</strong> to it, plus a newer <code>uv</code> pin in <code>mise.toml</code> if the current one can't download
+that CPython yet (<code>uv python list --only-downloads</code>).</p>
 <p>Cutting a <strong>release</strong> (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in
 <a href="../../contributing/releasing/"><code>docs/contributing/releasing.md</code></a>.</p>
@@ -1719,10 +1733,10 @@ commands:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "toc.follow", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

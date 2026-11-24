@@ -1539,6 +1539,15 @@ merging. Re-vendor by hand any time with <code>mise run update-vendor</code>.</p
 <li>AI-assisted commits carry an <code>Assisted-by: &lt;agent&gt;:&lt;model&gt;</code> trailer in the
   footer — e.g. <code>Assisted-by: Claude:claude-sonnet-4-6</code> — and never a
   <code>Co-Authored-By</code> trailer.</li>
+<li>The PR title is a Conventional Commit too: a squash merge turns it into the
+  commit that git-cliff writes into the release notes.</li>
+<li>The PR description follows the
+  <a href="https://github.com/eclipse-csi/advisoryhub/blob/main/.github/pull_request_template.md">pull request template</a>:
+  the <code>INV-*</code> IDs and specification updates, the security review for a change
+  to an area governed by a Critical-tier invariant, the tests and checks that
+  ran. The repository is public: never put embargoed vulnerability details,
+  real advisory content or secrets in a PR. With Claude Code, the
+  <code>/pr-description</code> skill drafts it from the diff.</li>
 </ul>
 <h2 id="8-releasing">8. Releasing<a class="headerlink" href="#8-releasing" title="Permanent link">&para;</a></h2>
 <p>Releases are tag-driven: one signed <code>vX.Y.Z</code> tag produces the container

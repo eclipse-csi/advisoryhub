@@ -179,6 +179,12 @@ merging. Re-vendor by hand any time with `mise run update-vendor`.
 - AI-assisted commits carry an `Assisted-by: <agent>:<model>` trailer in the
   footer — e.g. `Assisted-by: Claude:claude-sonnet-4-6` — and never a
   `Co-Authored-By` trailer.
+- Before opening a PR, an agent can review the branch adversarially with the
+  `adversarial-review` skill (`.agents/skills/adversarial-review/SKILL.md`,
+  `/adversarial-review` in Claude Code): it tries to break the change against
+  the invariants and the permission model and ends with a `ready`, `blocked`
+  or `inconclusive` verdict. It posts nothing to GitHub and does not replace
+  the mandatory Spec Kit security reviews.
 
 ## 8. Releasing
 

@@ -103,7 +103,10 @@ and every other stage builds `FROM <alias>`. `dev/check_dockerfile_bases.py`
 the Python patch in the DHI tags equals `.python-version`. Dependabot bumps only the
 tag, so a DHI base-image PR **fails CI until you push a matching `.python-version`
 bump** to it, plus a newer `uv` pin in `mise.toml` if the current one can't download
-that CPython yet (`uv python list --only-downloads`).
+that CPython yet (`uv python list --only-downloads`). Dependabot proposes only DHI
+**patch** bumps: Python minor/major tag updates are ignored in `.github/dependabot.yml`,
+because a new Python minor also moves `requires-python` in `pyproject.toml` and `uv.lock`
+and is done by hand.
 
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in

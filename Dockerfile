@@ -27,7 +27,7 @@
 
 # uv as a static binary copied from its (digest-pinned) distroless image —
 # no pip bootstrap, identical mechanism in every stage.
-FROM ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6 AS uv-dist
+FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv-dist
 
 # DHI "dev" variant (hardened Debian 13 + bash/apt, runs as root): base of
 # the compose dev stage and of every build stage — uv sync, collectstatic,

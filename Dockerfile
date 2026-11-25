@@ -150,9 +150,13 @@ FROM dhi-dev AS runtime-deps
 # already ships (e.g. krb5, pulled in by openssh-client and libcurl) at the
 # base's version, so a Debian security fix published after the DHI build
 # (krb5 DSA-6650-1, 2026-11) would otherwise be staged unpatched and fail the
-# Trivy gate until DHI rebuilds the tag.
+# Trivy gate until DHI rebuilds the tag. Non-interactive with --force-confold:
+# DHI ships its own conffiles (e.g. base-files' /etc/debian_version), and the
+# dpkg conffile prompt would abort a build with no stdin. Keeping them is
+# harmless — only the packages below and their library closure are staged.
 RUN apt-get update \
- && apt-get upgrade -y \
+ && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+      -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
  && apt-get install -y --no-install-recommends git openssh-client libnss-wrapper \
  && rm -rf /var/lib/apt/lists/*
 

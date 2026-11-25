@@ -2,9 +2,10 @@ name: Release image
 
 # Builds the production container image, smoke-tests it under an
 # OpenShift-style arbitrary UID, reports a full-severity Trivy SARIF to code
-# scanning and gates on fixable HIGH/CRITICAL findings (two Trivy passes, on
-# purpose — see the steps), then (on main/tag pushes) publishes to ghcr.io with
-# an SBOM + SLSA provenance attestations and a keyless cosign signature.
+# scanning on every run, gates RELEASE (v* tag) builds on fixable HIGH/CRITICAL
+# findings (two Trivy passes, on purpose — see the steps), then (on main/tag
+# pushes) publishes to ghcr.io with an SBOM + SLSA provenance attestations and a
+# keyless cosign signature.
 #
 # Required secrets — in BOTH the Actions AND the Dependabot scope:
 #   DOCKER_HUB_USERNAME / DOCKER_HUB_TOKEN — Docker ID + PAT for dhi.io (the
@@ -161,7 +162,12 @@ jobs:
       # — a sarif/json gate writes to a file and prints nothing on failure.
       # trivy is already installed and its DB already cached in `cache-dir` by
       # the reporting pass, so this is a warm re-scan of a local image (~10s).
+      # Release (v* tag) builds only: a CVE fixed upstream but not yet in a DHI
+      # rebuild would otherwise turn every PR and main push red for something no
+      # code change can fix. PRs and main still report it to code scanning above;
+      # a release waits for the patched base digest (Dependabot) instead.
       - name: Trivy gate (fixable HIGH/CRITICAL)
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: advisoryhub:smoke

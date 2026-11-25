@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -1554,7 +1554,10 @@ and every other stage builds <code>FROM &lt;alias&gt;</code>. <code>dev/check_do
 the Python patch in the DHI tags equals <code>.python-version</code>. Dependabot bumps only the
 tag, so a DHI base-image PR <strong>fails CI until you push a matching <code>.python-version</code>
 bump</strong> to it, plus a newer <code>uv</code> pin in <code>mise.toml</code> if the current one can't download
-that CPython yet (<code>uv python list --only-downloads</code>).</p>
+that CPython yet (<code>uv python list --only-downloads</code>). Dependabot proposes only DHI
+<strong>patch</strong> bumps: Python minor/major tag updates are ignored in <code>.github/dependabot.yml</code>,
+because a new Python minor also moves <code>requires-python</code> in <code>pyproject.toml</code> and <code>uv.lock</code>
+and is done by hand.</p>
 <p>The Trivy <strong>gate</strong> (fail on fixable HIGH/CRITICAL) runs on release (<code>v*</code> tag) builds
 only; PR and <code>main</code> builds still upload the full Trivy report to GitHub code scanning.
 A finding there that a newer DHI base fixes is resolved by merging Dependabot's

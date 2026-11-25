@@ -8,8 +8,7 @@
 # Runs in the runtime-deps build stage (DHI *dev* variant: bash + apt).
 # Source and destination are the same Debian 13 release line — the dev and
 # runtime variants of one DHI python release — so any library staged over
-# an existing base file is the same Debian build, or a newer security update
-# of it (the stage runs `apt-get upgrade` before installing).
+# an existing base file is byte-identical.
 set -euo pipefail
 
 STAGING="${1:?usage: collect-runtime-deps.sh <staging-dir>}"

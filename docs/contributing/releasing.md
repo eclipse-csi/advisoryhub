@@ -29,6 +29,9 @@ every `uv sync --locked`. (`mise run release` does all of this for you.)
   the release commit and tag are signed (`-S`) per the commit policy.
 - A clean tree on `main` (untracked files like `TODO.md` are fine).
 - The toolchain: `mise install` (git-cliff, trivy, helm are exact-pinned in `mise.toml`).
+- No open fixable HIGH/CRITICAL Trivy alert for the image in GitHub code scanning:
+  the Trivy gate runs on the tag build only (PR and `main` builds just report), so a
+  finding still open there fails the release — merge the pending base-image bump first.
 
 ## Cutting a release
 

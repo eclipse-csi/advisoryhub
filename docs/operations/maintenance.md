@@ -105,13 +105,11 @@ tag, so a DHI base-image PR **fails CI until you push a matching `.python-versio
 bump** to it, plus a newer `uv` pin in `mise.toml` if the current one can't download
 that CPython yet (`uv python list --only-downloads`).
 
-The Trivy gate fails on any fixable HIGH/CRITICAL finding. Debian security fixes for
-the packages the image adds (git, ssh, libnss_wrapper and their library closure) are
-picked up by the `apt-get upgrade` in the Dockerfile's `runtime-deps` stage. A
-vulnerable package that DHI ships in the shell-less runtime base itself can only be
-fixed by a DHI rebuild (picked up by Dependabot as a digest bump); until then, add a
-gate-only exception to `.github/trivyignore` with a reason and an `exp:` date of at
-most two weeks, and remove it once the patched digest lands.
+The Trivy **gate** (fail on fixable HIGH/CRITICAL) runs on release (`v*` tag) builds
+only; PR and `main` builds still upload the full Trivy report to GitHub code scanning.
+A finding there that a newer DHI base fixes is resolved by merging Dependabot's
+base-image digest bump — check code scanning before tagging a release, since the tag
+build fails on any finding still open.
 
 Cutting a **release** (version-lockstep bump, signed tag, container image to
 ghcr.io, Helm chart publish) is its own tag-driven pipeline — runbook in

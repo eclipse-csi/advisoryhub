@@ -1544,6 +1544,9 @@ every <code>uv sync --locked</code>. (<code>mise run release</code> does all of 
   the release commit and tag are signed (<code>-S</code>) per the commit policy.</li>
 <li>A clean tree on <code>main</code> (untracked files like <code>TODO.md</code> are fine).</li>
 <li>The toolchain: <code>mise install</code> (git-cliff, trivy, helm are exact-pinned in <code>mise.toml</code>).</li>
+<li>No open fixable HIGH/CRITICAL Trivy alert for the image in GitHub code scanning:
+  the Trivy gate runs on the tag build only (PR and <code>main</code> builds just report), so a
+  finding still open there fails the release — merge the pending base-image bump first.</li>
 </ul>
 <h2 id="cutting-a-release">Cutting a release<a class="headerlink" href="#cutting-a-release" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mise<span class="w"> </span>run<span class="w"> </span>release<span class="w"> </span>--<span class="w"> </span>X.Y.Z

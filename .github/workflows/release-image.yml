@@ -168,6 +168,9 @@ jobs:
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          # Time-boxed, gate-only exceptions for DHI runtime-base packages we
+          # cannot patch ourselves; each entry carries a reason and `exp:` date.
+          trivyignores: .github/trivyignore
           exit-code: "1"
           skip-setup-trivy: true
 

@@ -1,0 +1,11 @@
+# Time-boxed exceptions for the release-image.yml Trivy GATE only (the SARIF
+# reporting pass does not load this file, so code scanning still shows them).
+# Every entry needs a reason and an `exp:` date; once it lapses the gate fails
+# again. Only for findings our build cannot fix: packages DHI ships in the
+# runtime base itself (no package manager there), pending a DHI rebuild that
+# Dependabot then picks up as a digest bump. See docs/operations/maintenance.md §2.
+
+# libzstd1 1.5.7+dfsg-1+deb13u0+dhi3 in the DHI python:3.14.10-debian13 runtime
+# base; Debian fixed it in 1.5.7+dfsg-1+deb13u1 (DSA-6657-1, 2026-11). Added
+# 2026-11-25. Remove once a patched DHI digest lands.
+CVE-2026-124851 exp:2026-12-09
